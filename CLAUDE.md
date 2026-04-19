@@ -22,7 +22,7 @@ The repository contains four folders:
 * **external** contains source code or library for third-party libraries
 * **history** contains the MarkDown files you output from contributions, this is your memory store
 
-Each folder includes a CLAUDE.md file providing details about commands and architecture. **Always read the project-specific CLAUDE.md first** when working in a subdirectory.
+Each folder includes a CLAUDE.md file providing details about commands and architecture. **Always read the folder-specific CLAUDE.md first** when working in a subdirectory.
 
 ## Game Engine main features
 
@@ -53,4 +53,8 @@ All of written code must be **optimized but readable for a good C++ developer**
 
 Any contribution must be accompanied by:
 * a MarkDown file, named `{DATETIME} - {FEATURE}.md`, stored in `history` folder, and containing a comprehensive description of the changes, the decisions made and their rationale, and the output to keep in mind for you for the next features.
-* an update of the README.md if building or installing process have been updated (e.g., using a new library)
+* an proposal to update the README.md if building or installing process have been updated (e.g., using a new library)
+* propositions to improve the `CLAUDE.md` files, if it can avoid unecessary questions from you
+* propositions to improve my specifictions, if it can avoir unecessary questions from you
+* the list of skills files you used
+* the instructions from skills files and `CLAUDE.md` files you especially took into account to contribute
