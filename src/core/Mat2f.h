@@ -70,8 +70,8 @@ class Mat2f {
 
   // Non-uniform scale.
   [[nodiscard]] static inline Mat2f Scale2D(Vec2f scale) {
-    return {scale.X(), 0.f,
-            0.f, scale.Y()};
+    return {scale.x, 0.f,
+            0.f, scale.y};
   }
 
   // Combined scale-after-rotation: M = Scale * Rotation.

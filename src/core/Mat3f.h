@@ -164,9 +164,9 @@ class alignas(16) Mat3f {
 
   // Non-uniform 3D scale.
   [[nodiscard]] static inline Mat3f Scale3D(Vec3f scale) {
-    return {scale.X(), 0.f,       0.f,
-            0.f,       scale.Y(), 0.f,
-            0.f,       0.f,       scale.Z()};
+    return {scale.x, 0.f,     0.f,
+            0.f,     scale.y, 0.f,
+            0.f,     0.f,     scale.z};
   }
 
   // Counter-clockwise rotation around the X axis (radians).
@@ -197,7 +197,7 @@ class alignas(16) Mat3f {
   // Equivalent to RotationZ(z) * RotationY(y) * RotationX(x).
   // Applied to a column vector: first X, then Y, then Z rotation.
   [[nodiscard]] static inline Mat3f Rotation(Vec3f euler_angles) {
-    return RotationZ(euler_angles.Z()) * RotationY(euler_angles.Y()) * RotationX(euler_angles.X());
+    return RotationZ(euler_angles.z) * RotationY(euler_angles.y) * RotationX(euler_angles.x);
   }
 
  private:

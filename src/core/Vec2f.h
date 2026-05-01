@@ -23,55 +23,51 @@ class Vec2f {
 
   Vec2f() = default;
 
-  inline explicit Vec2f(float scalar) : x_(scalar), y_(scalar) {}
-  inline Vec2f(float x, float y) : x_(x), y_(y) {}
+  inline explicit Vec2f(float scalar) : x(scalar), y(scalar) {}
+  inline Vec2f(float x, float y) : x(x), y(y) {}
 
-  // ---- Component access ----------------------------------------------------
+  // ---- Components ----------------------------------------------------------
 
-  [[nodiscard]] inline float X() const { return x_; }
-  [[nodiscard]] inline float Y() const { return y_; }
+  float x = 0.f;
+  float y = 0.f;
 
   // ---- Arithmetic operators ------------------------------------------------
 
-  [[nodiscard]] inline Vec2f operator+(const Vec2f& rhs) const { return {x_+rhs.x_, y_+rhs.y_}; }
-  [[nodiscard]] inline Vec2f operator-(const Vec2f& rhs) const { return {x_-rhs.x_, y_-rhs.y_}; }
-  [[nodiscard]] inline Vec2f operator*(float s)          const { return {x_*s, y_*s}; }
-  [[nodiscard]] inline Vec2f operator/(float s)          const { return {x_/s, y_/s}; }
-  [[nodiscard]] inline Vec2f operator-()                 const { return {-x_, -y_}; }
+  [[nodiscard]] inline Vec2f operator+(const Vec2f& rhs) const { return {x+rhs.x, y+rhs.y}; }
+  [[nodiscard]] inline Vec2f operator-(const Vec2f& rhs) const { return {x-rhs.x, y-rhs.y}; }
+  [[nodiscard]] inline Vec2f operator*(float s)          const { return {x*s, y*s}; }
+  [[nodiscard]] inline Vec2f operator/(float s)          const { return {x/s, y/s}; }
+  [[nodiscard]] inline Vec2f operator-()                 const { return {-x, -y}; }
 
-  inline Vec2f& operator+=(const Vec2f& rhs) { x_+=rhs.x_; y_+=rhs.y_; return *this; }
-  inline Vec2f& operator-=(const Vec2f& rhs) { x_-=rhs.x_; y_-=rhs.y_; return *this; }
-  inline Vec2f& operator*=(float s)          { x_*=s; y_*=s; return *this; }
-  inline Vec2f& operator/=(float s)          { x_/=s; y_/=s; return *this; }
+  inline Vec2f& operator+=(const Vec2f& rhs) { x+=rhs.x; y+=rhs.y; return *this; }
+  inline Vec2f& operator-=(const Vec2f& rhs) { x-=rhs.x; y-=rhs.y; return *this; }
+  inline Vec2f& operator*=(float s)          { x*=s; y*=s; return *this; }
+  inline Vec2f& operator/=(float s)          { x/=s; y/=s; return *this; }
 
-  [[nodiscard]] inline bool operator==(const Vec2f& rhs) const { return x_ == rhs.x_ && y_ == rhs.y_; }
+  [[nodiscard]] inline bool operator==(const Vec2f& rhs) const { return x == rhs.x && y == rhs.y; }
   [[nodiscard]] inline bool operator!=(const Vec2f& rhs) const { return !(*this == rhs); }
 
   // ---- Vector operations ---------------------------------------------------
 
   [[nodiscard]] inline float Dot(const Vec2f& rhs) const {
-    return x_*rhs.x_ + y_*rhs.y_;
+    return x*rhs.x + y*rhs.y;
   }
 
   // Returns the scalar z-component of the 3D cross product (x, y, 0) × rhs.
   // Positive when rhs is counter-clockwise from this.
   [[nodiscard]] inline float Cross(const Vec2f& rhs) const {
-    return x_*rhs.y_ - y_*rhs.x_;
+    return x*rhs.y - y*rhs.x;
   }
 
-  [[nodiscard]] inline float LengthSquared() const { return x_*x_ + y_*y_; }
+  [[nodiscard]] inline float LengthSquared() const { return x*x + y*y; }
 
   [[nodiscard]] inline float Length() const { return std::sqrt(LengthSquared()); }
 
   // Returns a unit vector. Behaviour is undefined if length is zero.
   [[nodiscard]] inline Vec2f Normalized() const {
     float inv = FastInvSqrt(LengthSquared());
-    return {x_*inv, y_*inv};
+    return {x*inv, y*inv};
   }
-
- private:
-  float x_ = 0.f;
-  float y_ = 0.f;
 };
 
 // Constant definitions — class is complete here so Vec2f constructors resolve.

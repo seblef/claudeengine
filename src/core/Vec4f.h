@@ -8,9 +8,13 @@
 
 namespace core {
 
-// 4-component float vector. Uses SSE __m128 storage when CORE_SIMD_ENABLED.
-// All methods are inline for maximum compiler inlining at call sites.
-class Vec4f {
+// 4-component float vector.
+//
+// Components x, y, z, w are directly accessible as public members.  The class
+// is aligned to 16 bytes so _mm_load_ps(&x) is safe in SIMD builds, mirroring
+// the Vec3f layout.  Reg() / Vec4f(__m128) bridge between named members and
+// SSE registers for internal arithmetic.
+class alignas(16) Vec4f {
  public:
   // ---- Constants (defined after class — class must be complete) ------------
 
@@ -26,62 +30,39 @@ class Vec4f {
   Vec4f() = default;
 
   // Broadcasts scalar to all four components.
-  inline explicit Vec4f(float scalar) {
-#if CORE_SIMD_ENABLED
-    reg_ = _mm_set1_ps(scalar);
-#else
-    x_ = y_ = z_ = w_ = scalar;
-#endif
-  }
+  inline explicit Vec4f(float scalar) : x(scalar), y(scalar), z(scalar), w(scalar) {}
 
-  inline Vec4f(float x, float y, float z, float w) {
-#if CORE_SIMD_ENABLED
-    // _mm_set_ps arg order: w, z, y, x → register [x, y, z, w]
-    reg_ = _mm_set_ps(w, z, y, x);
-#else
-    x_ = x; y_ = y; z_ = z; w_ = w;
-#endif
-  }
+  inline Vec4f(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
 
 #if CORE_SIMD_ENABLED
-  inline explicit Vec4f(__m128 reg) : reg_(reg) {}
-  [[nodiscard]] inline __m128 Reg() const { return reg_; }
+  // Constructs from a __m128; stores all 4 lanes into x, y, z, w.
+  inline explicit Vec4f(__m128 reg) { _mm_store_ps(&x, reg); }
+
+  // Returns the 4 floats as a __m128.
+  [[nodiscard]] inline __m128 Reg() const { return _mm_load_ps(&x); }
 #endif
 
-  // ---- Component access ----------------------------------------------------
+  // ---- Components ----------------------------------------------------------
 
-#if CORE_SIMD_ENABLED
-  [[nodiscard]] inline float X() const { return _mm_cvtss_f32(reg_); }
-  [[nodiscard]] inline float Y() const {
-    return _mm_cvtss_f32(_mm_shuffle_ps(reg_, reg_, _MM_SHUFFLE(1, 1, 1, 1)));
-  }
-  [[nodiscard]] inline float Z() const {
-    return _mm_cvtss_f32(_mm_shuffle_ps(reg_, reg_, _MM_SHUFFLE(2, 2, 2, 2)));
-  }
-  [[nodiscard]] inline float W() const {
-    return _mm_cvtss_f32(_mm_shuffle_ps(reg_, reg_, _MM_SHUFFLE(3, 3, 3, 3)));
-  }
-#else
-  [[nodiscard]] inline float X() const { return x_; }
-  [[nodiscard]] inline float Y() const { return y_; }
-  [[nodiscard]] inline float Z() const { return z_; }
-  [[nodiscard]] inline float W() const { return w_; }
-#endif
+  float x = 0.f;
+  float y = 0.f;
+  float z = 0.f;
+  float w = 0.f;
 
   // ---- Arithmetic operators ------------------------------------------------
 
 #if CORE_SIMD_ENABLED
-  [[nodiscard]] inline Vec4f operator+(const Vec4f& rhs) const { return Vec4f(_mm_add_ps(reg_, rhs.reg_)); }
-  [[nodiscard]] inline Vec4f operator-(const Vec4f& rhs) const { return Vec4f(_mm_sub_ps(reg_, rhs.reg_)); }
-  [[nodiscard]] inline Vec4f operator*(float s)          const { return Vec4f(_mm_mul_ps(reg_, _mm_set1_ps(s))); }
-  [[nodiscard]] inline Vec4f operator/(float s)          const { return Vec4f(_mm_div_ps(reg_, _mm_set1_ps(s))); }
-  [[nodiscard]] inline Vec4f operator-()                 const { return Vec4f(_mm_sub_ps(_mm_setzero_ps(), reg_)); }
+  [[nodiscard]] inline Vec4f operator+(const Vec4f& rhs) const { return Vec4f(_mm_add_ps(Reg(), rhs.Reg())); }
+  [[nodiscard]] inline Vec4f operator-(const Vec4f& rhs) const { return Vec4f(_mm_sub_ps(Reg(), rhs.Reg())); }
+  [[nodiscard]] inline Vec4f operator*(float s)          const { return Vec4f(_mm_mul_ps(Reg(), _mm_set1_ps(s))); }
+  [[nodiscard]] inline Vec4f operator/(float s)          const { return Vec4f(_mm_div_ps(Reg(), _mm_set1_ps(s))); }
+  [[nodiscard]] inline Vec4f operator-()                 const { return Vec4f(_mm_sub_ps(_mm_setzero_ps(), Reg())); }
 #else
-  [[nodiscard]] inline Vec4f operator+(const Vec4f& rhs) const { return {x_+rhs.x_, y_+rhs.y_, z_+rhs.z_, w_+rhs.w_}; }
-  [[nodiscard]] inline Vec4f operator-(const Vec4f& rhs) const { return {x_-rhs.x_, y_-rhs.y_, z_-rhs.z_, w_-rhs.w_}; }
-  [[nodiscard]] inline Vec4f operator*(float s)          const { return {x_*s, y_*s, z_*s, w_*s}; }
-  [[nodiscard]] inline Vec4f operator/(float s)          const { return {x_/s, y_/s, z_/s, w_/s}; }
-  [[nodiscard]] inline Vec4f operator-()                 const { return {-x_, -y_, -z_, -w_}; }
+  [[nodiscard]] inline Vec4f operator+(const Vec4f& rhs) const { return {x+rhs.x, y+rhs.y, z+rhs.z, w+rhs.w}; }
+  [[nodiscard]] inline Vec4f operator-(const Vec4f& rhs) const { return {x-rhs.x, y-rhs.y, z-rhs.z, w-rhs.w}; }
+  [[nodiscard]] inline Vec4f operator*(float s)          const { return {x*s, y*s, z*s, w*s}; }
+  [[nodiscard]] inline Vec4f operator/(float s)          const { return {x/s, y/s, z/s, w/s}; }
+  [[nodiscard]] inline Vec4f operator-()                 const { return {-x, -y, -z, -w}; }
 #endif
 
   inline Vec4f& operator+=(const Vec4f& rhs) { *this = *this + rhs; return *this; }
@@ -90,7 +71,7 @@ class Vec4f {
   inline Vec4f& operator/=(float s)          { *this = *this / s;   return *this; }
 
   [[nodiscard]] inline bool operator==(const Vec4f& rhs) const {
-    return X() == rhs.X() && Y() == rhs.Y() && Z() == rhs.Z() && W() == rhs.W();
+    return x == rhs.x && y == rhs.y && z == rhs.z && w == rhs.w;
   }
   [[nodiscard]] inline bool operator!=(const Vec4f& rhs) const { return !(*this == rhs); }
 
@@ -99,9 +80,9 @@ class Vec4f {
   // Dot product across all four components.
   [[nodiscard]] inline float Dot(const Vec4f& rhs) const {
 #if CORE_SIMD_ENABLED
-    return _mm_cvtss_f32(_mm_dp_ps(reg_, rhs.reg_, 0xFF));
+    return _mm_cvtss_f32(_mm_dp_ps(Reg(), rhs.Reg(), 0xFF));
 #else
-    return x_*rhs.x_ + y_*rhs.y_ + z_*rhs.z_ + w_*rhs.w_;
+    return x*rhs.x + y*rhs.y + z*rhs.z + w*rhs.w;
 #endif
   }
 
@@ -113,25 +94,18 @@ class Vec4f {
   [[nodiscard]] inline Vec4f Normalized() const {
 #if CORE_SIMD_ENABLED
     // _mm_dp_ps mask 0xFF: use all 4 lanes, broadcast result to all lanes.
-    __m128 len2    = _mm_dp_ps(reg_, reg_, 0xFF);
+    __m128 len2    = _mm_dp_ps(Reg(), Reg(), 0xFF);
     __m128 rsqrt   = _mm_rsqrt_ps(len2);
     // One Newton-Raphson step for near-float precision.
     const __m128 half  = _mm_set1_ps(0.5f);
     const __m128 three = _mm_set1_ps(1.5f);
     __m128 r2      = _mm_mul_ps(rsqrt, rsqrt);
     __m128 refined = _mm_mul_ps(rsqrt, _mm_sub_ps(three, _mm_mul_ps(half, _mm_mul_ps(len2, r2))));
-    return Vec4f(_mm_mul_ps(reg_, refined));
+    return Vec4f(_mm_mul_ps(Reg(), refined));
 #else
     return *this * (1.0f / Length());
 #endif
   }
-
- private:
-#if CORE_SIMD_ENABLED
-  __m128 reg_;
-#else
-  float x_ = 0.f, y_ = 0.f, z_ = 0.f, w_ = 0.f;
-#endif
 };
 
 // Constant definitions — class is complete here so Vec4f constructors resolve.

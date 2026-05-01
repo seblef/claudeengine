@@ -172,18 +172,18 @@ class alignas(16) Mat4f {
 
   // 3D translation.
   [[nodiscard]] static inline Mat4f Translation(Vec3f t) {
-    return {1.f, 0.f, 0.f, t.X(),
-            0.f, 1.f, 0.f, t.Y(),
-            0.f, 0.f, 1.f, t.Z(),
+    return {1.f, 0.f, 0.f, t.x,
+            0.f, 1.f, 0.f, t.y,
+            0.f, 0.f, 1.f, t.z,
             0.f, 0.f, 0.f, 1.f};
   }
 
   // Non-uniform 3D scale.
   [[nodiscard]] static inline Mat4f Scale3D(Vec3f scale) {
-    return {scale.X(), 0.f,       0.f,       0.f,
-            0.f,       scale.Y(), 0.f,       0.f,
-            0.f,       0.f,       scale.Z(), 0.f,
-            0.f,       0.f,       0.f,       1.f};
+    return {scale.x, 0.f,     0.f,     0.f,
+            0.f,     scale.y, 0.f,     0.f,
+            0.f,     0.f,     scale.z, 0.f,
+            0.f,     0.f,     0.f,     1.f};
   }
 
   // Counter-clockwise rotation around the X axis (radians).
@@ -217,7 +217,7 @@ class alignas(16) Mat4f {
   // Equivalent to RotationZ(z) * RotationY(y) * RotationX(x).
   // Applied to a column vector: first X, then Y, then Z rotation.
   [[nodiscard]] static inline Mat4f Rotation(Vec3f euler_angles) {
-    return RotationZ(euler_angles.Z()) * RotationY(euler_angles.Y()) * RotationX(euler_angles.X());
+    return RotationZ(euler_angles.z) * RotationY(euler_angles.y) * RotationX(euler_angles.x);
   }
 
  private:
