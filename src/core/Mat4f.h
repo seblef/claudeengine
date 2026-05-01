@@ -29,6 +29,7 @@ class alignas(16) Mat4f {
   // ---- Construction --------------------------------------------------------
 
   Mat4f() = default;
+  Mat4f(const Mat4f&) = default;
 
   // Constructs from 16 elements in row-major order.
   inline Mat4f(float m00, float m01, float m02, float m03,

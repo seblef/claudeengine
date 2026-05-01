@@ -32,6 +32,8 @@ class alignas(16) Vec3f {
   // ---- Construction --------------------------------------------------------
 
   Vec3f() = default;
+  Vec3f(const Vec3f&) = default;
+  Vec3f& operator=(const Vec3f&) = default;
 
   inline explicit Vec3f(float scalar) : x(scalar), y(scalar), z(scalar) {}
 

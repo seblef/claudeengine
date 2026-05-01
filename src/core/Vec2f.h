@@ -22,6 +22,8 @@ class Vec2f {
   // ---- Construction --------------------------------------------------------
 
   Vec2f() = default;
+  Vec2f(const Vec2f&) = default;
+  Vec2f& operator=(const Vec2f&) = default;
 
   inline explicit Vec2f(float scalar) : x(scalar), y(scalar) {}
   inline Vec2f(float x, float y) : x(x), y(y) {}

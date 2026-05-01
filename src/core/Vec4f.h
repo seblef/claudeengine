@@ -28,6 +28,8 @@ class alignas(16) Vec4f {
   // ---- Construction --------------------------------------------------------
 
   Vec4f() = default;
+  Vec4f(const Vec4f&) = default;
+  Vec4f& operator=(const Vec4f&) = default;
 
   // Broadcasts scalar to all four components.
   inline explicit Vec4f(float scalar) : x(scalar), y(scalar), z(scalar), w(scalar) {}

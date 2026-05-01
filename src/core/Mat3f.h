@@ -28,6 +28,7 @@ class alignas(16) Mat3f {
   // ---- Construction --------------------------------------------------------
 
   Mat3f() = default;
+  Mat3f(const Mat3f&) = default;
 
   // Constructs from 9 elements in row-major order.
   inline Mat3f(float m00, float m01, float m02,

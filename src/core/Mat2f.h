@@ -19,6 +19,7 @@ class Mat2f {
   // ---- Construction --------------------------------------------------------
 
   Mat2f() = default;
+  Mat2f(const Mat2f&) = default;
 
   // Constructs from 4 elements in row-major order.
   inline Mat2f(float m00, float m01,
