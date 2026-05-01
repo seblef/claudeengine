@@ -29,3 +29,5 @@ Each folder includes a CLAUDE.md file providing details about commands and archi
 * Utility functions (e.g., fast inverse square root) must be implemented in a single `*Utils.cpp` file
 * Google C++ style guide must be followed
 * Document meaningfully the exposed classes, functions, constants, etc.
+* Include root is `src/`, so all `#include` paths are project-relative (e.g. `#include "core/Logger.h"`)
+* New modules need a `CMakeLists.txt` and an entry in `src/CMakeLists.txt`

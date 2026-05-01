@@ -47,6 +47,8 @@ CMake is used to build the executable. There should be two options corresponding
 
 Whenever possible, try to keep compilation time low.
 
+The CMake binary dir is `_build/` (not `build/`) — `build/` holds only the final executable
+
 ## Guidelines (CRITICAL)
 
 All of written code must be **optimized but readable for a good C++ developer**
