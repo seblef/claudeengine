@@ -2,4 +2,7 @@ _build/
 build/
 loguru-build/
 loguru-subbuild/
+googletest-build/
+googletest-src/
+googletest-subbuild/
 claude_engine.log
