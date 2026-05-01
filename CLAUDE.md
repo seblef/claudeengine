@@ -53,7 +53,19 @@ The CMake binary dir is `_build/` (not `build/`) — `build/` holds only the fin
 
 All of written code must be **optimized but readable for a good C++ developer**
 
-Any contribution must be accompanied by:
+**Git workflow**
+
+For any contribution:
+1. Checkout main
+2. Pull changes
+3. Create a branch meaningfully named and prefix by `feat/` or `fix/`, depending on the task type
+4. Checkout the created branch
+5. Implement
+6. Commit with message matching conventional commits
+7. Open a Pull Request with meaningful description
+
+**Any contribution must be accompanied by:**
+
 * a MarkDown file, named `{DATETIME} - {FEATURE}.md`, stored in `history` folder, and containing a comprehensive description of the changes, the decisions made and their rationale, and the output to keep in mind for you for the next features.
 * an proposal to update the README.md if building or installing process have been updated (e.g., using a new library)
 * propositions to improve the `CLAUDE.md` files, if it can avoid unecessary questions from you
