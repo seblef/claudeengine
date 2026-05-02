@@ -216,3 +216,31 @@ TEST(Mat3fTest, RotationXAxisMatchesRotationX) {
     for (int c = 0; c < 3; ++c)
       EXPECT_TRUE(Near(a(r,c), b(r,c), 1e-5f));
 }
+
+// ---- Vec3f × Mat3f ----------------------------------------------------------
+
+TEST(Mat3fTest, Vec3fTimesIdentityIsNoOp) {
+  Vec3f v{1.f, 2.f, 3.f};
+  Vec3f r = v * Mat3f::kIdentity;
+  EXPECT_TRUE(Near(r.x, 1.f)); EXPECT_TRUE(Near(r.y, 2.f)); EXPECT_TRUE(Near(r.z, 3.f));
+}
+
+TEST(Mat3fTest, Vec3fTimesRotationX_HalfPi) {
+  // Rx(π/2) = [1,0,0; 0,0,-1; 0,1,0].  (0,1,0) → (0,0,1).
+  Vec3f r = Vec3f{0.f, 1.f, 0.f} * Mat3f::RotationX(kHalfPi);
+  EXPECT_TRUE(Near(r.x, 0.f, 1e-5f));
+  EXPECT_TRUE(Near(r.y, 0.f, 1e-5f));
+  EXPECT_TRUE(Near(r.z, 1.f, 1e-5f));
+}
+
+TEST(Mat3fTest, Vec3fTimesScale3D) {
+  Vec3f r = Vec3f{1.f, 2.f, 3.f} * Mat3f::Scale3D({2.f, 3.f, 4.f});
+  EXPECT_TRUE(Near(r.x, 2.f)); EXPECT_TRUE(Near(r.y, 6.f)); EXPECT_TRUE(Near(r.z, 12.f));
+}
+
+TEST(Mat3fTest, Vec3fTimesAssignIsConsistent) {
+  Vec3f v{1.f, 2.f, 3.f};
+  Vec3f expected = v * Mat3f::Scale3D({2.f, 3.f, 4.f});
+  v *= Mat3f::Scale3D({2.f, 3.f, 4.f});
+  EXPECT_TRUE(Near(v.x, expected.x)); EXPECT_TRUE(Near(v.y, expected.y)); EXPECT_TRUE(Near(v.z, expected.z));
+}

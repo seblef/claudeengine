@@ -89,4 +89,11 @@ class Mat2f {
 
 inline const Mat2f Mat2f::kIdentity{};
 
+// Out-of-line definitions for Vec2f matrix operators declared in Vec2f.h.
+inline Vec2f Vec2f::operator*(const Mat2f& m) const {
+  return {m(0,0)*x + m(0,1)*y,
+          m(1,0)*x + m(1,1)*y};
+}
+inline Vec2f& Vec2f::operator*=(const Mat2f& m) { *this = *this * m; return *this; }
+
 }  // namespace core

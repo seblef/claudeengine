@@ -6,6 +6,9 @@
 
 namespace core {
 
+// Forward declarations — method bodies live in the respective Mat headers.
+class Mat2f;
+
 // 2-component float vector. Uses plain float storage — a 2-lane SSE load
 // wastes half the register and adds shuffle overhead for individual vectors.
 // The compiler auto-vectorizes bulk loops of Vec2f more effectively without
@@ -70,6 +73,13 @@ class Vec2f {
     float inv = FastInvSqrt(LengthSquared());
     return {x*inv, y*inv};
   }
+
+  // ---- Matrix multiplication -----------------------------------------------
+  // Definitions live in core/Mat2f.h (requires complete Mat2f type).
+
+  // Applies M to this vector (column-vector semantics: result[k] = dot(M_row_k, v)).
+  [[nodiscard]] Vec2f operator*(const Mat2f& m) const;
+  Vec2f& operator*=(const Mat2f& m);
 };
 
 // Constant definitions — class is complete here so Vec2f constructors resolve.

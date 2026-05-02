@@ -102,3 +102,34 @@ TEST(Mat2fTest, RotationScale2D) {
   Mat2f rs = Mat2f::RotationScale2D(kHalfPi, {2.f, 3.f});
   ExpectMat2fNear(rs, 0.f, -2.f, 3.f, 0.f, 1e-5f);
 }
+
+// ---- Vec2f × Mat2f ----------------------------------------------------------
+
+TEST(Mat2fTest, Vec2fTimesIdentityIsNoOp) {
+  Vec2f v{3.f, 4.f};
+  Vec2f r = v * Mat2f::kIdentity;
+  EXPECT_TRUE(Near(r.x, 3.f));
+  EXPECT_TRUE(Near(r.y, 4.f));
+}
+
+TEST(Mat2fTest, Vec2fTimesRotation2D_QuarterTurn) {
+  // Rotation(π/2) = [0,-1; 1,0].  Applied to (1,0): result[k] = M(k,0)*1.
+  Vec2f v{1.f, 0.f};
+  Vec2f r = v * Mat2f::Rotation2D(kHalfPi);
+  EXPECT_TRUE(Near(r.x, 0.f, 1e-5f));
+  EXPECT_TRUE(Near(r.y, 1.f, 1e-5f));
+}
+
+TEST(Mat2fTest, Vec2fTimesScale2D) {
+  Vec2f r = Vec2f{1.f, 2.f} * Mat2f::Scale2D({3.f, 4.f});
+  EXPECT_TRUE(Near(r.x, 3.f));
+  EXPECT_TRUE(Near(r.y, 8.f));
+}
+
+TEST(Mat2fTest, Vec2fTimesAssignIsConsistent) {
+  Vec2f v{2.f, 3.f};
+  Vec2f expected = v * Mat2f::Scale2D({5.f, 7.f});
+  v *= Mat2f::Scale2D({5.f, 7.f});
+  EXPECT_TRUE(Near(v.x, expected.x));
+  EXPECT_TRUE(Near(v.y, expected.y));
+}

@@ -8,6 +8,9 @@
 
 namespace core {
 
+// Forward declaration — method body lives in core/Mat4f.h.
+class Mat4f;
+
 // 4-component float vector.
 //
 // Components x, y, z, w are directly accessible as public members.  The class
@@ -91,6 +94,13 @@ class alignas(16) Vec4f {
   [[nodiscard]] inline float LengthSquared() const { return Dot(*this); }
 
   [[nodiscard]] inline float Length() const { return std::sqrt(LengthSquared()); }
+
+  // ---- Matrix multiplication -----------------------------------------------
+  // Definition lives in core/Mat4f.h (requires complete Mat4f type).
+
+  // Applies M to this vector (column-vector semantics: result[k] = dot(M_row_k, v)).
+  [[nodiscard]] Vec4f operator*(const Mat4f& m) const;
+  Vec4f& operator*=(const Mat4f& m);
 
   // Returns a unit vector. Behaviour is undefined if length is zero.
   [[nodiscard]] inline Vec4f Normalized() const {

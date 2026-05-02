@@ -8,6 +8,10 @@
 
 namespace core {
 
+// Forward declarations — method bodies live in the respective Mat headers.
+class Mat3f;
+class Mat4f;
+
 // 3-component float vector.
 //
 // Internally stores 4 floats (w_=0) so the data fits a __m128 register with
@@ -131,6 +135,17 @@ class alignas(16) Vec3f {
     return *this * (1.0f / Length());
 #endif
   }
+
+  // ---- Matrix multiplication -----------------------------------------------
+  // Definitions live in the respective Mat headers (require complete matrix type).
+
+  // Applies M to this vector (column-vector semantics: result[k] = dot(M_row_k, v)).
+  [[nodiscard]] Vec3f operator*(const Mat3f& m) const;
+  Vec3f& operator*=(const Mat3f& m);
+
+  // Applies M to this vector as a homogeneous point (implicit w=1); translation is included.
+  [[nodiscard]] Vec3f operator*(const Mat4f& m) const;
+  Vec3f& operator*=(const Mat4f& m);
 
  private:
   // SIMD padding: always 0.  Must remain the last declared member so that
