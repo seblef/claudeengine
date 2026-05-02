@@ -45,6 +45,8 @@ class alignas(16) Mat3f {
   [[nodiscard]] inline float  operator()(int row, int col) const { return data_[row * 4 + col]; }
                inline float& operator()(int row, int col)       { return data_[row * 4 + col]; }
 
+  [[nodiscard]] inline const float* Data() const { return data_; }
+
   // ---- Assignment ----------------------------------------------------------
 
   Mat3f& operator=(const Mat3f&) = default;
@@ -212,5 +214,25 @@ class alignas(16) Mat3f {
 };
 
 inline const Mat3f Mat3f::kIdentity{};
+
+// Vec3f × Mat3f: applies M to v (column-vector semantics).
+// result[k] = M(k,0)*v.x + M(k,1)*v.y + M(k,2)*v.z
+[[nodiscard]] inline Vec3f operator*(const Vec3f& v, const Mat3f& m) {
+#if CORE_SIMD_ENABLED
+  const float* d = m.Data();
+  __m128 vr = v.Reg();
+  return Vec3f(
+    _mm_cvtss_f32(_mm_dp_ps(_mm_load_ps(&d[0]), vr, 0x71)),
+    _mm_cvtss_f32(_mm_dp_ps(_mm_load_ps(&d[4]), vr, 0x71)),
+    _mm_cvtss_f32(_mm_dp_ps(_mm_load_ps(&d[8]), vr, 0x71))
+  );
+#else
+  return {m(0,0)*v.x + m(0,1)*v.y + m(0,2)*v.z,
+          m(1,0)*v.x + m(1,1)*v.y + m(1,2)*v.z,
+          m(2,0)*v.x + m(2,1)*v.y + m(2,2)*v.z};
+#endif
+}
+
+inline Vec3f& operator*=(Vec3f& v, const Mat3f& m) { v = v * m; return v; }
 
 }  // namespace core

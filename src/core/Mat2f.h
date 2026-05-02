@@ -89,4 +89,13 @@ class Mat2f {
 
 inline const Mat2f Mat2f::kIdentity{};
 
+// Vec2f × Mat2f: applies M to v (column-vector semantics).
+// result[k] = M(k,0)*v.x + M(k,1)*v.y
+[[nodiscard]] inline Vec2f operator*(const Vec2f& v, const Mat2f& m) {
+  return {m(0,0)*v.x + m(0,1)*v.y,
+          m(1,0)*v.x + m(1,1)*v.y};
+}
+
+inline Vec2f& operator*=(Vec2f& v, const Mat2f& m) { v = v * m; return v; }
+
 }  // namespace core

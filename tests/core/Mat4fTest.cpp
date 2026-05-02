@@ -205,3 +205,78 @@ TEST(Mat4fTest, TranslationThenScale) {
   EXPECT_TRUE(Near(m(0,3), 2.f));   // 2 * 1 = 2
   EXPECT_TRUE(Near(m(3,3), 1.f));
 }
+
+// ---- Vec3f × Mat4f ----------------------------------------------------------
+
+TEST(Mat4fTest, Vec3fTimesIdentityIsNoOp) {
+  Vec3f v{1.f, 2.f, 3.f};
+  Vec3f r = v * Mat4f::kIdentity;
+  EXPECT_TRUE(Near(r.x, 1.f)); EXPECT_TRUE(Near(r.y, 2.f)); EXPECT_TRUE(Near(r.z, 3.f));
+}
+
+TEST(Mat4fTest, Vec3fTimesTranslation) {
+  // Translation({2,3,4}) applied to point (1,0,0) → (3,3,4)
+  Vec3f r = Vec3f{1.f, 0.f, 0.f} * Mat4f::Translation({2.f, 3.f, 4.f});
+  EXPECT_TRUE(Near(r.x, 3.f)); EXPECT_TRUE(Near(r.y, 3.f)); EXPECT_TRUE(Near(r.z, 4.f));
+}
+
+TEST(Mat4fTest, Vec3fTimesRotationX_HalfPi) {
+  // Rx(π/2): (0,1,0) → (0,0,1)
+  Vec3f r = Vec3f{0.f, 1.f, 0.f} * Mat4f::RotationX(kHalfPi);
+  EXPECT_TRUE(Near(r.x, 0.f, 1e-5f));
+  EXPECT_TRUE(Near(r.y, 0.f, 1e-5f));
+  EXPECT_TRUE(Near(r.z, 1.f, 1e-5f));
+}
+
+TEST(Mat4fTest, Vec3fTimesAssignIsConsistent) {
+  Vec3f v{1.f, 0.f, 0.f};
+  Vec3f expected = v * Mat4f::Translation({2.f, 3.f, 4.f});
+  v *= Mat4f::Translation({2.f, 3.f, 4.f});
+  EXPECT_TRUE(Near(v.x, expected.x)); EXPECT_TRUE(Near(v.y, expected.y)); EXPECT_TRUE(Near(v.z, expected.z));
+}
+
+// ---- TransformNoTranslation -------------------------------------------------
+
+TEST(Mat4fTest, TransformNoTranslationIgnoresTranslation) {
+  Vec3f r = TransformNoTranslation(Vec3f{1.f, 0.f, 0.f}, Mat4f::Translation({2.f, 3.f, 4.f}));
+  EXPECT_TRUE(Near(r.x, 1.f)); EXPECT_TRUE(Near(r.y, 0.f)); EXPECT_TRUE(Near(r.z, 0.f));
+}
+
+TEST(Mat4fTest, TransformNoTranslationRotation) {
+  // Direction (0,1,0) rotated by Rx(π/2) → (0,0,1)
+  Vec3f r = TransformNoTranslation(Vec3f{0.f, 1.f, 0.f}, Mat4f::RotationX(kHalfPi));
+  EXPECT_TRUE(Near(r.x, 0.f, 1e-5f));
+  EXPECT_TRUE(Near(r.y, 0.f, 1e-5f));
+  EXPECT_TRUE(Near(r.z, 1.f, 1e-5f));
+}
+
+// ---- Vec4f × Mat4f ----------------------------------------------------------
+
+TEST(Mat4fTest, Vec4fTimesIdentityIsNoOp) {
+  Vec4f v{1.f, 2.f, 3.f, 4.f};
+  Vec4f r = v * Mat4f::kIdentity;
+  EXPECT_TRUE(Near(r.x, 1.f)); EXPECT_TRUE(Near(r.y, 2.f));
+  EXPECT_TRUE(Near(r.z, 3.f)); EXPECT_TRUE(Near(r.w, 4.f));
+}
+
+TEST(Mat4fTest, Vec4fPointTimesTranslation) {
+  // w=1 point (1,0,0,1) translated by (2,3,4) → (3,3,4,1)
+  Vec4f r = Vec4f{1.f, 0.f, 0.f, 1.f} * Mat4f::Translation({2.f, 3.f, 4.f});
+  EXPECT_TRUE(Near(r.x, 3.f)); EXPECT_TRUE(Near(r.y, 3.f));
+  EXPECT_TRUE(Near(r.z, 4.f)); EXPECT_TRUE(Near(r.w, 1.f));
+}
+
+TEST(Mat4fTest, Vec4fDirectionTimesTranslation) {
+  // w=0 direction (1,0,0,0) is not affected by translation.
+  Vec4f r = Vec4f{1.f, 0.f, 0.f, 0.f} * Mat4f::Translation({2.f, 3.f, 4.f});
+  EXPECT_TRUE(Near(r.x, 1.f)); EXPECT_TRUE(Near(r.y, 0.f));
+  EXPECT_TRUE(Near(r.z, 0.f)); EXPECT_TRUE(Near(r.w, 0.f));
+}
+
+TEST(Mat4fTest, Vec4fTimesAssignIsConsistent) {
+  Vec4f v{1.f, 2.f, 3.f, 1.f};
+  Vec4f expected = v * Mat4f::Translation({1.f, 2.f, 3.f});
+  v *= Mat4f::Translation({1.f, 2.f, 3.f});
+  EXPECT_TRUE(Near(v.x, expected.x)); EXPECT_TRUE(Near(v.y, expected.y));
+  EXPECT_TRUE(Near(v.z, expected.z)); EXPECT_TRUE(Near(v.w, expected.w));
+}
