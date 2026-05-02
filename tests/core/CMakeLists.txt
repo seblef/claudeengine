@@ -5,6 +5,7 @@ add_executable(core_tests
     Vec2fTest.cpp
     Vec3fTest.cpp
     Vec4fTest.cpp
+    ColorTest.cpp
 )
 
 target_link_libraries(core_tests PRIVATE
