@@ -74,6 +74,36 @@ class Vec2f {
     return {x*inv, y*inv};
   }
 
+  [[nodiscard]] inline float SquaredDistance(const Vec2f& other) const {
+    return (*this - other).LengthSquared();
+  }
+
+  [[nodiscard]] inline float Distance(const Vec2f& other) const {
+    return std::sqrt(SquaredDistance(other));
+  }
+
+  // Returns true if this point lies on segment [a, b] within epsilon.
+  [[nodiscard]] inline bool IsBetween(const Vec2f& a, const Vec2f& b,
+                                      float eps = 1e-5f) const {
+    return std::fabsf(Distance(a) + Distance(b) - a.Distance(b)) <= eps;
+  }
+
+  [[nodiscard]] inline Vec2f Lerp(const Vec2f& other, float t) const {
+    return *this + (other - *this) * t;
+  }
+
+  [[nodiscard]] inline Vec2f Scale(const Vec2f& other) const {
+    return {x * other.x, y * other.y};
+  }
+
+  [[nodiscard]] inline Vec2f InvScale(const Vec2f& other) const {
+    return {x / other.x, y / other.y};
+  }
+
+  [[nodiscard]] inline Vec2f Inverse() const { return {1.f / x, 1.f / y}; }
+
+  inline Vec2f& InverseInPlace() { *this = Inverse(); return *this; }
+
   // ---- Matrix multiplication -----------------------------------------------
   // Definitions live in core/Mat2f.h (requires complete Mat2f type).
 
