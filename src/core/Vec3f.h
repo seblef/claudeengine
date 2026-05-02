@@ -119,6 +119,44 @@ class alignas(16) Vec3f {
 
   [[nodiscard]] inline float Length() const { return std::sqrt(LengthSquared()); }
 
+  [[nodiscard]] inline float SquaredDistance(const Vec3f& other) const {
+    return (*this - other).LengthSquared();
+  }
+
+  [[nodiscard]] inline float Distance(const Vec3f& other) const {
+    return std::sqrt(SquaredDistance(other));
+  }
+
+  // Returns true if this point lies on segment [a, b] within epsilon.
+  [[nodiscard]] inline bool IsBetween(const Vec3f& a, const Vec3f& b,
+                                      float eps = 1e-5f) const {
+    return std::fabsf(Distance(a) + Distance(b) - a.Distance(b)) <= eps;
+  }
+
+  [[nodiscard]] inline Vec3f Lerp(const Vec3f& other, float t) const {
+    return *this + (other - *this) * t;
+  }
+
+  [[nodiscard]] inline Vec3f Scale(const Vec3f& other) const {
+#if CORE_SIMD_ENABLED
+    return Vec3f(_mm_mul_ps(Reg(), other.Reg()));  // 0*0=0: w_ invariant preserved
+#else
+    return {x * other.x, y * other.y, z * other.z};
+#endif
+  }
+
+  // Scalar: avoids 0/0=NaN in the w_ padding lane.
+  [[nodiscard]] inline Vec3f InvScale(const Vec3f& other) const {
+    return {x / other.x, y / other.y, z / other.z};
+  }
+
+  // Scalar: avoids 1/0=inf in the w_ padding lane.
+  [[nodiscard]] inline Vec3f Inverse() const {
+    return {1.f / x, 1.f / y, 1.f / z};
+  }
+
+  inline Vec3f& InverseInPlace() { *this = Inverse(); return *this; }
+
   // Returns a unit vector. Behaviour is undefined if length is zero.
   [[nodiscard]] inline Vec3f Normalized() const {
 #if CORE_SIMD_ENABLED

@@ -95,6 +95,50 @@ class alignas(16) Vec4f {
 
   [[nodiscard]] inline float Length() const { return std::sqrt(LengthSquared()); }
 
+  [[nodiscard]] inline float SquaredDistance(const Vec4f& other) const {
+    return (*this - other).LengthSquared();
+  }
+
+  [[nodiscard]] inline float Distance(const Vec4f& other) const {
+    return std::sqrt(SquaredDistance(other));
+  }
+
+  // Returns true if this point lies on segment [a, b] within epsilon.
+  [[nodiscard]] inline bool IsBetween(const Vec4f& a, const Vec4f& b,
+                                      float eps = 1e-5f) const {
+    return std::fabsf(Distance(a) + Distance(b) - a.Distance(b)) <= eps;
+  }
+
+  [[nodiscard]] inline Vec4f Lerp(const Vec4f& other, float t) const {
+    return *this + (other - *this) * t;
+  }
+
+  [[nodiscard]] inline Vec4f Scale(const Vec4f& other) const {
+#if CORE_SIMD_ENABLED
+    return Vec4f(_mm_mul_ps(Reg(), other.Reg()));
+#else
+    return {x * other.x, y * other.y, z * other.z, w * other.w};
+#endif
+  }
+
+  [[nodiscard]] inline Vec4f InvScale(const Vec4f& other) const {
+#if CORE_SIMD_ENABLED
+    return Vec4f(_mm_div_ps(Reg(), other.Reg()));
+#else
+    return {x / other.x, y / other.y, z / other.z, w / other.w};
+#endif
+  }
+
+  [[nodiscard]] inline Vec4f Inverse() const {
+#if CORE_SIMD_ENABLED
+    return Vec4f(_mm_div_ps(_mm_set1_ps(1.f), Reg()));
+#else
+    return {1.f / x, 1.f / y, 1.f / z, 1.f / w};
+#endif
+  }
+
+  inline Vec4f& InverseInPlace() { *this = Inverse(); return *this; }
+
   // ---- Matrix multiplication -----------------------------------------------
   // Definition lives in core/Mat4f.h (requires complete Mat4f type).
 
