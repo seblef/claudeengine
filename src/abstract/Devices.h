@@ -13,7 +13,7 @@ class Devices {
  public:
   // Ensures the EventManager singleton is initialised before any platform
   // driver starts publishing events.
-  Devices() { core::EventManager::Instance(); }
+  Devices() { (void)core::EventManager::Instance(); }
   virtual ~Devices() = default;
 
   // Pumps OS messages and publishes input/window events for the current frame.
