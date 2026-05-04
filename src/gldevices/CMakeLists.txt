@@ -1,5 +1,6 @@
 add_library(gldevices STATIC
     GLDevices.cpp
+    GLIndexBuffer.cpp
     GLShader.cpp
     GLVideoDevice.cpp
     GLVertexBuffer.cpp

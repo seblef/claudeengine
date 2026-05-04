@@ -35,9 +35,21 @@ class GLVideoDevice : public abstract::VideoDevice {
   // Issues a glDrawArrays call using the current primitive type.
   void Render(int num_vertices, int first_vertex = 0) override;
 
+  // Tracks ib's index type and binds it to GL_ELEMENT_ARRAY_BUFFER.
+  void BindIndexBuffer(abstract::IndexBuffer* ib) override;
+
+  // Issues a glDrawElementsBaseVertex call using the current primitive and index types.
+  void RenderIndexed(int num_indices, int first_index = 0,
+                     int vertex_offset = 0) override;
+
   // Creates a GLVertexBuffer with the given layout and fills it if data is non-null.
   [[nodiscard]] std::unique_ptr<abstract::VertexBuffer> CreateVertexBuffer(
       core::VertexType vertex_type, int num_vertices, abstract::BufferUsage usage,
+      const void* data = nullptr, int offset = 0) override;
+
+  // Creates a GLIndexBuffer with the given type and fills it if data is non-null.
+  [[nodiscard]] std::unique_ptr<abstract::IndexBuffer> CreateIndexBuffer(
+      abstract::IndexType type, int num_indices, abstract::BufferUsage usage,
       const void* data = nullptr, int offset = 0) override;
 
   // Creates (or retrieves from the registry) a GLShader by name.
@@ -46,7 +58,8 @@ class GLVideoDevice : public abstract::VideoDevice {
 
  private:
   GLFWwindow* window_;
-  GLenum primitive_type_ = GL_TRIANGLES;
+  GLenum primitive_type_    = GL_TRIANGLES;
+  GLenum current_index_type_ = GL_UNSIGNED_INT;
 };
 
 }  // namespace gldevices

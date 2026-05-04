@@ -4,6 +4,8 @@
 #include <string>
 
 #include "abstract/BufferUsage.h"
+#include "abstract/IndexBuffer.h"
+#include "abstract/IndexType.h"
 #include "abstract/PrimitiveType.h"
 #include "abstract/Shader.h"
 #include "abstract/VertexBuffer.h"
@@ -39,12 +41,24 @@ class VideoDevice {
 
   // ---- Render state --------------------------------------------------------
 
-  // Sets the primitive topology for subsequent Render() calls.
+  // Sets the primitive topology for subsequent Render() and RenderIndexed() calls.
   virtual void SetPrimitiveType(PrimitiveType type) = 0;
 
   // Draws num_vertices vertices from the currently bound vertex buffer,
   // starting at first_vertex.
   virtual void Render(int num_vertices, int first_vertex = 0) = 0;
+
+  // Binds ib as the active index source and tracks its type for RenderIndexed().
+  // Must be called while a vertex buffer (VAO) is already bound so the IBO
+  // binding is captured in the VAO state.
+  virtual void BindIndexBuffer(IndexBuffer* ib) = 0;
+
+  // Draws num_indices indexed primitives from the currently bound index and
+  // vertex buffers.
+  // first_index   — first index in the index buffer to use (default 0)
+  // vertex_offset — constant added to each index before fetching the vertex (default 0)
+  virtual void RenderIndexed(int num_indices, int first_index = 0,
+                              int vertex_offset = 0) = 0;
 
   // ---- Resource factories --------------------------------------------------
 
@@ -53,6 +67,13 @@ class VideoDevice {
   // The caller owns the returned object exclusively (unique_ptr).
   [[nodiscard]] virtual std::unique_ptr<VertexBuffer> CreateVertexBuffer(
       core::VertexType vertex_type, int num_vertices, BufferUsage usage,
+      const void* data = nullptr, int offset = 0) = 0;
+
+  // Creates an index buffer with the given type, capacity and access hint.
+  // If data is non-null the buffer is filled immediately starting at offset.
+  // The caller owns the returned object exclusively (unique_ptr).
+  [[nodiscard]] virtual std::unique_ptr<IndexBuffer> CreateIndexBuffer(
+      IndexType type, int num_indices, BufferUsage usage,
       const void* data = nullptr, int offset = 0) = 0;
 
   // Creates (or retrieves) a shader by name. The resource registry starts
