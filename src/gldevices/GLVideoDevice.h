@@ -52,6 +52,14 @@ class GLVideoDevice : public abstract::VideoDevice {
       abstract::IndexType type, int num_indices, abstract::BufferUsage usage,
       const void* data = nullptr, int offset = 0) override;
 
+  // Creates a GLGeometryBuffer and fills it if vertex/index data are non-null.
+  [[nodiscard]] std::unique_ptr<abstract::GeometryBuffer> CreateGeometryBuffer(
+      core::VertexType vertex_type, int num_vertices,
+      abstract::IndexType index_type, int num_indices,
+      abstract::BufferUsage usage,
+      const void* vertex_data = nullptr, int vertex_offset = 0,
+      const void* index_data = nullptr, int index_offset = 0) override;
+
   // Creates (or retrieves from the registry) a GLShader by name.
   // Loads <name>_vs.glsl and <name>_ps.glsl from the configured data folder.
   [[nodiscard]] abstract::Shader* CreateShader(const std::string& name) override;

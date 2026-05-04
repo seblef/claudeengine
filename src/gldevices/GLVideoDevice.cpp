@@ -3,6 +3,7 @@
 
 #include "gldevices/GLVideoDevice.h"
 
+#include "gldevices/GLGeometryBuffer.h"
 #include "gldevices/GLIndexBuffer.h"
 #include "gldevices/GLShader.h"
 #include "gldevices/GLVertexBuffer.h"
@@ -72,6 +73,19 @@ std::unique_ptr<abstract::IndexBuffer> GLVideoDevice::CreateIndexBuffer(
   auto ib = std::make_unique<GLIndexBuffer>(type, num_indices, usage);
   if (data) ib->Fill(data, num_indices, offset);
   return ib;
+}
+
+std::unique_ptr<abstract::GeometryBuffer> GLVideoDevice::CreateGeometryBuffer(
+    core::VertexType vertex_type, int num_vertices,
+    abstract::IndexType index_type, int num_indices,
+    abstract::BufferUsage usage,
+    const void* vertex_data, int vertex_offset,
+    const void* index_data, int index_offset) {
+  auto gb = std::make_unique<GLGeometryBuffer>(vertex_type, num_vertices,
+                                               index_type, num_indices, usage);
+  if (vertex_data) gb->FillVertices(vertex_data, num_vertices, vertex_offset);
+  if (index_data)  gb->FillIndices(index_data, num_indices, index_offset);
+  return gb;
 }
 
 abstract::Shader* GLVideoDevice::CreateShader(const std::string& name) {

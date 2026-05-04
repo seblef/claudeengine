@@ -4,6 +4,7 @@
 #include <string>
 
 #include "abstract/BufferUsage.h"
+#include "abstract/GeometryBuffer.h"
 #include "abstract/IndexBuffer.h"
 #include "abstract/IndexType.h"
 #include "abstract/PrimitiveType.h"
@@ -73,6 +74,16 @@ class VideoDevice {
   [[nodiscard]] virtual std::unique_ptr<IndexBuffer> CreateIndexBuffer(
       IndexType type, int num_indices, BufferUsage usage,
       const void* data = nullptr, int offset = 0) = 0;
+
+  // Creates a geometry buffer combining vertex and index data with a shared usage hint.
+  // If vertex_data / index_data are non-null the buffers are filled immediately.
+  // The caller owns the returned object exclusively (unique_ptr).
+  [[nodiscard]] virtual std::unique_ptr<GeometryBuffer> CreateGeometryBuffer(
+      core::VertexType vertex_type, int num_vertices,
+      IndexType index_type, int num_indices,
+      BufferUsage usage,
+      const void* vertex_data = nullptr, int vertex_offset = 0,
+      const void* index_data = nullptr, int index_offset = 0) = 0;
 
   // Creates (or retrieves) a shader by name. The resource registry starts
   // the object with ref_count = 1; call Release() when done.
