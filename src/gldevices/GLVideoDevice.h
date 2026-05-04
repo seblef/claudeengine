@@ -27,7 +27,7 @@ class GLVideoDevice : public abstract::VideoDevice {
   // Updates stored resolution and adjusts the OpenGL viewport.
   void OnResize(int width, int height) override;
 
-  // Not yet implemented — returns nullptr.
+  // Creates a GLVertexBuffer with the given layout and fills it if data is non-null.
   [[nodiscard]] std::unique_ptr<abstract::VertexBuffer> CreateVertexBuffer(
       core::VertexType vertex_type, int num_vertices, abstract::BufferUsage usage,
       const void* data = nullptr, int offset = 0) override;
