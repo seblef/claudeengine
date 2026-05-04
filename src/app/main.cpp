@@ -3,6 +3,7 @@
 
 #include "abstract/VideoDevice.h"
 #include "core/Color.h"
+#include "core/Config.h"
 #include "core/EventManager.h"
 #include "core/EventType.h"
 #include "core/Logger.h"
@@ -13,7 +14,9 @@
 
 int main(int argc, char* argv[]) {
   core::Logger::Init(argc, argv);
+  core::Config::Init(argc, argv);
   LOG_F(INFO, "ClaudeEngine starting up");
+  LOG_F(INFO, "Data folder: %s", core::Config::GetDataFolder().c_str());
 
   // TODO(#1): Load engine configuration from data/config.yaml
   // TODO(#2): Instantiate and run the Engine
