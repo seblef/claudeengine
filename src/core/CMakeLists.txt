@@ -1,4 +1,5 @@
 add_library(core STATIC
+    Config.cpp
     Logger.cpp
     MathUtils.cpp
 )

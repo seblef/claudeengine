@@ -36,9 +36,22 @@ The binary is produced at `build/claude_engine` (Linux/macOS) or `build/claude_e
 
 # Override log verbosity at runtime (0 = INFO, 9 = max)
 ./build/claude_engine -v 9
+
+# Set the data folder (defaults to the current working directory)
+./build/claude_engine --data-path /path/to/data
+
+# Typical dev setup: binary in build/, data in the repository root
+./build/claude_engine --data-path ../data
 ```
 
 Logs are written to both stderr and `claude_engine.log` in the working directory.
+
+### Command-line arguments
+
+| Argument | Description | Default |
+|---|---|---|
+| `--data-path <path>` | Root directory for engine data files (maps, textures, shaders, …) | Current working directory (`.`) |
+| `-v <level>` | Log verbosity (0 = INFO, 9 = max debug) | `0` |
 
 ## Build profiles
 
