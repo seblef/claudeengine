@@ -4,6 +4,7 @@
 #include "core/EventManager.h"
 #include "core/EventType.h"
 #include "core/MouseButton.h"
+#include "gldevices/GLVideoDevice.h"
 
 #include <GLFW/glfw3.h>
 
@@ -18,6 +19,9 @@ GLDevices::GLDevices(int width, int height, bool fullscreen) {
   GLFWmonitor* monitor = fullscreen ? glfwGetPrimaryMonitor() : nullptr;
   window_ = glfwCreateWindow(width, height, "ClaudeEngine", monitor, nullptr);
   glfwMakeContextCurrent(window_);
+
+  gl_video_device_ = std::make_unique<GLVideoDevice>(width, height, !fullscreen, window_);
+  video_device_ = gl_video_device_.get();
 
   glfwSetWindowCloseCallback(window_,   OnWindowClose);
   glfwSetWindowFocusCallback(window_,   OnWindowFocus);
