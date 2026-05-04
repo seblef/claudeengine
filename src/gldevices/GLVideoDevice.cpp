@@ -89,10 +89,10 @@ std::unique_ptr<abstract::GeometryBuffer> GLVideoDevice::CreateGeometryBuffer(
 }
 
 abstract::Shader* GLVideoDevice::CreateShader(const std::string& name) {
-  auto* existing = core::Resource<std::string>::Get(name);
+  auto* existing = abstract::Shader::Get(name);
   if (existing) {
     existing->AddRef();
-    return static_cast<abstract::Shader*>(existing);
+    return existing;
   }
   auto* shader = new GLShader(name);
   if (!shader->IsInitialized()) {
