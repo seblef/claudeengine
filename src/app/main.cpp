@@ -1,6 +1,7 @@
 // ClaudeEngine application entrypoint.
 // Responsibilities (src/CLAUDE.md): load configuration, run the engine.
 
+#include "abstract/IndexType.h"
 #include "abstract/PrimitiveType.h"
 #include "abstract/Shader.h"
 #include "abstract/VideoDevice.h"
@@ -13,6 +14,7 @@
 #include "core/Vertex2D.h"
 #include "gldevices/GLDevices.h"
 
+#include <cstdint>
 #include <loguru.hpp>
 
 int main(int argc, char* argv[]) {
@@ -29,19 +31,27 @@ int main(int argc, char* argv[]) {
 
   abstract::Shader* shader = video->CreateShader("passthrough_color_2d");
 
-  // Fullscreen quad: two CCW triangles covering clip space [-1, 1].
+  // Fullscreen quad: 4 unique vertices covering clip space [-1, 1].
   // Corner colours: top-left=Red, bottom-left=Blue, bottom-right=White, top-right=Green.
   const core::Vec2f uv0{0.f, 0.f};
-  const core::Vertex2D quad[6] = {
-      {{-1.f,  1.f, 0.f}, core::Color::kRed,   uv0},  // TL
-      {{-1.f, -1.f, 0.f}, core::Color::kBlue,  uv0},  // BL
-      {{ 1.f, -1.f, 0.f}, core::Color::kWhite, uv0},  // BR
-      {{-1.f,  1.f, 0.f}, core::Color::kRed,   uv0},  // TL
-      {{ 1.f, -1.f, 0.f}, core::Color::kWhite, uv0},  // BR
-      {{ 1.f,  1.f, 0.f}, core::Color::kGreen, uv0},  // TR
+  const core::Vertex2D verts[4] = {
+      {{-1.f,  1.f, 0.f}, core::Color::kRed,   uv0},  // 0: TL
+      {{-1.f, -1.f, 0.f}, core::Color::kBlue,  uv0},  // 1: BL
+      {{ 1.f, -1.f, 0.f}, core::Color::kWhite, uv0},  // 2: BR
+      {{ 1.f,  1.f, 0.f}, core::Color::kGreen, uv0},  // 3: TR
   };
   auto vb = video->CreateVertexBuffer(
-      core::VertexType::k2D, 6, abstract::BufferUsage::kImmutable, quad);
+      core::VertexType::k2D, 4, abstract::BufferUsage::kImmutable, verts);
+
+  // Two CCW triangles: TL-BL-BR and TL-BR-TR.
+  const uint16_t indices[6] = {0, 1, 2,  0, 2, 3};
+  auto ib = video->CreateIndexBuffer(
+      abstract::IndexType::kUInt16, 6, abstract::BufferUsage::kImmutable, indices);
+
+  // Bind the IBO into the VAO once — the VAO captures the binding for all frames.
+  vb->Bind();
+  video->BindIndexBuffer(ib.get());
+  video->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
 
   bool running = true;
   while (running) {
@@ -52,8 +62,7 @@ int main(int argc, char* argv[]) {
 
     shader->Activate();
     vb->Bind();
-    video->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
-    video->Render(6);
+    video->RenderIndexed(6);
 
     while (core::EventManager::Instance().HasEvents()) {
       core::Event e = core::EventManager::Instance().Consume();

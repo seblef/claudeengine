@@ -3,6 +3,7 @@
 
 #include "gldevices/GLVideoDevice.h"
 
+#include "gldevices/GLIndexBuffer.h"
 #include "gldevices/GLShader.h"
 #include "gldevices/GLVertexBuffer.h"
 
@@ -44,12 +45,34 @@ void GLVideoDevice::Render(int num_vertices, int first_vertex) {
   glDrawArrays(primitive_type_, first_vertex, num_vertices);
 }
 
+void GLVideoDevice::BindIndexBuffer(abstract::IndexBuffer* ib) {
+  current_index_type_ = (ib->GetIndexType() == abstract::IndexType::kUInt16)
+                        ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
+  ib->Bind();
+}
+
+void GLVideoDevice::RenderIndexed(int num_indices, int first_index, int vertex_offset) {
+  const uintptr_t index_size = (current_index_type_ == GL_UNSIGNED_SHORT) ? 2 : 4;
+  glDrawElementsBaseVertex(
+      primitive_type_, num_indices, current_index_type_,
+      reinterpret_cast<const void*>(first_index * index_size),
+      vertex_offset);
+}
+
 std::unique_ptr<abstract::VertexBuffer> GLVideoDevice::CreateVertexBuffer(
     core::VertexType vertex_type, int num_vertices,
     abstract::BufferUsage usage, const void* data, int offset) {
   auto vb = std::make_unique<GLVertexBuffer>(vertex_type, num_vertices, usage);
   if (data) vb->Fill(data, num_vertices, offset);
   return vb;
+}
+
+std::unique_ptr<abstract::IndexBuffer> GLVideoDevice::CreateIndexBuffer(
+    abstract::IndexType type, int num_indices,
+    abstract::BufferUsage usage, const void* data, int offset) {
+  auto ib = std::make_unique<GLIndexBuffer>(type, num_indices, usage);
+  if (data) ib->Fill(data, num_indices, offset);
+  return ib;
 }
 
 abstract::Shader* GLVideoDevice::CreateShader(const std::string& name) {
