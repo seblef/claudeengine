@@ -4,6 +4,7 @@
 #include <string>
 
 #include "abstract/BufferUsage.h"
+#include "abstract/GeometryBuffer.h"
 #include "abstract/IndexBuffer.h"
 #include "abstract/IndexType.h"
 #include "abstract/PrimitiveType.h"
@@ -44,14 +45,12 @@ class VideoDevice {
   // Sets the primitive topology for subsequent Render() and RenderIndexed() calls.
   virtual void SetPrimitiveType(PrimitiveType type) = 0;
 
+  // Sets the index element type for subsequent RenderIndexed() calls.
+  virtual void SetIndexType(IndexType type) = 0;
+
   // Draws num_vertices vertices from the currently bound vertex buffer,
   // starting at first_vertex.
   virtual void Render(int num_vertices, int first_vertex = 0) = 0;
-
-  // Binds ib as the active index source and tracks its type for RenderIndexed().
-  // Must be called while a vertex buffer (VAO) is already bound so the IBO
-  // binding is captured in the VAO state.
-  virtual void BindIndexBuffer(IndexBuffer* ib) = 0;
 
   // Draws num_indices indexed primitives from the currently bound index and
   // vertex buffers.
@@ -75,6 +74,16 @@ class VideoDevice {
   [[nodiscard]] virtual std::unique_ptr<IndexBuffer> CreateIndexBuffer(
       IndexType type, int num_indices, BufferUsage usage,
       const void* data = nullptr, int offset = 0) = 0;
+
+  // Creates a geometry buffer combining vertex and index data with a shared usage hint.
+  // If vertex_data / index_data are non-null the buffers are filled immediately.
+  // The caller owns the returned object exclusively (unique_ptr).
+  [[nodiscard]] virtual std::unique_ptr<GeometryBuffer> CreateGeometryBuffer(
+      core::VertexType vertex_type, int num_vertices,
+      IndexType index_type, int num_indices,
+      BufferUsage usage,
+      const void* vertex_data = nullptr, int vertex_offset = 0,
+      const void* index_data = nullptr, int index_offset = 0) = 0;
 
   // Creates (or retrieves) a shader by name. The resource registry starts
   // the object with ref_count = 1; call Release() when done.

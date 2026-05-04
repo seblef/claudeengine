@@ -1,7 +1,6 @@
 // ClaudeEngine application entrypoint.
 // Responsibilities (src/CLAUDE.md): load configuration, run the engine.
 
-#include "abstract/IndexType.h"
 #include "abstract/PrimitiveType.h"
 #include "abstract/Shader.h"
 #include "abstract/VideoDevice.h"
@@ -40,17 +39,16 @@ int main(int argc, char* argv[]) {
       {{ 1.f, -1.f, 0.f}, core::Color::kWhite, uv0},  // 2: BR
       {{ 1.f,  1.f, 0.f}, core::Color::kGreen, uv0},  // 3: TR
   };
-  auto vb = video->CreateVertexBuffer(
-      core::VertexType::k2D, 4, abstract::BufferUsage::kImmutable, verts);
+  const uint16_t indices[6] = {0, 1, 2,  0, 2, 3};  // two CCW triangles
 
-  // Two CCW triangles: TL-BL-BR and TL-BR-TR.
-  const uint16_t indices[6] = {0, 1, 2,  0, 2, 3};
-  auto ib = video->CreateIndexBuffer(
-      abstract::IndexType::kUInt16, 6, abstract::BufferUsage::kImmutable, indices);
+  auto gb = video->CreateGeometryBuffer(
+      core::VertexType::k2D, 4,
+      abstract::IndexType::kUInt16, 6,
+      abstract::BufferUsage::kImmutable,
+      verts, 0, indices, 0);
 
-  // Bind the IBO into the VAO once — the VAO captures the binding for all frames.
-  vb->Bind();
-  video->BindIndexBuffer(ib.get());
+  gb->Bind();
+  video->SetIndexType(abstract::IndexType::kUInt16);
   video->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
 
   bool running = true;
@@ -61,7 +59,7 @@ int main(int argc, char* argv[]) {
     video->ClearRenderTargets(core::Color::kRed);
 
     shader->Activate();
-    vb->Bind();
+    gb->Bind();
     video->RenderIndexed(6);
 
     while (core::EventManager::Instance().HasEvents()) {
