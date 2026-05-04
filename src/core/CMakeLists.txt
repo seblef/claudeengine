@@ -1,7 +1,9 @@
 add_library(core STATIC
+    AppConfig.cpp
     Config.cpp
     Logger.cpp
     MathUtils.cpp
+    YamlUtils.cpp
 )
 
 if(BUILD_PROFILE STREQUAL "stable")
@@ -20,7 +22,7 @@ endif()
 target_include_directories(core PUBLIC "${CMAKE_SOURCE_DIR}/src")
 
 # loguru is PUBLIC so modules linking core get logging transitively.
-target_link_libraries(core PUBLIC loguru)
+target_link_libraries(core PUBLIC loguru yaml-cpp)
 
 # ---- SIMD detection --------------------------------------------------------
 include(CheckCXXCompilerFlag)

@@ -1,0 +1,4 @@
+graphics:
+  windowed: true
+  width: 640
+  height: 480

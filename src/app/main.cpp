@@ -5,6 +5,7 @@
 #include "abstract/Shader.h"
 #include "abstract/VideoDevice.h"
 #include "core/Color.h"
+#include "core/AppConfig.h"
 #include "core/Config.h"
 #include "core/EventManager.h"
 #include "core/EventType.h"
@@ -21,11 +22,12 @@ int main(int argc, char* argv[]) {
   core::Config::Init(argc, argv);
   LOG_F(INFO, "ClaudeEngine starting up");
   LOG_F(INFO, "Data folder: %s", core::Config::GetDataFolder().c_str());
+  core::AppConfig::Init(core::Config::GetDataFolder() / "config.yaml");
 
-  // TODO(#1): Load engine configuration from data/config.yaml
   // TODO(#2): Instantiate and run the Engine
 
-  gldevices::GLDevices devices(640, 480, /*fullscreen=*/false);
+  const core::GraphicsConfig& gfx = core::AppConfig::GetGraphics();
+  gldevices::GLDevices devices(gfx.GetWidth(), gfx.GetHeight(), !gfx.IsWindowed());
   abstract::VideoDevice* video = devices.GetVideoDevice();
 
   abstract::Shader* shader = video->CreateShader("passthrough_color_2d");

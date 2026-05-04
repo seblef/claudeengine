@@ -73,6 +73,20 @@ set(GLFW_BUILD_WAYLAND  OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_X11      ON  CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(glfw)
 
+# ---------------------------------------------------------------------------
+# Fetch yaml-cpp into external/yaml-cpp-src/
+# ---------------------------------------------------------------------------
+FetchContent_Declare(
+    yaml-cpp
+    GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+    GIT_TAG        0.8.0
+    GIT_SHALLOW    TRUE
+)
+set(YAML_CPP_BUILD_TESTS   OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_BUILD_TOOLS   OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_INSTALL       OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(yaml-cpp)
+
 add_subdirectory(src)
 
 # ---------------------------------------------------------------------------

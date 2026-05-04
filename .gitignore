@@ -8,5 +8,8 @@ googletest-subbuild/
 external/glfw-build/
 external/glfw-src/
 external/glfw-subbuild/
+external/yaml-cpp-build/
+external/yaml-cpp-src/
+external/yaml-cpp-subbuild/
 claude_engine.log
 .claude/settings.local.json
