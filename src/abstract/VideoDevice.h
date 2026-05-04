@@ -4,6 +4,7 @@
 #include <string>
 
 #include "abstract/BufferUsage.h"
+#include "abstract/PrimitiveType.h"
 #include "abstract/Shader.h"
 #include "abstract/VertexBuffer.h"
 #include "core/Color.h"
@@ -35,6 +36,15 @@ class VideoDevice {
 
   // Called when the window or screen resolution changes.
   virtual void OnResize(int width, int height) = 0;
+
+  // ---- Render state --------------------------------------------------------
+
+  // Sets the primitive topology for subsequent Render() calls.
+  virtual void SetPrimitiveType(PrimitiveType type) = 0;
+
+  // Draws num_vertices vertices from the currently bound vertex buffer,
+  // starting at first_vertex.
+  virtual void Render(int num_vertices, int first_vertex = 0) = 0;
 
   // ---- Resource factories --------------------------------------------------
 

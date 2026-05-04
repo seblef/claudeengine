@@ -2,6 +2,8 @@
 argument-hint: <issue-number>
 ---
 
+Implement a feature following the requirements in the provided GitHub issue.
+
 !`gh issue view $ARGUMENTS`
 
 Read and implement the issue above.

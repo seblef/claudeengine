@@ -1,6 +1,7 @@
 // ClaudeEngine application entrypoint.
 // Responsibilities (src/CLAUDE.md): load configuration, run the engine.
 
+#include "abstract/PrimitiveType.h"
 #include "abstract/Shader.h"
 #include "abstract/VideoDevice.h"
 #include "core/Color.h"
@@ -48,6 +49,11 @@ int main(int argc, char* argv[]) {
 
     video->BeginFrame();
     video->ClearRenderTargets(core::Color::kRed);
+
+    shader->Activate();
+    vb->Bind();
+    video->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
+    video->Render(6);
 
     while (core::EventManager::Instance().HasEvents()) {
       core::Event e = core::EventManager::Instance().Consume();

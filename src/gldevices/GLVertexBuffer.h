@@ -25,6 +25,7 @@ class GLVertexBuffer : public abstract::VertexBuffer {
   void Fill(const void* data, int num_vertices, int offset = 0) override;
 
  private:
+  GLuint vao_ = 0;
   GLuint vbo_ = 0;
 };
 
