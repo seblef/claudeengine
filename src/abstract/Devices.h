@@ -4,6 +4,8 @@
 
 namespace abstract {
 
+class VideoDevice;
+
 // Abstract base for all platform device managers.
 //
 // One concrete subclass exists per supported platform. It overrides Update()
@@ -22,6 +24,12 @@ class Devices {
   // Returns the native window handle (HWND, Display*, NSWindow*, etc.).
   // Cast to the platform-specific type at the call site.
   [[nodiscard]] virtual void* GetWindow() = 0;
+
+  // Returns the GPU backend owned by this device manager.
+  [[nodiscard]] VideoDevice* GetVideoDevice() const { return video_device_; }
+
+ protected:
+  VideoDevice* video_device_ = nullptr;
 };
 
 }  // namespace abstract

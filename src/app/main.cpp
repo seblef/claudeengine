@@ -1,17 +1,15 @@
 // ClaudeEngine application entrypoint.
 // Responsibilities (src/CLAUDE.md): load configuration, run the engine.
 
+#include "abstract/VideoDevice.h"
 #include "core/Color.h"
 #include "core/EventManager.h"
 #include "core/EventType.h"
 #include "core/Logger.h"
 #include "core/MouseButton.h"
 #include "gldevices/GLDevices.h"
-#include "gldevices/GLVideoDevice.h"
 
 #include <loguru.hpp>
-
-struct GLFWwindow;
 
 int main(int argc, char* argv[]) {
   core::Logger::Init(argc, argv);
@@ -21,15 +19,14 @@ int main(int argc, char* argv[]) {
   // TODO(#2): Instantiate and run the Engine
 
   gldevices::GLDevices devices(640, 480, /*fullscreen=*/false);
-  gldevices::GLVideoDevice video(640, 480, /*windowed=*/true,
-                                 static_cast<GLFWwindow*>(devices.GetWindow()));
+  abstract::VideoDevice* video = devices.GetVideoDevice();
 
   bool running = true;
   while (running) {
     devices.Update();
 
-    video.BeginFrame();
-    video.ClearRenderTargets(core::Color::kRed);
+    video->BeginFrame();
+    video->ClearRenderTargets(core::Color::kRed);
 
     while (core::EventManager::Instance().HasEvents()) {
       core::Event e = core::EventManager::Instance().Consume();

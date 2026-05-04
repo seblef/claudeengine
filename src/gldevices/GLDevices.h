@@ -1,11 +1,15 @@
 #pragma once
 
+#include <memory>
+
 #include "abstract/Devices.h"
 #include "core/Key.h"
 
-struct GLFWwindow;  // opaque forward declaration — keeps GLFW headers out of callers
+struct GLFWwindow;
 
 namespace gldevices {
+
+class GLVideoDevice;
 
 // Concrete Devices implementation backed by GLFW.
 //
@@ -28,6 +32,7 @@ class GLDevices : public abstract::Devices {
 
  private:
   GLFWwindow* window_ = nullptr;
+  std::unique_ptr<GLVideoDevice> gl_video_device_;
 
   // Maps a GLFW_KEY_* constant to the platform-independent core::Key.
   static core::Key GlfwKeyToKey(int glfw_key);
