@@ -29,14 +29,14 @@ class GLVideoDevice : public abstract::VideoDevice {
   // Updates stored resolution and adjusts the OpenGL viewport.
   void OnResize(int width, int height) override;
 
-  // Stores the GL primitive topology for subsequent Render() calls.
+  // Stores the GL primitive topology for subsequent Render() and RenderIndexed() calls.
   void SetPrimitiveType(abstract::PrimitiveType type) override;
+
+  // Stores the GL index element type for subsequent RenderIndexed() calls.
+  void SetIndexType(abstract::IndexType type) override;
 
   // Issues a glDrawArrays call using the current primitive type.
   void Render(int num_vertices, int first_vertex = 0) override;
-
-  // Tracks ib's index type and binds it to GL_ELEMENT_ARRAY_BUFFER.
-  void BindIndexBuffer(abstract::IndexBuffer* ib) override;
 
   // Issues a glDrawElementsBaseVertex call using the current primitive and index types.
   void RenderIndexed(int num_indices, int first_index = 0,

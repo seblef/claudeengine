@@ -45,10 +45,9 @@ void GLVideoDevice::Render(int num_vertices, int first_vertex) {
   glDrawArrays(primitive_type_, first_vertex, num_vertices);
 }
 
-void GLVideoDevice::BindIndexBuffer(abstract::IndexBuffer* ib) {
-  current_index_type_ = (ib->GetIndexType() == abstract::IndexType::kUInt16)
+void GLVideoDevice::SetIndexType(abstract::IndexType type) {
+  current_index_type_ = (type == abstract::IndexType::kUInt16)
                         ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
-  ib->Bind();
 }
 
 void GLVideoDevice::RenderIndexed(int num_indices, int first_index, int vertex_offset) {

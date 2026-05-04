@@ -50,7 +50,8 @@ int main(int argc, char* argv[]) {
 
   // Bind the IBO into the VAO once — the VAO captures the binding for all frames.
   vb->Bind();
-  video->BindIndexBuffer(ib.get());
+  ib->Bind();
+  video->SetIndexType(abstract::IndexType::kUInt16);
   video->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
 
   bool running = true;
