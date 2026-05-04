@@ -23,6 +23,8 @@ class alignas(16) Color {
   static const Color kBlack;        // {0, 0, 0, 1}
   static const Color kWhite;        // {1, 1, 1, 1}
   static const Color kRed;          // {1, 0, 0, 1}
+  static const Color kGreen;        // {0, 1, 0, 1}
+  static const Color kBlue;         // {0, 0, 1, 1}
   static const Color kTransparent;  // {0, 0, 0, 0}
 
   // ---- Construction --------------------------------------------------------
@@ -92,6 +94,8 @@ class alignas(16) Color {
 inline const Color Color::kBlack      {0.f, 0.f, 0.f, 1.f};
 inline const Color Color::kWhite      {1.f, 1.f, 1.f, 1.f};
 inline const Color Color::kRed        {1.f, 0.f, 0.f, 1.f};
+inline const Color Color::kGreen      {0.f, 1.f, 0.f, 1.f};
+inline const Color Color::kBlue       {0.f, 0.f, 1.f, 1.f};
 inline const Color Color::kTransparent{0.f, 0.f, 0.f, 0.f};
 
 [[nodiscard]] inline Color operator*(float s, const Color& c) { return c * s; }

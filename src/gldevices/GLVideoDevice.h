@@ -32,7 +32,8 @@ class GLVideoDevice : public abstract::VideoDevice {
       core::VertexType vertex_type, int num_vertices, abstract::BufferUsage usage,
       const void* data = nullptr, int offset = 0) override;
 
-  // Not yet implemented — returns nullptr.
+  // Creates (or retrieves from the registry) a GLShader by name.
+  // Loads <name>_vs.glsl and <name>_ps.glsl from the configured data folder.
   [[nodiscard]] abstract::Shader* CreateShader(const std::string& name) override;
 
  private:

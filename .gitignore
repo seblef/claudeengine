@@ -5,4 +5,8 @@ loguru-subbuild/
 googletest-build/
 googletest-src/
 googletest-subbuild/
+external/glfw-build/
+external/glfw-src/
+external/glfw-subbuild/
 claude_engine.log
+.claude/settings.local.json

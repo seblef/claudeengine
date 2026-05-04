@@ -1,6 +1,7 @@
 // ClaudeEngine application entrypoint.
 // Responsibilities (src/CLAUDE.md): load configuration, run the engine.
 
+#include "abstract/Shader.h"
 #include "abstract/VideoDevice.h"
 #include "core/Color.h"
 #include "core/Config.h"
@@ -8,6 +9,7 @@
 #include "core/EventType.h"
 #include "core/Logger.h"
 #include "core/MouseButton.h"
+#include "core/Vertex2D.h"
 #include "gldevices/GLDevices.h"
 
 #include <loguru.hpp>
@@ -23,6 +25,22 @@ int main(int argc, char* argv[]) {
 
   gldevices::GLDevices devices(640, 480, /*fullscreen=*/false);
   abstract::VideoDevice* video = devices.GetVideoDevice();
+
+  abstract::Shader* shader = video->CreateShader("passthrough_color_2d");
+
+  // Fullscreen quad: two CCW triangles covering clip space [-1, 1].
+  // Corner colours: top-left=Red, bottom-left=Blue, bottom-right=White, top-right=Green.
+  const core::Vec2f uv0{0.f, 0.f};
+  const core::Vertex2D quad[6] = {
+      {{-1.f,  1.f, 0.f}, core::Color::kRed,   uv0},  // TL
+      {{-1.f, -1.f, 0.f}, core::Color::kBlue,  uv0},  // BL
+      {{ 1.f, -1.f, 0.f}, core::Color::kWhite, uv0},  // BR
+      {{-1.f,  1.f, 0.f}, core::Color::kRed,   uv0},  // TL
+      {{ 1.f, -1.f, 0.f}, core::Color::kWhite, uv0},  // BR
+      {{ 1.f,  1.f, 0.f}, core::Color::kGreen, uv0},  // TR
+  };
+  auto vb = video->CreateVertexBuffer(
+      core::VertexType::k2D, 6, abstract::BufferUsage::kImmutable, quad);
 
   bool running = true;
   while (running) {
@@ -73,6 +91,8 @@ int main(int argc, char* argv[]) {
       }
     }
   }
+
+  if (shader) shader->Release();
 
   LOG_F(INFO, "ClaudeEngine shutting down");
   core::Logger::Shutdown();
