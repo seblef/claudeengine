@@ -1,0 +1,39 @@
+#pragma once
+
+#include <filesystem>
+
+#include <yaml-cpp/yaml.h>
+
+namespace core {
+
+// Holds graphics/window configuration from the [graphics] section of config.yaml.
+class GraphicsConfig {
+ public:
+  // Populates fields from the provided YAML node (the "graphics" subtree).
+  void Parse(const YAML::Node& node);
+
+  [[nodiscard]] int  GetWidth()   const { return width_; }
+  [[nodiscard]] int  GetHeight()  const { return height_; }
+  [[nodiscard]] bool IsWindowed() const { return windowed_; }
+
+ private:
+  int  width_    = 640;
+  int  height_   = 480;
+  bool windowed_ = true;
+};
+
+// Top-level application configuration loaded from config.yaml.
+// Call Init() once at startup, after Config::Init() has set the data folder.
+class AppConfig {
+ public:
+  AppConfig() = delete;
+
+  static void Init(const std::filesystem::path& config_path);
+
+  [[nodiscard]] static const GraphicsConfig& GetGraphics() { return graphics_; }
+
+ private:
+  static GraphicsConfig graphics_;
+};
+
+}  // namespace core
