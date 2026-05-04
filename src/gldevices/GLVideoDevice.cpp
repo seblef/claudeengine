@@ -1,5 +1,7 @@
 #include "gldevices/GLVideoDevice.h"
 
+#include "gldevices/GLVertexBuffer.h"
+
 #include <GLFW/glfw3.h>
 
 namespace gldevices {
@@ -24,9 +26,11 @@ void GLVideoDevice::OnResize(int width, int height) {
 }
 
 std::unique_ptr<abstract::VertexBuffer> GLVideoDevice::CreateVertexBuffer(
-    core::VertexType /*vertex_type*/, int /*num_vertices*/,
-    abstract::BufferUsage /*usage*/, const void* /*data*/, int /*offset*/) {
-  return nullptr;
+    core::VertexType vertex_type, int num_vertices,
+    abstract::BufferUsage usage, const void* data, int offset) {
+  auto vb = std::make_unique<GLVertexBuffer>(vertex_type, num_vertices, usage);
+  if (data) vb->Fill(data, num_vertices, offset);
+  return vb;
 }
 
 abstract::Shader* GLVideoDevice::CreateShader(const std::string& /*name*/) {
