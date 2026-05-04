@@ -1,5 +1,6 @@
 #include "gldevices/GLVideoDevice.h"
 
+#include "gldevices/GLShader.h"
 #include "gldevices/GLVertexBuffer.h"
 
 #include <GLFW/glfw3.h>
@@ -33,8 +34,18 @@ std::unique_ptr<abstract::VertexBuffer> GLVideoDevice::CreateVertexBuffer(
   return vb;
 }
 
-abstract::Shader* GLVideoDevice::CreateShader(const std::string& /*name*/) {
-  return nullptr;
+abstract::Shader* GLVideoDevice::CreateShader(const std::string& name) {
+  auto* existing = core::Resource<std::string>::Get(name);
+  if (existing) {
+    existing->AddRef();
+    return static_cast<abstract::Shader*>(existing);
+  }
+  auto* shader = new GLShader(name);
+  if (!shader->IsInitialized()) {
+    shader->Release();
+    return nullptr;
+  }
+  return shader;
 }
 
 }  // namespace gldevices
