@@ -3,6 +3,8 @@
 #include <memory>
 #include <string>
 
+#include <GL/gl.h>
+
 #include "abstract/VideoDevice.h"
 
 struct GLFWwindow;
@@ -27,6 +29,12 @@ class GLVideoDevice : public abstract::VideoDevice {
   // Updates stored resolution and adjusts the OpenGL viewport.
   void OnResize(int width, int height) override;
 
+  // Stores the GL primitive topology for subsequent Render() calls.
+  void SetPrimitiveType(abstract::PrimitiveType type) override;
+
+  // Issues a glDrawArrays call using the current primitive type.
+  void Render(int num_vertices, int first_vertex = 0) override;
+
   // Creates a GLVertexBuffer with the given layout and fills it if data is non-null.
   [[nodiscard]] std::unique_ptr<abstract::VertexBuffer> CreateVertexBuffer(
       core::VertexType vertex_type, int num_vertices, abstract::BufferUsage usage,
@@ -38,6 +46,7 @@ class GLVideoDevice : public abstract::VideoDevice {
 
  private:
   GLFWwindow* window_;
+  GLenum primitive_type_ = GL_TRIANGLES;
 };
 
 }  // namespace gldevices

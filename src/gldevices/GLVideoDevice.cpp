@@ -1,3 +1,6 @@
+// Must be defined before any GL/gl.h include to expose extension prototypes.
+#define GL_GLEXT_PROTOTYPES
+
 #include "gldevices/GLVideoDevice.h"
 
 #include "gldevices/GLShader.h"
@@ -24,6 +27,21 @@ void GLVideoDevice::OnResize(int width, int height) {
   width_  = width;
   height_ = height;
   glViewport(0, 0, width_, height_);
+}
+
+void GLVideoDevice::SetPrimitiveType(abstract::PrimitiveType type) {
+  switch (type) {
+    case abstract::PrimitiveType::kPointList:     primitive_type_ = GL_POINTS;         break;
+    case abstract::PrimitiveType::kLineList:      primitive_type_ = GL_LINES;          break;
+    case abstract::PrimitiveType::kLineStrip:     primitive_type_ = GL_LINE_STRIP;     break;
+    case abstract::PrimitiveType::kTriangleList:  primitive_type_ = GL_TRIANGLES;      break;
+    case abstract::PrimitiveType::kTriangleStrip: primitive_type_ = GL_TRIANGLE_STRIP; break;
+    case abstract::PrimitiveType::kTriangleFan:   primitive_type_ = GL_TRIANGLE_FAN;   break;
+  }
+}
+
+void GLVideoDevice::Render(int num_vertices, int first_vertex) {
+  glDrawArrays(primitive_type_, first_vertex, num_vertices);
 }
 
 std::unique_ptr<abstract::VertexBuffer> GLVideoDevice::CreateVertexBuffer(
