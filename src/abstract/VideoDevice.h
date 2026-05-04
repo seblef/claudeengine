@@ -44,14 +44,12 @@ class VideoDevice {
   // Sets the primitive topology for subsequent Render() and RenderIndexed() calls.
   virtual void SetPrimitiveType(PrimitiveType type) = 0;
 
+  // Sets the index element type for subsequent RenderIndexed() calls.
+  virtual void SetIndexType(IndexType type) = 0;
+
   // Draws num_vertices vertices from the currently bound vertex buffer,
   // starting at first_vertex.
   virtual void Render(int num_vertices, int first_vertex = 0) = 0;
-
-  // Binds ib as the active index source and tracks its type for RenderIndexed().
-  // Must be called while a vertex buffer (VAO) is already bound so the IBO
-  // binding is captured in the VAO state.
-  virtual void BindIndexBuffer(IndexBuffer* ib) = 0;
 
   // Draws num_indices indexed primitives from the currently bound index and
   // vertex buffers.
