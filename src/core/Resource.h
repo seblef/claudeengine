@@ -4,14 +4,17 @@
 
 namespace core {
 
-// Generic reference-counted resource base.
+// Generic reference-counted resource base (CRTP).
 //
-// Derive concrete resource types (shaders, textures, materials, …) from
-// Resource<TId>, where TId is any type satisfying std::map key requirements
-// (operator< must be defined).
+// Derive concrete resource types from Resource<TId, TDerived> using CRTP,
+// where TId is any type satisfying std::map key requirements (operator< must
+// be defined) and TDerived is the concrete class itself. Each <TId, TDerived>
+// pair has its own isolated static registry, preventing name collisions between
+// different resource kinds (e.g., a Shader and a Texture both keyed by string
+// can share the same name without interfering).
 //
 // Lifecycle:
-//   - The constructor registers the instance in a per-TId static map.
+//   - The constructor registers the instance in a per-<TId,TDerived> static map.
 //     The initial reference count is 1 (the creator owns a reference).
 //   - AddRef() increments the count when an additional owner takes the pointer.
 //   - Release() decrements the count. When it reaches 0 the resource removes
@@ -20,7 +23,7 @@ namespace core {
 // Initialization:
 //   Derived constructors set initialized_ = true once platform-specific work
 //   (GPU upload, file parse, etc.) succeeds. Use IsInitialized() to check.
-template <typename TId>
+template <typename TId, typename TDerived>
 class Resource {
  public:
   Resource(const Resource&) = delete;
@@ -42,8 +45,8 @@ class Resource {
 
   // ---- Registry lookup -----------------------------------------------------
 
-  // Returns the resource registered under id, or nullptr if absent.
-  [[nodiscard]] static Resource<TId>* Get(const TId& id) {
+  // Returns the TDerived resource registered under id, or nullptr if absent.
+  [[nodiscard]] static TDerived* Get(const TId& id) {
     auto it = resources_.find(id);
     return (it != resources_.end()) ? it->second : nullptr;
   }
@@ -58,7 +61,9 @@ class Resource {
 
  protected:
   // Registers the resource in the static map with ref_count = 1.
-  explicit Resource(const TId& id) : id_(id) { resources_[id] = this; }
+  explicit Resource(const TId& id) : id_(id) {
+    resources_[id] = static_cast<TDerived*>(this);
+  }
 
   virtual ~Resource() = default;
 
@@ -69,11 +74,11 @@ class Resource {
   TId id_;
   int ref_count_ = 1;
 
-  static std::map<TId, Resource<TId>*> resources_;
+  static std::map<TId, TDerived*> resources_;
 };
 
-// Out-of-class static member definition (one per TId instantiation).
-template <typename TId>
-std::map<TId, Resource<TId>*> Resource<TId>::resources_;
+// Out-of-class static member definition (one per <TId, TDerived> instantiation).
+template <typename TId, typename TDerived>
+std::map<TId, TDerived*> Resource<TId, TDerived>::resources_;
 
 }  // namespace core
