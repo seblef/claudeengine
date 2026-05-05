@@ -60,6 +60,12 @@ class GLVideoDevice : public abstract::VideoDevice {
       const void* vertex_data = nullptr, int vertex_offset = 0,
       const void* index_data = nullptr, int index_offset = 0) override;
 
+  // Creates a GLConstantBuffer of size float4 elements at the given slot.
+  [[nodiscard]] std::unique_ptr<abstract::ConstantBuffer> CreateConstantBuffer(
+      int size, int slot,
+      abstract::BufferUsage usage = abstract::BufferUsage::kDynamic,
+      const void* data = nullptr) override;
+
   // Creates (or retrieves from the registry) a GLShader by name.
   // Loads <name>_vs.glsl and <name>_ps.glsl from the configured data folder.
   [[nodiscard]] abstract::Shader* CreateShader(const std::string& name) override;

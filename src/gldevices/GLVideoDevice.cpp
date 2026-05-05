@@ -3,6 +3,7 @@
 
 #include "gldevices/GLVideoDevice.h"
 
+#include "gldevices/GLConstantBuffer.h"
 #include "gldevices/GLGeometryBuffer.h"
 #include "gldevices/GLIndexBuffer.h"
 #include "gldevices/GLShader.h"
@@ -86,6 +87,13 @@ std::unique_ptr<abstract::GeometryBuffer> GLVideoDevice::CreateGeometryBuffer(
   if (vertex_data) gb->FillVertices(vertex_data, num_vertices, vertex_offset);
   if (index_data)  gb->FillIndices(index_data, num_indices, index_offset);
   return gb;
+}
+
+std::unique_ptr<abstract::ConstantBuffer> GLVideoDevice::CreateConstantBuffer(
+    int size, int slot, abstract::BufferUsage usage, const void* data) {
+  auto cb = std::make_unique<GLConstantBuffer>(size, slot, usage);
+  if (data) cb->Fill(data);
+  return cb;
 }
 
 abstract::Shader* GLVideoDevice::CreateShader(const std::string& name) {

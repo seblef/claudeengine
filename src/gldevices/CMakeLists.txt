@@ -1,4 +1,5 @@
 add_library(gldevices STATIC
+    GLConstantBuffer.cpp
     GLDevices.cpp
     GLGeometryBuffer.cpp
     GLIndexBuffer.cpp
