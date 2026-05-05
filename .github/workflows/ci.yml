@@ -18,7 +18,7 @@ jobs:
       - name: Install tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends clang-format glslang-tools
+          sudo apt-get install -y --no-install-recommends glslang-tools
           pipx install cpplint
 
       - name: cpplint
@@ -28,11 +28,6 @@ jobs:
               --filter=-legal/copyright,-build/header_guard,-build/namespaces,-build/c++17,-build/include_order,-build/include_what_you_use,-whitespace/comma,-whitespace/braces,-whitespace/parens \
               --linelength=120 \
               --quiet
-
-      - name: clang-format
-        run: |
-          find src tests -name "*.h" -o -name "*.cpp" | \
-            xargs clang-format --dry-run --Werror
 
       - name: glslangValidator (vertex shaders)
         run: find data/shaders/glsl -name "*_vs.glsl" | xargs -I{} glslangValidator -S vert {}

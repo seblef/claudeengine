@@ -85,7 +85,7 @@ class Vec2f {
   // Returns true if this point lies on segment [a, b] within epsilon.
   [[nodiscard]] inline bool IsBetween(const Vec2f& a, const Vec2f& b,
                                       float eps = 1e-5f) const {
-    return std::fabsf(Distance(a) + Distance(b) - a.Distance(b)) <= eps;
+    return std::fabs(Distance(a) + Distance(b) - a.Distance(b)) <= eps;
   }
 
   [[nodiscard]] inline Vec2f Lerp(const Vec2f& other, float t) const {

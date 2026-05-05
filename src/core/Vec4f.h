@@ -106,7 +106,7 @@ class alignas(16) Vec4f {
   // Returns true if this point lies on segment [a, b] within epsilon.
   [[nodiscard]] inline bool IsBetween(const Vec4f& a, const Vec4f& b,
                                       float eps = 1e-5f) const {
-    return std::fabsf(Distance(a) + Distance(b) - a.Distance(b)) <= eps;
+    return std::fabs(Distance(a) + Distance(b) - a.Distance(b)) <= eps;
   }
 
   [[nodiscard]] inline Vec4f Lerp(const Vec4f& other, float t) const {
