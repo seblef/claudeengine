@@ -224,6 +224,76 @@ class alignas(16) Mat4f {
     return RotationZ(euler_angles.z) * RotationY(euler_angles.y) * RotationX(euler_angles.x);
   }
 
+  // View matrix: right-handed (camera looks down −Z, OpenGL convention).
+  // z_axis points away from target; x_axis = up × z; y_axis = z × x.
+  [[nodiscard]] static inline Mat4f LookAtRH(Vec3f eye, Vec3f target, Vec3f up) {
+    Vec3f z = (eye - target).Normalized();
+    Vec3f x = up.Cross(z).Normalized();
+    Vec3f y = z.Cross(x);
+    return { x.x,  x.y,  x.z, -x.Dot(eye),
+             y.x,  y.y,  y.z, -y.Dot(eye),
+             z.x,  z.y,  z.z, -z.Dot(eye),
+             0.f,  0.f,  0.f,  1.f };
+  }
+
+  // View matrix: left-handed (camera looks down +Z, DirectX convention).
+  // z_axis points toward target; x_axis = up × z; y_axis = z × x.
+  [[nodiscard]] static inline Mat4f LookAtLH(Vec3f eye, Vec3f target, Vec3f up) {
+    Vec3f z = (target - eye).Normalized();
+    Vec3f x = up.Cross(z).Normalized();
+    Vec3f y = z.Cross(x);
+    return { x.x,  x.y,  x.z, -x.Dot(eye),
+             y.x,  y.y,  y.z, -y.Dot(eye),
+             z.x,  z.y,  z.z, -z.Dot(eye),
+             0.f,  0.f,  0.f,  1.f };
+  }
+
+  // Perspective projection, right-handed: NDC z in [−1, 1] (OpenGL).
+  // fov_y in radians; aspect = width / height.
+  [[nodiscard]] static inline Mat4f PerspectiveRH(float fov_y, float aspect,
+                                                   float z_near, float z_far) {
+    float f  = 1.f / std::tan(fov_y * 0.5f);
+    float ri = 1.f / (z_near - z_far);
+    return { f / aspect, 0.f,  0.f,                       0.f,
+             0.f,         f,   0.f,                       0.f,
+             0.f,        0.f,  (z_far + z_near) * ri,     2.f * z_far * z_near * ri,
+             0.f,        0.f,  -1.f,                      0.f };
+  }
+
+  // Perspective projection, left-handed: NDC z in [0, 1] (DirectX).
+  // fov_y in radians; aspect = width / height.
+  [[nodiscard]] static inline Mat4f PerspectiveLH(float fov_y, float aspect,
+                                                   float z_near, float z_far) {
+    float f  = 1.f / std::tan(fov_y * 0.5f);
+    float ri = 1.f / (z_far - z_near);
+    return { f / aspect, 0.f,  0.f,                  0.f,
+             0.f,         f,   0.f,                  0.f,
+             0.f,        0.f,  z_far * ri,           -z_near * z_far * ri,
+             0.f,        0.f,  1.f,                   0.f };
+  }
+
+  // Orthographic projection, right-handed: NDC z in [−1, 1] (OpenGL).
+  // width and height are the full extents of the orthographic frustum.
+  [[nodiscard]] static inline Mat4f OrthoRH(float width, float height,
+                                             float z_near, float z_far) {
+    float ri = 1.f / (z_near - z_far);
+    return { 2.f / width, 0.f,           0.f,           0.f,
+             0.f,         2.f / height,  0.f,           0.f,
+             0.f,         0.f,           2.f * ri,      (z_far + z_near) * ri,
+             0.f,         0.f,           0.f,           1.f };
+  }
+
+  // Orthographic projection, left-handed: NDC z in [0, 1] (DirectX).
+  // width and height are the full extents of the orthographic frustum.
+  [[nodiscard]] static inline Mat4f OrthoLH(float width, float height,
+                                             float z_near, float z_far) {
+    float ri = 1.f / (z_far - z_near);
+    return { 2.f / width, 0.f,           0.f,           0.f,
+             0.f,         2.f / height,  0.f,           0.f,
+             0.f,         0.f,           ri,            -z_near * ri,
+             0.f,         0.f,           0.f,           1.f };
+  }
+
  private:
   // Row-major: data_[row * 4 + col].
   float data_[16] = {
