@@ -94,6 +94,9 @@ class VideoDevice {
       int size, int slot, BufferUsage usage = BufferUsage::kDynamic,
       const void* data = nullptr) = 0;
 
+  // Enables or disables depth testing for subsequent draw calls.
+  virtual void SetDepthTestEnabled(bool enabled) = 0;
+
   // Creates (or retrieves) a shader by name. The resource registry starts
   // the object with ref_count = 1; call Release() when done.
   [[nodiscard]] virtual Shader* CreateShader(const std::string& name) = 0;

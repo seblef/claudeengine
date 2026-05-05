@@ -33,6 +33,10 @@ void GLVideoDevice::OnResize(int width, int height) {
   glViewport(0, 0, width_, height_);
 }
 
+void GLVideoDevice::SetDepthTestEnabled(bool enabled) {
+  if (enabled) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
+}
+
 void GLVideoDevice::SetPrimitiveType(abstract::PrimitiveType type) {
   switch (type) {
     case abstract::PrimitiveType::kPointList:     primitive_type_ = GL_POINTS;         break;
