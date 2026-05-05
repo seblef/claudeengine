@@ -66,6 +66,9 @@ class GLVideoDevice : public abstract::VideoDevice {
       abstract::BufferUsage usage = abstract::BufferUsage::kDynamic,
       const void* data = nullptr) override;
 
+  // Enables or disables GL_DEPTH_TEST.
+  void SetDepthTestEnabled(bool enabled) override;
+
   // Creates (or retrieves from the registry) a GLShader by name.
   // Loads <name>_vs.glsl and <name>_ps.glsl from the configured data folder.
   [[nodiscard]] abstract::Shader* CreateShader(const std::string& name) override;
