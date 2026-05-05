@@ -10,6 +10,7 @@
 #include "abstract/IndexType.h"
 #include "abstract/PrimitiveType.h"
 #include "abstract/Shader.h"
+#include "abstract/Texture.h"
 #include "abstract/VertexBuffer.h"
 #include "core/Color.h"
 #include "core/VertexType.h"
@@ -96,6 +97,12 @@ class VideoDevice {
   // Creates (or retrieves) a shader by name. The resource registry starts
   // the object with ref_count = 1; call Release() when done.
   [[nodiscard]] virtual Shader* CreateShader(const std::string& name) = 0;
+
+  // Creates (or retrieves) a texture by filename (relative to data/textures/).
+  // The resource registry starts the object with ref_count = 1; call Release() when done.
+  [[nodiscard]] virtual Texture* CreateTexture(
+      const std::string& name,
+      BufferUsage usage = BufferUsage::kImmutable) = 0;
 
   // ---- Getters -------------------------------------------------------------
 

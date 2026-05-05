@@ -1,16 +1,15 @@
 // Fragment shader for passthrough_color_2d.
-// Outputs a uniform tint color supplied via the ColorBlock constant buffer.
+// Samples a 2D texture at the interpolated UV coordinates.
 
 #version 460 core
 
-// Per-draw color tint supplied by the CPU via a constant/uniform buffer.
-// binding = 0 matches ConstantBuffer slot 0 set by the caller.
-layout(std140, binding = 0) uniform ColorBlock {
-  vec4 tint_color;
-};
+in vec2 v_uv;
+
+// binding = 0 matches the texture slot set by the caller.
+layout(binding = 0) uniform sampler2D u_texture;
 
 out vec4 frag_color;
 
 void main() {
-  frag_color = tint_color;
+    frag_color = texture(u_texture, v_uv);
 }

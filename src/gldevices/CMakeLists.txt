@@ -4,11 +4,18 @@ add_library(gldevices STATIC
     GLGeometryBuffer.cpp
     GLIndexBuffer.cpp
     GLShader.cpp
+    GLTexture.cpp
     GLVideoDevice.cpp
     GLVertexBuffer.cpp
+    stb_image_impl.cpp
 )
 
-target_include_directories(gldevices PUBLIC "${CMAKE_SOURCE_DIR}/src")
+target_include_directories(gldevices PUBLIC "${CMAKE_SOURCE_DIR}/src"
+                                     PRIVATE ${stb_SOURCE_DIR})
 
 find_package(OpenGL REQUIRED)
 target_link_libraries(gldevices PUBLIC abstract PRIVATE glfw OpenGL::GL)
+
+if(TIFF_FOUND)
+    target_link_libraries(gldevices PRIVATE TIFF::TIFF)
+endif()
