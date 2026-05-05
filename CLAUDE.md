@@ -66,7 +66,7 @@ For any contribution:
 
 **Any contribution must be accompanied by:**
 
-* a MarkDown file, named `{DATETIME} - {FEATURE}.md`, stored in `history` folder, and containing a comprehensive description of the changes, the decisions made and their rationale, and the output to keep in mind for you for the next features.
+* a MarkDown file, named `{TIMESTAMP} - {FEATURE}.md`, stored in `history` folder, and containing a comprehensive description of the changes, the decisions made and their rationale, and the output to keep in mind for you for the next features.
 * an proposal to update the README.md if building or installing process have been updated (e.g., using a new library)
 * propositions to improve the `CLAUDE.md` files, if it can avoid unecessary questions from you
 * propositions to improve my specifictions, if it can avoir unecessary questions from you
