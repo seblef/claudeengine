@@ -1,6 +1,7 @@
 // ClaudeEngine application entrypoint.
 // Responsibilities (src/CLAUDE.md): load configuration, run the engine.
 
+#include "abstract/ConstantBuffer.h"
 #include "abstract/PrimitiveType.h"
 #include "abstract/Shader.h"
 #include "abstract/VideoDevice.h"
@@ -14,6 +15,8 @@
 #include "core/Vertex2D.h"
 #include "gldevices/GLDevices.h"
 
+#include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <loguru.hpp>
 
@@ -31,6 +34,12 @@ int main(int argc, char* argv[]) {
   abstract::VideoDevice* video = devices.GetVideoDevice();
 
   abstract::Shader* shader = video->CreateShader("passthrough_color_2d");
+
+  // Constant buffer: 1 float4 at slot 0 — tint color for the fragment shader.
+  auto cb = video->CreateConstantBuffer(1, 0);
+  cb->Bind();
+
+  const auto t_start = std::chrono::steady_clock::now();
 
   // Fullscreen quad: 4 unique vertices covering clip space [-1, 1].
   // Corner colours: top-left=Red, bottom-left=Blue, bottom-right=White, top-right=Green.
@@ -58,7 +67,14 @@ int main(int argc, char* argv[]) {
     devices.Update();
 
     video->BeginFrame();
-    video->ClearRenderTargets(core::Color::kRed);
+    video->ClearRenderTargets(core::Color::kBlack);
+
+    // Animate tint: blue at t=0s → red at t=5s → blue at t=10s (sinusoidal).
+    const float elapsed = std::chrono::duration<float>(
+        std::chrono::steady_clock::now() - t_start).count();
+    const float lerp_t = (1.0f - std::cos(elapsed * (3.14159265f / 5.0f))) * 0.5f;
+    const core::Color tint = core::Color::kBlue.Lerp(core::Color::kRed, lerp_t);
+    cb->Fill(&tint);
 
     shader->Activate();
     gb->Bind();
