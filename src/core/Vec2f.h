@@ -44,10 +44,10 @@ class Vec2f {
   [[nodiscard]] inline Vec2f operator/(float s)          const { return {x/s, y/s}; }
   [[nodiscard]] inline Vec2f operator-()                 const { return {-x, -y}; }
 
-  inline Vec2f& operator+=(const Vec2f& rhs) { x+=rhs.x; y+=rhs.y; return *this; }
-  inline Vec2f& operator-=(const Vec2f& rhs) { x-=rhs.x; y-=rhs.y; return *this; }
-  inline Vec2f& operator*=(float s)          { x*=s; y*=s; return *this; }
-  inline Vec2f& operator/=(float s)          { x/=s; y/=s; return *this; }
+  inline Vec2f& operator+=(const Vec2f& rhs) { x += rhs.x; y += rhs.y; return *this; }
+  inline Vec2f& operator-=(const Vec2f& rhs) { x -= rhs.x; y -= rhs.y; return *this; }
+  inline Vec2f& operator*=(float s)          { x *= s; y *= s; return *this; }
+  inline Vec2f& operator/=(float s)          { x /= s; y /= s; return *this; }
 
   [[nodiscard]] inline bool operator==(const Vec2f& rhs) const { return x == rhs.x && y == rhs.y; }
   [[nodiscard]] inline bool operator!=(const Vec2f& rhs) const { return !(*this == rhs); }
@@ -85,7 +85,7 @@ class Vec2f {
   // Returns true if this point lies on segment [a, b] within epsilon.
   [[nodiscard]] inline bool IsBetween(const Vec2f& a, const Vec2f& b,
                                       float eps = 1e-5f) const {
-    return std::fabsf(Distance(a) + Distance(b) - a.Distance(b)) <= eps;
+    return std::fabs(Distance(a) + Distance(b) - a.Distance(b)) <= eps;
   }
 
   [[nodiscard]] inline Vec2f Lerp(const Vec2f& other, float t) const {

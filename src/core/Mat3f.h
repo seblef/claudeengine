@@ -34,9 +34,9 @@ class alignas(16) Mat3f {
   inline Mat3f(float m00, float m01, float m02,
                float m10, float m11, float m12,
                float m20, float m21, float m22) {
-    data_[0]=m00; data_[1]=m01; data_[2]=m02; data_[3]=0.f;
-    data_[4]=m10; data_[5]=m11; data_[6]=m12; data_[7]=0.f;
-    data_[8]=m20; data_[9]=m21; data_[10]=m22; data_[11]=0.f;
+    data_[0] = m00; data_[1] = m01; data_[2] = m02; data_[3] = 0.f;
+    data_[4] = m10; data_[5] = m11; data_[6] = m12; data_[7] = 0.f;
+    data_[8] = m20; data_[9] = m21; data_[10] = m22; data_[11] = 0.f;
   }
 
   // ---- Element access ------------------------------------------------------
@@ -124,9 +124,9 @@ class alignas(16) Mat3f {
 
   // Returns the inverse.  Behaviour is undefined if the determinant is near zero.
   [[nodiscard]] inline Mat3f Inverse() const {
-    float m00=data_[0], m01=data_[1], m02=data_[2];
-    float m10=data_[4], m11=data_[5], m12=data_[6];
-    float m20=data_[8], m21=data_[9], m22=data_[10];
+    float m00 = data_[0], m01 = data_[1], m02 = data_[2];
+    float m10 = data_[4], m11 = data_[5], m12 = data_[6];
+    float m20 = data_[8], m21 = data_[9], m22 = data_[10];
 
     float det = m00*(m11*m22 - m12*m21)
               - m01*(m10*m22 - m12*m20)

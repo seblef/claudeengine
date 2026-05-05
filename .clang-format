@@ -1,0 +1,28 @@
+# ClaudeEngine clang-format configuration.
+# Based on Google C++ Style Guide with project-specific adjustments.
+Language:        Cpp
+BasedOnStyle:    Google
+Standard:        c++20
+
+# Match CPPLINT.cfg linelength=120.
+ColumnLimit:     120
+
+# Google default: 2-space indentation.
+IndentWidth:     2
+TabWidth:        2
+UseTab:          Never
+
+# Google style: access modifiers 1 space inside class braces.
+AccessModifierOffset: -1
+
+# Pointer style: int* p (left-aligned, Google convention).
+PointerAlignment: Left
+
+# Preserve single-line inline math operators (Vec3f, Mat4f, etc.).
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+
+# Continuation and initialiser list indentation.
+ContinuationIndentWidth:             4
+ConstructorInitializerIndentWidth:   4
