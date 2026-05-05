@@ -37,10 +37,10 @@ class alignas(16) Mat4f {
                float m10, float m11, float m12, float m13,
                float m20, float m21, float m22, float m23,
                float m30, float m31, float m32, float m33) {
-    data_[0]=m00;  data_[1]=m01;  data_[2]=m02;  data_[3]=m03;
-    data_[4]=m10;  data_[5]=m11;  data_[6]=m12;  data_[7]=m13;
-    data_[8]=m20;  data_[9]=m21;  data_[10]=m22; data_[11]=m23;
-    data_[12]=m30; data_[13]=m31; data_[14]=m32; data_[15]=m33;
+    data_[0]  = m00;  data_[1]  = m01;  data_[2]  = m02;  data_[3]  = m03;
+    data_[4]  = m10;  data_[5]  = m11;  data_[6]  = m12;  data_[7]  = m13;
+    data_[8]  = m20;  data_[9]  = m21;  data_[10] = m22;  data_[11] = m23;
+    data_[12] = m30;  data_[13] = m31;  data_[14] = m32;  data_[15] = m33;
   }
 
   // ---- Element access ------------------------------------------------------
@@ -63,7 +63,7 @@ class alignas(16) Mat4f {
         data_[r*4+c] = mat3(r, c);
       data_[r*4+3] = 0.f;
     }
-    data_[12]=0.f; data_[13]=0.f; data_[14]=0.f; data_[15]=1.f;
+    data_[12] = 0.f; data_[13] = 0.f; data_[14] = 0.f; data_[15] = 1.f;
     return *this;
   }
 

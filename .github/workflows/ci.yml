@@ -1,0 +1,270 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["**"]
+
+jobs:
+
+  # ── QA: runs on every push ──────────────────────────────────────────────────
+
+  linting:
+    name: Linting
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends clang-format glslang-tools
+          pipx install cpplint
+
+      - name: cpplint
+        run: |
+          find src tests -name "*.h" -o -name "*.cpp" | \
+            xargs cpplint \
+              --filter=-legal/copyright,-build/header_guard,-build/namespaces,-build/c++17,-build/include_order,-build/include_what_you_use,-whitespace/comma,-whitespace/braces,-whitespace/parens \
+              --linelength=120 \
+              --quiet
+
+      - name: clang-format
+        run: |
+          find src tests -name "*.h" -o -name "*.cpp" | \
+            xargs clang-format --dry-run --Werror
+
+      - name: glslangValidator (vertex shaders)
+        run: find data/shaders/glsl -name "*_vs.glsl" | xargs -I{} glslangValidator -S vert {}
+
+      - name: glslangValidator (fragment shaders)
+        run: find data/shaders/glsl -name "*_ps.glsl" | xargs -I{} glslangValidator -S frag {}
+
+  static-analysis:
+    name: Static Analysis
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cppcheck
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends cppcheck
+
+      - name: cppcheck
+        run: |
+          cppcheck \
+            --enable=all \
+            --std=c++20 \
+            --language=c++ \
+            --suppress=missingIncludeSystem \
+            --suppress=unusedFunction \
+            --suppress=unmatchedSuppression \
+            --inline-suppr \
+            --error-exitcode=1 \
+            --quiet \
+            -I src \
+            src/ tests/
+
+  dynamic-analysis:
+    name: Dynamic Analysis
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build \
+            libgl1-mesa-dev libglu1-mesa-dev \
+            libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
+            libtiff-dev \
+            valgrind
+
+      - name: Cache FetchContent dependencies
+        uses: actions/cache@v4
+        with:
+          path: external
+          key: deps-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: deps-${{ runner.os }}-
+
+      - name: CMake configure
+        run: cmake -S . -B _build -DBUILD_PROFILE=dev -G Ninja
+
+      - name: Build core_tests
+        run: cmake --build _build --target core_tests
+
+      - name: Valgrind
+        run: |
+          valgrind \
+            --tool=memcheck \
+            --leak-check=full \
+            --show-leak-kinds=definite,indirect \
+            --errors-for-leak-kinds=definite,indirect \
+            --error-exitcode=1 \
+            build/core_tests
+
+  tests:
+    name: Tests
+    runs-on: ubuntu-24.04
+    permissions:
+      checks: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build \
+            libgl1-mesa-dev libglu1-mesa-dev \
+            libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
+            libtiff-dev
+
+      - name: Cache FetchContent dependencies
+        uses: actions/cache@v4
+        with:
+          path: external
+          key: deps-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: deps-${{ runner.os }}-
+
+      - name: CMake configure
+        run: cmake -S . -B _build -DBUILD_PROFILE=dev -G Ninja
+
+      - name: Build core_tests
+        run: cmake --build _build --target core_tests
+
+      - name: Run tests
+        run: build/core_tests --gtest_output=xml:test-results.xml
+
+      - name: Publish test results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: GTest Results
+          path: test-results.xml
+          reporter: java-junit
+
+  # ── Builds & Release: tag pushes only, after all QA passes ─────────────────
+
+  build-dev:
+    name: Build (dev)
+    runs-on: ubuntu-24.04
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [linting, static-analysis, dynamic-analysis, tests]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build \
+            libgl1-mesa-dev libglu1-mesa-dev \
+            libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
+            libtiff-dev
+
+      - name: Cache FetchContent dependencies
+        uses: actions/cache@v4
+        with:
+          path: external
+          key: deps-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: deps-${{ runner.os }}-
+
+      - name: CMake configure
+        run: cmake -S . -B _build -DBUILD_PROFILE=dev -G Ninja
+
+      - name: Build
+        run: cmake --build _build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-engine-dev-${{ github.ref_name }}
+          path: build/claude_engine
+          retention-days: 14
+
+  build-stable:
+    name: Build (stable)
+    runs-on: ubuntu-24.04
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [linting, static-analysis, dynamic-analysis, tests]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build \
+            libgl1-mesa-dev libglu1-mesa-dev \
+            libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
+            libtiff-dev
+
+      - name: Cache FetchContent dependencies
+        uses: actions/cache@v4
+        with:
+          path: external
+          key: deps-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: deps-${{ runner.os }}-
+
+      - name: CMake configure
+        run: cmake -S . -B _build -DBUILD_PROFILE=stable -G Ninja
+
+      - name: Build
+        run: cmake --build _build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-engine-stable-${{ github.ref_name }}
+          path: build/claude_engine
+          retention-days: 90
+
+  package:
+    name: Package
+    runs-on: ubuntu-24.04
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build-stable]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download stable binary
+        uses: actions/download-artifact@v4
+        with:
+          name: claude-engine-stable-${{ github.ref_name }}
+          path: dist/
+
+      - name: Assemble package
+        run: |
+          chmod +x dist/claude_engine
+          cp -r data dist/data
+          cd dist && zip -r "../claude-engine-${{ github.ref_name }}-linux.zip" .
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-engine-package-${{ github.ref_name }}
+          path: claude-engine-${{ github.ref_name }}-linux.zip
+          retention-days: 90
+
+  release:
+    name: Release
+    runs-on: ubuntu-24.04
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [package, build-dev]
+    permissions:
+      contents: write
+    steps:
+      - name: Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: claude-engine-package-${{ github.ref_name }}
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ClaudeEngine ${{ github.ref_name }}
+          files: claude-engine-${{ github.ref_name }}-linux.zip
+          generate_release_notes: true
