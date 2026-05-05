@@ -87,6 +87,24 @@ set(YAML_CPP_BUILD_TOOLS   OFF CACHE BOOL "" FORCE)
 set(YAML_CPP_INSTALL       OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(yaml-cpp)
 
+# ---------------------------------------------------------------------------
+# stb (single-header image loader) — JPEG and PNG support
+# ---------------------------------------------------------------------------
+FetchContent_Declare(
+    stb
+    GIT_REPOSITORY https://github.com/nothings/stb.git
+    GIT_TAG        master
+    GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(stb)
+
+# Optional TIFF support via system libtiff
+find_package(TIFF QUIET)
+if(TIFF_FOUND)
+    message(STATUS "[ClaudeEngine] libtiff found — TIFF texture support enabled")
+    add_compile_definitions(HAVE_LIBTIFF)
+endif()
+
 add_subdirectory(src)
 
 # ---------------------------------------------------------------------------

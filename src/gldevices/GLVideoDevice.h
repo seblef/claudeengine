@@ -70,6 +70,12 @@ class GLVideoDevice : public abstract::VideoDevice {
   // Loads <name>_vs.glsl and <name>_ps.glsl from the configured data folder.
   [[nodiscard]] abstract::Shader* CreateShader(const std::string& name) override;
 
+  // Creates (or retrieves from the registry) a GLTexture by filename.
+  // Loads the image from the data/textures/ folder.
+  [[nodiscard]] abstract::Texture* CreateTexture(
+      const std::string& name,
+      abstract::BufferUsage usage = abstract::BufferUsage::kImmutable) override;
+
  private:
   GLFWwindow* window_;
   GLenum primitive_type_    = GL_TRIANGLES;

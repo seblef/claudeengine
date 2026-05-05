@@ -7,6 +7,7 @@
 #include "gldevices/GLGeometryBuffer.h"
 #include "gldevices/GLIndexBuffer.h"
 #include "gldevices/GLShader.h"
+#include "gldevices/GLTexture.h"
 #include "gldevices/GLVertexBuffer.h"
 
 #include <GLFW/glfw3.h>
@@ -108,6 +109,21 @@ abstract::Shader* GLVideoDevice::CreateShader(const std::string& name) {
     return nullptr;
   }
   return shader;
+}
+
+abstract::Texture* GLVideoDevice::CreateTexture(
+    const std::string& name, abstract::BufferUsage usage) {
+  auto* existing = abstract::Texture::Get(name);
+  if (existing) {
+    existing->AddRef();
+    return existing;
+  }
+  auto* tex = new GLTexture(name, usage);
+  if (!tex->IsInitialized()) {
+    tex->Release();
+    return nullptr;
+  }
+  return tex;
 }
 
 }  // namespace gldevices
