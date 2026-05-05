@@ -235,6 +235,7 @@ jobs:
         run: |
           chmod +x dist/claude_engine
           cp -r data dist/data
+          find dist -name "CLAUDE.md" -delete
           cd dist && zip -r "../claude-engine-${{ github.ref_name }}-linux.zip" .
 
       - name: Upload package artifact
