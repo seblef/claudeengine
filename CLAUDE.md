@@ -61,8 +61,9 @@ For any contribution:
 3. Create a branch meaningfully named and prefix by `feat/` or `fix/`, depending on the task type
 4. Checkout the created branch
 5. Implement
-6. Commit with message matching conventional commits
-7. Open a Pull Request with meaningful description
+6. Run `cpplint` to ensure code is properly formated
+7. Commit with message matching conventional commits
+8. Open a Pull Request with meaningful description
 
 **Any contribution must be accompanied by:**
 
