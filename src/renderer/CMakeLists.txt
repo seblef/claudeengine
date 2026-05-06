@@ -1,4 +1,5 @@
 add_library(renderer STATIC
+    GeometryData.cpp
     Renderer.cpp
 )
 
