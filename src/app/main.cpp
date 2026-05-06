@@ -22,6 +22,7 @@
 #include "core/Vertex3D.h"
 #include "core/VertexType.h"
 #include "gldevices/GLDevices.h"
+#include "renderer/Renderer.h"
 
 #include <chrono>
 #include <cmath>
@@ -109,12 +110,11 @@ int main(int argc, char* argv[]) {
       abstract::BufferUsage::kImmutable,
       verts, 0, indices, 0);
 
-  // ---- Constant buffers: size=4 float4 = one Mat4f --------------------------
-  // Slot 0: world matrix (cube rotation); slot 1: camera view-projection.
-  auto world_cb  = video->CreateConstantBuffer(4, 0);
-  auto camera_cb = video->CreateConstantBuffer(4, 1);
+  // ---- Constant buffers -----------------------------------------------------
+  // Slot 0: world matrix (cube rotation). Slot 1: per-frame SceneInfos (Renderer).
+  auto world_cb = video->CreateConstantBuffer(4, 0);
   world_cb->Bind();
-  camera_cb->Bind();
+  renderer::Renderer renderer(video);
 
   // ---- Camera ---------------------------------------------------------------
   core::Camera camera(core::ProjectionType::kPerspective,
@@ -136,8 +136,9 @@ int main(int argc, char* argv[]) {
   bool k_up  = false, k_down = false;
 
   // ---- Timing ---------------------------------------------------------------
-  auto  t_prev    = std::chrono::steady_clock::now();
-  float cube_angle = 0.f;
+  auto  t_prev       = std::chrono::steady_clock::now();
+  float cube_angle   = 0.f;
+  float elapsed_time = 0.f;
 
   bool running = true;
   while (running) {
@@ -208,7 +209,8 @@ int main(int argc, char* argv[]) {
     camera.UpdateMatrices();
 
     // ---- Cube rotation ------------------------------------------------------
-    cube_angle += kRotSpeed * dt;
+    cube_angle   += kRotSpeed * dt;
+    elapsed_time += dt;
     const core::Mat4f world = core::Mat4f::RotationY(cube_angle);
 
     // ---- Render -------------------------------------------------------------
@@ -216,7 +218,7 @@ int main(int argc, char* argv[]) {
     video->ClearRenderTargets(core::Color::kBlack);
 
     world_cb->Fill(world.Data());
-    camera_cb->Fill(camera.GetViewProjectionMatrix().Data());
+    renderer.Update(elapsed_time, &camera);
 
     if (shader) shader->Activate();
     if (tex)    tex->Bind(0);
