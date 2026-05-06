@@ -7,6 +7,7 @@
 
 #include "abstract/Texture.h"
 #include "abstract/VideoDevice.h"
+#include "renderer/MaterialDesc.h"
 #include "renderer/TextureSlot.h"
 
 namespace renderer {
@@ -23,9 +24,8 @@ class Material {
   // Loads all default textures.
   explicit Material(abstract::VideoDevice* video);
 
-  // Stores the provided textures (AddRef on each non-null entry) and fills
-  // null slots with defaults.
-  Material(TextureArray textures, abstract::VideoDevice* video);
+  // Loads textures by name from desc; unset slots fall back to defaults.
+  Material(const MaterialDesc& desc, abstract::VideoDevice* video);
 
   // Loads a material from a YAML file. name is relative to data/materials/.
   Material(const std::string& name, abstract::VideoDevice* video);

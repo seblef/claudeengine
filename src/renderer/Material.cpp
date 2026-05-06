@@ -31,14 +31,16 @@ Material::Material(abstract::VideoDevice* video) {
   LoadDefaults(video);
 }
 
-Material::Material(TextureArray textures, abstract::VideoDevice* video)
-    : textures_(textures) {
-  for (auto* tex : textures_) {
-    if (tex) tex->AddRef();
-  }
+Material::Material(const MaterialDesc& desc, abstract::VideoDevice* video) {
   for (int i = 0; i < kTextureSlotCount; ++i) {
-    if (!textures_[i])
+    const std::string& name = desc.Get(static_cast<TextureSlot>(i));
+    if (!name.empty())
+      textures_[i] = video->CreateTexture(name);
+    if (!textures_[i]) {
+      if (!name.empty())
+        LOG_F(WARNING, "Material: texture '%s' not found, using default", name.c_str());
       textures_[i] = video->CreateTexture(kDefaultPaths[i]);
+    }
   }
 }
 
