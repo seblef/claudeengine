@@ -1,13 +1,11 @@
 // ClaudeEngine application entrypoint.
 // Responsibilities (src/CLAUDE.md): load configuration, run the engine.
 
-#include "abstract/IndexType.h"
 #include "abstract/PrimitiveType.h"
 #include "abstract/Shader.h"
 #include "abstract/Texture.h"
 #include "abstract/VideoDevice.h"
 #include "core/AppConfig.h"
-#include "abstract/BufferUsage.h"
 #include "core/Camera.h"
 #include "core/Color.h"
 #include "core/Config.h"
@@ -20,8 +18,8 @@
 #include "core/ProjectionType.h"
 #include "core/Vec3f.h"
 #include "core/Vertex3D.h"
-#include "core/VertexType.h"
 #include "gldevices/GLDevices.h"
+#include "renderer/GeometryData.h"
 #include "renderer/Renderer.h"
 
 #include <chrono>
@@ -104,11 +102,7 @@ int main(int argc, char* argv[]) {
     20,21,22, 20,22,23,   // -Y
   };
 
-  auto gb = video->CreateGeometryBuffer(
-      core::VertexType::k3D, 24,
-      abstract::IndexType::kUInt16, 36,
-      abstract::BufferUsage::kImmutable,
-      verts, 0, indices, 0);
+  renderer::GeometryData geo(video, 24, verts, 12, indices);
 
   // ---- Constant buffers -----------------------------------------------------
   // Slot 0: world matrix (cube rotation). Slot 1: per-frame SceneInfos (Renderer).
@@ -222,8 +216,8 @@ int main(int argc, char* argv[]) {
 
     if (shader) shader->Activate();
     if (tex)    tex->Bind(0);
-    gb->Bind();
-    video->RenderIndexed(36);
+    geo.Set();
+    video->RenderIndexed(geo.GetNumIndices());
   }
 
   if (tex)    tex->Release();
