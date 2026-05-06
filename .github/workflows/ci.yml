@@ -30,10 +30,22 @@ jobs:
               --quiet
 
       - name: glslangValidator (vertex shaders)
-        run: find data/shaders/glsl -name "*_vs.glsl" | xargs -I{} glslangValidator -S vert {}
+        run: |
+          find data/shaders/glsl -name "*_vs.glsl" | while read f; do
+            tmp=$(mktemp --suffix=.glsl)
+            python3 scripts/glsl_preprocess.py "$f" data/shaders/glsl > "$tmp"
+            glslangValidator -S vert "$tmp"
+            rm "$tmp"
+          done
 
       - name: glslangValidator (fragment shaders)
-        run: find data/shaders/glsl -name "*_ps.glsl" | xargs -I{} glslangValidator -S frag {}
+        run: |
+          find data/shaders/glsl -name "*_ps.glsl" | while read f; do
+            tmp=$(mktemp --suffix=.glsl)
+            python3 scripts/glsl_preprocess.py "$f" data/shaders/glsl > "$tmp"
+            glslangValidator -S frag "$tmp"
+            rm "$tmp"
+          done
 
   static-analysis:
     name: Static Analysis
