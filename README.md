@@ -10,6 +10,46 @@ A multi-platform 3D shoot'em up game engine written in modern C++.
 
 [loguru](https://github.com/emilk/loguru) is fetched automatically at configure time — no manual download needed.
 
+## Dev tools
+
+The following tools are required for contributing. They mirror the CI quality gates, so installing them locally catches issues before push.
+
+### cpplint
+
+Enforces the Google C++ Style Guide.
+
+```bash
+# Linux / macOS
+pip install cpplint
+
+# Windows (same)
+pip install cpplint
+```
+
+### cppcheck
+
+Static analysis tool for C++.
+
+```bash
+# Ubuntu / Debian
+sudo apt-get install cppcheck
+
+# macOS
+brew install cppcheck
+
+# Windows — download the installer from https://cppcheck.sourceforge.io/
+```
+
+### Pre-commit hook
+
+A pre-commit hook that runs both tools on staged files is provided in `.hooks/pre-commit`. Install it once after cloning:
+
+```bash
+cp .hooks/pre-commit .git/hooks/pre-commit
+```
+
+The hook runs automatically on every `git commit`. It only checks files that are staged, so it adds negligible overhead.
+
 ## Build
 
 ```bash
