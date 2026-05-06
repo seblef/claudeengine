@@ -11,5 +11,7 @@ This folder contains all of the game engine data: shaders, textures, materials, 
 The folder is splitted in subfolders:
 
 * **shaders/glsl** contains OpenGL plain-text shaders source code
+* **materials** contains material YAML files
+* **textures** contains textures
 
 It also contains the `config.yaml` configuration file.
