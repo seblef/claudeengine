@@ -1,0 +1,41 @@
+#!/bin/bash
+# Pre-commit hook: runs cpplint and cppcheck on staged C++ source files.
+# Install: cp .hooks/pre-commit .git/hooks/pre-commit
+
+set -euo pipefail
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(cpp|h)$' || true)
+
+if [ -z "$STAGED" ]; then
+  exit 0
+fi
+
+FAILED=0
+
+echo "--- cpplint ---"
+if ! cpplint $STAGED; then
+  FAILED=1
+fi
+
+echo "--- cppcheck ---"
+if ! cppcheck \
+  --enable=all \
+  --std=c++20 \
+  --language=c++ \
+  --suppress=missingIncludeSystem \
+  --suppress=unusedFunction \
+  --suppress=unmatchedSuppression \
+  --inline-suppr \
+  --error-exitcode=1 \
+  --quiet \
+  -I "$REPO_ROOT/src" \
+  $STAGED; then
+  FAILED=1
+fi
+
+if [ $FAILED -ne 0 ]; then
+  echo ""
+  echo "Pre-commit checks failed. Fix the issues above and re-stage your files."
+  exit 1
+fi
