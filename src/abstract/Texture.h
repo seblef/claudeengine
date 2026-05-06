@@ -26,7 +26,7 @@ class Texture : public core::Resource<std::string, Texture> {
       : core::Resource<std::string, Texture>(name),
         width_(width), height_(height), format_(format), usage_(usage) {}
 
-  virtual ~Texture() = default;
+  ~Texture() override = default;
 
   int           width_;
   int           height_;

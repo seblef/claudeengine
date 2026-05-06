@@ -8,6 +8,7 @@
 #include <fstream>
 #include <loguru.hpp>
 #include <sstream>
+#include <unordered_set>
 
 namespace gldevices {
 
@@ -19,14 +20,56 @@ std::string ReadFile(const std::filesystem::path& path) {
   ss << f.rdbuf();
   return ss.str();
 }
+
+bool ParseIncludePath(const std::string& line, std::string& out_path) {
+  size_t i = 0;
+  while (i < line.size() && std::isspace(static_cast<unsigned char>(line[i]))) ++i;
+  if (line.compare(i, 8, "#include") != 0) return false;
+  i += 8;
+  while (i < line.size() && std::isspace(static_cast<unsigned char>(line[i]))) ++i;
+  if (i >= line.size() || (line[i] != '<' && line[i] != '"')) return false;
+  const char close = (line[i++] == '<') ? '>' : '"';
+  const size_t start = i;
+  while (i < line.size() && line[i] != close) ++i;
+  if (i >= line.size()) return false;
+  out_path = line.substr(start, i - start);
+  return true;
+}
+
+std::string ResolveIncludes(const std::string& source,
+                             const std::filesystem::path& shader_dir,
+                             std::unordered_set<std::string>& included) {
+  std::istringstream in(source);
+  std::ostringstream out;
+  std::string line;
+  while (std::getline(in, line)) {
+    std::string inc_path;
+    if (ParseIncludePath(line, inc_path)) {
+      if (included.insert(inc_path).second) {
+        const std::string inc_src = ReadFile(shader_dir / inc_path);
+        if (inc_src.empty()) {
+          LOG_F(WARNING, "GLShader: include not found: '%s'", inc_path.c_str());
+        } else {
+          out << ResolveIncludes(inc_src, shader_dir, included) << '\n';
+        }
+      }
+    } else {
+      out << line << '\n';
+    }
+  }
+  return out.str();
+}
 }  // namespace
 
 GLShader::GLShader(const std::string& name) : abstract::Shader(name) {
   const std::filesystem::path dir =
       core::Config::GetDataFolder() / "shaders" / "glsl";
 
-  const std::string vert_src = ReadFile(dir / (name + "_vs.glsl"));
-  const std::string frag_src = ReadFile(dir / (name + "_ps.glsl"));
+  std::unordered_set<std::string> vert_included, frag_included;
+  const std::string vert_src =
+      ResolveIncludes(ReadFile(dir / (name + "_vs.glsl")), dir, vert_included);
+  const std::string frag_src =
+      ResolveIncludes(ReadFile(dir / (name + "_ps.glsl")), dir, frag_included);
 
   if (vert_src.empty() || frag_src.empty()) {
     LOG_F(ERROR, "GLShader '%s': failed to read source files from '%s'",
