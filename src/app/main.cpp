@@ -3,7 +3,6 @@
 
 #include "abstract/PrimitiveType.h"
 #include "abstract/Shader.h"
-#include "abstract/Texture.h"
 #include "abstract/VideoDevice.h"
 #include "core/AppConfig.h"
 #include "core/Camera.h"
@@ -20,6 +19,7 @@
 #include "core/Vertex3D.h"
 #include "gldevices/GLDevices.h"
 #include "renderer/GeometryData.h"
+#include "renderer/Material.h"
 #include "renderer/Renderer.h"
 
 #include <chrono>
@@ -53,8 +53,8 @@ int main(int argc, char* argv[]) {
   video->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
   video->SetIndexType(abstract::IndexType::kUInt16);
 
-  abstract::Shader*  shader = video->CreateShader("textured_mesh");
-  abstract::Texture* tex    = video->CreateTexture("demo.png");
+  abstract::Shader* shader = video->CreateShader("textured_mesh");
+  renderer::Material material("demo.yaml", video);
 
   // ---- Cube geometry ---------------------------------------------------------
   // 24 unique vertices (4 per face × 6 faces), CCW winding viewed from outside.
@@ -215,12 +215,11 @@ int main(int argc, char* argv[]) {
     renderer.Update(elapsed_time, &camera);
 
     if (shader) shader->Activate();
-    if (tex)    tex->Bind(0);
+    material.Set();
     geo.Set();
     video->RenderIndexed(geo.GetNumIndices());
   }
 
-  if (tex)    tex->Release();
   if (shader) shader->Release();
 
   LOG_F(INFO, "ClaudeEngine shutting down");
