@@ -26,6 +26,8 @@ if ! cppcheck \
   --suppress=missingIncludeSystem \
   --suppress=unusedFunction \
   --suppress=unmatchedSuppression \
+  --suppress=normalCheckLevelMaxBranches \
+  --suppress=checkersReport \
   --inline-suppr \
   --error-exitcode=1 \
   --quiet \

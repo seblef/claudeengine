@@ -19,7 +19,7 @@ class Shader : public core::Resource<std::string, Shader> {
  protected:
   explicit Shader(const std::string& name)
       : core::Resource<std::string, Shader>(name) {}
-  virtual ~Shader() = default;
+  ~Shader() override = default;
 };
 
 }  // namespace abstract

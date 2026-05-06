@@ -2,10 +2,7 @@
 // Passes clip-space position, vertex colour and UV to the fragment stage.
 
 #version 460 core
-
-layout(location = 0) in vec3 in_position;
-layout(location = 1) in vec4 in_color;
-layout(location = 2) in vec2 in_uv;
+#include <layouts/vertex_2d.glsl>
 
 out vec4 v_color;
 out vec2 v_uv;
