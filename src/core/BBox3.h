@@ -141,8 +141,14 @@ class BBox3 {
   // Returns the squared distance from point `p` to the nearest point on (or in) this box.
   [[nodiscard]] inline float SquaredDistance(const Vec3f& p) const {
     auto axis_sq = [](float v, float lo, float hi) -> float {
-      if (v < lo) { const float d = lo - v; return d * d; }
-      if (v > hi) { const float d = v - hi; return d * d; }
+      if (v < lo) {
+        const float d = lo - v;
+        return d * d;
+      }
+      if (v > hi) {
+        const float d = v - hi;
+        return d * d;
+      }
       return 0.f;
     };
     return axis_sq(p.x, min_.x, max_.x) +
