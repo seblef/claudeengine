@@ -13,16 +13,18 @@ namespace core {
 // HasEvents() / Consume() to drain them one at a time in arrival order.
 //
 // Usage:
+//   new EventManager();
 //   EventManager::Instance().Publish(Event::MouseMoved(x, y));
 //
 //   while (EventManager::Instance().HasEvents()) {
 //     Event e = EventManager::Instance().Consume();
 //     // handle e
 //   }
+//   EventManager::Shutdown();
 class EventManager : public Singleton<EventManager> {
-  friend class Singleton<EventManager>;
-
  public:
+  EventManager() = default;
+
   // Appends event to the back of the queue.
   inline void Publish(const Event& event) { events_.push(event); }
 
@@ -38,7 +40,6 @@ class EventManager : public Singleton<EventManager> {
   }
 
  private:
-  EventManager() = default;
   std::queue<Event> events_;
 };
 

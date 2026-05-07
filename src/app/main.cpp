@@ -42,6 +42,7 @@ int main(int argc, char* argv[]) {
   LOG_F(INFO, "ClaudeEngine starting up");
   LOG_F(INFO, "Data folder: %s", core::Config::GetDataFolder().c_str());
   core::AppConfig::Init(core::Config::GetDataFolder() / "config.yaml");
+  new core::EventManager();
 
   // TODO(#2): Instantiate and run the Engine
 
@@ -104,7 +105,7 @@ int main(int argc, char* argv[]) {
 
   renderer::GeometryData geo(video, 24, verts, 12, indices);
 
-  renderer::Renderer renderer(video);
+  new renderer::Renderer(video);
 
   // ---- Camera ---------------------------------------------------------------
   core::Camera camera(core::ProjectionType::kPerspective,
@@ -207,8 +208,8 @@ int main(int argc, char* argv[]) {
     video->BeginFrame();
     video->ClearRenderTargets(core::Color::kBlack);
 
-    renderer.Update(elapsed_time, &camera);
-    renderer.SetRenderableInfos(world);
+    renderer::Renderer::Instance().Update(elapsed_time, &camera);
+    renderer::Renderer::Instance().SetRenderableInfos(world);
 
     if (shader) shader->Activate();
     material.Set();
@@ -217,6 +218,8 @@ int main(int argc, char* argv[]) {
   }
 
   if (shader) shader->Release();
+  renderer::Renderer::Shutdown();
+  core::EventManager::Shutdown();
 
   LOG_F(INFO, "ClaudeEngine shutting down");
   core::Logger::Shutdown();
