@@ -1,6 +1,7 @@
 #include "renderer/Renderer.h"
 
 #include "abstract/BufferUsage.h"
+#include "renderer/MeshRenderer.h"
 #include "renderer/RenderableInfos.h"
 #include "renderer/SceneInfos.h"
 
@@ -18,6 +19,11 @@ Renderer::Renderer(abstract::VideoDevice* video) : video_(video) {
       kRenderableInfosFloat4s, kRenderableInfosSlot, abstract::BufferUsage::kDynamic);
   scene_infos_cb_ = video_->CreateConstantBuffer(
       kSceneInfosFloat4s, kSceneInfosSlot, abstract::BufferUsage::kDynamic);
+  new MeshRenderer(video_);
+}
+
+Renderer::~Renderer() {
+  MeshRenderer::Shutdown();
 }
 
 void Renderer::SetCamera(const core::Camera* camera) {
@@ -31,6 +37,9 @@ void Renderer::Update(float time, const core::Camera* camera) {
   renderable_infos_cb_->Bind();
   scene_infos_cb_->Bind();
   if (camera_) FillSceneInfos();
+  MeshRenderer::Instance().PrepareRender();
+  MeshRenderer::Instance().Render();
+  MeshRenderer::Instance().EndRender();
 }
 
 void Renderer::SetRenderableInfos(const core::Mat4f& world_matrix) {

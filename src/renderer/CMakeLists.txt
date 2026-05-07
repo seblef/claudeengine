@@ -1,6 +1,9 @@
 add_library(renderer STATIC
     GeometryData.cpp
     Material.cpp
+    Mesh.cpp
+    MeshInstance.cpp
+    MeshRenderer.cpp
     Renderable.cpp
     Renderer.cpp
 )
