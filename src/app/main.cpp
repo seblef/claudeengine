@@ -2,7 +2,6 @@
 // Responsibilities (src/CLAUDE.md): load configuration, run the engine.
 
 #include "abstract/PrimitiveType.h"
-#include "abstract/Shader.h"
 #include "abstract/VideoDevice.h"
 #include "core/AppConfig.h"
 #include "core/Camera.h"
@@ -20,6 +19,8 @@
 #include "gldevices/GLDevices.h"
 #include "renderer/GeometryData.h"
 #include "renderer/Material.h"
+#include "renderer/Mesh.h"
+#include "renderer/MeshInstance.h"
 #include "renderer/Renderer.h"
 
 #include <chrono>
@@ -54,7 +55,6 @@ int main(int argc, char* argv[]) {
   video->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
   video->SetIndexType(abstract::IndexType::kUInt16);
 
-  abstract::Shader* shader = video->CreateShader("textured_mesh");
   renderer::Material material("demo.yaml", video);
 
   // ---- Cube geometry ---------------------------------------------------------
@@ -106,6 +106,9 @@ int main(int argc, char* argv[]) {
   renderer::GeometryData geo(video, 24, verts, 12, indices);
 
   new renderer::Renderer(video);
+
+  renderer::Mesh         mesh(&geo, &material);
+  renderer::MeshInstance instance(&mesh, core::Mat4f::kIdentity, false);
 
   // ---- Camera ---------------------------------------------------------------
   core::Camera camera(core::ProjectionType::kPerspective,
@@ -208,16 +211,11 @@ int main(int argc, char* argv[]) {
     video->BeginFrame();
     video->ClearRenderTargets(core::Color::kBlack);
 
+    instance.SetWorldMatrix(world);
+    instance.Enqueue();
     renderer::Renderer::Instance().Update(elapsed_time, &camera);
-    renderer::Renderer::Instance().SetRenderableInfos(world);
-
-    if (shader) shader->Activate();
-    material.Set();
-    geo.Set();
-    video->RenderIndexed(geo.GetNumIndices());
   }
 
-  if (shader) shader->Release();
   renderer::Renderer::Shutdown();
   core::EventManager::Shutdown();
 

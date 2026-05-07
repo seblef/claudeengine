@@ -22,6 +22,7 @@ class Renderer : public core::Singleton<Renderer> {
   // Creates the renderable infos (slot 1) and scene infos (slot 2) constant
   // buffers. video must outlive this Renderer.
   explicit Renderer(abstract::VideoDevice* video);
+  ~Renderer();
 
   Renderer(const Renderer&)            = delete;
   Renderer& operator=(const Renderer&) = delete;
