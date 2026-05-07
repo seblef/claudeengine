@@ -104,10 +104,6 @@ int main(int argc, char* argv[]) {
 
   renderer::GeometryData geo(video, 24, verts, 12, indices);
 
-  // ---- Constant buffers -----------------------------------------------------
-  // Slot 0: world matrix (cube rotation). Slot 1: per-frame SceneInfos (Renderer).
-  auto world_cb = video->CreateConstantBuffer(4, 0);
-  world_cb->Bind();
   renderer::Renderer renderer(video);
 
   // ---- Camera ---------------------------------------------------------------
@@ -211,8 +207,8 @@ int main(int argc, char* argv[]) {
     video->BeginFrame();
     video->ClearRenderTargets(core::Color::kBlack);
 
-    world_cb->Fill(world.Data());
     renderer.Update(elapsed_time, &camera);
+    renderer.SetRenderableInfos(world);
 
     if (shader) shader->Activate();
     material.Set();

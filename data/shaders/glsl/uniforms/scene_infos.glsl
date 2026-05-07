@@ -9,7 +9,7 @@
 //   [336] time             float
 //   [340] pad0_            float (alignment gap before inv_screen_size)
 //   [344] inv_screen_size  vec2
-layout(std140, row_major, binding = 1) uniform SceneInfosBlock {
+layout(std140, row_major, binding = 2) uniform SceneInfosBlock {
     mat4  view_proj;
     mat4  inv_view_proj;
     mat4  inv_proj;
