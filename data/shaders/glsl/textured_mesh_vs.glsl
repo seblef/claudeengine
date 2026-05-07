@@ -1,15 +1,12 @@
 // Vertex shader for textured 3D geometry.
-// UBO binding 0: world matrix (row-major Mat4f).
-// UBO binding 1: per-frame scene infos (renderer::SceneInfos, 352 bytes, std140 row-major).
+// UBO binding 1: per-renderable infos (renderer::RenderableInfos) — world matrix.
+// UBO binding 2: per-frame scene infos (renderer::SceneInfos, 352 bytes, std140 row-major).
 //   Only view_proj is consumed here; remaining fields are available for other shaders.
 
 #version 460 core
 #include <layouts/vertex_3d.glsl>
 
-layout(std140, row_major, binding = 0) uniform WorldBlock {
-    mat4 world;
-};
-
+#include <uniforms/renderable_infos.glsl>
 #include <uniforms/scene_infos.glsl>
 
 out vec2 v_uv;
