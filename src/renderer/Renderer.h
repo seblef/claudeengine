@@ -6,19 +6,18 @@
 #include "abstract/VideoDevice.h"
 #include "core/Camera.h"
 #include "core/Mat4f.h"
+#include "core/Singleton.h"
 
 namespace renderer {
 
-// Owns and drives the per-frame constant buffers for the renderer.
+// Singleton renderer. Owns the per-frame constant buffers:
+//   Slot 1 (RenderableInfos): per-object data — currently the world matrix.
+//     Upload via SetRenderableInfos() before each draw call.
+//   Slot 2 (SceneInfos): per-frame data — camera matrices, eye position, time.
+//     Filled automatically by Update() each frame.
 //
-// Slot 1 (RenderableInfos): per-object data — currently the world matrix.
-//   Upload via SetRenderableInfos() before each draw call.
-// Slot 2 (SceneInfos): per-frame data — camera matrices, eye position, time.
-//   Filled automatically by Update() each frame.
-//
-// Call Update() once per frame after camera.UpdateMatrices() and before any
-// draw calls.
-class Renderer {
+// Lifecycle: new Renderer(video) → Instance() calls → Shutdown().
+class Renderer : public core::Singleton<Renderer> {
  public:
   // Creates the renderable infos (slot 1) and scene infos (slot 2) constant
   // buffers. video must outlive this Renderer.
