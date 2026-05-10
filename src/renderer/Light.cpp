@@ -4,11 +4,12 @@
 
 namespace renderer {
 
-Light::Light(const core::Color& color, float intensity,
+Light::Light(LightType type, const core::Color& color, float intensity,
              const core::BBox3& local_bbox,
              const core::Mat4f& world_matrix,
              bool always_visible)
     : Renderable(local_bbox, world_matrix, always_visible),
+      type_(type),
       color_(color),
       intensity_(intensity) {}
 

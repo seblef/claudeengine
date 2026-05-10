@@ -24,7 +24,6 @@ class CircleSpotLight : public Light {
                   const core::Vec3f& direction,
                   const core::Mat4f& world_matrix);
 
-  [[nodiscard]] LightType   GetType()         const override;
   [[nodiscard]] core::Mat4f GetVolumeMatrix() const override;
 
   [[nodiscard]] float GetInnerAngle()              const { return inner_angle_; }

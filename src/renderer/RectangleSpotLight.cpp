@@ -23,7 +23,7 @@ RectangleSpotLight::RectangleSpotLight(const core::Color& color, float intensity
                                        float h_angle, float v_angle, float range,
                                        const core::Vec3f& direction,
                                        const core::Mat4f& world_matrix)
-    : Light(color, intensity,
+    : Light(LightType::kRectSpot, color, intensity,
             core::BBox3({-range, -range, -range}, {range, range, range}),
             world_matrix,
             /*always_visible=*/false),
@@ -31,10 +31,6 @@ RectangleSpotLight::RectangleSpotLight(const core::Color& color, float intensity
       v_angle_(v_angle),
       range_(range),
       direction_(direction) {}
-
-LightType RectangleSpotLight::GetType() const {
-  return LightType::kRectSpot;
-}
 
 core::Mat4f RectangleSpotLight::GetVolumeMatrix() const {
   const core::Mat4f& wm  = GetWorldMatrix();

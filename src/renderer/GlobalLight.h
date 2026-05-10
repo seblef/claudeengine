@@ -20,7 +20,6 @@ class GlobalLight : public Light {
   GlobalLight(const core::Color& color, float intensity,
               const core::Vec3f& ambient_color, const core::Vec3f& direction);
 
-  [[nodiscard]] LightType   GetType()         const override;
   [[nodiscard]] core::Mat4f GetVolumeMatrix() const override;
 
   [[nodiscard]] const core::Vec3f& GetAmbientColor() const { return ambient_color_; }

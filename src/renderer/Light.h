@@ -26,7 +26,7 @@ class Light : public Renderable {
  public:
   // color: RGB light color; intensity: brightness multiplier.
   // local_bbox and world_matrix are forwarded to Renderable.
-  Light(const core::Color& color, float intensity,
+  Light(LightType type, const core::Color& color, float intensity,
         const core::BBox3& local_bbox,
         const core::Mat4f& world_matrix,
         bool always_visible);
@@ -37,7 +37,7 @@ class Light : public Renderable {
   void Enqueue() override;
 
   // Returns the discriminator identifying this light's concrete type.
-  [[nodiscard]] virtual LightType GetType() const = 0;
+  [[nodiscard]] LightType GetType() const { return type_; }
 
   // Returns the transform that positions, orients, and scales the light volume
   // mesh.  Called by LightRenderer before each draw call.
@@ -50,6 +50,8 @@ class Light : public Renderable {
   void SetIntensity(float intensity)      { intensity_ = intensity; }
 
  private:
+  // cppcheck-suppress unusedStructMember
+  LightType   type_;
   // cppcheck-suppress unusedStructMember
   core::Color color_;
   // cppcheck-suppress unusedStructMember

@@ -26,7 +26,7 @@ CircleSpotLight::CircleSpotLight(const core::Color& color, float intensity,
                                  float inner_angle, float outer_angle,
                                  float range, const core::Vec3f& direction,
                                  const core::Mat4f& world_matrix)
-    : Light(color, intensity,
+    : Light(LightType::kCircleSpot, color, intensity,
             // Conservative sphere AABB of radius `range` in local space.
             core::BBox3({-range, -range, -range}, {range, range, range}),
             world_matrix,
@@ -35,10 +35,6 @@ CircleSpotLight::CircleSpotLight(const core::Color& color, float intensity,
       outer_angle_(outer_angle),
       range_(range),
       direction_(direction) {}
-
-LightType CircleSpotLight::GetType() const {
-  return LightType::kCircleSpot;
-}
 
 core::Mat4f CircleSpotLight::GetVolumeMatrix() const {
   const core::Mat4f& wm  = GetWorldMatrix();

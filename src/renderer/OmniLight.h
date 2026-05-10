@@ -18,7 +18,6 @@ class OmniLight : public Light {
   OmniLight(const core::Color& color, float intensity, float radius,
             const core::Mat4f& world_matrix);
 
-  [[nodiscard]] LightType   GetType()         const override;
   [[nodiscard]] core::Mat4f GetVolumeMatrix() const override;
 
   [[nodiscard]] float GetRadius() const { return radius_; }
