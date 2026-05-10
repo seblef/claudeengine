@@ -6,6 +6,8 @@
 #include "gldevices/GLConstantBuffer.h"
 #include "gldevices/GLGeometryBuffer.h"
 #include "gldevices/GLIndexBuffer.h"
+#include "gldevices/GLRenderTarget.h"
+#include "gldevices/GLRenderTargetGroup.h"
 #include "gldevices/GLShader.h"
 #include "gldevices/GLTexture.h"
 #include "gldevices/GLVertexBuffer.h"
@@ -132,6 +134,88 @@ abstract::Texture* GLVideoDevice::CreateTexture(
     return nullptr;
   }
   return tex;
+}
+
+void GLVideoDevice::SetColorWriteEnabled(bool enabled) {
+  const GLboolean m = enabled ? GL_TRUE : GL_FALSE;
+  glColorMask(m, m, m, m);
+}
+
+void GLVideoDevice::SetFaceCulling(abstract::CullFace mode) {
+  if (mode == abstract::CullFace::kNone) {
+    glDisable(GL_CULL_FACE);
+    return;
+  }
+  glEnable(GL_CULL_FACE);
+  glCullFace(mode == abstract::CullFace::kFront ? GL_FRONT : GL_BACK);
+}
+
+void GLVideoDevice::SetStencilTestEnabled(bool enabled) {
+  if (enabled) {
+    glEnable(GL_STENCIL_TEST);
+  } else {
+    glDisable(GL_STENCIL_TEST);
+  }
+}
+
+namespace {
+
+GLenum ToGLCompareFunc(abstract::CompareFunc func) {
+  switch (func) {
+    case abstract::CompareFunc::kAlways:       return GL_ALWAYS;
+    case abstract::CompareFunc::kNever:        return GL_NEVER;
+    case abstract::CompareFunc::kEqual:        return GL_EQUAL;
+    case abstract::CompareFunc::kNotEqual:     return GL_NOTEQUAL;
+    case abstract::CompareFunc::kLess:         return GL_LESS;
+    case abstract::CompareFunc::kGreater:      return GL_GREATER;
+    case abstract::CompareFunc::kLessEqual:    return GL_LEQUAL;
+    case abstract::CompareFunc::kGreaterEqual: return GL_GEQUAL;
+  }
+  return GL_ALWAYS;
+}
+
+GLenum ToGLStencilOp(abstract::StencilOp op) {
+  switch (op) {
+    case abstract::StencilOp::kKeep:     return GL_KEEP;
+    case abstract::StencilOp::kZero:     return GL_ZERO;
+    case abstract::StencilOp::kIncrWrap: return GL_INCR_WRAP;
+    case abstract::StencilOp::kDecrWrap: return GL_DECR_WRAP;
+  }
+  return GL_KEEP;
+}
+
+}  // namespace
+
+void GLVideoDevice::SetStencilFunc(abstract::CompareFunc func, int ref,
+                                   unsigned mask) {
+  glStencilFunc(ToGLCompareFunc(func), ref, mask);
+}
+
+void GLVideoDevice::SetStencilOp(abstract::Face face,
+                                 abstract::StencilOp sfail,
+                                 abstract::StencilOp dpfail,
+                                 abstract::StencilOp dppass) {
+  const GLenum gl_face = (face == abstract::Face::kFront) ? GL_FRONT : GL_BACK;
+  glStencilOpSeparate(gl_face, ToGLStencilOp(sfail),
+                      ToGLStencilOp(dpfail), ToGLStencilOp(dppass));
+}
+
+void GLVideoDevice::ClearStencil(int val) {
+  glClearStencil(val);
+  glClear(GL_STENCIL_BUFFER_BIT);
+}
+
+std::unique_ptr<abstract::RenderTarget> GLVideoDevice::CreateRenderTarget(
+    int width, int height, abstract::TextureFormat format) {
+  return std::make_unique<GLRenderTarget>(width, height, format);
+}
+
+std::unique_ptr<abstract::RenderTargetGroup>
+GLVideoDevice::CreateRenderTargetGroup(
+    std::span<abstract::RenderTarget*> color_targets,
+    abstract::RenderTarget* depth_stencil_target) {
+  return std::make_unique<GLRenderTargetGroup>(color_targets,
+                                               depth_stencil_target);
 }
 
 }  // namespace gldevices
