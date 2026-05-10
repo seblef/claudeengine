@@ -40,6 +40,11 @@ class ObjectRenderer {
   // per instance.
   virtual void Render() = 0;
 
+  // Additively draws emissive instances into the HDR render target.
+  // Default is a no-op; override in subclasses that contribute to the emissive
+  // pass. Must be called after Render() and before EndRender().
+  virtual void RenderEmissive() {}
+
   // Clears the instance list. Called by the global renderer after draw.
   void EndRender();
 

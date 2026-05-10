@@ -1,6 +1,7 @@
 #include "renderer/Renderer.h"
 
 #include "abstract/BufferUsage.h"
+#include "core/Color.h"
 #include "renderer/MaterialInfos.h"
 #include "renderer/MeshRenderer.h"
 #include "renderer/RenderableInfos.h"
@@ -24,6 +25,12 @@ Renderer::Renderer(abstract::VideoDevice* video) : video_(video) {
       kSceneInfosFloat4s, kSceneInfosSlot, abstract::BufferUsage::kDynamic);
   material_infos_cb_ = video_->CreateConstantBuffer(
       kMaterialInfosFloat4s, kMaterialInfosSlot, abstract::BufferUsage::kDynamic);
+
+  const int w = video_->GetWidth();
+  const int h = video_->GetHeight();
+  gbuffer_.Create(video_, w, h);
+  emissive_fbo_.Create(video_, w, h, gbuffer_.GetDepthRT());
+
   new MeshRenderer(video_);
 }
 
@@ -43,15 +50,26 @@ void Renderer::Update(float time, const core::Camera* camera) {
   scene_infos_cb_->Bind();
   material_infos_cb_->Bind();
   if (camera_) FillSceneInfos();
+
+  // Geometry pass: fill G-buffer albedo, normal, specular MRTs.
+  gbuffer_.BindForWriting();
+  video_->ClearRenderTargets(core::Color::kBlack);
+  video_->SetDepthTestEnabled(true);
   MeshRenderer::Instance().PrepareRender();
   MeshRenderer::Instance().Render();
   MeshRenderer::Instance().EndRender();
+  gbuffer_.UnbindForWriting();
 }
 
 void Renderer::SetRenderableInfos(const core::Mat4f& world_matrix) {
   RenderableInfos ri;
   ri.world = world_matrix;
   renderable_infos_cb_->Fill(&ri);
+}
+
+void Renderer::OnResize(int w, int h) {
+  gbuffer_.Resize(video_, w, h);
+  emissive_fbo_.Resize(video_, w, h, gbuffer_.GetDepthRT());
 }
 
 void Renderer::FillSceneInfos() {
