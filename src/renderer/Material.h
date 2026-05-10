@@ -1,7 +1,6 @@
 #pragma once
 
 #include <array>
-#include <memory>
 #include <string>
 
 #include <yaml-cpp/yaml.h>
@@ -18,9 +17,9 @@ namespace renderer {
 // Surface material: texture slots plus per-material Blinn-Phong color properties.
 // Unspecified slots fall back to default textures from data/textures/default/.
 //
-// The material owns its own ConstantBuffer (UBO slot 3) for color data.
-// Calling Set() binds all textures and uploads color properties in one step,
-// so the caller does not need to manage any separate constant buffer.
+// The material does not own any GPU constant buffer. Callers pass the shared
+// material-infos CB (owned by Renderer, slot 3) to Set(), which binds all
+// textures and fills the CB atomically.
 //
 // Textures are reference-counted: the Material calls AddRef on construction
 // (or SetTexture) and Release on destruction.
@@ -45,10 +44,10 @@ class Material {
   Material(const Material&) = delete;
   Material& operator=(const Material&) = delete;
 
-  // Binds all textures to their corresponding texture units and uploads
-  // color properties (diffuse_color, emissive_color, ambient_color, shininess)
-  // to the material constant buffer (UBO slot 3).
-  void Set() const;
+  // Binds all textures to their corresponding texture units and fills
+  // colors_cb with diffuse_color, emissive_color, ambient_color, shininess.
+  // colors_cb is the shared material-infos buffer owned by Renderer (slot 3).
+  void Set(abstract::ConstantBuffer* colors_cb) const;
 
   // Returns true if this material contributes to the emissive pass:
   // emissive_color.rgb or ambient_color.rgb is non-zero.
@@ -73,7 +72,6 @@ class Material {
  private:
   void LoadDefaults(abstract::VideoDevice* video);
   void LoadFromYaml(const YAML::Node& yaml, abstract::VideoDevice* video);
-  void InitColorsCB(abstract::VideoDevice* video);
 
   // cppcheck-suppress unusedStructMember
   TextureArray textures_{};
@@ -84,8 +82,6 @@ class Material {
   // cppcheck-suppress unusedStructMember
   core::Color  ambient_color_  = core::Color::kTransparent;
   float        shininess_      = 32.f;
-  // cppcheck-suppress unusedStructMember
-  std::unique_ptr<abstract::ConstantBuffer> colors_cb_;
 };
 
 }  // namespace renderer

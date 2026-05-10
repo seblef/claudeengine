@@ -47,6 +47,12 @@ class Renderer : public core::Singleton<Renderer> {
   // Call once per draw before issuing geometry calls.
   void SetRenderableInfos(const core::Mat4f& world_matrix);
 
+  // Returns the shared material-infos CB (slot 3). Passed to Material::Set()
+  // so each material can fill colors without owning its own CB.
+  [[nodiscard]] abstract::ConstantBuffer* GetMaterialInfosCB() const {
+    return material_infos_cb_.get();
+  }
+
  private:
   void FillSceneInfos();
 
@@ -56,6 +62,8 @@ class Renderer : public core::Singleton<Renderer> {
   float                                     time_   = 0.f;
   std::unique_ptr<abstract::ConstantBuffer> renderable_infos_cb_;
   std::unique_ptr<abstract::ConstantBuffer> scene_infos_cb_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<abstract::ConstantBuffer> material_infos_cb_;
 };
 
 }  // namespace renderer

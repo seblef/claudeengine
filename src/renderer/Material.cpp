@@ -1,6 +1,5 @@
 #include "renderer/Material.h"
 
-#include "abstract/BufferUsage.h"
 #include "core/Config.h"
 #include "core/YamlUtils.h"
 #include "renderer/MaterialInfos.h"
@@ -27,9 +26,6 @@ const std::pair<const char*, TextureSlot> kSlotMap[] = {
     {"environment", TextureSlot::kEnvironment},
 };
 
-constexpr int kMaterialInfosSlot   = 3;
-constexpr int kMaterialInfosFloat4s = sizeof(MaterialInfos) / 16;  // 64 / 16 = 4
-
 core::Color ParseColor(const YAML::Node& node) {
   const auto v = node.as<std::vector<float>>();
   if (v.size() >= 4) return {v[0], v[1], v[2], v[3]};
@@ -42,7 +38,6 @@ core::Color ParseColor(const YAML::Node& node) {
 
 Material::Material(abstract::VideoDevice* video) {
   LoadDefaults(video);
-  InitColorsCB(video);
 }
 
 Material::Material(const MaterialDesc& desc, abstract::VideoDevice* video) {
@@ -60,7 +55,6 @@ Material::Material(const MaterialDesc& desc, abstract::VideoDevice* video) {
   emissive_color_ = desc.GetEmissiveColor();
   ambient_color_  = desc.GetAmbientColor();
   shininess_      = desc.GetShininess();
-  InitColorsCB(video);
 }
 
 Material::Material(const std::string& name, abstract::VideoDevice* video) {
@@ -72,12 +66,10 @@ Material::Material(const std::string& name, abstract::VideoDevice* video) {
     LOG_F(ERROR, "Material '%s': load error: %s", name.c_str(), e.what());
     LoadDefaults(video);
   }
-  InitColorsCB(video);
 }
 
 Material::Material(const YAML::Node& yaml, abstract::VideoDevice* video) {
   LoadFromYaml(yaml, video);
-  InitColorsCB(video);
 }
 
 Material::~Material() {
@@ -86,7 +78,7 @@ Material::~Material() {
   }
 }
 
-void Material::Set() const {
+void Material::Set(abstract::ConstantBuffer* colors_cb) const {
   for (int i = 0; i < kTextureSlotCount; ++i) {
     if (textures_[i]) textures_[i]->Bind(i);
   }
@@ -96,8 +88,7 @@ void Material::Set() const {
   mi.emissive_color = emissive_color_;
   mi.ambient_color  = ambient_color_;
   mi.shininess      = shininess_;
-  colors_cb_->Fill(&mi);
-  colors_cb_->Bind();
+  colors_cb->Fill(&mi);
 }
 
 bool Material::IsEmissive() const {
@@ -158,11 +149,6 @@ void Material::LoadFromYaml(const YAML::Node& yaml, abstract::VideoDevice* video
     if (c["ambient"])   ambient_color_  = ParseColor(c["ambient"]);
     if (c["shininess"]) shininess_      = c["shininess"].as<float>();
   }
-}
-
-void Material::InitColorsCB(abstract::VideoDevice* video) {
-  colors_cb_ = video->CreateConstantBuffer(
-      kMaterialInfosFloat4s, kMaterialInfosSlot, abstract::BufferUsage::kDynamic);
 }
 
 }  // namespace renderer

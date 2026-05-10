@@ -19,7 +19,7 @@ void MeshRenderer::Render() {
     Material* mat  = mesh->GetMaterial();
 
     if (mat != current_material) {
-      mat->Set();
+      mat->Set(Renderer::Instance().GetMaterialInfosCB());
       current_material = mat;
     }
 
