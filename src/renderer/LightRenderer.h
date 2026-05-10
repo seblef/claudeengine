@@ -15,9 +15,9 @@ namespace renderer {
 // Singleton batch renderer for Light instances.
 //
 // Holds four pre-built volume meshes (unit quad, unit sphere, unit cone,
-// unit pyramid) and four pixel shaders (one per LightType), sharing one
-// vertex shader.  Instances are sorted by type before rendering so shader
-// switches happen as rarely as possible.
+// unit pyramid) and four shaders (one per LightType, each bundling its own
+// VS and PS).  Instances are sorted by type before rendering so shader and
+// geometry switches happen as rarely as possible.
 //
 // Rendering strategy:
 //   GlobalLight:
@@ -56,19 +56,15 @@ class LightRenderer : public core::Singleton<LightRenderer> {
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice* video_;
 
-  // Shared vertex shader (positions the volume mesh in clip space).
+  // One shader per light type (each bundles its own VS + PS).
   // cppcheck-suppress unusedStructMember
-  abstract::Shader* vs_;
-
-  // One pixel shader per light type.
+  abstract::Shader* global_shader_;
   // cppcheck-suppress unusedStructMember
-  abstract::Shader* global_ps_;
+  abstract::Shader* omni_shader_;
   // cppcheck-suppress unusedStructMember
-  abstract::Shader* omni_ps_;
+  abstract::Shader* circle_spot_shader_;
   // cppcheck-suppress unusedStructMember
-  abstract::Shader* circle_spot_ps_;
-  // cppcheck-suppress unusedStructMember
-  abstract::Shader* rect_spot_ps_;
+  abstract::Shader* rect_spot_shader_;
 
   // Per-light constant buffer bound to UBO slot 4.
   std::unique_ptr<abstract::ConstantBuffer> light_infos_cb_;

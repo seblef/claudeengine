@@ -203,11 +203,10 @@ void FillInfos(const Light& light, LightInfos* infos) {
 
 LightRenderer::LightRenderer(abstract::VideoDevice* video)
     : video_(video),
-      vs_(video->CreateShader("lighting/light_pass_vs")),
-      global_ps_(video->CreateShader("lighting/global_light_ps")),
-      omni_ps_(video->CreateShader("lighting/omni_light_ps")),
-      circle_spot_ps_(video->CreateShader("lighting/circle_spot_ps")),
-      rect_spot_ps_(video->CreateShader("lighting/rect_spot_ps")),
+      global_shader_(video->CreateShader("lighting/global_light")),
+      omni_shader_(video->CreateShader("lighting/omni_light")),
+      circle_spot_shader_(video->CreateShader("lighting/circle_spot")),
+      rect_spot_shader_(video->CreateShader("lighting/rect_spot")),
       light_infos_cb_(video->CreateConstantBuffer(
           kLightInfosFloat4s, kLightInfosSlot, abstract::BufferUsage::kDynamic)),
       quad_(BuildQuad(video)),
@@ -216,11 +215,10 @@ LightRenderer::LightRenderer(abstract::VideoDevice* video)
       pyramid_(BuildPyramid(video)) {}
 
 LightRenderer::~LightRenderer() {
-  vs_->Release();
-  global_ps_->Release();
-  omni_ps_->Release();
-  circle_spot_ps_->Release();
-  rect_spot_ps_->Release();
+  global_shader_->Release();
+  omni_shader_->Release();
+  circle_spot_shader_->Release();
+  rect_spot_shader_->Release();
 }
 
 void LightRenderer::AddLight(Light* light) {
@@ -246,17 +244,12 @@ void LightRenderer::RenderGlobalLights() {
   video_->SetStencilTestEnabled(false);
   video_->SetFaceCulling(abstract::CullFace::kNone);
 
+  // Shader and geometry are the same for all GlobalLights — activate once.
+  global_shader_->Activate();
   quad_->Set();
-
-  const abstract::Shader* current_ps = nullptr;
 
   for (const Light* light : instances_) {
     if (light->GetType() != LightType::kGlobal) break;
-
-    if (current_ps != global_ps_) {
-      global_ps_->Activate();
-      current_ps = global_ps_;
-    }
 
     LightInfos infos;
     FillInfos(*light, &infos);
@@ -267,33 +260,49 @@ void LightRenderer::RenderGlobalLights() {
 }
 
 void LightRenderer::RenderLocalLights() {
+  // Instances are sorted by type, so shader and geometry only change at type
+  // boundaries.  Track the current bindings to avoid redundant state switches.
+  const abstract::Shader* current_shader = nullptr;
+  const GeometryData*     current_geo    = nullptr;
+
   for (const Light* light : instances_) {
     if (light->GetType() == LightType::kGlobal) continue;
 
-    const GeometryData* geo = nullptr;
-    abstract::Shader*    ps = nullptr;
+    abstract::Shader*   shader = nullptr;
+    const GeometryData* geo    = nullptr;
 
     switch (light->GetType()) {
       case LightType::kOmni:
-        geo = sphere_.get();
-        ps  = omni_ps_;
+        shader = omni_shader_;
+        geo    = sphere_.get();
         break;
       case LightType::kCircleSpot:
-        geo = cone_.get();
-        ps  = circle_spot_ps_;
+        shader = circle_spot_shader_;
+        geo    = cone_.get();
         break;
       case LightType::kRectSpot:
-        geo = pyramid_.get();
-        ps  = rect_spot_ps_;
+        shader = rect_spot_shader_;
+        geo    = pyramid_.get();
         break;
       default:
         continue;
     }
 
+    // Fill per-light constant buffer before both sub-passes.
     LightInfos infos;
     FillInfos(*light, &infos);
     light_infos_cb_->Fill(&infos);
     Renderer::Instance().SetRenderableInfos(light->GetVolumeMatrix());
+
+    // Switch shader and geometry only when the light type changes.
+    if (shader != current_shader) {
+      shader->Activate();
+      current_shader = shader;
+    }
+    if (geo != current_geo) {
+      geo->Set();
+      current_geo = geo;
+    }
 
     // Sub-pass A: mark pixels inside the light volume in the stencil buffer.
     video_->ClearStencil(0);
@@ -310,16 +319,13 @@ void LightRenderer::RenderLocalLights() {
                          abstract::StencilOp::kKeep,
                          abstract::StencilOp::kDecrWrap,
                          abstract::StencilOp::kKeep);
-    geo->Set();
     video_->RenderIndexed(geo->GetNumIndices());
 
-    // Sub-pass B: shade only stencil-marked pixels.
-    ps->Activate();
+    // Sub-pass B: shade only stencil-marked pixels (geometry already bound).
     video_->SetColorWriteEnabled(true);
     video_->SetFaceCulling(abstract::CullFace::kBack);
     video_->SetDepthTestEnabled(false);
     video_->SetStencilFunc(abstract::CompareFunc::kNotEqual, 0, 0xFF);
-    geo->Set();
     video_->RenderIndexed(geo->GetNumIndices());
 
     video_->SetStencilTestEnabled(false);

@@ -15,6 +15,12 @@ namespace core {
 // box has indeterminate bounds — populate both min_ and max_ before use.
 class BBox3 {
  public:
+  // ---- Constants (defined after class — class must be complete) ---------------
+
+  // Box spanning the entire representable float range on all axes.
+  // Use for always-visible objects (e.g. GlobalLight) that bypass AABB culling.
+  static const BBox3 kInfinite;
+
   // ---- Construction ----------------------------------------------------------
 
   BBox3() = default;
@@ -195,5 +201,8 @@ class BBox3 {
   Vec3f min_;
   Vec3f max_;
 };
+
+inline const BBox3 BBox3::kInfinite{
+    {-1e30f, -1e30f, -1e30f}, {1e30f, 1e30f, 1e30f}};
 
 }  // namespace core
