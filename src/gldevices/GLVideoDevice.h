@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <span>
 #include <string>
 
 #include <GL/gl.h>
@@ -69,6 +70,35 @@ class GLVideoDevice : public abstract::VideoDevice {
   // Enables or disables GL_DEPTH_TEST.
   void SetDepthTestEnabled(bool enabled) override;
 
+  // Enables or disables writes to the color buffer (all channels).
+  void SetColorWriteEnabled(bool enabled) override;
+
+  // Sets the face culling mode (GL_CULL_FACE + glCullFace).
+  void SetFaceCulling(abstract::CullFace mode) override;
+
+  // Enables or disables the stencil test (GL_STENCIL_TEST).
+  void SetStencilTestEnabled(bool enabled) override;
+
+  // Sets the stencil comparison function and reference value.
+  void SetStencilFunc(abstract::CompareFunc func, int ref, unsigned mask) override;
+
+  // Sets per-face stencil operations (sfail / dpfail / dppass).
+  void SetStencilOp(abstract::Face face, abstract::StencilOp sfail,
+                    abstract::StencilOp dpfail,
+                    abstract::StencilOp dppass) override;
+
+  // Clears the stencil buffer to val.
+  void ClearStencil(int val) override;
+
+  // Creates a GLRenderTarget (off-screen texture) of the given format.
+  [[nodiscard]] std::unique_ptr<abstract::RenderTarget> CreateRenderTarget(
+      int width, int height, abstract::TextureFormat format) override;
+
+  // Creates a GLRenderTargetGroup (FBO) from the given color and depth targets.
+  [[nodiscard]] std::unique_ptr<abstract::RenderTargetGroup> CreateRenderTargetGroup(
+      std::span<abstract::RenderTarget*> color_targets,
+      abstract::RenderTarget* depth_stencil_target) override;
+
   // Creates (or retrieves from the registry) a GLShader by name.
   // Loads <name>_vs.glsl and <name>_ps.glsl from the configured data folder.
   [[nodiscard]] abstract::Shader* CreateShader(const std::string& name) override;
@@ -80,6 +110,7 @@ class GLVideoDevice : public abstract::VideoDevice {
       abstract::BufferUsage usage = abstract::BufferUsage::kImmutable) override;
 
  private:
+  // cppcheck-suppress unusedStructMember
   GLFWwindow* window_;
   GLenum primitive_type_    = GL_TRIANGLES;
   GLenum current_index_type_ = GL_UNSIGNED_INT;

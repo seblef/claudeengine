@@ -1,15 +1,22 @@
 #pragma once
 
 #include <memory>
+#include <span>
 #include <string>
 
 #include "abstract/BufferUsage.h"
+#include "abstract/CompareFunc.h"
 #include "abstract/ConstantBuffer.h"
+#include "abstract/CullFace.h"
+#include "abstract/Face.h"
 #include "abstract/GeometryBuffer.h"
 #include "abstract/IndexBuffer.h"
 #include "abstract/IndexType.h"
 #include "abstract/PrimitiveType.h"
+#include "abstract/RenderTarget.h"
+#include "abstract/RenderTargetGroup.h"
 #include "abstract/Shader.h"
+#include "abstract/StencilOp.h"
 #include "abstract/Texture.h"
 #include "abstract/VertexBuffer.h"
 #include "core/Color.h"
@@ -96,6 +103,42 @@ class VideoDevice {
 
   // Enables or disables depth testing for subsequent draw calls.
   virtual void SetDepthTestEnabled(bool enabled) = 0;
+
+  // Enables or disables writing to the color buffer.
+  // Disable before the stencil-fill sub-pass of a light volume.
+  virtual void SetColorWriteEnabled(bool enabled) = 0;
+
+  // Sets the face culling mode for subsequent draw calls.
+  virtual void SetFaceCulling(CullFace mode) = 0;
+
+  // Enables or disables the stencil test for subsequent draw calls.
+  virtual void SetStencilTestEnabled(bool enabled) = 0;
+
+  // Sets the stencil comparison function.
+  // ref and mask are applied as: (stencil_buffer & mask) <func> (ref & mask).
+  virtual void SetStencilFunc(CompareFunc func, int ref, unsigned mask) = 0;
+
+  // Sets the stencil operation applied to the given polygon face when:
+  //   sfail  — stencil test fails.
+  //   dpfail — stencil test passes but depth test fails.
+  //   dppass — both tests pass.
+  virtual void SetStencilOp(Face face, StencilOp sfail,
+                             StencilOp dpfail, StencilOp dppass) = 0;
+
+  // Clears the stencil buffer to val.
+  virtual void ClearStencil(int val) = 0;
+
+  // Creates an off-screen render target texture of the given format.
+  // The caller owns the returned object exclusively (unique_ptr).
+  [[nodiscard]] virtual std::unique_ptr<RenderTarget> CreateRenderTarget(
+      int width, int height, TextureFormat format) = 0;
+
+  // Creates an FBO bundle from color_targets + one depth+stencil target.
+  // All targets must have been created by this device and must outlive the group.
+  // The caller owns the returned object exclusively (unique_ptr).
+  [[nodiscard]] virtual std::unique_ptr<RenderTargetGroup> CreateRenderTargetGroup(
+      std::span<RenderTarget*> color_targets,
+      RenderTarget* depth_stencil_target) = 0;
 
   // Creates (or retrieves) a shader by name. The resource registry starts
   // the object with ref_count = 1; call Release() when done.
