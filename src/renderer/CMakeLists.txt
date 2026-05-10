@@ -1,11 +1,18 @@
 add_library(renderer STATIC
+    CircleSpotLight.cpp
     EmissiveFBO.cpp
     GBuffer.cpp
     GeometryData.cpp
+    GeometryUtils.cpp
+    GlobalLight.cpp
+    Light.cpp
+    LightRenderer.cpp
     Material.cpp
     Mesh.cpp
     MeshInstance.cpp
     MeshRenderer.cpp
+    OmniLight.cpp
+    RectangleSpotLight.cpp
     Renderable.cpp
     Renderer.cpp
 )
