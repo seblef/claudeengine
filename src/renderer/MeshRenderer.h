@@ -29,7 +29,7 @@ class MeshRenderer : public core::Singleton<MeshRenderer>,
 
   // Additively renders only emissive instances into the HDR render target.
   // Must be called after Render() and before EndRender().
-  void RenderEmissive();
+  void RenderEmissive() override;
 
  private:
   // cppcheck-suppress unusedStructMember

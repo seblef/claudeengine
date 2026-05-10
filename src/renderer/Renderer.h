@@ -4,11 +4,12 @@
 
 #include "abstract/ConstantBuffer.h"
 #include "abstract/RenderTarget.h"
-#include "abstract/RenderTargetGroup.h"
 #include "abstract/VideoDevice.h"
 #include "core/Camera.h"
 #include "core/Mat4f.h"
 #include "core/Singleton.h"
+#include "renderer/EmissiveFBO.h"
+#include "renderer/GBuffer.h"
 
 namespace renderer {
 
@@ -20,10 +21,9 @@ namespace renderer {
 //   Slot 3 (MaterialInfos): per-material colors and shininess.
 //
 // Render targets (created at video resolution, recreated on resize):
-//   G-buffer — 3-MRT FBO: albedo (RGBA8), normal (RGBA16F), specular (RGBA8)
-//              + shared depth+stencil (DEPTH24_STENCIL8).
-//   HDR RT   — RGBA16F accumulation target (lighting + emissive).
-//   Emissive FBO — HDR RT as color + G-buffer depth+stencil as depth.
+//   gbuffer_      — 3-MRT FBO: albedo (RGBA8), normal (RGBA16F), specular (RGBA8)
+//                   + shared depth+stencil (DEPTH24_STENCIL8).
+//   emissive_fbo_ — HDR RT (RGBA16F) as color + G-buffer depth+stencil as depth.
 //
 // Frame pipeline (Update()):
 //   1. Geometry pass: bind G-buffer, clear, MeshRenderer fills all 3 MRTs.
@@ -32,7 +32,7 @@ namespace renderer {
 // Lifecycle: new Renderer(video) → Instance() calls → Shutdown().
 class Renderer : public core::Singleton<Renderer> {
  public:
-  // Creates constant buffers (slots 1–3) and G-buffer / HDR render targets.
+  // Creates constant buffers (slots 1–3) and all render targets.
   // video must outlive this Renderer.
   explicit Renderer(abstract::VideoDevice* video);
   ~Renderer();
@@ -68,13 +68,16 @@ class Renderer : public core::Singleton<Renderer> {
 
   // ---- Render target accessors (for lighting, emissive, and debug passes) --
 
-  [[nodiscard]] abstract::RenderTargetGroup* GetGBuffer()     const { return gbuffer_.get(); }
-  [[nodiscard]] abstract::RenderTarget*      GetHDRRT()       const { return hdr_rt_.get(); }
-  [[nodiscard]] abstract::RenderTargetGroup* GetEmissiveFBO() const { return emissive_fbo_.get(); }
+  [[nodiscard]] GBuffer*     GetGBuffer()     { return &gbuffer_; }
+  [[nodiscard]] EmissiveFBO* GetEmissiveFBO() { return &emissive_fbo_; }
+
+  // Convenience forwarder to EmissiveFBO::GetHDRRT().
+  [[nodiscard]] abstract::RenderTarget* GetHDRRT() const {
+    return emissive_fbo_.GetHDRRT();
+  }
 
  private:
   void FillSceneInfos();
-  void CreateRenderTargets(int w, int h);
 
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice* video_;
@@ -86,23 +89,10 @@ class Renderer : public core::Singleton<Renderer> {
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<abstract::ConstantBuffer> material_infos_cb_;
 
-  // Individual RTs — declared before FBO bundles so they outlive them.
-  // cppcheck-suppress unusedStructMember
-  std::unique_ptr<abstract::RenderTarget> gbuffer_albedo_rt_;
-  // cppcheck-suppress unusedStructMember
-  std::unique_ptr<abstract::RenderTarget> gbuffer_normal_rt_;
-  // cppcheck-suppress unusedStructMember
-  std::unique_ptr<abstract::RenderTarget> gbuffer_specular_rt_;
-  // cppcheck-suppress unusedStructMember
-  std::unique_ptr<abstract::RenderTarget> gbuffer_depth_rt_;
-  // cppcheck-suppress unusedStructMember
-  std::unique_ptr<abstract::RenderTarget> hdr_rt_;
-
-  // FBO bundles — declared after RTs so they are destroyed first on cleanup.
-  // cppcheck-suppress unusedStructMember
-  std::unique_ptr<abstract::RenderTargetGroup> gbuffer_;
-  // cppcheck-suppress unusedStructMember
-  std::unique_ptr<abstract::RenderTargetGroup> emissive_fbo_;
+  // gbuffer_ must be declared before emissive_fbo_ — the emissive FBO borrows
+  // gbuffer's depth RT, so it must be destroyed first (reverse declaration order).
+  GBuffer     gbuffer_;
+  EmissiveFBO emissive_fbo_;
 };
 
 }  // namespace renderer

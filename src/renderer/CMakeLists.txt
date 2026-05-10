@@ -1,4 +1,6 @@
 add_library(renderer STATIC
+    EmissiveFBO.cpp
+    GBuffer.cpp
     GeometryData.cpp
     Material.cpp
     Mesh.cpp

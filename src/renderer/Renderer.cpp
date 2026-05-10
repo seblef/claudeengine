@@ -1,9 +1,6 @@
 #include "renderer/Renderer.h"
 
-#include <array>
-
 #include "abstract/BufferUsage.h"
-#include "abstract/TextureFormat.h"
 #include "core/Color.h"
 #include "renderer/MaterialInfos.h"
 #include "renderer/MeshRenderer.h"
@@ -29,7 +26,11 @@ Renderer::Renderer(abstract::VideoDevice* video) : video_(video) {
   material_infos_cb_ = video_->CreateConstantBuffer(
       kMaterialInfosFloat4s, kMaterialInfosSlot, abstract::BufferUsage::kDynamic);
 
-  CreateRenderTargets(video_->GetWidth(), video_->GetHeight());
+  const int w = video_->GetWidth();
+  const int h = video_->GetHeight();
+  gbuffer_.Create(video_, w, h);
+  emissive_fbo_.Create(video_, w, h, gbuffer_.GetDepthRT());
+
   new MeshRenderer(video_);
 }
 
@@ -51,13 +52,13 @@ void Renderer::Update(float time, const core::Camera* camera) {
   if (camera_) FillSceneInfos();
 
   // Geometry pass: fill G-buffer albedo, normal, specular MRTs.
-  gbuffer_->BindForWriting();
+  gbuffer_.BindForWriting();
   video_->ClearRenderTargets(core::Color::kBlack);
   video_->SetDepthTestEnabled(true);
   MeshRenderer::Instance().PrepareRender();
   MeshRenderer::Instance().Render();
   MeshRenderer::Instance().EndRender();
-  gbuffer_->UnbindForWriting();
+  gbuffer_.UnbindForWriting();
 }
 
 void Renderer::SetRenderableInfos(const core::Mat4f& world_matrix) {
@@ -67,15 +68,8 @@ void Renderer::SetRenderableInfos(const core::Mat4f& world_matrix) {
 }
 
 void Renderer::OnResize(int w, int h) {
-  // Destroy FBO bundles before their referenced RTs.
-  emissive_fbo_.reset();
-  gbuffer_.reset();
-  gbuffer_albedo_rt_.reset();
-  gbuffer_normal_rt_.reset();
-  gbuffer_specular_rt_.reset();
-  gbuffer_depth_rt_.reset();
-  hdr_rt_.reset();
-  CreateRenderTargets(w, h);
+  gbuffer_.Resize(video_, w, h);
+  emissive_fbo_.Resize(video_, w, h, gbuffer_.GetDepthRT());
 }
 
 void Renderer::FillSceneInfos() {
@@ -93,27 +87,6 @@ void Renderer::FillSceneInfos() {
   si.inv_screen_size = {1.f / (2.f * sc.x), 1.f / (2.f * sc.y)};
 
   scene_infos_cb_->Fill(&si);
-}
-
-void Renderer::CreateRenderTargets(int w, int h) {
-  using abstract::TextureFormat;
-
-  gbuffer_albedo_rt_   = video_->CreateRenderTarget(w, h, TextureFormat::kRGBA8);
-  gbuffer_normal_rt_   = video_->CreateRenderTarget(w, h, TextureFormat::kRGBA16F);
-  gbuffer_specular_rt_ = video_->CreateRenderTarget(w, h, TextureFormat::kRGBA8);
-  gbuffer_depth_rt_    = video_->CreateRenderTarget(w, h, TextureFormat::kDepth24Stencil8);
-  hdr_rt_              = video_->CreateRenderTarget(w, h, TextureFormat::kRGBA16F);
-
-  std::array<abstract::RenderTarget*, 3> gbuffer_colors = {
-      gbuffer_albedo_rt_.get(),
-      gbuffer_normal_rt_.get(),
-      gbuffer_specular_rt_.get(),
-  };
-  gbuffer_ = video_->CreateRenderTargetGroup(gbuffer_colors, gbuffer_depth_rt_.get());
-
-  // Emissive FBO reuses the G-buffer depth+stencil RT for depth testing.
-  std::array<abstract::RenderTarget*, 1> emissive_colors = {hdr_rt_.get()};
-  emissive_fbo_ = video_->CreateRenderTargetGroup(emissive_colors, gbuffer_depth_rt_.get());
 }
 
 }  // namespace renderer
