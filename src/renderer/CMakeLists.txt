@@ -3,6 +3,7 @@ add_library(renderer STATIC
     EmissiveFBO.cpp
     GBuffer.cpp
     GeometryData.cpp
+    GeometryUtils.cpp
     GlobalLight.cpp
     Light.cpp
     LightRenderer.cpp
