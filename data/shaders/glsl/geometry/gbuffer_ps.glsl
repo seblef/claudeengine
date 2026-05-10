@@ -4,6 +4,10 @@
 //   location 1 (Normal, RGBA16F) — world-space normal encoded as N × 0.5 + 0.5
 //   location 2 (Specular, RGBA8) — R=specular intensity, G=shininess/256
 //
+// TBN normal mapping is always active. When no custom normal map is assigned
+// the default flat normal texture (tangent-space (0,0,1)) decodes to the
+// interpolated vertex normal through TBN — no branch needed.
+//
 // UBO binding 3: per-material infos (renderer::MaterialInfos).
 // Sampler slots: 0=diffuse, 1=normal, 2=specular.
 
@@ -19,8 +23,6 @@ layout(binding = 0) uniform sampler2D u_diffuse;
 layout(binding = 1) uniform sampler2D u_normal;
 layout(binding = 2) uniform sampler2D u_specular;
 
-uniform bool u_has_normal_map;
-
 layout(location = 0) out vec4 out_albedo;
 layout(location = 1) out vec4 out_normal;
 layout(location = 2) out vec4 out_specular;
@@ -30,19 +32,14 @@ void main() {
     vec3 albedo = texture(u_diffuse, v_uv).rgb * diffuse_color.rgb;
     out_albedo  = vec4(albedo, 0.0);
 
-    // Normal: TBN-mapped if a normal map is bound, else interpolated vertex normal.
-    vec3 world_normal;
-    if (u_has_normal_map) {
-        // Remap tangent-space normal from [0,1] to [-1,1], then to world space.
-        vec3 tangent_normal = texture(u_normal, v_uv).rgb * 2.0 - 1.0;
-        mat3 tbn = mat3(v_tangent_world, v_binormal_world, v_normal_world);
-        world_normal = normalize(tbn * tangent_normal);
-    } else {
-        world_normal = normalize(v_normal_world);
-    }
+    // Normal: remap sampled tangent-space normal to world space via TBN.
+    // Equation: world_normal = TBN * (sample * 2 - 1), then encode to [0,1].
+    vec3 tangent_normal = texture(u_normal, v_uv).rgb * 2.0 - 1.0;
+    mat3 tbn            = mat3(v_tangent_world, v_binormal_world, v_normal_world);
+    vec3 world_normal   = normalize(tbn * tangent_normal);
     out_normal = vec4(world_normal * 0.5 + 0.5, 0.0);
 
-    // Specular: intensity in R, packed shininess in G (range 0–256 mapped to 0–1).
+    // Specular: intensity in R, packed shininess in G (0–256 mapped to 0–1).
     float spec_intensity = texture(u_specular, v_uv).r;
     out_specular = vec4(spec_intensity, shininess / 256.0, 0.0, 0.0);
 }
