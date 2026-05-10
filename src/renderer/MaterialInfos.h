@@ -2,23 +2,24 @@
 
 #include <cstddef>
 
-#include "core/Vec3f.h"
+#include "core/Color.h"
 
 namespace renderer {
 
 // GPU constant buffer layout for per-material color data (UBO slot 3).
 // Matches layout(std140, binding=3) exactly — do not reorder fields.
 //
-// std140 offsets (Vec3f is alignas(16), w_=0 fills the implicit vec3 pad):
-//   [  0] diffuse_color   vec3  (16 B — 3 floats + w_=0 as std140 padding)
-//   [ 16] emissive_color  vec3  (16 B)
-//   [ 32] ambient_color   vec3  (16 B)
-//   [ 48] shininess       float ( 4 B)
-//   [ 52] end / tail pad  12 B  (struct padded to alignof = 16)
+// Color is alignas(16) with 4 floats (r,g,b,a) = 16 bytes; maps to vec4 in GLSL.
+// std140 offsets:
+//   [  0] diffuse_color   vec4  (16 B — RGBA diffuse tint)
+//   [ 16] emissive_color  vec4  (16 B — RGBA emissive scale)
+//   [ 32] ambient_color   vec4  (16 B — RGBA ambient term)
+//   [ 48] shininess       float ( 4 B — Blinn-Phong exponent)
+//   [ 52] end / tail pad  12 B  (struct padded to alignof(Color) = 16)
 struct MaterialInfos {
-  core::Vec3f diffuse_color;   // diffuse texture tint; defaults to (1,1,1)
-  core::Vec3f emissive_color;  // emissive texture scale; defaults to (0,0,0)
-  core::Vec3f ambient_color;   // additive ambient term; defaults to (0,0,0)
+  core::Color diffuse_color;   // diffuse texture tint; defaults to white opaque
+  core::Color emissive_color;  // emissive texture scale; defaults to transparent
+  core::Color ambient_color;   // additive ambient term; defaults to transparent
   float       shininess;       // Blinn-Phong exponent; defaults to 32
 };
 

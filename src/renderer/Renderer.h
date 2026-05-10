@@ -7,7 +7,6 @@
 #include "core/Camera.h"
 #include "core/Mat4f.h"
 #include "core/Singleton.h"
-#include "renderer/Material.h"
 
 namespace renderer {
 
@@ -16,14 +15,15 @@ namespace renderer {
 //     Upload via SetRenderableInfos() before each draw call.
 //   Slot 2 (SceneInfos): per-frame data — camera matrices, eye position, time.
 //     Filled automatically by Update() each frame.
-//   Slot 3 (MaterialInfos): per-material colors and shininess.
-//     Upload via SetMaterialInfos() whenever the active material changes.
+//
+// Material color data (slot 3) is managed by each Material instance, not here.
+// Calling Material::Set() binds textures and uploads its own color CB atomically.
 //
 // Lifecycle: new Renderer(video) → Instance() calls → Shutdown().
 class Renderer : public core::Singleton<Renderer> {
  public:
-  // Creates the renderable infos (slot 1), scene infos (slot 2), and material
-  // infos (slot 3) constant buffers. video must outlive this Renderer.
+  // Creates the renderable infos (slot 1) and scene infos (slot 2) constant
+  // buffers. video must outlive this Renderer.
   explicit Renderer(abstract::VideoDevice* video);
   ~Renderer();
 
@@ -47,10 +47,6 @@ class Renderer : public core::Singleton<Renderer> {
   // Call once per draw before issuing geometry calls.
   void SetRenderableInfos(const core::Mat4f& world_matrix);
 
-  // Uploads material color properties into the material infos CB (slot 3).
-  // Call whenever the active material changes during a render pass.
-  void SetMaterialInfos(const Material& material);
-
  private:
   void FillSceneInfos();
 
@@ -60,7 +56,6 @@ class Renderer : public core::Singleton<Renderer> {
   float                                     time_   = 0.f;
   std::unique_ptr<abstract::ConstantBuffer> renderable_infos_cb_;
   std::unique_ptr<abstract::ConstantBuffer> scene_infos_cb_;
-  std::unique_ptr<abstract::ConstantBuffer> material_infos_cb_;
 };
 
 }  // namespace renderer

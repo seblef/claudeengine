@@ -1,7 +1,6 @@
 #include "renderer/Renderer.h"
 
 #include "abstract/BufferUsage.h"
-#include "renderer/MaterialInfos.h"
 #include "renderer/MeshRenderer.h"
 #include "renderer/RenderableInfos.h"
 #include "renderer/SceneInfos.h"
@@ -10,11 +9,9 @@ namespace renderer {
 
 namespace {
 constexpr int kRenderableInfosSlot    = 1;
-constexpr int kRenderableInfosFloat4s = sizeof(RenderableInfos) / 16;   // 64 / 16 = 4
+constexpr int kRenderableInfosFloat4s = sizeof(RenderableInfos) / 16;  // 64 / 16 = 4
 constexpr int kSceneInfosSlot         = 2;
-constexpr int kSceneInfosFloat4s      = sizeof(SceneInfos) / 16;         // 352 / 16 = 22
-constexpr int kMaterialInfosSlot      = 3;
-constexpr int kMaterialInfosFloat4s   = sizeof(MaterialInfos) / 16;      // 64 / 16 = 4
+constexpr int kSceneInfosFloat4s      = sizeof(SceneInfos) / 16;        // 352 / 16 = 22
 }  // namespace
 
 Renderer::Renderer(abstract::VideoDevice* video) : video_(video) {
@@ -22,8 +19,6 @@ Renderer::Renderer(abstract::VideoDevice* video) : video_(video) {
       kRenderableInfosFloat4s, kRenderableInfosSlot, abstract::BufferUsage::kDynamic);
   scene_infos_cb_ = video_->CreateConstantBuffer(
       kSceneInfosFloat4s, kSceneInfosSlot, abstract::BufferUsage::kDynamic);
-  material_infos_cb_ = video_->CreateConstantBuffer(
-      kMaterialInfosFloat4s, kMaterialInfosSlot, abstract::BufferUsage::kDynamic);
   new MeshRenderer(video_);
 }
 
@@ -41,7 +36,6 @@ void Renderer::Update(float time, const core::Camera* camera) {
   camera_ = camera;
   renderable_infos_cb_->Bind();
   scene_infos_cb_->Bind();
-  material_infos_cb_->Bind();
   if (camera_) FillSceneInfos();
   MeshRenderer::Instance().PrepareRender();
   MeshRenderer::Instance().Render();
@@ -52,10 +46,6 @@ void Renderer::SetRenderableInfos(const core::Mat4f& world_matrix) {
   RenderableInfos ri;
   ri.world = world_matrix;
   renderable_infos_cb_->Fill(&ri);
-}
-
-void Renderer::SetMaterialInfos(const Material& material) {
-  material.UploadColors(material_infos_cb_.get());
 }
 
 void Renderer::FillSceneInfos() {
