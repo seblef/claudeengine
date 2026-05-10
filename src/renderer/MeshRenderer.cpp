@@ -20,6 +20,7 @@ void MeshRenderer::Render() {
 
     if (mat != current_material) {
       mat->Set();
+      Renderer::Instance().SetMaterialInfos(*mat);
       current_material = mat;
     }
 

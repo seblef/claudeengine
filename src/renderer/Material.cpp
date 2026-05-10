@@ -2,6 +2,7 @@
 
 #include "core/Config.h"
 #include "core/YamlUtils.h"
+#include "renderer/MaterialInfos.h"
 
 #include <loguru.hpp>
 
@@ -42,6 +43,10 @@ Material::Material(const MaterialDesc& desc, abstract::VideoDevice* video) {
       textures_[i] = video->CreateTexture(kDefaultPaths[i]);
     }
   }
+  diffuse_color_  = desc.GetDiffuseColor();
+  emissive_color_ = desc.GetEmissiveColor();
+  ambient_color_  = desc.GetAmbientColor();
+  shininess_      = desc.GetShininess();
 }
 
 Material::Material(const std::string& name, abstract::VideoDevice* video) {
@@ -71,6 +76,22 @@ void Material::Set() const {
   }
 }
 
+void Material::UploadColors(abstract::ConstantBuffer* cb) const {
+  MaterialInfos mi;
+  mi.diffuse_color  = diffuse_color_;
+  mi.emissive_color = emissive_color_;
+  mi.ambient_color  = ambient_color_;
+  mi.shininess      = shininess_;
+  cb->Fill(&mi);
+}
+
+bool Material::IsEmissive() const {
+  return (emissive_color_.x != 0.f || emissive_color_.y != 0.f ||
+          emissive_color_.z != 0.f ||
+          ambient_color_.x  != 0.f || ambient_color_.y  != 0.f ||
+          ambient_color_.z  != 0.f);
+}
+
 abstract::Texture* Material::GetTexture(TextureSlot slot) const {
   return textures_[static_cast<int>(slot)];
 }
@@ -95,22 +116,43 @@ void Material::LoadDefaults(abstract::VideoDevice* video) {
   }
 }
 
+namespace {
+
+core::Vec3f ParseVec3(const YAML::Node& node) {
+  const auto v = node.as<std::vector<float>>();
+  if (v.size() >= 3) return {v[0], v[1], v[2]};
+  if (v.size() == 1) return core::Vec3f{v[0]};
+  return {};
+}
+
+}  // namespace
+
 void Material::LoadFromYaml(const YAML::Node& yaml, abstract::VideoDevice* video) {
   LoadDefaults(video);
-  if (!yaml["textures"]) return;
-  const YAML::Node& tex_node = yaml["textures"];
-  for (const auto& [key, slot] : kSlotMap) {
-    if (!tex_node[key]) continue;
-    const std::string tex_name = tex_node[key].as<std::string>();
-    abstract::Texture* tex = video->CreateTexture(tex_name);
-    if (!tex) {
-      LOG_F(WARNING, "Material: texture '%s' not found, keeping default",
-            tex_name.c_str());
-      continue;
+
+  if (yaml["textures"]) {
+    const YAML::Node& tex_node = yaml["textures"];
+    for (const auto& [key, slot] : kSlotMap) {
+      if (!tex_node[key]) continue;
+      const std::string tex_name = tex_node[key].as<std::string>();
+      abstract::Texture* tex = video->CreateTexture(tex_name);
+      if (!tex) {
+        LOG_F(WARNING, "Material: texture '%s' not found, keeping default",
+              tex_name.c_str());
+        continue;
+      }
+      auto& entry = textures_[static_cast<int>(slot)];
+      if (entry) entry->Release();
+      entry = tex;
     }
-    auto& entry = textures_[static_cast<int>(slot)];
-    if (entry) entry->Release();
-    entry = tex;
+  }
+
+  if (yaml["colors"]) {
+    const YAML::Node& c = yaml["colors"];
+    if (c["diffuse"])   diffuse_color_  = ParseVec3(c["diffuse"]);
+    if (c["emissive"])  emissive_color_ = ParseVec3(c["emissive"]);
+    if (c["ambient"])   ambient_color_  = ParseVec3(c["ambient"]);
+    if (c["shininess"]) shininess_      = c["shininess"].as<float>();
   }
 }
 
