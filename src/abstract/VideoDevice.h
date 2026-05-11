@@ -4,6 +4,7 @@
 #include <span>
 #include <string>
 
+#include "abstract/BlendFactor.h"
 #include "abstract/BufferUsage.h"
 #include "abstract/CompareFunc.h"
 #include "abstract/ConstantBuffer.h"
@@ -127,6 +128,18 @@ class VideoDevice {
 
   // Clears the stencil buffer to val.
   virtual void ClearStencil(int val) = 0;
+
+  // Enables or disables blending. When enabled, the blend equation is:
+  //   result = fragment_color * src + framebuffer_color * dst
+  // src and dst are ignored when enabled is false.
+  virtual void SetBlendEnabled(bool enabled,
+                               BlendFactor src = BlendFactor::kOne,
+                               BlendFactor dst = BlendFactor::kZero) = 0;
+
+  // Controls whether draw calls write to the depth buffer (glDepthMask).
+  // Disable before a pass that reads depth but must not overwrite it.
+  // Note: glClear(GL_DEPTH_BUFFER_BIT) also respects this mask.
+  virtual void SetDepthWriteEnabled(bool enabled) = 0;
 
   // Creates an off-screen render target texture of the given format.
   // The caller owns the returned object exclusively (unique_ptr).

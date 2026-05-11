@@ -90,6 +90,14 @@ class GLVideoDevice : public abstract::VideoDevice {
   // Clears the stencil buffer to val.
   void ClearStencil(int val) override;
 
+  // Enables or disables GL blending with the given src/dst factors.
+  void SetBlendEnabled(bool enabled,
+                       abstract::BlendFactor src = abstract::BlendFactor::kOne,
+                       abstract::BlendFactor dst = abstract::BlendFactor::kZero) override;
+
+  // Controls glDepthMask (depth buffer write enable).
+  void SetDepthWriteEnabled(bool enabled) override;
+
   // Creates a GLRenderTarget (off-screen texture) of the given format.
   [[nodiscard]] std::unique_ptr<abstract::RenderTarget> CreateRenderTarget(
       int width, int height, abstract::TextureFormat format) override;
