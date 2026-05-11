@@ -117,6 +117,10 @@ void GLShader::Activate() {
   glUseProgram(program_id_);
 }
 
+void GLShader::SetUniformInt(const std::string& name, int value) {
+  glUniform1i(glGetUniformLocation(program_id_, name.c_str()), value);
+}
+
 GLuint GLShader::CompileStage(GLenum stage, const std::string& source,
                                const std::string& label) {
   const GLuint id = glCreateShader(stage);
