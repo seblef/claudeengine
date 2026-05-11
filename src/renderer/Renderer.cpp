@@ -24,6 +24,7 @@ constexpr int kMaterialInfosFloat4s   = sizeof(MaterialInfos) / 16;     // 64 / 
 Renderer::Renderer(abstract::VideoDevice* video)
     : video_(video),
       composite_shader_(video->CreateShader("composite")),
+      debug_shader_(video->CreateShader("debug_blit")),
       composite_quad_(CreateQuad(video)) {
   renderable_infos_cb_ = video_->CreateConstantBuffer(
       kRenderableInfosFloat4s, kRenderableInfosSlot, abstract::BufferUsage::kDynamic);
@@ -43,6 +44,7 @@ Renderer::Renderer(abstract::VideoDevice* video)
 
 Renderer::~Renderer() {
   composite_shader_->Release();
+  debug_shader_->Release();
   LightRenderer::Shutdown();
   MeshRenderer::Shutdown();
 }
@@ -68,6 +70,27 @@ void Renderer::Update(float time, const core::Camera* camera) {
   MeshRenderer::Instance().PrepareRender();
   MeshRenderer::Instance().Render();
   gbuffer_.UnbindForWriting();
+
+  // Debug bypass — blit a chosen G-buffer RT to the default framebuffer and skip
+  // the lighting, emissive, and composite passes entirely.
+  if (debug_mode_ != DebugMode::kNone) {
+    abstract::RenderTarget* rt = nullptr;
+    switch (debug_mode_) {
+      case DebugMode::kAlbedo:   rt = gbuffer_.GetAlbedoRT();   break;
+      case DebugMode::kNormal:   rt = gbuffer_.GetNormalRT();   break;
+      case DebugMode::kSpecular: rt = gbuffer_.GetSpecularRT(); break;
+      case DebugMode::kDepth:    rt = gbuffer_.GetDepthRT();    break;
+      default: break;
+    }
+    if (rt) rt->BindAsSampler(0);
+    debug_shader_->Activate();
+    debug_shader_->SetUniformInt("u_debug_mode", static_cast<int>(debug_mode_));
+    composite_quad_->Set();
+    video_->RenderIndexed(composite_quad_->GetNumIndices());
+    MeshRenderer::Instance().EndRender();
+    LightRenderer::Instance().EndRender();
+    return;
+  }
 
   // 2. Lighting pass — shade into the HDR RT; G-buffer RTs as samplers.
   //    Depth write is disabled so glClear only clears the HDR color attachment,
@@ -131,6 +154,8 @@ void Renderer::FillSceneInfos() {
   si.time            = time_;
   si.pad0_           = 0.f;
   si.inv_screen_size = {1.f / (2.f * sc.x), 1.f / (2.f * sc.y)};
+  si.z_near_         = camera_->GetMinDepth();
+  si.z_far_          = camera_->GetMaxDepth();
 
   scene_infos_cb_->Fill(&si);
 }

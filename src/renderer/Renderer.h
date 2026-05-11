@@ -16,11 +16,22 @@
 
 namespace renderer {
 
+// Selects which G-buffer attachment is blitted to screen in debug mode.
+// kNone runs the full deferred pipeline; any other value skips lighting,
+// emissive, and composite and blits the chosen RT directly.
+enum class DebugMode : int {
+  kNone     = 0,
+  kAlbedo   = 1,
+  kNormal   = 2,
+  kSpecular = 3,
+  kDepth    = 4,
+};
+
 // Singleton renderer. Owns all per-frame constant buffers and render targets.
 //
 // Constant buffer slots:
 //   Slot 1 (RenderableInfos): per-object world matrix.
-//   Slot 2 (SceneInfos): per-frame camera matrices, eye position, time.
+//   Slot 2 (SceneInfos): per-frame camera matrices, eye position, time, z_near/z_far.
 //   Slot 3 (MaterialInfos): per-material colors and shininess.
 //
 // Render targets (created at video resolution, recreated on resize):
@@ -33,6 +44,10 @@ namespace renderer {
 //   2. Lighting pass  — HDR RT (additive blend); LightRenderer shades each light.
 //   3. Emissive pass  — HDR RT (additive, depth read-only); emissive/ambient meshes.
 //   4. Composite pass — default framebuffer; gamma correction.
+//
+// Debug mode (SetDebugMode != kNone):
+//   After the geometry pass, blits the chosen G-buffer RT to the default framebuffer
+//   and returns early — lighting, emissive, and composite are skipped.
 //
 // Lifecycle: new Renderer(video) → Instance() calls → Shutdown().
 class Renderer : public core::Singleton<Renderer> {
@@ -71,6 +86,9 @@ class Renderer : public core::Singleton<Renderer> {
   // Recreates all render targets at the new resolution.
   void OnResize(int w, int h);
 
+  // Selects which G-buffer attachment to visualize. kNone restores the full pipeline.
+  void SetDebugMode(DebugMode mode) { debug_mode_ = mode; }
+
   // ---- Render target accessors (for lighting, emissive, and debug passes) --
 
   [[nodiscard]] GBuffer*     GetGBuffer()     { return &gbuffer_; }
@@ -99,9 +117,13 @@ class Renderer : public core::Singleton<Renderer> {
   GBuffer     gbuffer_;
   EmissiveFBO emissive_fbo_;
 
+  DebugMode debug_mode_ = DebugMode::kNone;
+
   // Composite pass resources — gamma-correct the HDR RT to the default framebuffer.
   // cppcheck-suppress unusedStructMember
   abstract::Shader*             composite_shader_;
+  // cppcheck-suppress unusedStructMember
+  abstract::Shader*             debug_shader_;
   std::unique_ptr<GeometryData> composite_quad_;
 };
 
