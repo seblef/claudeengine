@@ -14,6 +14,8 @@ OctreeVisibilitySystem::OctreeVisibilitySystem(const core::BBox3& world_bounds,
   root_.bounds = world_bounds;
 }
 
+OctreeVisibilitySystem::~OctreeVisibilitySystem() { ClearNode(&root_); }
+
 int OctreeVisibilitySystem::ComputeNumLevels(float world_size,
                                              float min_cell_size) {
   const int levels = static_cast<int>(std::ceil(

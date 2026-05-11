@@ -13,6 +13,8 @@
 #include "renderer/EmissiveFBO.h"
 #include "renderer/GBuffer.h"
 #include "renderer/GeometryData.h"
+#include "renderer/NoCullingVisibilitySystem.h"
+#include "renderer/OctreeVisibilitySystem.h"
 
 namespace renderer {
 
@@ -61,6 +63,21 @@ class Renderer : public core::Singleton<Renderer> {
   Renderer& operator=(const Renderer&) = delete;
   Renderer(Renderer&&)                 = delete;
   Renderer& operator=(Renderer&&)      = delete;
+
+  // Initializes both visibility systems for a cube world of the given side length
+  // centered at the origin.  Must be called once before AddRenderable.
+  void InitVisibilitySystems(float world_size);
+
+  // Clears all renderable registrations from both visibility systems.
+  void ClearVisibilitySystems();
+
+  // Registers a renderable with the appropriate visibility system.
+  // Always-visible renderables (IsAlwaysVisible()) go to the no-culling system;
+  // all others go to the octree for frustum-based culling.
+  void AddRenderable(Renderable* r);
+
+  // Removes a renderable from whichever visibility system holds it.
+  void RemoveRenderable(Renderable* r);
 
   // Sets the active camera and fills the scene CB using the current stored time.
   // camera must remain valid until the next SetCamera or Renderer destruction.
@@ -111,6 +128,9 @@ class Renderer : public core::Singleton<Renderer> {
   std::unique_ptr<abstract::ConstantBuffer> scene_infos_cb_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<abstract::ConstantBuffer> material_infos_cb_;
+
+  std::unique_ptr<NoCullingVisibilitySystem> no_culling_system_;
+  std::unique_ptr<OctreeVisibilitySystem>    octree_system_;
 
   // gbuffer_ must be declared before emissive_fbo_ — the emissive FBO borrows
   // gbuffer's depth RT, so it must be destroyed first (reverse declaration order).

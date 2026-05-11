@@ -18,6 +18,9 @@ class NoCullingVisibilitySystem : public IVisibilitySystem {
  public:
   explicit NoCullingVisibilitySystem(const core::BBox3& world_bounds);
 
+  // Calls Clear() so every registered renderable's system pointer is reset.
+  ~NoCullingVisibilitySystem() override;
+
   // Appends r and stores its new index via r->SetVisibilityId().
   void AddRenderable(Renderable* r) override;
 
