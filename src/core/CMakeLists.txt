@@ -5,6 +5,7 @@ add_library(core STATIC
     Logger.cpp
     MathUtils.cpp
     Plane.cpp
+    ViewFrustum.cpp
     YamlUtils.cpp
 )
 
