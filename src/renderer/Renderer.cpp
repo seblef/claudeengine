@@ -43,6 +43,8 @@ Renderer::Renderer(abstract::VideoDevice* video)
 
   new MeshRenderer(video_);
   new LightRenderer(video_);
+
+  InitVisibilitySystems(1000.f);
 }
 
 Renderer::~Renderer() {
@@ -61,8 +63,8 @@ void Renderer::InitVisibilitySystems(float world_size) {
 }
 
 void Renderer::ClearVisibilitySystems() {
-  if (no_culling_system_) no_culling_system_->Clear();
-  if (octree_system_)     octree_system_->Clear();
+  no_culling_system_->Clear();
+  octree_system_->Clear();
 }
 
 void Renderer::AddRenderable(Renderable* r) {
@@ -92,7 +94,7 @@ void Renderer::Update(float time, const core::Camera* camera) {
   material_infos_cb_->Bind();
   if (camera_) FillSceneInfos();
 
-  if (camera_ && no_culling_system_ && octree_system_) {
+  if (camera_) {
     const core::ViewFrustum frustum(camera_->GetViewProjectionMatrix());
     no_culling_system_->CullAndEnqueue(frustum);
     octree_system_->CullAndEnqueue(frustum);

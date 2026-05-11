@@ -8,6 +8,10 @@ NoCullingVisibilitySystem::NoCullingVisibilitySystem(
     const core::BBox3& world_bounds)
     : IVisibilitySystem(world_bounds) {}
 
+NoCullingVisibilitySystem::~NoCullingVisibilitySystem() {
+  for (Renderable* r : renderables_) r->SetVisibilitySystem(nullptr);
+}
+
 void NoCullingVisibilitySystem::AddRenderable(Renderable* r) {
   r->SetVisibilityId(renderables_.size());
   renderables_.push_back(r);
