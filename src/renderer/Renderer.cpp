@@ -2,6 +2,7 @@
 
 #include "abstract/BlendFactor.h"
 #include "abstract/BufferUsage.h"
+#include "abstract/CompareFunc.h"
 #include "core/Color.h"
 #include "renderer/GeometryUtils.h"
 #include "renderer/LightRenderer.h"
@@ -109,12 +110,16 @@ void Renderer::Update(float time, const core::Camera* camera) {
   // 3. Emissive pass — additively draw emissive/ambient surfaces into the HDR RT.
   //    Depth is read-only (test on, write off) so emissive objects are occluded
   //    correctly by opaque geometry without corrupting G-buffer depth.
+  //    GL_LEQUAL is required: emissive geometry was already drawn at the same depth
+  //    during the geometry pass, so GL_LESS would reject every fragment.
   emissive_fbo_.BindForWriting();
   video_->SetDepthTestEnabled(true);
+  video_->SetDepthFunc(abstract::CompareFunc::kLessEqual);
   video_->SetBlendEnabled(true, abstract::BlendFactor::kOne, abstract::BlendFactor::kOne);
   MeshRenderer::Instance().RenderEmissive();
   MeshRenderer::Instance().EndRender();
   video_->SetBlendEnabled(false);
+  video_->SetDepthFunc(abstract::CompareFunc::kLess);
   video_->SetDepthWriteEnabled(true);
   video_->SetDepthTestEnabled(false);
   emissive_fbo_.UnbindForWriting();

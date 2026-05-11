@@ -69,6 +69,7 @@ class GLVideoDevice : public abstract::VideoDevice {
 
   // Enables or disables GL_DEPTH_TEST.
   void SetDepthTestEnabled(bool enabled) override;
+  void SetDepthFunc(abstract::CompareFunc func) override;
 
   // Enables or disables writes to the color buffer (all channels).
   void SetColorWriteEnabled(bool enabled) override;

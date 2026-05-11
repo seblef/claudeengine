@@ -23,10 +23,12 @@ layout(binding = 6) uniform sampler2D u_normal;
 layout(binding = 7) uniform sampler2D u_specular;
 layout(binding = 8) uniform sampler2D u_depth;
 
-in  vec2 v_screen_uv;
 out vec4 out_color;
 
 void main() {
+    // Screen UV derived from fragment position — exact, no interpolation error.
+    vec2 v_screen_uv = gl_FragCoord.xy * inv_screen_size;
+
     // Decode G-buffer.
     vec3  albedo    = texture(u_albedo,   v_screen_uv).rgb;
     float spec_int  = texture(u_specular, v_screen_uv).r;

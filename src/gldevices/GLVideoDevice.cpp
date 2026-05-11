@@ -186,6 +186,10 @@ GLenum ToGLStencilOp(abstract::StencilOp op) {
 
 }  // namespace
 
+void GLVideoDevice::SetDepthFunc(abstract::CompareFunc func) {
+  glDepthFunc(ToGLCompareFunc(func));
+}
+
 void GLVideoDevice::SetStencilFunc(abstract::CompareFunc func, int ref,
                                    unsigned mask) {
   glStencilFunc(ToGLCompareFunc(func), ref, mask);
