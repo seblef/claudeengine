@@ -179,8 +179,8 @@ int main(int argc, char* argv[]) {
      4, 5, 6,  4, 6, 7,   // -Z
      8, 9,10,  8,10,11,   // +X
     12,13,14, 12,14,15,   // -X
-    16,17,18, 16,18,19,   // +Y
-    20,21,22, 20,22,23,   // -Y
+    16,19,18, 16,18,17,   // +Y
+    20,22,21, 20,23,22,   // -Y
   };
   renderer::GeometryData cube_geo(video, 24, cube_verts, 12, cube_indices);
 
