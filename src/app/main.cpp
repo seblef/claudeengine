@@ -17,7 +17,6 @@
 #include "core/Vec3f.h"
 #include "core/Vertex3D.h"
 #include "gldevices/GLDevices.h"
-#include "renderer/CircleSpotLight.h"
 #include "renderer/GeometryData.h"
 #include "renderer/GlobalLight.h"
 #include "renderer/Material.h"
@@ -25,23 +24,27 @@
 #include "renderer/Mesh.h"
 #include "renderer/MeshInstance.h"
 #include "renderer/OmniLight.h"
-#include "renderer/RectangleSpotLight.h"
 #include "renderer/Renderer.h"
 
 #include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <memory>
+#include <random>
 #include <vector>
 #include <loguru.hpp>
 
 namespace {
 
-constexpr float kHalf        = 1.5f;   // cube half-side
-constexpr float kCameraSpeed = 10.f;   // units/s
+constexpr float kHalf        = 1.5f;    // cube half-side
+constexpr float kWorldHalf   = 500.f;   // world extends [-500, 500]³
+constexpr float kCameraSpeed = 10.f;    // units/s
 constexpr float kMouseSens   = 0.002f;  // rad/px
-constexpr float kRotSpeed    = 20.f * (3.14159265f / 180.f);  // 20 deg/s rad
 constexpr float kPi          = 3.14159265f;
+
+constexpr int kNumCubes      = 300;
+constexpr int kNumSpheres    = 300;
+constexpr int kNumOmniLights = 40;
 
 // Builds a UV sphere GeometryData with normals, tangents, binormals and UVs.
 // stacks: latitude bands (top to bottom); rings: longitude bands around Y.
@@ -190,52 +193,79 @@ int main(int argc, char* argv[]) {
   auto sphere_geo = BuildSphere(video, 32, 64);
 
   new renderer::Renderer(video);
+  renderer::Renderer::Instance().InitVisibilitySystems(1000.f);
 
-  // ---- Meshes and instances -------------------------------------------------
+  // ---- Meshes ---------------------------------------------------------------
   renderer::Mesh cube_mesh(&cube_geo, &cube_material);
   renderer::Mesh sphere_mesh(sphere_geo.get(), &sphere_material);
 
-  renderer::MeshInstance cube_instance(&cube_mesh, core::Mat4f::kIdentity, false);
-  renderer::MeshInstance sphere_instance(
-      &sphere_mesh, core::Mat4f::kIdentity, false);
+  // ---- Random scene population (seed=42 for reproducibility) ----------------
+  std::mt19937 rng(42);
+  std::uniform_real_distribution<float> pos_dist(-kWorldHalf, kWorldHalf);
+  std::uniform_real_distribution<float> scale_dist(0.5f, 4.0f);
+  std::uniform_real_distribution<float> color_dist(0.f, 1.f);
+  std::uniform_real_distribution<float> radius_dist(20.f, 60.f);
 
-  // ---- Lights ---------------------------------------------------------------
-  // Sun-like directional with subtle ambient. Direction = incoming ray (sun→px).
+  // 300 cube instances at random positions and uniform scales.
+  std::vector<std::unique_ptr<renderer::MeshInstance>> cube_instances;
+  cube_instances.reserve(kNumCubes);
+  for (int i = 0; i < kNumCubes; ++i) {
+    const float px = pos_dist(rng);
+    const float py = pos_dist(rng);
+    const float pz = pos_dist(rng);
+    const float s  = scale_dist(rng);
+    const core::Mat4f world = core::Mat4f::Translation({px, py, pz})
+                            * core::Mat4f::Scale3D({s, s, s});
+    cube_instances.push_back(
+        std::make_unique<renderer::MeshInstance>(&cube_mesh, world, false));
+  }
+
+  // 300 sphere instances at random positions and uniform scales.
+  std::vector<std::unique_ptr<renderer::MeshInstance>> sphere_instances;
+  sphere_instances.reserve(kNumSpheres);
+  for (int i = 0; i < kNumSpheres; ++i) {
+    const float px = pos_dist(rng);
+    const float py = pos_dist(rng);
+    const float pz = pos_dist(rng);
+    const float s  = scale_dist(rng);
+    const core::Mat4f world = core::Mat4f::Translation({px, py, pz})
+                            * core::Mat4f::Scale3D({s, s, s});
+    sphere_instances.push_back(
+        std::make_unique<renderer::MeshInstance>(&sphere_mesh, world, false));
+  }
+
+  // Warm sun-like directional light (always visible).
   renderer::GlobalLight global_light(
       core::Color(0.9f, 0.85f, 0.7f), 1.2f,
       core::Vec3f{0.05f, 0.05f, 0.08f},
       core::Vec3f{-1.f, -1.f, -0.5f}.Normalized());
 
-  // Warm point light hovering near the cube.
-  renderer::OmniLight omni_light(
-      core::Color(1.f, 0.6f, 0.2f), 2.f, 30.f,
-      core::Mat4f::Translation({-2.f, 1.f, 0.f}));
+  // 40 omni lights scattered through the world.
+  std::vector<std::unique_ptr<renderer::OmniLight>> omni_lights;
+  omni_lights.reserve(kNumOmniLights);
+  for (int i = 0; i < kNumOmniLights; ++i) {
+    const float px = pos_dist(rng);
+    const float py = pos_dist(rng);
+    const float pz = pos_dist(rng);
+    const core::Color color(color_dist(rng), color_dist(rng), color_dist(rng));
+    const float radius = radius_dist(rng);
+    omni_lights.push_back(std::make_unique<renderer::OmniLight>(
+        color, 2.f, radius, core::Mat4f::Translation({px, py, pz})));
+  }
 
-  // Cool blue-white spotlight from above, aimed straight down.
-  renderer::CircleSpotLight circle_spot(
-      core::Color(0.6f, 0.8f, 1.f), 2.5f,
-      20.f * kPi / 180.f,  // inner half-angle
-      30.f * kPi / 180.f,  // outer half-angle
-      25.f,
-      core::Vec3f{0.f, -1.f, 0.f},
-      core::Mat4f::Translation({0.f, 4.f, 0.f}));
-
-  // Neutral white rectangular beam from the right.
-  renderer::RectangleSpotLight rect_spot(
-      core::Color(1.f, 1.f, 0.95f), 1.8f,
-      25.f * kPi / 180.f,  // horizontal half-angle
-      15.f * kPi / 180.f,  // vertical half-angle
-      18.f,
-      core::Vec3f{-1.f, -1.f, 0.f}.Normalized(),
-      core::Mat4f::Translation({3.f, 2.f, 0.f}));
+  // ---- Register with visibility systems ------------------------------------
+  for (auto& inst  : cube_instances)   renderer::Renderer::Instance().AddRenderable(inst.get());
+  for (auto& inst  : sphere_instances) renderer::Renderer::Instance().AddRenderable(inst.get());
+  for (auto& light : omni_lights)      renderer::Renderer::Instance().AddRenderable(light.get());
+  renderer::Renderer::Instance().AddRenderable(&global_light);
 
   // ---- Camera ---------------------------------------------------------------
   core::Camera camera(core::ProjectionType::kPerspective,
                       core::CoordinateSystem::kRightHanded);
-  camera.SetPosition({0.f, 0.f, 12.f});
+  camera.SetPosition({0.f, 200.f, 500.f});
   camera.SetTarget({0.f, 0.f, 0.f});
-  camera.SetMinDepth(0.1f);
-  camera.SetMaxDepth(200.f);
+  camera.SetMinDepth(1.f);
+  camera.SetMaxDepth(1500.f);
   camera.SetFOV(1.0472f);  // 60 degrees
   camera.SetScreenCenter({gfx.GetWidth() * 0.5f, gfx.GetHeight() * 0.5f});
 
@@ -253,7 +283,6 @@ int main(int argc, char* argv[]) {
 
   // ---- Timing ---------------------------------------------------------------
   auto  t_prev       = std::chrono::steady_clock::now();
-  float cube_angle   = 0.f;
   float elapsed_time = 0.f;
 
   bool running = true;
@@ -329,31 +358,13 @@ int main(int argc, char* argv[]) {
     camera.SetTarget(pos + look);
     camera.UpdateMatrices();
 
-    // ---- Scene update -------------------------------------------------------
-    cube_angle   += kRotSpeed * dt;
+    // ---- Render -------------------------------------------------------------
     elapsed_time += dt;
 
-    // Cube on the left, rotating around its own Y axis; sphere static on right.
-    const core::Mat4f cube_world = core::Mat4f::Translation({-3.f, 0.f, 0.f})
-                                 * core::Mat4f::RotationY(cube_angle);
-    const core::Mat4f sphere_world = core::Mat4f::Translation({3.f, 0.f, 0.f});
-
-    // ---- Render -------------------------------------------------------------
     video->BeginFrame();
     video->ClearRenderTargets(core::Color::kBlack);
 
     renderer::Renderer::Instance().SetDebugMode(debug_mode);
-
-    global_light.Enqueue();
-    omni_light.Enqueue();
-    circle_spot.Enqueue();
-    rect_spot.Enqueue();
-
-    cube_instance.SetWorldMatrix(cube_world);
-    cube_instance.Enqueue();
-    sphere_instance.SetWorldMatrix(sphere_world);
-    sphere_instance.Enqueue();
-
     renderer::Renderer::Instance().Update(elapsed_time, &camera);
   }
 
