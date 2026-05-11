@@ -4,6 +4,7 @@ add_executable(core_tests
     Mat4fTest.cpp
     PlaneTest.cpp
     Vec2fTest.cpp
+    ViewFrustumTest.cpp
     Vec3fTest.cpp
     Vec4fTest.cpp
     ColorTest.cpp
