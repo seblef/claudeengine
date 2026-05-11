@@ -11,6 +11,7 @@ add_library(renderer STATIC
     Mesh.cpp
     MeshInstance.cpp
     MeshRenderer.cpp
+    NoCullingVisibilitySystem.cpp
     OmniLight.cpp
     RectangleSpotLight.cpp
     Renderable.cpp
