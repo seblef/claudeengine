@@ -2,14 +2,17 @@
 
 #include <memory>
 
+#include "abstract/BlendFactor.h"
 #include "abstract/ConstantBuffer.h"
 #include "abstract/RenderTarget.h"
+#include "abstract/Shader.h"
 #include "abstract/VideoDevice.h"
 #include "core/Camera.h"
 #include "core/Mat4f.h"
 #include "core/Singleton.h"
 #include "renderer/EmissiveFBO.h"
 #include "renderer/GBuffer.h"
+#include "renderer/GeometryData.h"
 
 namespace renderer {
 
@@ -26,8 +29,10 @@ namespace renderer {
 //   emissive_fbo_ — HDR RT (RGBA16F) as color + G-buffer depth+stencil as depth.
 //
 // Frame pipeline (Update()):
-//   1. Geometry pass: bind G-buffer, clear, MeshRenderer fills all 3 MRTs.
-//   Lighting, emissive, and composite phases are added in later issues.
+//   1. Geometry pass  — G-buffer FBO; MeshRenderer fills albedo, normal, specular.
+//   2. Lighting pass  — HDR RT (additive blend); LightRenderer shades each light.
+//   3. Emissive pass  — HDR RT (additive, depth read-only); emissive/ambient meshes.
+//   4. Composite pass — default framebuffer; gamma correction.
 //
 // Lifecycle: new Renderer(video) → Instance() calls → Shutdown().
 class Renderer : public core::Singleton<Renderer> {
@@ -93,6 +98,11 @@ class Renderer : public core::Singleton<Renderer> {
   // gbuffer's depth RT, so it must be destroyed first (reverse declaration order).
   GBuffer     gbuffer_;
   EmissiveFBO emissive_fbo_;
+
+  // Composite pass resources — gamma-correct the HDR RT to the default framebuffer.
+  // cppcheck-suppress unusedStructMember
+  abstract::Shader*             composite_shader_;
+  std::unique_ptr<GeometryData> composite_quad_;
 };
 
 }  // namespace renderer

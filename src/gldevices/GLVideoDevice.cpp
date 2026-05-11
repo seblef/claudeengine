@@ -205,6 +205,35 @@ void GLVideoDevice::ClearStencil(int val) {
   glClear(GL_STENCIL_BUFFER_BIT);
 }
 
+namespace {
+
+GLenum ToGLBlendFactor(abstract::BlendFactor f) {
+  switch (f) {
+    case abstract::BlendFactor::kZero:             return GL_ZERO;
+    case abstract::BlendFactor::kOne:              return GL_ONE;
+    case abstract::BlendFactor::kSrcAlpha:         return GL_SRC_ALPHA;
+    case abstract::BlendFactor::kOneMinusSrcAlpha: return GL_ONE_MINUS_SRC_ALPHA;
+  }
+  return GL_ONE;
+}
+
+}  // namespace
+
+void GLVideoDevice::SetBlendEnabled(bool enabled,
+                                    abstract::BlendFactor src,
+                                    abstract::BlendFactor dst) {
+  if (enabled) {
+    glEnable(GL_BLEND);
+    glBlendFunc(ToGLBlendFactor(src), ToGLBlendFactor(dst));
+  } else {
+    glDisable(GL_BLEND);
+  }
+}
+
+void GLVideoDevice::SetDepthWriteEnabled(bool enabled) {
+  glDepthMask(enabled ? GL_TRUE : GL_FALSE);
+}
+
 std::unique_ptr<abstract::RenderTarget> GLVideoDevice::CreateRenderTarget(
     int width, int height, abstract::TextureFormat format) {
   return std::make_unique<GLRenderTarget>(width, height, format);

@@ -1,7 +1,10 @@
 #include "renderer/Renderer.h"
 
+#include "abstract/BlendFactor.h"
 #include "abstract/BufferUsage.h"
 #include "core/Color.h"
+#include "renderer/GeometryUtils.h"
+#include "renderer/LightRenderer.h"
 #include "renderer/MaterialInfos.h"
 #include "renderer/MeshRenderer.h"
 #include "renderer/RenderableInfos.h"
@@ -18,7 +21,10 @@ constexpr int kMaterialInfosSlot      = 3;
 constexpr int kMaterialInfosFloat4s   = sizeof(MaterialInfos) / 16;     // 64 / 16 = 4
 }  // namespace
 
-Renderer::Renderer(abstract::VideoDevice* video) : video_(video) {
+Renderer::Renderer(abstract::VideoDevice* video)
+    : video_(video),
+      composite_shader_(video->CreateShader("composite")),
+      composite_quad_(CreateQuad(video)) {
   renderable_infos_cb_ = video_->CreateConstantBuffer(
       kRenderableInfosFloat4s, kRenderableInfosSlot, abstract::BufferUsage::kDynamic);
   scene_infos_cb_ = video_->CreateConstantBuffer(
@@ -32,9 +38,12 @@ Renderer::Renderer(abstract::VideoDevice* video) : video_(video) {
   emissive_fbo_.Create(video_, w, h, gbuffer_.GetDepthRT());
 
   new MeshRenderer(video_);
+  new LightRenderer(video_);
 }
 
 Renderer::~Renderer() {
+  composite_shader_->Release();
+  LightRenderer::Shutdown();
   MeshRenderer::Shutdown();
 }
 
@@ -51,14 +60,51 @@ void Renderer::Update(float time, const core::Camera* camera) {
   material_infos_cb_->Bind();
   if (camera_) FillSceneInfos();
 
-  // Geometry pass: fill G-buffer albedo, normal, specular MRTs.
+  // 1. Geometry pass — fill albedo, normal, specular MRTs and depth+stencil.
   gbuffer_.BindForWriting();
-  video_->ClearRenderTargets(core::Color::kBlack);
   video_->SetDepthTestEnabled(true);
+  video_->SetDepthWriteEnabled(true);
+  video_->ClearRenderTargets(core::Color::kBlack);
   MeshRenderer::Instance().PrepareRender();
   MeshRenderer::Instance().Render();
-  MeshRenderer::Instance().EndRender();
   gbuffer_.UnbindForWriting();
+
+  // 2. Lighting pass — shade into the HDR RT; G-buffer RTs as samplers.
+  //    Depth write is disabled so glClear only clears the HDR color attachment,
+  //    preserving G-buffer depth for stencil sub-passes and position reconstruction.
+  emissive_fbo_.BindForWriting();
+  video_->SetDepthWriteEnabled(false);
+  video_->ClearRenderTargets(core::Color::kBlack);
+  gbuffer_.BindForReading(5);                    // albedo=5, normal=6, specular=7
+  gbuffer_.GetDepthRT()->BindAsSampler(8);       // depth=8 (position reconstruction)
+  video_->SetBlendEnabled(true, abstract::BlendFactor::kOne, abstract::BlendFactor::kOne);
+  LightRenderer::Instance().Render();
+  LightRenderer::Instance().EndRender();
+  video_->SetBlendEnabled(false);
+  emissive_fbo_.UnbindForWriting();
+
+  // 3. Emissive pass — additively draw emissive/ambient surfaces into the HDR RT.
+  //    Depth is read-only (test on, write off) so emissive objects are occluded
+  //    correctly by opaque geometry without corrupting G-buffer depth.
+  emissive_fbo_.BindForWriting();
+  video_->SetDepthTestEnabled(true);
+  video_->SetBlendEnabled(true, abstract::BlendFactor::kOne, abstract::BlendFactor::kOne);
+  MeshRenderer::Instance().RenderEmissive();
+  MeshRenderer::Instance().EndRender();
+  video_->SetBlendEnabled(false);
+  video_->SetDepthWriteEnabled(true);
+  video_->SetDepthTestEnabled(false);
+  emissive_fbo_.UnbindForWriting();
+
+  // 4. Composite pass — gamma-correct the HDR RT to the default framebuffer.
+  emissive_fbo_.GetHDRRT()->BindAsSampler(0);
+  composite_shader_->Activate();
+  composite_quad_->Set();
+  video_->RenderIndexed(composite_quad_->GetNumIndices());
+
+  // Restore default depth state for the next BeginFrame.
+  video_->SetDepthTestEnabled(true);
+  video_->SetDepthWriteEnabled(true);
 }
 
 void Renderer::SetRenderableInfos(const core::Mat4f& world_matrix) {
