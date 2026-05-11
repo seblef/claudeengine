@@ -3,7 +3,9 @@
 #include "abstract/BlendFactor.h"
 #include "abstract/BufferUsage.h"
 #include "abstract/CompareFunc.h"
+#include "core/BBox3.h"
 #include "core/Color.h"
+#include "core/ViewFrustum.h"
 #include "renderer/GeometryUtils.h"
 #include "renderer/LightRenderer.h"
 #include "renderer/MaterialInfos.h"
@@ -50,6 +52,33 @@ Renderer::~Renderer() {
   MeshRenderer::Shutdown();
 }
 
+void Renderer::InitVisibilitySystems(float world_size) {
+  const float half = world_size * 0.5f;
+  const core::BBox3 bounds(-half, -half, -half, half, half, half);
+  const int depth = OctreeVisibilitySystem::ComputeNumLevels(world_size);
+  no_culling_system_ = std::make_unique<NoCullingVisibilitySystem>(bounds);
+  octree_system_     = std::make_unique<OctreeVisibilitySystem>(bounds, depth);
+}
+
+void Renderer::ClearVisibilitySystems() {
+  if (no_culling_system_) no_culling_system_->Clear();
+  if (octree_system_)     octree_system_->Clear();
+}
+
+void Renderer::AddRenderable(Renderable* r) {
+  if (r->IsAlwaysVisible())
+    no_culling_system_->AddRenderable(r);
+  else
+    octree_system_->AddRenderable(r);
+}
+
+void Renderer::RemoveRenderable(Renderable* r) {
+  if (r->IsAlwaysVisible())
+    no_culling_system_->RemoveRenderable(r);
+  else
+    octree_system_->RemoveRenderable(r);
+}
+
 void Renderer::SetCamera(const core::Camera* camera) {
   camera_ = camera;
   if (camera_) FillSceneInfos();
@@ -62,6 +91,12 @@ void Renderer::Update(float time, const core::Camera* camera) {
   scene_infos_cb_->Bind();
   material_infos_cb_->Bind();
   if (camera_) FillSceneInfos();
+
+  if (camera_ && no_culling_system_ && octree_system_) {
+    const core::ViewFrustum frustum(camera_->GetViewProjectionMatrix());
+    no_culling_system_->CullAndEnqueue(frustum);
+    octree_system_->CullAndEnqueue(frustum);
+  }
 
   // 1. Geometry pass — fill albedo, normal, specular MRTs and depth+stencil.
   gbuffer_.BindForWriting();
