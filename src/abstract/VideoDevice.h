@@ -105,6 +105,11 @@ class VideoDevice {
   // Enables or disables depth testing for subsequent draw calls.
   virtual void SetDepthTestEnabled(bool enabled) = 0;
 
+  // Sets the depth comparison function. Defaults to kLess after context creation.
+  // Use kLessEqual for the emissive pass so fragments at the same depth as the
+  // geometry pass are accepted.
+  virtual void SetDepthFunc(CompareFunc func) = 0;
+
   // Enables or disables writing to the color buffer.
   // Disable before the stencil-fill sub-pass of a light volume.
   virtual void SetColorWriteEnabled(bool enabled) = 0;
