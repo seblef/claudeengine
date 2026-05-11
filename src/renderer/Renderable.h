@@ -7,6 +7,8 @@
 
 namespace renderer {
 
+class IVisibilitySystem;  // forward declaration — full type not needed here
+
 // Abstract base for all renderable objects (meshes, actors, lights, etc.).
 //
 // Maintains a world matrix, a local bounding box (immutable after
@@ -45,6 +47,18 @@ class Renderable {
 
   [[nodiscard]] bool IsAlwaysVisible() const;
 
+  // ---- Visibility system slot -----------------------------------------------
+  //
+  // visibility_id_ is an opaque handle stored by the owning IVisibilitySystem:
+  //   NoCullingVisibilitySystem — vector index (enables O(1) swap+pop removal)
+  //   OctreeVisibilitySystem    — OctreeNode* (enables O(1) direct node access)
+
+  void SetVisibilitySystem(IVisibilitySystem* s);
+  [[nodiscard]] IVisibilitySystem* GetVisibilitySystem() const;
+
+  void          SetVisibilityId(uintptr_t id);
+  [[nodiscard]] uintptr_t GetVisibilityId() const;
+
  private:
   // cppcheck-suppress unusedStructMember
   core::BBox3   local_bbox_;
@@ -53,7 +67,9 @@ class Renderable {
   core::Mat4f   world_matrix_;
   // cppcheck-suppress unusedStructMember
   bool          always_visible_;
-  uint64_t last_frame_ = 0;
+  uint64_t      last_frame_         = 0;
+  IVisibilitySystem* visibility_system_ = nullptr;
+  uintptr_t     visibility_id_      = 0;
 };
 
 }  // namespace renderer
