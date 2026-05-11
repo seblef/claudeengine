@@ -134,9 +134,11 @@ int main(int argc, char* argv[]) {
   renderer::Material sphere_material(
       renderer::MaterialDesc()
           .SetDiffuse("demo.png")
+          .SetEmissive("demo.png")
           .SetDiffuseColor(core::Color(0.8f, 0.9f, 1.f))
           .SetAmbientColor(core::Color(0.05f, 0.05f, 0.1f))
-          .SetShininess(128.f),
+          .SetShininess(128.f)
+          .SetEmissiveColor(core::Color(1.1f, 0.05f, 0.f)),
       video);
 
   // ---- Cube geometry --------------------------------------------------------
@@ -206,7 +208,7 @@ int main(int argc, char* argv[]) {
 
   // Warm point light hovering near the cube.
   renderer::OmniLight omni_light(
-      core::Color(1.f, 0.6f, 0.2f), 2.f, 3.f,
+      core::Color(1.f, 0.6f, 0.2f), 2.f, 30.f,
       core::Mat4f::Translation({-2.f, 1.f, 0.f}));
 
   // Cool blue-white spotlight from above, aimed straight down.
@@ -214,7 +216,7 @@ int main(int argc, char* argv[]) {
       core::Color(0.6f, 0.8f, 1.f), 2.5f,
       20.f * kPi / 180.f,  // inner half-angle
       30.f * kPi / 180.f,  // outer half-angle
-      8.f,
+      25.f,
       core::Vec3f{0.f, -1.f, 0.f},
       core::Mat4f::Translation({0.f, 4.f, 0.f}));
 
@@ -223,7 +225,7 @@ int main(int argc, char* argv[]) {
       core::Color(1.f, 1.f, 0.95f), 1.8f,
       25.f * kPi / 180.f,  // horizontal half-angle
       15.f * kPi / 180.f,  // vertical half-angle
-      8.f,
+      18.f,
       core::Vec3f{-1.f, -1.f, 0.f}.Normalized(),
       core::Mat4f::Translation({3.f, 2.f, 0.f}));
 
