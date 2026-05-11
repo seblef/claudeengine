@@ -27,6 +27,9 @@ class OctreeVisibilitySystem : public IVisibilitySystem {
   // subdivision.  Use ComputeNumLevels() to choose an appropriate depth.
   OctreeVisibilitySystem(const core::BBox3& world_bounds, int max_depth);
 
+  // Resets visibility_system_ on all registered renderables before destruction.
+  ~OctreeVisibilitySystem() override;
+
   // Returns the recommended number of tree levels for a cubic world of the
   // given side length so that leaf cells are at least min_cell_size units wide.
   // Result is clamped to [1, 8].
