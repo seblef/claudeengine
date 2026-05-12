@@ -17,7 +17,6 @@
 #include "core/Vec3f.h"
 #include "gldevices/GLDevices.h"
 #include "renderer/GlobalLight.h"
-#include "renderer/MaterialDesc.h"
 #include "renderer/MeshLoader.h"
 #include "renderer/OmniLight.h"
 #include "renderer/RenderableMesh.h"
@@ -64,18 +63,10 @@ int main(int argc, char* argv[]) {
   const std::string data_dir = core::Config::GetDataFolder().string();
 
   auto obj_mesh = renderer::MeshLoader::Load(
-      data_dir + "/meshes/demo.obj", video,
-      renderer::MaterialDesc()
-          .SetDiffuse("demo.png")
-          .SetDiffuseColor(core::Color(1.f, 0.5f, 0.f))
-          .SetShininess(32.f));
+      data_dir + "/meshes/demo.obj", video);
 
   auto fbx_mesh = renderer::MeshLoader::Load(
-      data_dir + "/meshes/demo.fbx", video,
-      renderer::MaterialDesc()
-          .SetDiffuse("demo.png")
-          .SetDiffuseColor(core::Color(0.2f, 0.6f, 1.f))
-          .SetShininess(64.f));
+      data_dir + "/meshes/demo.fbx", video);
 
   const core::Mat4f obj_world =
       core::Mat4f::Translation({-10.f, 0.f, 0.f}) * core::Mat4f::Scale3D({3.f, 3.f, 3.f});

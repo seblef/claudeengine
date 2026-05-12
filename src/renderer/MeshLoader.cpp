@@ -45,14 +45,17 @@ std::unique_ptr<GeometryData> MakeGeometry(abstract::VideoDevice* video,
 }
 
 std::unique_ptr<RenderableMesh> FromMeshData(const mesh::MeshData& data,
-                                             abstract::VideoDevice* video,
-                                             const MaterialDesc& mat_desc) {
+                                             abstract::VideoDevice* video) {
   auto result = std::make_unique<RenderableMesh>();
   for (const auto& sub : data.submeshes) {
     if (sub.lods.empty()) continue;
     auto geo = MakeGeometry(video, sub.lods[0]);
     if (!geo) continue;
-    auto mat = std::make_unique<Material>(mat_desc, video);
+    std::unique_ptr<Material> mat;
+    if (!sub.material_slot.empty())
+      mat = std::make_unique<Material>(sub.material_slot + ".yaml", video);
+    else
+      mat = std::make_unique<Material>(video);
     result->AddSubmesh(std::move(geo), std::move(mat));
   }
   if (result->GetSubmeshCount() == 0) return nullptr;
@@ -62,8 +65,7 @@ std::unique_ptr<RenderableMesh> FromMeshData(const mesh::MeshData& data,
 }  // namespace
 
 std::unique_ptr<RenderableMesh> MeshLoader::Load(const std::string& path,
-                                                  abstract::VideoDevice* video,
-                                                  const MaterialDesc& mat_desc) {
+                                                  abstract::VideoDevice* video) {
   const std::string ext = Extension(path);
   mesh::MeshData data;
   bool ok = false;
@@ -81,7 +83,7 @@ std::unique_ptr<RenderableMesh> MeshLoader::Load(const std::string& path,
   }
 
   if (!ok) return nullptr;
-  return FromMeshData(data, video, mat_desc);
+  return FromMeshData(data, video);
 }
 
 }  // namespace renderer
