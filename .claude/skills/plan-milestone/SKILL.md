@@ -15,6 +15,7 @@ Plan the following feature:
 * Add rationale for high-level decisions and architecture
 * Add rationale for every small task
 * Propose a list of GitHub issues that will be implemented to complete the milestone
+* Propose an update of the milestone description so that it is clear for you, if needed
 * Ask user confirmation before creating any GitHub issue
 
 ## GitHub issues format
