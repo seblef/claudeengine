@@ -10,15 +10,18 @@ add_library(renderer STATIC
     Material.cpp
     Mesh.cpp
     MeshInstance.cpp
+    MeshLoader.cpp
     MeshRenderer.cpp
     NoCullingVisibilitySystem.cpp
     OctreeVisibilitySystem.cpp
     OmniLight.cpp
     RectangleSpotLight.cpp
     Renderable.cpp
+    RenderableMesh.cpp
+    RenderableMeshInstance.cpp
     Renderer.cpp
 )
 
 target_include_directories(renderer PUBLIC "${CMAKE_SOURCE_DIR}/src")
 
-target_link_libraries(renderer PUBLIC abstract)
+target_link_libraries(renderer PUBLIC abstract PRIVATE mesh)
