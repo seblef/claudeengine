@@ -88,6 +88,17 @@ set(YAML_CPP_INSTALL       OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(yaml-cpp)
 
 # ---------------------------------------------------------------------------
+# fast_obj (single-header OBJ loader)
+# ---------------------------------------------------------------------------
+FetchContent_Declare(
+    fast_obj
+    GIT_REPOSITORY https://github.com/thisistherk/fast_obj.git
+    GIT_TAG        master
+    GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(fast_obj)
+
+# ---------------------------------------------------------------------------
 # stb (single-header image loader) — JPEG and PNG support
 # ---------------------------------------------------------------------------
 FetchContent_Declare(
