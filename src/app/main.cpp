@@ -17,6 +17,10 @@
 #include "core/Vec3f.h"
 #include "core/Vertex3D.h"
 #include "gldevices/GLDevices.h"
+#include "mesh/FbxImporter.h"
+#include "mesh/LodData.h"
+#include "mesh/MeshData.h"
+#include "mesh/ObjImporter.h"
 #include "renderer/GeometryData.h"
 #include "renderer/GlobalLight.h"
 #include "renderer/Material.h"
@@ -26,6 +30,7 @@
 #include "renderer/OmniLight.h"
 #include "renderer/Renderer.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -35,6 +40,25 @@
 #include <loguru.hpp>
 
 namespace {
+
+// Converts a LodData to a GPU GeometryData. Downcasts uint32_t indices to
+// uint16_t — safe for meshes with fewer than 65 536 vertices.
+// Returns nullptr and logs an error if the vertex count exceeds the limit.
+std::unique_ptr<renderer::GeometryData> MakeGeometry(
+    abstract::VideoDevice* video, const mesh::LodData& lod) {
+  if (lod.vertices.size() > 65535u) {
+    LOG_F(ERROR, "Imported mesh exceeds 16-bit index limit (%zu vertices)",
+          lod.vertices.size());
+    return nullptr;
+  }
+  std::vector<uint16_t> idx16(lod.indices.size());
+  std::transform(lod.indices.begin(), lod.indices.end(), idx16.begin(),
+                 [](uint32_t i) { return static_cast<uint16_t>(i); });
+  return std::make_unique<renderer::GeometryData>(
+      video,
+      static_cast<int>(lod.vertices.size()), lod.vertices.data(),
+      static_cast<int>(lod.indices.size()) / 3, idx16.data());
+}
 
 constexpr float kHalf        = 1.5f;    // cube half-side
 constexpr float kWorldHalf   = 500.f;   // world extends [-500, 500]³
@@ -258,6 +282,64 @@ int main(int argc, char* argv[]) {
   for (auto& inst  : sphere_instances) renderer::Renderer::Instance().AddRenderable(inst.get());
   for (auto& light : omni_lights)      renderer::Renderer::Instance().AddRenderable(light.get());
   renderer::Renderer::Instance().AddRenderable(&global_light);
+
+  // ---- Imported demo meshes ------------------------------------------------
+  // demo.obj (orange) placed left of origin; demo.fbx (blue) placed right.
+  // Each submesh gets its own GeometryData, Material, Mesh and MeshInstance.
+  const std::string data_dir = core::Config::GetDataFolder().string();
+  const std::string obj_path = data_dir + "/meshes/demo.obj";
+  const std::string fbx_path = data_dir + "/meshes/demo.fbx";
+
+  renderer::Material obj_mat(
+      renderer::MaterialDesc()
+          .SetDiffuse("demo.png")
+          .SetDiffuseColor(core::Color(1.f, 0.5f, 0.f))
+          .SetShininess(32.f),
+      video);
+  renderer::Material fbx_mat(
+      renderer::MaterialDesc()
+          .SetDiffuse("demo.png")
+          .SetDiffuseColor(core::Color(0.2f, 0.6f, 1.f))
+          .SetShininess(64.f),
+      video);
+
+  const core::Mat4f obj_world =
+      core::Mat4f::Translation({-10.f, 0.f, 0.f}) * core::Mat4f::Scale3D({3.f, 3.f, 3.f});
+  const core::Mat4f fbx_world =
+      core::Mat4f::Translation({ 10.f, 0.f, 0.f}) * core::Mat4f::Scale3D({3.f, 3.f, 3.f});
+
+  std::vector<std::unique_ptr<renderer::GeometryData>> demo_geos;
+  std::vector<std::unique_ptr<renderer::Mesh>>         demo_meshes;
+  std::vector<std::unique_ptr<renderer::MeshInstance>> demo_instances;
+
+  // Lambda: uploads all LOD-0 submeshes of mesh_data to the GPU and registers
+  // them with the renderer, pairing each submesh with `mat` and `world`.
+  auto RegisterMeshData = [&](const mesh::MeshData& mesh_data,
+                               renderer::Material* mat,
+                               const core::Mat4f& world) {
+    for (const auto& sub : mesh_data.submeshes) {
+      if (sub.lods.empty()) continue;
+      auto geo = MakeGeometry(video, sub.lods[0]);
+      if (!geo) continue;
+      auto mesh_obj = std::make_unique<renderer::Mesh>(geo.get(), mat);
+      auto inst = std::make_unique<renderer::MeshInstance>(
+          mesh_obj.get(), world, false);
+      renderer::Renderer::Instance().AddRenderable(inst.get());
+      demo_geos.push_back(std::move(geo));
+      demo_meshes.push_back(std::move(mesh_obj));
+      demo_instances.push_back(std::move(inst));
+    }
+  };
+
+  mesh::MeshData obj_data;
+  mesh::ObjImporter obj_importer;
+  if (obj_importer.Import(obj_path, &obj_data))
+    RegisterMeshData(obj_data, &obj_mat, obj_world);
+
+  mesh::MeshData fbx_data;
+  mesh::FbxImporter fbx_importer;
+  if (fbx_importer.Import(fbx_path, &fbx_data))
+    RegisterMeshData(fbx_data, &fbx_mat, fbx_world);
 
   // ---- Camera ---------------------------------------------------------------
   core::Camera camera(core::ProjectionType::kPerspective,
