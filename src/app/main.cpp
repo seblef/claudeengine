@@ -15,95 +15,25 @@
 #include "core/Mat4f.h"
 #include "core/ProjectionType.h"
 #include "core/Vec3f.h"
-#include "core/Vertex3D.h"
 #include "gldevices/GLDevices.h"
-#include "renderer/GeometryData.h"
 #include "renderer/GlobalLight.h"
-#include "renderer/Material.h"
 #include "renderer/MaterialDesc.h"
-#include "renderer/Mesh.h"
-#include "renderer/MeshInstance.h"
+#include "renderer/MeshLoader.h"
 #include "renderer/OmniLight.h"
+#include "renderer/RenderableMesh.h"
+#include "renderer/RenderableMeshInstance.h"
 #include "renderer/Renderer.h"
 
 #include <chrono>
 #include <cmath>
-#include <cstdint>
 #include <memory>
-#include <random>
-#include <vector>
+#include <string>
 #include <loguru.hpp>
 
 namespace {
 
-constexpr float kHalf        = 1.5f;    // cube half-side
-constexpr float kWorldHalf   = 500.f;   // world extends [-500, 500]³
-constexpr float kCameraSpeed = 10.f;    // units/s
+constexpr float kCameraSpeed = 10.f;   // units/s
 constexpr float kMouseSens   = 0.002f;  // rad/px
-constexpr float kPi          = 3.14159265f;
-
-constexpr int kNumCubes      = 300;
-constexpr int kNumSpheres    = 300;
-constexpr int kNumOmniLights = 40;
-
-// Builds a UV sphere GeometryData with normals, tangents, binormals and UVs.
-// stacks: latitude bands (top to bottom); rings: longitude bands around Y.
-std::unique_ptr<renderer::GeometryData> BuildSphere(
-    abstract::VideoDevice* video, int stacks, int rings) {
-  const int num_verts = (stacks + 1) * (rings + 1);
-  const int num_tris  = stacks * rings * 2;
-
-  std::vector<core::Vertex3D> verts;
-  verts.reserve(num_verts);
-  std::vector<uint16_t> idx;
-  idx.reserve(num_tris * 3);
-
-  for (int i = 0; i <= stacks; ++i) {
-    const float phi     = kPi * static_cast<float>(i) /
-                          static_cast<float>(stacks);
-    const float sin_phi = std::sin(phi);
-    const float cos_phi = std::cos(phi);
-
-    for (int j = 0; j <= rings; ++j) {
-      const float theta = 2.f * kPi * static_cast<float>(j) /
-                          static_cast<float>(rings);
-      const float sin_t = std::sin(theta);
-      const float cos_t = std::cos(theta);
-
-      // Unit sphere, Y-up; phi=0 at top (+Y), phi=pi at bottom (-Y).
-      const core::Vec3f pos    = {sin_phi * cos_t, cos_phi, sin_phi * sin_t};
-      const core::Vec3f normal = pos;  // outward normal for unit sphere
-
-      // Tangent: d(pos)/d(theta) normalized — direction of increasing U.
-      // d(pos)/d(theta) = (-sin_phi*sin_t, 0, sin_phi*cos_t); sin_phi cancels.
-      const core::Vec3f tangent = (sin_phi > 1e-5f)
-          ? core::Vec3f{-sin_t, 0.f, cos_t}
-          : core::Vec3f{1.f,    0.f, 0.f};  // degenerate at poles
-
-      // Binormal: d(pos)/d(phi) — direction of increasing V.
-      // d(pos)/d(phi) = (cos_phi*cos_t, -sin_phi, cos_phi*sin_t).
-      const core::Vec3f binormal =
-          {cos_phi * cos_t, -sin_phi, cos_phi * sin_t};
-
-      const float u = static_cast<float>(j) / static_cast<float>(rings);
-      const float v = static_cast<float>(i) / static_cast<float>(stacks);
-      verts.push_back({pos, normal, binormal, tangent, {u, v}});
-    }
-  }
-
-  // Two CCW triangles per quad viewed from outside the sphere.
-  for (int i = 0; i < stacks; ++i) {
-    for (int j = 0; j < rings; ++j) {
-      const auto k0 = static_cast<uint16_t>(i       * (rings + 1) + j);
-      const auto k1 = static_cast<uint16_t>((i + 1) * (rings + 1) + j);
-      idx.push_back(k0);     idx.push_back(k0 + 1); idx.push_back(k1);
-      idx.push_back(k0 + 1); idx.push_back(k1 + 1); idx.push_back(k1);
-    }
-  }
-
-  return std::make_unique<renderer::GeometryData>(
-      video, num_verts, verts.data(), num_tris, idx.data());
-}
 
 }  // namespace
 
@@ -125,147 +55,78 @@ int main(int argc, char* argv[]) {
   video->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
   video->SetIndexType(abstract::IndexType::kUInt16);
 
-  // ---- Materials ------------------------------------------------------------
-  renderer::Material cube_material(
-      renderer::MaterialDesc()
-          .SetDiffuse("demo.png")
-          .SetDiffuseColor(core::Color(1.f, 1.f, 1.f))
-          .SetShininess(64.f),
-      video);
-
-  // Sphere: ambient_color > 0 so IsEmissive() == true → emissive pass.
-  renderer::Material sphere_material(
-      renderer::MaterialDesc()
-          .SetDiffuse("demo.png")
-          .SetEmissive("demo.png")
-          .SetDiffuseColor(core::Color(0.8f, 0.9f, 1.f))
-          .SetAmbientColor(core::Color(0.05f, 0.05f, 0.1f))
-          .SetShininess(128.f)
-          .SetEmissiveColor(core::Color(1.1f, 0.05f, 0.f)),
-      video);
-
-  // ---- Cube geometry --------------------------------------------------------
-  // 24 unique vertices (4 per face × 6 faces), CCW winding viewed from outside.
-  const float h = kHalf;
-  const core::Vertex3D cube_verts[24] = {
-    // +Z (front): normal (0,0,1), tangent (1,0,0), binormal (0,1,0)
-    {{-h,+h,+h}, {0,0,1}, {0,1,0}, {1,0,0}, {0.f,1.f}},
-    {{-h,-h,+h}, {0,0,1}, {0,1,0}, {1,0,0}, {0.f,0.f}},
-    {{+h,-h,+h}, {0,0,1}, {0,1,0}, {1,0,0}, {1.f,0.f}},
-    {{+h,+h,+h}, {0,0,1}, {0,1,0}, {1,0,0}, {1.f,1.f}},
-    // -Z (back): normal (0,0,-1), tangent (-1,0,0), binormal (0,1,0)
-    {{+h,+h,-h}, {0,0,-1}, {0,1,0}, {-1,0,0}, {0.f,1.f}},
-    {{+h,-h,-h}, {0,0,-1}, {0,1,0}, {-1,0,0}, {0.f,0.f}},
-    {{-h,-h,-h}, {0,0,-1}, {0,1,0}, {-1,0,0}, {1.f,0.f}},
-    {{-h,+h,-h}, {0,0,-1}, {0,1,0}, {-1,0,0}, {1.f,1.f}},
-    // +X (right): normal (1,0,0), tangent (0,0,-1), binormal (0,1,0)
-    {{+h,+h,+h}, {1,0,0}, {0,1,0}, {0,0,-1}, {0.f,1.f}},
-    {{+h,-h,+h}, {1,0,0}, {0,1,0}, {0,0,-1}, {0.f,0.f}},
-    {{+h,-h,-h}, {1,0,0}, {0,1,0}, {0,0,-1}, {1.f,0.f}},
-    {{+h,+h,-h}, {1,0,0}, {0,1,0}, {0,0,-1}, {1.f,1.f}},
-    // -X (left): normal (-1,0,0), tangent (0,0,1), binormal (0,1,0)
-    {{-h,+h,-h}, {-1,0,0}, {0,1,0}, {0,0,1}, {0.f,1.f}},
-    {{-h,-h,-h}, {-1,0,0}, {0,1,0}, {0,0,1}, {0.f,0.f}},
-    {{-h,-h,+h}, {-1,0,0}, {0,1,0}, {0,0,1}, {1.f,0.f}},
-    {{-h,+h,+h}, {-1,0,0}, {0,1,0}, {0,0,1}, {1.f,1.f}},
-    // +Y (top): normal (0,1,0), tangent (1,0,0), binormal (0,0,-1)
-    {{-h,+h,+h}, {0,1,0}, {0,0,-1}, {1,0,0}, {0.f,1.f}},
-    {{-h,+h,-h}, {0,1,0}, {0,0,-1}, {1,0,0}, {0.f,0.f}},
-    {{+h,+h,-h}, {0,1,0}, {0,0,-1}, {1,0,0}, {1.f,0.f}},
-    {{+h,+h,+h}, {0,1,0}, {0,0,-1}, {1,0,0}, {1.f,1.f}},
-    // -Y (bottom): normal (0,-1,0), tangent (1,0,0), binormal (0,0,1)
-    {{-h,-h,-h}, {0,-1,0}, {0,0,1}, {1,0,0}, {0.f,1.f}},
-    {{-h,-h,+h}, {0,-1,0}, {0,0,1}, {1,0,0}, {0.f,0.f}},
-    {{+h,-h,+h}, {0,-1,0}, {0,0,1}, {1,0,0}, {1.f,0.f}},
-    {{+h,-h,-h}, {0,-1,0}, {0,0,1}, {1,0,0}, {1.f,1.f}},
-  };
-  const uint16_t cube_indices[36] = {
-     0, 1, 2,  0, 2, 3,   // +Z
-     4, 5, 6,  4, 6, 7,   // -Z
-     8, 9,10,  8,10,11,   // +X
-    12,13,14, 12,14,15,   // -X
-    16,19,18, 16,18,17,   // +Y
-    20,22,21, 20,23,22,   // -Y
-  };
-  renderer::GeometryData cube_geo(video, 24, cube_verts, 12, cube_indices);
-
-  // ---- Sphere geometry (32 stacks × 64 rings, full TBN + UVs) ---------------
-  auto sphere_geo = BuildSphere(video, 32, 64);
-
   new renderer::Renderer(video);
-  renderer::Renderer::Instance().InitVisibilitySystems(1000.f);
+  renderer::Renderer::Instance().InitVisibilitySystems(100.f);
 
-  // ---- Meshes ---------------------------------------------------------------
-  renderer::Mesh cube_mesh(&cube_geo, &cube_material);
-  renderer::Mesh sphere_mesh(sphere_geo.get(), &sphere_material);
+  // ---- Demo meshes ----------------------------------------------------------
+  // Load demo.obj (orange) and demo.fbx (blue) from the data folder and place
+  // them side by side near the origin.
+  const std::string data_dir = core::Config::GetDataFolder().string();
 
-  // ---- Random scene population (seed=42 for reproducibility) ----------------
-  std::mt19937 rng(42);
-  std::uniform_real_distribution<float> pos_dist(-kWorldHalf, kWorldHalf);
-  std::uniform_real_distribution<float> scale_dist(0.5f, 4.0f);
-  std::uniform_real_distribution<float> color_dist(0.f, 1.f);
-  std::uniform_real_distribution<float> radius_dist(20.f, 60.f);
+  auto obj_mesh = renderer::MeshLoader::Load(
+      data_dir + "/meshes/demo.obj", video,
+      renderer::MaterialDesc()
+          .SetDiffuse("demo.png")
+          .SetDiffuseColor(core::Color(1.f, 0.5f, 0.f))
+          .SetShininess(32.f));
 
-  // 300 cube instances at random positions and uniform scales.
-  std::vector<std::unique_ptr<renderer::MeshInstance>> cube_instances;
-  cube_instances.reserve(kNumCubes);
-  for (int i = 0; i < kNumCubes; ++i) {
-    const float px = pos_dist(rng);
-    const float py = pos_dist(rng);
-    const float pz = pos_dist(rng);
-    const float s  = scale_dist(rng);
-    const core::Mat4f world = core::Mat4f::Translation({px, py, pz})
-                            * core::Mat4f::Scale3D({s, s, s});
-    cube_instances.push_back(
-        std::make_unique<renderer::MeshInstance>(&cube_mesh, world, false));
+  auto fbx_mesh = renderer::MeshLoader::Load(
+      data_dir + "/meshes/demo.fbx", video,
+      renderer::MaterialDesc()
+          .SetDiffuse("demo.png")
+          .SetDiffuseColor(core::Color(0.2f, 0.6f, 1.f))
+          .SetShininess(64.f));
+
+  const core::Mat4f obj_world =
+      core::Mat4f::Translation({-10.f, 0.f, 0.f}) * core::Mat4f::Scale3D({3.f, 3.f, 3.f});
+  const core::Mat4f fbx_world =
+      core::Mat4f::Translation({ 10.f, 0.f, 0.f}) * core::Mat4f::Scale3D({3.f, 3.f, 3.f});
+
+  std::unique_ptr<renderer::RenderableMeshInstance> obj_inst;
+  std::unique_ptr<renderer::RenderableMeshInstance> fbx_inst;
+
+  if (obj_mesh) {
+    obj_inst = std::make_unique<renderer::RenderableMeshInstance>(
+        obj_mesh.get(), obj_world, false);
+    renderer::Renderer::Instance().AddRenderable(obj_inst.get());
+  }
+  if (fbx_mesh) {
+    fbx_inst = std::make_unique<renderer::RenderableMeshInstance>(
+        fbx_mesh.get(), fbx_world, false);
+    renderer::Renderer::Instance().AddRenderable(fbx_inst.get());
   }
 
-  // 300 sphere instances at random positions and uniform scales.
-  std::vector<std::unique_ptr<renderer::MeshInstance>> sphere_instances;
-  sphere_instances.reserve(kNumSpheres);
-  for (int i = 0; i < kNumSpheres; ++i) {
-    const float px = pos_dist(rng);
-    const float py = pos_dist(rng);
-    const float pz = pos_dist(rng);
-    const float s  = scale_dist(rng);
-    const core::Mat4f world = core::Mat4f::Translation({px, py, pz})
-                            * core::Mat4f::Scale3D({s, s, s});
-    sphere_instances.push_back(
-        std::make_unique<renderer::MeshInstance>(&sphere_mesh, world, false));
-  }
-
-  // Warm sun-like directional light (always visible).
+  // ---- Lights ---------------------------------------------------------------
+  // Warm directional sun from upper-left.
   renderer::GlobalLight global_light(
       core::Color(0.9f, 0.85f, 0.7f), 1.2f,
       core::Vec3f{0.05f, 0.05f, 0.08f},
       core::Vec3f{-1.f, -1.f, -0.5f}.Normalized());
 
-  // 40 omni lights scattered through the world.
-  std::vector<std::unique_ptr<renderer::OmniLight>> omni_lights;
-  omni_lights.reserve(kNumOmniLights);
-  for (int i = 0; i < kNumOmniLights; ++i) {
-    const float px = pos_dist(rng);
-    const float py = pos_dist(rng);
-    const float pz = pos_dist(rng);
-    const core::Color color(color_dist(rng), color_dist(rng), color_dist(rng));
-    const float radius = radius_dist(rng);
-    omni_lights.push_back(std::make_unique<renderer::OmniLight>(
-        color, 2.f, radius, core::Mat4f::Translation({px, py, pz})));
-  }
+  // Accent omni lights: warm near the OBJ mesh, cool near the FBX mesh,
+  // and a neutral fill above the scene centre.
+  renderer::OmniLight light_obj(
+      core::Color(1.f, 0.6f, 0.2f), 2.f, 40.f,
+      core::Mat4f::Translation({-10.f, 8.f, 5.f}));
+  renderer::OmniLight light_fbx(
+      core::Color(0.3f, 0.6f, 1.f), 2.f, 40.f,
+      core::Mat4f::Translation({ 10.f, 8.f, 5.f}));
+  renderer::OmniLight light_fill(
+      core::Color(0.9f, 0.9f, 1.f), 1.f, 60.f,
+      core::Mat4f::Translation({  0.f, 20.f, 10.f}));
 
-  // ---- Register with visibility systems ------------------------------------
-  for (auto& inst  : cube_instances)   renderer::Renderer::Instance().AddRenderable(inst.get());
-  for (auto& inst  : sphere_instances) renderer::Renderer::Instance().AddRenderable(inst.get());
-  for (auto& light : omni_lights)      renderer::Renderer::Instance().AddRenderable(light.get());
   renderer::Renderer::Instance().AddRenderable(&global_light);
+  renderer::Renderer::Instance().AddRenderable(&light_obj);
+  renderer::Renderer::Instance().AddRenderable(&light_fbx);
+  renderer::Renderer::Instance().AddRenderable(&light_fill);
 
   // ---- Camera ---------------------------------------------------------------
   core::Camera camera(core::ProjectionType::kPerspective,
                       core::CoordinateSystem::kRightHanded);
-  camera.SetPosition({0.f, 200.f, 500.f});
+  camera.SetPosition({0.f, 5.f, 30.f});
   camera.SetTarget({0.f, 0.f, 0.f});
-  camera.SetMinDepth(1.f);
-  camera.SetMaxDepth(1500.f);
+  camera.SetMinDepth(0.1f);
+  camera.SetMaxDepth(200.f);
   camera.SetFOV(1.0472f);  // 60 degrees
   camera.SetScreenCenter({gfx.GetWidth() * 0.5f, gfx.GetHeight() * 0.5f});
 
