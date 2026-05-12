@@ -1,5 +1,6 @@
 add_library(game STATIC
     GameObject.cpp
+    GameLight.cpp
 )
 
 target_include_directories(game PUBLIC "${CMAKE_SOURCE_DIR}/src")
