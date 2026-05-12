@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(ClaudeEngine LANGUAGES CXX)
+project(ClaudeEngine LANGUAGES C CXX)
 
 # ---------------------------------------------------------------------------
 # Build profile: "dev" (default) or "stable"
@@ -97,6 +97,26 @@ FetchContent_Declare(
     GIT_SHALLOW    TRUE
 )
 FetchContent_MakeAvailable(fast_obj)
+
+# ---------------------------------------------------------------------------
+# ufbx (single-file FBX loader)
+# ---------------------------------------------------------------------------
+FetchContent_Declare(
+    ufbx
+    GIT_REPOSITORY https://github.com/ufbx/ufbx.git
+    GIT_TAG        master
+    GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(ufbx)
+
+# ufbx has no CMakeLists.txt — create a static library target manually.
+add_library(ufbx STATIC ${ufbx_SOURCE_DIR}/ufbx.c)
+target_include_directories(ufbx PUBLIC ${ufbx_SOURCE_DIR})
+if(MSVC)
+    target_compile_options(ufbx PRIVATE /W0)
+else()
+    target_compile_options(ufbx PRIVATE -w)
+endif()
 
 # ---------------------------------------------------------------------------
 # stb (single-header image loader) — JPEG and PNG support

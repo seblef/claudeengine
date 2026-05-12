@@ -3,6 +3,7 @@ add_library(mesh STATIC
     EmeshWriter.cpp
     MeshUtils.cpp
     ObjImporter.cpp
+    FbxImporter.cpp
 )
 
-target_link_libraries(mesh PUBLIC core fast_obj)
+target_link_libraries(mesh PUBLIC core fast_obj ufbx)
