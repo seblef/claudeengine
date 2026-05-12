@@ -1,9 +1,11 @@
 #include "renderer/MeshLoader.h"
 
 #include <algorithm>
+#include <filesystem>
 #include <string>
 #include <vector>
 
+#include "core/Config.h"
 #include "mesh/EmeshReader.h"
 #include "mesh/FbxImporter.h"
 #include "mesh/LodData.h"
@@ -52,10 +54,19 @@ std::unique_ptr<RenderableMesh> FromMeshData(const mesh::MeshData& data,
     auto geo = MakeGeometry(video, sub.lods[0]);
     if (!geo) continue;
     std::unique_ptr<Material> mat;
-    if (!sub.material_slot.empty())
-      mat = std::make_unique<Material>(sub.material_slot + ".yaml", video);
-    else
+    if (!sub.material_slot.empty()) {
+      const auto mat_path = core::Config::GetDataFolder() / "materials" /
+                            (sub.material_slot + ".yaml");
+      if (std::filesystem::exists(mat_path)) {
+        mat = std::make_unique<Material>(sub.material_slot + ".yaml", video);
+      } else {
+        LOG_F(WARNING, "MeshLoader: material '%s' not found, using default",
+              sub.material_slot.c_str());
+        mat = std::make_unique<Material>(video);
+      }
+    } else {
       mat = std::make_unique<Material>(video);
+    }
     result->AddSubmesh(std::move(geo), std::move(mat));
   }
   if (result->GetSubmeshCount() == 0) return nullptr;
