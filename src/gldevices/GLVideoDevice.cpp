@@ -7,6 +7,7 @@
 #include "gldevices/GLGeometryBuffer.h"
 #include "gldevices/GLIndexBuffer.h"
 #include "gldevices/GLRenderTarget.h"
+#include "gldevices/GLRenderTargetCube.h"
 #include "gldevices/GLRenderTargetGroup.h"
 #include "gldevices/GLShader.h"
 #include "gldevices/GLTexture.h"
@@ -253,6 +254,11 @@ GLVideoDevice::CreateRenderTargetGroup(
     abstract::RenderTarget* depth_stencil_target) {
   return std::make_unique<GLRenderTargetGroup>(color_targets,
                                                depth_stencil_target);
+}
+
+std::unique_ptr<abstract::RenderTargetCube> GLVideoDevice::CreateRenderTargetCube(
+    int size, abstract::TextureFormat /*format*/) {
+  return std::make_unique<GLRenderTargetCube>(size);
 }
 
 }  // namespace gldevices

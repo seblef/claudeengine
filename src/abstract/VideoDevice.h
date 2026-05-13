@@ -15,6 +15,7 @@
 #include "abstract/IndexType.h"
 #include "abstract/PrimitiveType.h"
 #include "abstract/RenderTarget.h"
+#include "abstract/RenderTargetCube.h"
 #include "abstract/RenderTargetGroup.h"
 #include "abstract/Shader.h"
 #include "abstract/StencilOp.h"
@@ -155,6 +156,12 @@ class VideoDevice {
   // The caller owns the returned object exclusively (unique_ptr).
   [[nodiscard]] virtual std::unique_ptr<RenderTarget> CreateRenderTarget(
       int width, int height, TextureFormat format) = 0;
+
+  // Creates a cube-map depth render target for omni-light shadow rendering.
+  // The only supported format is kDepth32F.
+  // The caller owns the returned object exclusively (unique_ptr).
+  [[nodiscard]] virtual std::unique_ptr<RenderTargetCube> CreateRenderTargetCube(
+      int size, TextureFormat format) = 0;
 
   // Creates an FBO bundle from color_targets + one depth+stencil target.
   // All targets must have been created by this device and must outlive the group.
