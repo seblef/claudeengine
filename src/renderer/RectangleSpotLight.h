@@ -26,8 +26,12 @@ class RectangleSpotLight : public Light {
 
   [[nodiscard]] core::Mat4f GetVolumeMatrix() const override;
 
-  // Computes the light-space VP matrix for shadow map rendering.
-  // fov_y = 2 * v_angle, aspect = tan(h_angle) / tan(v_angle), near = 0.1, far = range.
+  // Returns the light-space view-projection matrix for shadow map rendering.
+  // view = LookAt(pos, pos + direction, up);
+  // proj = PerspectiveRH(2*v_angle, tan(h_angle)/tan(v_angle), 0.1, range).
+  // Returns proj * view (column-vector convention).
+  [[nodiscard]] core::Mat4f GetLightSpaceMatrix() const;
+
   [[nodiscard]] std::optional<core::Mat4f> ComputeShadowVP() const override;
 
   [[nodiscard]] float ComputeScreenRadius(const core::Vec3f& eye_pos,
