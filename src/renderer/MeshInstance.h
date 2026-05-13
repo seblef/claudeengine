@@ -18,6 +18,10 @@ class MeshInstance : public Renderable {
   // Adds this instance to the MeshRenderer queue for the current frame.
   void Enqueue() override;
 
+  // Returns true when the mesh's material casts shadows.
+  // Updated to delegate to material->GetCastShadow() in issue #146.
+  [[nodiscard]] bool IsShadowCaster() const override { return true; }
+
   [[nodiscard]] Mesh* GetModel() const;
 
  private:

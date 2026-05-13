@@ -49,6 +49,10 @@ class LightRenderer : public core::Singleton<LightRenderer> {
   // Clears the instance queue after drawing.
   void EndRender();
 
+  // Returns the current frame's enqueued lights.
+  // Valid after CullAndEnqueue and before EndRender().
+  [[nodiscard]] const std::vector<Light*>& GetLights() const { return instances_; }
+
  private:
   void RenderGlobalLights();
   void RenderLocalLights();

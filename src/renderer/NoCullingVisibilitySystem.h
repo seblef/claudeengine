@@ -34,6 +34,10 @@ class NoCullingVisibilitySystem : public IVisibilitySystem {
   // Calls Enqueue() on every registered renderable.  frustum is unused.
   void CullAndEnqueue(const core::ViewFrustum& frustum) override;
 
+  // Appends all registered renderables to out; frustum is ignored.
+  void CullAndCollect(const core::ViewFrustum& frustum,
+                      std::vector<Renderable*>& out) const override;
+
   // Clears all registrations and resets each renderable's system pointer.
   void Clear() override;
 

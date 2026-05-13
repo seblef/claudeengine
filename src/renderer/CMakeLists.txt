@@ -20,6 +20,8 @@ add_library(renderer STATIC
     RenderableMesh.cpp
     RenderableMeshInstance.cpp
     Renderer.cpp
+    ShadowMap.cpp
+    ShadowRenderer.cpp
 )
 
 target_include_directories(renderer PUBLIC "${CMAKE_SOURCE_DIR}/src")

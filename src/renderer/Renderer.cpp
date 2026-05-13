@@ -43,6 +43,7 @@ Renderer::Renderer(abstract::VideoDevice* video)
 
   new MeshRenderer(video_);
   new LightRenderer(video_);
+  new ShadowRenderer(video_);
 
   InitVisibilitySystems(1000.f);
 }
@@ -50,6 +51,7 @@ Renderer::Renderer(abstract::VideoDevice* video)
 Renderer::~Renderer() {
   composite_shader_->Release();
   debug_shader_->Release();
+  ShadowRenderer::Shutdown();
   LightRenderer::Shutdown();
   MeshRenderer::Shutdown();
 }
@@ -65,6 +67,7 @@ void Renderer::InitVisibilitySystems(float world_size) {
 void Renderer::ClearVisibilitySystems() {
   no_culling_system_->Clear();
   octree_system_->Clear();
+  ShadowRenderer::Instance().ClearShadowMaps();
 }
 
 void Renderer::AddRenderable(Renderable* r) {
@@ -99,6 +102,12 @@ void Renderer::Update(float time, const core::Camera* camera) {
     no_culling_system_->CullAndEnqueue(frustum);
     octree_system_->CullAndEnqueue(frustum);
   }
+
+  // 0. Shadow pass — render depth maps from each shadow-casting spot light.
+  ShadowRenderer::Instance().RenderShadowMaps(
+      LightRenderer::Instance().GetLights(),
+      no_culling_system_.get(),
+      octree_system_.get());
 
   // 1. Geometry pass — fill albedo, normal, specular MRTs and depth+stencil.
   gbuffer_.BindForWriting();

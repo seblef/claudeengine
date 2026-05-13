@@ -15,6 +15,7 @@
 #include "renderer/GeometryData.h"
 #include "renderer/NoCullingVisibilitySystem.h"
 #include "renderer/OctreeVisibilitySystem.h"
+#include "renderer/ShadowRenderer.h"
 
 namespace renderer {
 
