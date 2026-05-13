@@ -1,5 +1,6 @@
 #include "renderer/ShadowRenderer.h"
 
+#include <algorithm>
 #include <vector>
 
 #include "abstract/BufferUsage.h"
@@ -20,7 +21,8 @@ constexpr int kShadowPassInfosFloat4s = sizeof(ShadowPassInfos) / 16;  // 64/16 
 
 ShadowRenderer::ShadowRenderer(abstract::VideoDevice* video)
     : video_(video),
-      pool_(video, core::AppConfig::GetShadows()) {
+      pool_(video, core::AppConfig::GetShadows()),
+      csm_infos_{} {
   shadow_pass_infos_cb_ = video_->CreateConstantBuffer(
       kShadowPassInfosFloat4s, kShadowPassInfosSlot,
       abstract::BufferUsage::kDynamic);
@@ -39,6 +41,19 @@ void ShadowRenderer::RenderShadowMaps(const std::vector<Light*>& lights,
   // Front-face culling reduces shadow acne without a bias.
   video_->SetFaceCulling(abstract::CullFace::kFront);
 
+  // Render CSM cascades for the scene's GlobalLight (if any, and cast_shadow=true).
+  has_csm_ = false;
+  const auto global_it = std::find_if(lights.cbegin(), lights.cend(),
+      [](const Light* l) {
+        return l->GetType() == LightType::kGlobal && l->GetCastShadow();
+      });
+  if (global_it != lights.cend()) {
+    has_csm_ = true;
+    RenderCascades(static_cast<const GlobalLight&>(**global_it),
+                   no_cull, octree, camera);
+  }
+
+  // Render 2D shadow maps for spot lights from the pool.
   for (const Light* light : lights) {
     if (!light->GetCastShadow()) continue;
 
@@ -47,7 +62,7 @@ void ShadowRenderer::RenderShadowMaps(const std::vector<Light*>& lights,
     if (!smap) continue;
 
     // Lights that return nullopt do not support 2D shadow maps (GlobalLight
-    // uses CSM; OmniLight uses a cube map — both deferred to later issues).
+    // uses CSM; OmniLight uses a cube map — both handled separately).
     const auto vp_opt = light->ComputeShadowVP();
     if (!vp_opt.has_value()) continue;
     const core::Mat4f& light_vp = *vp_opt;
@@ -84,8 +99,55 @@ void ShadowRenderer::RenderShadowMaps(const std::vector<Light*>& lights,
   video_->SetViewport(0, 0, video_->GetWidth(), video_->GetHeight());
 }
 
+void ShadowRenderer::RenderCascades(const GlobalLight&       light,
+                                    const IVisibilitySystem* no_cull,
+                                    const IVisibilitySystem* octree,
+                                    const core::Camera&      camera) {
+  const int res = light.GetShadowResolution();
+
+  // Lazily allocate or reallocate cascade shadow maps when resolution changes.
+  if (!cascade_maps_[0] || cascade_maps_[0]->GetResolution() != res) {
+    for (int i = 0; i < kCSMCascadeCount; ++i)
+      cascade_maps_[i] = std::make_unique<ShadowMap>(video_, res);
+  }
+
+  // Compute the 4 cascade VP matrices and split depths.
+  light.ComputeCascadeMatrices(camera, csm_infos_);
+
+  for (int i = 0; i < kCSMCascadeCount; ++i) {
+    const core::Mat4f& vp = csm_infos_.cascade_vp[i];
+    cascade_maps_[i]->SetLightVP(vp);
+
+    ShadowPassInfos spi;
+    spi.light_vp = vp;
+    shadow_pass_infos_cb_->Fill(&spi);
+
+    // Cull shadow casters visible from this cascade frustum.
+    const core::ViewFrustum cascade_frustum(vp);
+    std::vector<Renderable*> casters;
+    no_cull->CullAndCollect(cascade_frustum, casters);
+    octree->CullAndCollect(cascade_frustum, casters);
+
+    cascade_maps_[i]->GetFBO()->BindForWriting();
+    video_->SetViewport(0, 0, res, res);
+    video_->SetDepthTestEnabled(true);
+    video_->SetDepthWriteEnabled(true);
+    video_->ClearRenderTargets(core::Color::kBlack);
+
+    for (Renderable* r : casters) r->EnqueueDepth();
+    MeshRenderer::Instance().RenderDepth();
+
+    cascade_maps_[i]->GetFBO()->UnbindForWriting();
+  }
+}
+
 const ShadowMap* ShadowRenderer::GetShadowMap(const Light* light) const {
   return pool_.GetShadowMap(light);
+}
+
+const ShadowMap* ShadowRenderer::GetCascadeMap(int index) const {
+  if (!has_csm_ || index < 0 || index >= kCSMCascadeCount) return nullptr;
+  return cascade_maps_[index].get();
 }
 
 void ShadowRenderer::ClearShadowMaps() {

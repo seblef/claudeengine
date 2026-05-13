@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <memory>
 #include <vector>
 
@@ -7,6 +8,8 @@
 #include "abstract/VideoDevice.h"
 #include "core/Camera.h"
 #include "core/Singleton.h"
+#include "renderer/CSMInfos.h"
+#include "renderer/GlobalLight.h"
 #include "renderer/IVisibilitySystem.h"
 #include "renderer/Light.h"
 #include "renderer/ShadowMap.h"
@@ -44,18 +47,42 @@ class ShadowRenderer : public core::Singleton<ShadowRenderer> {
                         const IVisibilitySystem*   octree,
                         const core::Camera&        camera);
 
-  // Returns the shadow map assigned to a light this frame, or nullptr if none.
+  // Returns the shadow map assigned to a spot light this frame, or nullptr if none.
   [[nodiscard]] const ShadowMap* GetShadowMap(const Light* light) const;
+
+  // Returns true if a GlobalLight with cast_shadow=true was rendered this frame.
+  [[nodiscard]] bool HasCSM() const { return has_csm_; }
+
+  // Returns the filled CSMInfos from the last RenderShadowMaps call.
+  // Valid only when HasCSM() == true.
+  [[nodiscard]] const CSMInfos& GetCSMInfos() const { return csm_infos_; }
+
+  // Returns the shadow map for cascade index (0–3), or nullptr if !HasCSM().
+  [[nodiscard]] const ShadowMap* GetCascadeMap(int index) const;
 
   // Releases all pool assignments (call on scene clear).
   void ClearShadowMaps();
 
  private:
+  void RenderCascades(const GlobalLight&       light,
+                      const IVisibilitySystem* no_cull,
+                      const IVisibilitySystem* octree,
+                      const core::Camera&      camera);
+
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice*                     video_;
   std::unique_ptr<abstract::ConstantBuffer>  shadow_pass_infos_cb_;
   // cppcheck-suppress unusedStructMember
   ShadowMapPool                              pool_;
+
+  // CSM state — populated each frame by RenderShadowMaps when a GlobalLight
+  // with cast_shadow=true is present.
+  // cppcheck-suppress unusedStructMember
+  bool    has_csm_  = false;
+  // cppcheck-suppress unusedStructMember
+  CSMInfos csm_infos_;
+  // cppcheck-suppress unusedStructMember
+  std::array<std::unique_ptr<ShadowMap>, kCSMCascadeCount> cascade_maps_;
 };
 
 }  // namespace renderer

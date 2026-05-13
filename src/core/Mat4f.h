@@ -294,6 +294,21 @@ class alignas(16) Mat4f {
              0.f,         0.f,           0.f,           1.f };
   }
 
+  // Asymmetric orthographic projection, right-handed: NDC z in [−1, 1] (OpenGL).
+  // Maps the off-center AABB [left,right]×[bottom,top]×[-z_near,-z_far] to the
+  // NDC cube.  Used for tight-fit cascade shadow map projections.
+  [[nodiscard]] static inline Mat4f OrthoOffCenterRH(float left, float right,
+                                                      float bottom, float top,
+                                                      float z_near, float z_far) {
+    const float rl = 1.f / (right  - left);
+    const float tb = 1.f / (top    - bottom);
+    const float ri = 1.f / (z_near - z_far);
+    return {  2.f * rl,  0.f,       0.f,       -(right + left)   * rl,
+              0.f,       2.f * tb,  0.f,       -(top   + bottom) * tb,
+              0.f,       0.f,       2.f * ri,   (z_far  + z_near) * ri,
+              0.f,       0.f,       0.f,        1.f };
+  }
+
  private:
   // Row-major: data_[row * 4 + col].
   float data_[16] = {

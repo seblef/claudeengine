@@ -5,6 +5,9 @@
 #include "core/Vec3f.h"
 #include "renderer/Light.h"
 
+namespace core { class Camera; }
+namespace renderer { struct CSMInfos; }
+
 namespace renderer {
 
 // Directional light with an ambient contribution; infinite influence.
@@ -21,6 +24,11 @@ class GlobalLight : public Light {
               const core::Vec3f& ambient_color, const core::Vec3f& direction);
 
   [[nodiscard]] core::Mat4f GetVolumeMatrix() const override;
+
+  // Fills out with 4 cascade VP matrices and split depths for CSM rendering.
+  // Uses the practical split scheme (lambda=0.5 blend of log and uniform splits).
+  // Each cascade sub-frustum gets a tight orthographic projection fitted in light space.
+  void ComputeCascadeMatrices(const core::Camera& camera, CSMInfos& out) const;
 
   [[nodiscard]] const core::Vec3f& GetAmbientColor() const { return ambient_color_; }
   [[nodiscard]] const core::Vec3f& GetDirection()    const { return direction_; }

@@ -14,6 +14,7 @@
 #include "renderer/OmniLight.h"
 #include "renderer/RectangleSpotLight.h"
 #include "renderer/Renderer.h"
+#include "renderer/CSMInfos.h"
 #include "renderer/ShadowMap.h"
 #include "renderer/ShadowRenderer.h"
 
@@ -131,6 +132,12 @@ void LightRenderer::RenderGlobalLights() {
   video_->SetDepthTestEnabled(false);
   video_->SetStencilTestEnabled(false);
   video_->SetFaceCulling(abstract::CullFace::kNone);
+
+  // Bind cascade shadow maps (samplers 9–12); null cascades use sampler 0 (white).
+  for (int i = 0; i < kCSMCascadeCount; ++i) {
+    const ShadowMap* cm = ShadowRenderer::Instance().GetCascadeMap(i);
+    if (cm) cm->GetDepthRT()->BindAsSampler(9 + i);
+  }
 
   // Shader and geometry are the same for all GlobalLights — activate once.
   global_shader_->Activate();
