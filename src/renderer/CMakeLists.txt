@@ -21,6 +21,7 @@ add_library(renderer STATIC
     RenderableMeshInstance.cpp
     Renderer.cpp
     ShadowMap.cpp
+    ShadowMapPool.cpp
     ShadowRenderer.cpp
 )
 

@@ -104,10 +104,13 @@ void Renderer::Update(float time, const core::Camera* camera) {
   }
 
   // 0. Shadow pass — render depth maps from each shadow-casting spot light.
-  ShadowRenderer::Instance().RenderShadowMaps(
-      LightRenderer::Instance().GetLights(),
-      no_culling_system_.get(),
-      octree_system_.get());
+  if (camera_) {
+    ShadowRenderer::Instance().RenderShadowMaps(
+        LightRenderer::Instance().GetLights(),
+        no_culling_system_.get(),
+        octree_system_.get(),
+        *camera_);
+  }
 
   // 1. Geometry pass — fill albedo, normal, specular MRTs and depth+stencil.
   gbuffer_.BindForWriting();

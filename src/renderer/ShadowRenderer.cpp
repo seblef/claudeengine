@@ -4,6 +4,7 @@
 
 #include "abstract/BufferUsage.h"
 #include "abstract/CullFace.h"
+#include "core/AppConfig.h"
 #include "core/Color.h"
 #include "core/ViewFrustum.h"
 #include "renderer/MeshRenderer.h"
@@ -18,7 +19,8 @@ constexpr int kShadowPassInfosFloat4s = sizeof(ShadowPassInfos) / 16;  // 64/16 
 }  // namespace
 
 ShadowRenderer::ShadowRenderer(abstract::VideoDevice* video)
-    : video_(video) {
+    : video_(video),
+      pool_(video, core::AppConfig::GetShadows()) {
   shadow_pass_infos_cb_ = video_->CreateConstantBuffer(
       kShadowPassInfosFloat4s, kShadowPassInfosSlot,
       abstract::BufferUsage::kDynamic);
@@ -27,16 +29,22 @@ ShadowRenderer::ShadowRenderer(abstract::VideoDevice* video)
 ShadowRenderer::~ShadowRenderer() = default;
 
 void ShadowRenderer::RenderShadowMaps(const std::vector<Light*>& lights,
-                                      const IVisibilitySystem* no_cull,
-                                      const IVisibilitySystem* octree) {
+                                      const IVisibilitySystem*   no_cull,
+                                      const IVisibilitySystem*   octree,
+                                      const core::Camera&        camera) {
+  pool_.Assign(lights, camera);
+
   shadow_pass_infos_cb_->Bind();
 
   // Front-face culling reduces shadow acne without a bias.
   video_->SetFaceCulling(abstract::CullFace::kFront);
 
-  for (Light* light : lights) {
-    // Skip lights with shadow casting disabled.
+  for (const Light* light : lights) {
     if (!light->GetCastShadow()) continue;
+
+    // Lights not assigned a pool slot receive no shadow this frame.
+    ShadowMap* smap = const_cast<ShadowMap*>(pool_.GetShadowMap(light));
+    if (!smap) continue;
 
     // Lights that return nullopt do not support 2D shadow maps (GlobalLight
     // uses CSM; OmniLight uses a cube map — both deferred to later issues).
@@ -44,15 +52,6 @@ void ShadowRenderer::RenderShadowMaps(const std::vector<Light*>& lights,
     if (!vp_opt.has_value()) continue;
     const core::Mat4f& light_vp = *vp_opt;
 
-    // Allocate a shadow map for this light if needed, using the light's
-    // resolution cap (pool-based dynamic allocation comes in issue #147).
-    auto it = shadow_maps_.find(light);
-    if (it == shadow_maps_.end()) {
-      auto result = shadow_maps_.emplace(
-          light, std::make_unique<ShadowMap>(video_, light->GetShadowResolution()));
-      it = result.first;
-    }
-    ShadowMap* smap = it->second.get();
     smap->SetLightVP(light_vp);
 
     // Upload light-space VP to CB slot 6.
@@ -86,12 +85,11 @@ void ShadowRenderer::RenderShadowMaps(const std::vector<Light*>& lights,
 }
 
 const ShadowMap* ShadowRenderer::GetShadowMap(const Light* light) const {
-  auto it = shadow_maps_.find(light);
-  return (it != shadow_maps_.end()) ? it->second.get() : nullptr;
+  return pool_.GetShadowMap(light);
 }
 
 void ShadowRenderer::ClearShadowMaps() {
-  shadow_maps_.clear();
+  pool_.ClearAll();
 }
 
 }  // namespace renderer

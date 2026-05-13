@@ -4,6 +4,8 @@
 
 #include <yaml-cpp/yaml.h>
 
+#include "core/ShadowConfig.h"
+
 namespace core {
 
 // Holds graphics/window configuration from the [graphics] section of config.yaml.
@@ -31,9 +33,11 @@ class AppConfig {
   static void Init(const std::filesystem::path& config_path);
 
   [[nodiscard]] static const GraphicsConfig& GetGraphics() { return graphics_; }
+  [[nodiscard]] static const ShadowConfig&   GetShadows()  { return shadows_; }
 
  private:
   static GraphicsConfig graphics_;
+  static ShadowConfig   shadows_;
 };
 
 }  // namespace core

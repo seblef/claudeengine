@@ -2,3 +2,19 @@ graphics:
   windowed: true
   width: 1024
   height: 768
+
+shadows:
+  2d_pool:
+    slots_per_tier: 8
+    tiers: [64, 128, 256, 512, 1024]
+  cube_pool:
+    slots_per_tier: 4
+    tiers: [64, 128, 256, 512]
+  screen_size_thresholds:
+    t64:   20
+    t128:  50
+    t256:  100
+    t512:  200
+    t1024: 350
+    min:   10
+  hysteresis_factor: 0.8
