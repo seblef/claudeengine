@@ -4,6 +4,7 @@ add_library(game STATIC
     GameObject.cpp
     GameLight.cpp
     GameMesh.cpp
+    GameSystem.cpp
     MeshTemplate.cpp
 )
 
