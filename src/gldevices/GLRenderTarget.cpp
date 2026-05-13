@@ -70,6 +70,12 @@ GLRenderTarget::~GLRenderTarget() {
   if (tex_id_) glDeleteTextures(1, &tex_id_);
 }
 
+void GLRenderTarget::EnableCompareMode(bool enable) {
+  if (format_ != abstract::TextureFormat::kDepth32F) return;
+  glTextureParameteri(tex_id_, GL_TEXTURE_COMPARE_MODE,
+                      enable ? GL_COMPARE_REF_TO_TEXTURE : GL_NONE);
+}
+
 void GLRenderTarget::BindAsSampler(int slot) {
   glActiveTexture(GL_TEXTURE0 + slot);
   glBindTexture(GL_TEXTURE_2D, tex_id_);

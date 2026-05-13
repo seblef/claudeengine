@@ -19,6 +19,12 @@ class Shader : public core::Resource<std::string, Shader> {
   // Sets an integer uniform by name. Must be called after Activate().
   virtual void SetUniformInt(const std::string& name, int value) = 0;
 
+  // Sets a float uniform by name. Must be called after Activate().
+  virtual void SetUniformFloat(const std::string& name, float value) = 0;
+
+  // Sets a vec2 uniform by name. Must be called after Activate().
+  virtual void SetUniform2f(const std::string& name, float x, float y) = 0;
+
  protected:
   explicit Shader(const std::string& name)
       : core::Resource<std::string, Shader>(name) {}

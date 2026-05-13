@@ -40,6 +40,11 @@ void GLRenderTargetCube::BindAsSampler(int slot) {
   glBindTexture(GL_TEXTURE_CUBE_MAP, tex_id_);
 }
 
+void GLRenderTargetCube::EnableCompareMode(bool enable) {
+  glTextureParameteri(tex_id_, GL_TEXTURE_COMPARE_MODE,
+                      enable ? GL_COMPARE_REF_TO_TEXTURE : GL_NONE);
+}
+
 void GLRenderTargetCube::BindFaceAsOutput(int face_idx) {
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
                          GL_TEXTURE_CUBE_MAP_POSITIVE_X + face_idx,

@@ -22,6 +22,11 @@ class RenderTarget {
   // Binds the texture as a sampler at the given texture unit slot.
   virtual void BindAsSampler(int slot) = 0;
 
+  // Enables or disables depth-comparison mode (no-op for non-depth formats).
+  // Call with false before binding a depth RT as a plain sampler2D for
+  // visualization; restore with true afterwards.
+  virtual void EnableCompareMode(bool /*enable*/) {}
+
   // Attaches the texture to the currently bound FBO.
   // For color formats: attaches at GL_COLOR_ATTACHMENT0 + index.
   // For depth+stencil formats: attaches at GL_DEPTH_STENCIL_ATTACHMENT (index is ignored).

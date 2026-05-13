@@ -19,6 +19,11 @@ class RenderTargetCube {
   // Binds the cube map as a samplerCubeShadow at the given texture unit.
   virtual void BindAsSampler(int slot) = 0;
 
+  // Enables or disables depth-comparison mode (no-op by default).
+  // Call with false before binding as a plain samplerCube for visualization;
+  // restore with true afterwards.
+  virtual void EnableCompareMode(bool /*enable*/) {}
+
   // Attaches face `face_idx` (0=+X, 1=-X, 2=+Y, 3=-Y, 4=+Z, 5=-Z) to the
   // currently bound FBO as GL_DEPTH_ATTACHMENT.
   virtual void BindFaceAsOutput(int face_idx) = 0;

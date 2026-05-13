@@ -19,11 +19,9 @@ class GLRenderTargetCube : public abstract::RenderTargetCube {
   explicit GLRenderTargetCube(int size);
   ~GLRenderTargetCube() override;
 
-  // Binds the cube texture to GL_TEXTURE0 + slot for sampling.
   void BindAsSampler(int slot) override;
-
-  // Attaches the given cube face to the currently bound FBO as depth attachment.
   void BindFaceAsOutput(int face_idx) override;
+  void EnableCompareMode(bool enable) override;
 
  private:
   GLuint tex_id_ = 0;

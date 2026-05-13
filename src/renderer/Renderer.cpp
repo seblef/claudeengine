@@ -50,6 +50,8 @@ Renderer::Renderer(abstract::VideoDevice* video)
   new LightRenderer(video_);
   new ShadowRenderer(video_);
 
+  shadow_debug_renderer_ = std::make_unique<ShadowDebugRenderer>(video_);
+
   InitVisibilitySystems(1000.f);
 }
 
@@ -187,6 +189,9 @@ void Renderer::Update(float time, const core::Camera* camera) {
   composite_quad_->Set();
   video_->RenderIndexed(composite_quad_->GetNumIndices());
 
+  // 5. Shadow debug overlay — renders thumbnails on the left side of screen.
+  shadow_debug_renderer_->Render(LightRenderer::Instance().GetLights());
+
   // Restore default depth state for the next BeginFrame.
   video_->SetDepthTestEnabled(true);
   video_->SetDepthWriteEnabled(true);
@@ -196,6 +201,10 @@ void Renderer::SetRenderableInfos(const core::Mat4f& world_matrix) {
   RenderableInfos ri;
   ri.world = world_matrix;
   renderable_infos_cb_->Fill(&ri);
+}
+
+void Renderer::CycleShadowDebug() {
+  shadow_debug_renderer_->CycleNext(LightRenderer::Instance().GetLights());
 }
 
 void Renderer::OnResize(int w, int h) {
