@@ -4,6 +4,8 @@
 #include <vector>
 
 #include "core/Vertex3D.h"
+#include "renderer/Material.h"
+#include "renderer/RenderableMesh.h"
 
 namespace renderer {
 
@@ -100,6 +102,24 @@ std::unique_ptr<GeometryData> CreatePyramid(abstract::VideoDevice* video) {
     1, 4, 3,  // base tri 1
   };
   return std::make_unique<GeometryData>(video, 5, verts, 6, idx);
+}
+
+RenderableMesh* CreatePlaneMesh(abstract::VideoDevice* video,
+                                float half_size,
+                                Material* material) {
+  const float tiles = half_size / 5.0f;
+  const core::Vertex3D verts[4] = {
+    {{-half_size, 0.f, -half_size}, {0.f, 1.f, 0.f}, {}, {}, {0.f,   0.f  }},
+    {{ half_size, 0.f, -half_size}, {0.f, 1.f, 0.f}, {}, {}, {tiles, 0.f  }},
+    {{ half_size, 0.f,  half_size}, {0.f, 1.f, 0.f}, {}, {}, {tiles, tiles}},
+    {{-half_size, 0.f,  half_size}, {0.f, 1.f, 0.f}, {}, {}, {0.f,   tiles}},
+  };
+  const uint16_t idx[6] = {0, 1, 2, 0, 2, 3};
+
+  auto geo  = std::make_unique<GeometryData>(video, 4, verts, 2, idx);
+  auto* rm  = new RenderableMesh();
+  rm->AddSubmesh(std::move(geo), std::unique_ptr<Material>(material));
+  return rm;
 }
 
 }  // namespace renderer
