@@ -31,6 +31,10 @@ class MeshRenderer : public core::Singleton<MeshRenderer>,
   // Must be called after Render() and before EndRender().
   void RenderEmissive() override;
 
+  // Renders all depth-queued instances into the currently bound shadow FBO.
+  // Sorts by geometry to minimise VAO switches; clears the depth queue.
+  void RenderDepth() override;
+
  private:
   // cppcheck-suppress unusedStructMember
   abstract::Shader* emissive_shader_;

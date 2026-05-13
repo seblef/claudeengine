@@ -5,8 +5,6 @@
 #include "core/BBox3.h"
 #include "core/Mat4f.h"
 
-namespace abstract { class VideoDevice; }
-
 namespace renderer {
 
 class IVisibilitySystem;  // forward declaration — full type not needed here
@@ -40,10 +38,10 @@ class Renderable {
   // mesh-based renderables that belong to shadow-casting materials override this.
   [[nodiscard]] virtual bool IsShadowCaster() const { return false; }
 
-  // Renders only the depth contribution of this object using the currently
-  // bound depth-only shader.  No-op by default; mesh-based renderables override
-  // this to submit their geometry without binding materials.
-  virtual void DrawDepth(abstract::VideoDevice* /*video*/) {}
+  // Enqueues this object into the appropriate renderer's depth queue for the
+  // current shadow pass.  No-op by default; mesh-based renderables override
+  // this to call ObjectRenderer::AddDepthInstance.
+  virtual void EnqueueDepth() {}
 
   [[nodiscard]] const core::Mat4f& GetWorldMatrix() const;
 

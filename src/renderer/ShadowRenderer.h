@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "abstract/ConstantBuffer.h"
-#include "abstract/Shader.h"
 #include "abstract/VideoDevice.h"
 #include "core/Singleton.h"
 #include "renderer/IVisibilitySystem.h"
@@ -54,8 +53,6 @@ class ShadowRenderer : public core::Singleton<ShadowRenderer> {
  private:
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice* video_;
-  // cppcheck-suppress unusedStructMember
-  abstract::Shader* depth_shader_;
   std::unique_ptr<abstract::ConstantBuffer> shadow_pass_infos_cb_;
 
   // cppcheck-suppress unusedStructMember

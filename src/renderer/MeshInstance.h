@@ -22,6 +22,9 @@ class MeshInstance : public Renderable {
   // Updated to delegate to material->GetCastShadow() in issue #146.
   [[nodiscard]] bool IsShadowCaster() const override { return true; }
 
+  // Enqueues this instance in MeshRenderer's depth queue if it is a shadow caster.
+  void EnqueueDepth() override;
+
   [[nodiscard]] Mesh* GetModel() const;
 
  private:

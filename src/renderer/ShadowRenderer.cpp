@@ -6,6 +6,7 @@
 #include "abstract/CullFace.h"
 #include "core/Color.h"
 #include "core/ViewFrustum.h"
+#include "renderer/MeshRenderer.h"
 #include "renderer/Renderable.h"
 #include "renderer/ShadowPassInfos.h"
 
@@ -17,29 +18,25 @@ constexpr int kShadowPassInfosFloat4s = sizeof(ShadowPassInfos) / 16;  // 64/16 
 }  // namespace
 
 ShadowRenderer::ShadowRenderer(abstract::VideoDevice* video)
-    : video_(video),
-      depth_shader_(video->CreateShader("shadow_depth")) {
+    : video_(video) {
   shadow_pass_infos_cb_ = video_->CreateConstantBuffer(
       kShadowPassInfosFloat4s, kShadowPassInfosSlot,
       abstract::BufferUsage::kDynamic);
 }
 
-ShadowRenderer::~ShadowRenderer() {
-  depth_shader_->Release();
-}
+ShadowRenderer::~ShadowRenderer() = default;
 
 void ShadowRenderer::RenderShadowMaps(const std::vector<Light*>& lights,
                                       const IVisibilitySystem* no_cull,
                                       const IVisibilitySystem* octree) {
   shadow_pass_infos_cb_->Bind();
-  depth_shader_->Activate();
 
   // Front-face culling reduces shadow acne without a bias.
   video_->SetFaceCulling(abstract::CullFace::kFront);
 
   for (Light* light : lights) {
-    // Lights that return nullopt do not support 2D shadow maps (GlobalLight uses
-    // CSM; OmniLight uses a cube map — both deferred to later issues).
+    // Lights that return nullopt do not support 2D shadow maps (GlobalLight
+    // uses CSM; OmniLight uses a cube map — both deferred to later issues).
     const auto vp_opt = light->ComputeShadowVP();
     if (!vp_opt.has_value()) continue;
     const core::Mat4f& light_vp = *vp_opt;
@@ -54,18 +51,18 @@ void ShadowRenderer::RenderShadowMaps(const std::vector<Light*>& lights,
     ShadowMap* smap = it->second.get();
     smap->SetLightVP(light_vp);
 
-    // Upload to the shadow-pass CB.
+    // Upload light-space VP to CB slot 6.
     ShadowPassInfos spi;
     spi.light_vp = light_vp;
     shadow_pass_infos_cb_->Fill(&spi);
 
-    // Collect shadow casters visible from this light.
+    // Collect shadow casters visible from this light's frustum.
     const core::ViewFrustum light_frustum(light_vp);
     std::vector<Renderable*> casters;
     no_cull->CullAndCollect(light_frustum, casters);
     octree->CullAndCollect(light_frustum, casters);
 
-    // Render depth pass.
+    // Enqueue casters and render the depth pass.
     const int res = smap->GetResolution();
     smap->GetFBO()->BindForWriting();
     video_->SetViewport(0, 0, res, res);
@@ -73,10 +70,8 @@ void ShadowRenderer::RenderShadowMaps(const std::vector<Light*>& lights,
     video_->SetDepthWriteEnabled(true);
     video_->ClearRenderTargets(core::Color::kBlack);
 
-    for (Renderable* r : casters) {
-      if (!r->IsShadowCaster()) continue;
-      r->DrawDepth(video_);
-    }
+    for (Renderable* r : casters) r->EnqueueDepth();
+    MeshRenderer::Instance().RenderDepth();
 
     smap->GetFBO()->UnbindForWriting();
   }

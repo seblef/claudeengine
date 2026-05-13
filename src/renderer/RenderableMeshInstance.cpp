@@ -2,9 +2,6 @@
 
 #include <algorithm>
 
-#include "abstract/VideoDevice.h"
-#include "renderer/GeometryData.h"
-#include "renderer/Mesh.h"
 #include "renderer/MeshRenderer.h"
 
 namespace renderer {
@@ -34,13 +31,8 @@ bool RenderableMeshInstance::IsShadowCaster() const {
                      [](const auto& inst) { return inst->IsShadowCaster(); });
 }
 
-void RenderableMeshInstance::DrawDepth(abstract::VideoDevice* video) {
-  for (const auto& inst : sub_instances_) {
-    if (!inst->IsShadowCaster()) continue;
-    const GeometryData* geo = inst->GetModel()->GetGeometryData();
-    geo->Set();
-    video->RenderIndexed(geo->GetNumIndices());
-  }
+void RenderableMeshInstance::EnqueueDepth() {
+  for (const auto& inst : sub_instances_) inst->EnqueueDepth();
 }
 
 RenderableMesh* RenderableMeshInstance::GetModel() const { return model_; }

@@ -29,8 +29,8 @@ class RenderableMeshInstance : public Renderable {
   // Returns true if any sub-instance is a shadow caster.
   [[nodiscard]] bool IsShadowCaster() const override;
 
-  // Renders the depth contribution of each shadow-casting sub-instance.
-  void DrawDepth(abstract::VideoDevice* video) override;
+  // Delegates EnqueueDepth() to each sub-instance (which self-filter by IsShadowCaster).
+  void EnqueueDepth() override;
 
   [[nodiscard]] RenderableMesh* GetModel() const;
 
