@@ -1,4 +1,5 @@
 add_library(game STATIC
+    GameCamera.cpp
     GameObject.cpp
     GameLight.cpp
     GameMesh.cpp
