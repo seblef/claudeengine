@@ -6,6 +6,7 @@
 #include "core/BBox3.h"
 #include "core/Color.h"
 #include "core/ViewFrustum.h"
+#include "renderer/CSMInfos.h"
 #include "renderer/GeometryUtils.h"
 #include "renderer/LightRenderer.h"
 #include "renderer/MaterialInfos.h"
@@ -22,6 +23,8 @@ constexpr int kSceneInfosSlot         = 2;
 constexpr int kSceneInfosFloat4s      = sizeof(SceneInfos) / 16;        // 352 / 16 = 22
 constexpr int kMaterialInfosSlot      = 3;
 constexpr int kMaterialInfosFloat4s   = sizeof(MaterialInfos) / 16;     // 64 / 16 = 4
+constexpr int kCSMInfosSlot           = 5;
+constexpr int kCSMInfosFloat4s        = sizeof(CSMInfos) / 16;          // 272 / 16 = 17
 }  // namespace
 
 Renderer::Renderer(abstract::VideoDevice* video)
@@ -35,6 +38,8 @@ Renderer::Renderer(abstract::VideoDevice* video)
       kSceneInfosFloat4s, kSceneInfosSlot, abstract::BufferUsage::kDynamic);
   material_infos_cb_ = video_->CreateConstantBuffer(
       kMaterialInfosFloat4s, kMaterialInfosSlot, abstract::BufferUsage::kDynamic);
+  csm_infos_cb_ = video_->CreateConstantBuffer(
+      kCSMInfosFloat4s, kCSMInfosSlot, abstract::BufferUsage::kDynamic);
 
   const int w = video_->GetWidth();
   const int h = video_->GetHeight();
@@ -95,6 +100,7 @@ void Renderer::Update(float time, const core::Camera* camera) {
   renderable_infos_cb_->Bind();
   scene_infos_cb_->Bind();
   material_infos_cb_->Bind();
+  csm_infos_cb_->Bind();
   if (camera_) FillSceneInfos();
 
   if (camera_) {
@@ -103,13 +109,15 @@ void Renderer::Update(float time, const core::Camera* camera) {
     octree_system_->CullAndEnqueue(frustum);
   }
 
-  // 0. Shadow pass — render depth maps from each shadow-casting spot light.
+  // 0. Shadow pass — render depth maps for spot lights and CSM cascades.
   if (camera_) {
     ShadowRenderer::Instance().RenderShadowMaps(
         LightRenderer::Instance().GetLights(),
         no_culling_system_.get(),
         octree_system_.get(),
         *camera_);
+    if (ShadowRenderer::Instance().HasCSM())
+      csm_infos_cb_->Fill(&ShadowRenderer::Instance().GetCSMInfos());
   }
 
   // 1. Geometry pass — fill albedo, normal, specular MRTs and depth+stencil.

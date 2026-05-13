@@ -36,6 +36,7 @@ enum class DebugMode : int {
 //   Slot 1 (RenderableInfos): per-object world matrix.
 //   Slot 2 (SceneInfos): per-frame camera matrices, eye position, time, z_near/z_far.
 //   Slot 3 (MaterialInfos): per-material colors and shininess.
+//   Slot 5 (CSMInfos): cascade VP matrices and split depths for GlobalLight CSM.
 //
 // Render targets (created at video resolution, recreated on resize):
 //   gbuffer_      — 3-MRT FBO: albedo (RGBA8), normal (RGBA16F), specular (RGBA8)
@@ -129,6 +130,7 @@ class Renderer : public core::Singleton<Renderer> {
   std::unique_ptr<abstract::ConstantBuffer> scene_infos_cb_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<abstract::ConstantBuffer> material_infos_cb_;
+  std::unique_ptr<abstract::ConstantBuffer> csm_infos_cb_;
 
   std::unique_ptr<NoCullingVisibilitySystem> no_culling_system_;
   std::unique_ptr<OctreeVisibilitySystem>    octree_system_;
