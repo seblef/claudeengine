@@ -2,42 +2,42 @@
 
 #include <cstddef>
 
+#include "core/Mat4f.h"
+
 namespace renderer {
 
 // GPU constant buffer layout for per-light data (UBO slot 4).
 // Matches layout(std140, binding=4) exactly — do not reorder fields.
 //
-// Each group of four floats packs a vec3 + float to respect std140 alignment:
-// vec3 (12 B) + float (4 B) = 16 B per row (no padding between vec3 and float
-// in std140).  Core Vec3f is 16-byte aligned, so it cannot be used here —
-// plain floats are used instead to keep the C++ sizeof at 80.
-//
-// std140 offsets:
-//   [  0] px,py,pz   vec3  (12 B — world-space light position)
-//         type       float ( 4 B — 0=global,1=omni,2=circle_spot,3=rect_spot)
-//   [ 16] cr,cg,cb   vec3  (12 B — light RGB color)
-//         intensity  float ( 4 B)
-//   [ 32] dx,dy,dz   vec3  (12 B — world-space light direction, normalized)
-//         range      float ( 4 B — max influence distance)
-//   [ 48] inner_angle float ( 4 B — spot inner half-angle, radians)
-//         outer_angle float ( 4 B — spot outer half-angle, radians)
-//         h_angle     float ( 4 B — rect spot horizontal half-angle, radians)
-//         v_angle     float ( 4 B — rect spot vertical half-angle, radians)
-//   [ 64] ar,ag,ab   vec3  (12 B — ambient RGB color, GlobalLight only)
-//         pad_       float ( 4 B)
-//   [ 80] end
+// Offset map:
+//   [  0] px,py,pz    vec3  (12 B — world-space position)
+//         type        float ( 4 B — 0=global,1=omni,2=circle_spot,3=rect_spot)
+//   [ 16] cr,cg,cb    vec3  (12 B — RGB color)
+//         intensity   float ( 4 B)
+//   [ 32] dx,dy,dz    vec3  (12 B — world-space direction, normalized)
+//         range       float ( 4 B — max influence distance)
+//   [ 48] inner_angle float ( 4 B)  outer_angle float ( 4 B)
+//         h_angle     float ( 4 B)  v_angle     float ( 4 B)
+//   [ 64] ar,ag,ab    vec3  (12 B — ambient RGB, GlobalLight only)
+//         cast_shadow float ( 4 B — 1.0 if pool assigned a shadow map, 0.0 otherwise)
+//   [ 80] light_vp    mat4  (64 B — light-space VP; identity when cast_shadow==0)
+//   [144] shadow_bias float ( 4 B)
+//   [148] pad1_–pad3_ float (12 B — alignment padding to 160 B)
+//   [160] end
 struct LightInfos {
-  float px, py, pz;  float type;           // position + light type
-  float cr, cg, cb;  float intensity;      // color + intensity
-  float dx, dy, dz;  float range;          // direction + range
-  float inner_angle, outer_angle, h_angle, v_angle;
-  float ar, ag, ab;  float pad_;           // ambient + padding
-};
+  float px, py, pz;  float type;                         //   0
+  float cr, cg, cb;  float intensity;                    //  16
+  float dx, dy, dz;  float range;                        //  32
+  float inner_angle, outer_angle, h_angle, v_angle;      //  48
+  float ar, ag, ab;  float cast_shadow;                  //  64
+  core::Mat4f light_vp;                                  //  80
+  float shadow_bias;                                     // 144
+  float pad1_, pad2_, pad3_;                             // 148
+};                                                       // 160
 
-static_assert(sizeof(LightInfos) == 80);
-static_assert(offsetof(LightInfos, cr)          ==  16);
-static_assert(offsetof(LightInfos, dx)          ==  32);
-static_assert(offsetof(LightInfos, inner_angle) ==  48);
-static_assert(offsetof(LightInfos, ar)          ==  64);
+static_assert(sizeof(LightInfos) == 160);
+static_assert(offsetof(LightInfos, cast_shadow) ==  76);
+static_assert(offsetof(LightInfos, light_vp)    ==  80);
+static_assert(offsetof(LightInfos, shadow_bias) == 144);
 
 }  // namespace renderer

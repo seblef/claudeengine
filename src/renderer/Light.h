@@ -80,6 +80,11 @@ class Light : public Renderable {
   [[nodiscard]] int  GetShadowResolution() const  { return shadow_resolution_; }
   void               SetShadowResolution(int r)   { shadow_resolution_ = r; }
 
+  // Depth bias subtracted from the shadow map depth comparison to avoid
+  // self-shadowing acne (default 0.005).
+  [[nodiscard]] float GetShadowBias() const  { return shadow_bias_; }
+  void                SetShadowBias(float b) { shadow_bias_ = b; }
+
  protected:
   // Shared formula for subclasses: projects a bounding sphere onto the screen.
   // Returns sphere_radius * half_screen_height / (tan_half_fov * dist).
@@ -100,6 +105,8 @@ class Light : public Renderable {
   bool        cast_shadow_       = true;
   // cppcheck-suppress unusedStructMember
   int         shadow_resolution_ = 1024;
+  // cppcheck-suppress unusedStructMember
+  float       shadow_bias_       = 0.005f;
 };
 
 }  // namespace renderer
