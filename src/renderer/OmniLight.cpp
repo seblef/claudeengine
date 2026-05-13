@@ -20,4 +20,12 @@ core::Mat4f OmniLight::GetVolumeMatrix() const {
          core::Mat4f::Scale3D({radius_, radius_, radius_});
 }
 
+float OmniLight::ComputeScreenRadius(const core::Vec3f& eye_pos,
+                                      float              half_screen_height,
+                                      float              tan_half_fov) const {
+  const core::Mat4f& wm  = GetWorldMatrix();
+  const core::Vec3f  pos{wm(0, 3), wm(1, 3), wm(2, 3)};
+  return ScreenRadius(pos, radius_, eye_pos, half_screen_height, tan_half_fov);
+}
+
 }  // namespace renderer

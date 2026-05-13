@@ -20,6 +20,10 @@ class OmniLight : public Light {
 
   [[nodiscard]] core::Mat4f GetVolumeMatrix() const override;
 
+  [[nodiscard]] float ComputeScreenRadius(const core::Vec3f& eye_pos,
+                                          float              half_screen_height,
+                                          float              tan_half_fov) const override;
+
   [[nodiscard]] float GetRadius() const { return radius_; }
   void SetRadius(float r)               { radius_ = r; }
 

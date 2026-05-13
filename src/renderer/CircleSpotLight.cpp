@@ -47,6 +47,17 @@ core::Mat4f CircleSpotLight::GetVolumeMatrix() const {
          core::Mat4f::Scale3D({r, r, range_});
 }
 
+float CircleSpotLight::ComputeScreenRadius(const core::Vec3f& eye_pos,
+                                            float              half_screen_height,
+                                            float              tan_half_fov) const {
+  const core::Mat4f& wm         = GetWorldMatrix();
+  const core::Vec3f  pos{wm(0, 3), wm(1, 3), wm(2, 3)};
+  const float        cos_a      = std::cos(outer_angle_);
+  const float        sphere_r   = (cos_a > 1e-6f) ? range_ / (2.f * cos_a) : range_;
+  const core::Vec3f  center     = pos + direction_ * (range_ * 0.5f);
+  return ScreenRadius(center, sphere_r, eye_pos, half_screen_height, tan_half_fov);
+}
+
 std::optional<core::Mat4f> CircleSpotLight::ComputeShadowVP() const {
   static constexpr float kNear = 0.1f;
   const core::Mat4f& wm = GetWorldMatrix();

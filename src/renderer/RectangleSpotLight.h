@@ -30,6 +30,10 @@ class RectangleSpotLight : public Light {
   // fov_y = 2 * v_angle, aspect = tan(h_angle) / tan(v_angle), near = 0.1, far = range.
   [[nodiscard]] std::optional<core::Mat4f> ComputeShadowVP() const override;
 
+  [[nodiscard]] float ComputeScreenRadius(const core::Vec3f& eye_pos,
+                                          float              half_screen_height,
+                                          float              tan_half_fov) const override;
+
   [[nodiscard]] float GetHAngle()                  const { return h_angle_; }
   [[nodiscard]] float GetVAngle()                  const { return v_angle_; }
   [[nodiscard]] float GetRange()                   const { return range_; }

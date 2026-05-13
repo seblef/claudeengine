@@ -5,6 +5,7 @@
 #include "core/BBox3.h"
 #include "core/Color.h"
 #include "core/Mat4f.h"
+#include "core/Vec3f.h"
 #include "renderer/Renderable.h"
 
 namespace renderer {
@@ -53,6 +54,17 @@ class Light : public Renderable {
     return std::nullopt;
   }
 
+  // Returns the screen-space projected radius (pixels) of the light's
+  // influence bounding sphere as seen from the given camera.
+  // half_screen_height and tan_half_fov are pre-computed by the caller
+  // (once per frame) to avoid per-light recomputation.
+  // Default returns 0 (light type has no finite influence sphere, e.g. GlobalLight).
+  [[nodiscard]] virtual float ComputeScreenRadius(const core::Vec3f& eye_pos,
+                                                  float half_screen_height,
+                                                  float tan_half_fov) const {
+    return 0.f;
+  }
+
   [[nodiscard]] const core::Color& GetColor()    const { return color_; }
   [[nodiscard]] float              GetIntensity() const { return intensity_; }
 
@@ -67,6 +79,15 @@ class Light : public Renderable {
   // The pool may assign a lower resolution based on screen-space size (#147).
   [[nodiscard]] int  GetShadowResolution() const  { return shadow_resolution_; }
   void               SetShadowResolution(int r)   { shadow_resolution_ = r; }
+
+ protected:
+  // Shared formula for subclasses: projects a bounding sphere onto the screen.
+  // Returns sphere_radius * half_screen_height / (tan_half_fov * dist).
+  [[nodiscard]] static float ScreenRadius(const core::Vec3f& sphere_center,
+                                          float              sphere_radius,
+                                          const core::Vec3f& eye_pos,
+                                          float              half_screen_height,
+                                          float              tan_half_fov);
 
  private:
   // cppcheck-suppress unusedStructMember
