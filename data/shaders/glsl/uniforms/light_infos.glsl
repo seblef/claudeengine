@@ -10,5 +10,5 @@ layout(std140, binding = 4) uniform LightInfosBlock {
     vec3  ambient;     float cast_shadow;
     layout(row_major) mat4 light_vp;
     float shadow_bias;
-    float pad1_; float pad2_; float pad3_;
+    float li_pad1_; float li_pad2_; float li_pad3_;
 };
