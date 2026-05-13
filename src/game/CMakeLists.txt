@@ -1,4 +1,5 @@
 add_library(game STATIC
+    FPSCameraController.cpp
     GameCamera.cpp
     GameObject.cpp
     GameLight.cpp
