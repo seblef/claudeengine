@@ -114,7 +114,7 @@ RenderableMesh* CreatePlaneMesh(abstract::VideoDevice* video,
     {{ half_size, 0.f,  half_size}, {0.f, 1.f, 0.f}, {}, {}, {tiles, tiles}},
     {{-half_size, 0.f,  half_size}, {0.f, 1.f, 0.f}, {}, {}, {0.f,   tiles}},
   };
-  const uint16_t idx[6] = {0, 1, 2, 0, 2, 3};
+  const uint16_t idx[6] = {0, 2, 1, 0, 3, 2};
 
   auto geo  = std::make_unique<GeometryData>(video, 4, verts, 2, idx);
   auto* rm  = new RenderableMesh();
