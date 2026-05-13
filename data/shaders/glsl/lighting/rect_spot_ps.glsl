@@ -16,17 +16,18 @@
 //
 // UBO binding 2: scene infos (inv_view_proj, eye_pos).
 // UBO binding 4: light infos (position, color, intensity, direction, range,
-//                             h_angle, v_angle).
-// Samplers: binding 5=albedo, 6=normal, 7=specular, 8=depth.
+//                             h_angle, v_angle, light_vp, cast_shadow).
+// Samplers: binding 5=albedo, 6=normal, 7=specular, 8=depth, 9=shadow map.
 
 #version 460 core
 #include <uniforms/scene_infos.glsl>
 #include <uniforms/light_infos.glsl>
 
-layout(binding = 5) uniform sampler2D u_albedo;
-layout(binding = 6) uniform sampler2D u_normal;
-layout(binding = 7) uniform sampler2D u_specular;
-layout(binding = 8) uniform sampler2D u_depth;
+layout(binding = 5) uniform sampler2D       u_albedo;
+layout(binding = 6) uniform sampler2D       u_normal;
+layout(binding = 7) uniform sampler2D       u_specular;
+layout(binding = 8) uniform sampler2D       u_depth;
+layout(binding = 9) uniform sampler2DShadow u_shadow_map;
 
 out vec4 out_color;
 
@@ -75,5 +76,17 @@ void main() {
     float h_fall = 1.0 - smoothstep(h_angle * 0.8, h_angle, h_angle_px);
     float v_fall = 1.0 - smoothstep(v_angle * 0.8, v_angle, v_angle_px);
 
-    out_color = vec4((diff + spec) * atten * h_fall * v_fall, 1.0);
+    // Shadow: project world position into light space and sample the shadow map.
+    //   shadow_coord.xy = NDC [-1,1] remapped to [0,1] UV.
+    //   shadow_coord.z  = depth in [0,1] with bias subtracted for the comparison.
+    float shadow = 0.0;
+    if (cast_shadow > 0.5) {
+        vec4 shadow_coord = light_vp * vec4(world_pos, 1.0);
+        shadow_coord.xyz /= shadow_coord.w;
+        shadow_coord.xyz  = shadow_coord.xyz * 0.5 + 0.5;
+        shadow_coord.z   -= shadow_bias;
+        shadow = 1.0 - texture(u_shadow_map, shadow_coord.xyz);
+    }
+
+    out_color = vec4((diff + spec) * atten * h_fall * v_fall * (1.0 - shadow), 1.0);
 }

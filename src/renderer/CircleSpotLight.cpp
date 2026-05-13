@@ -58,7 +58,7 @@ float CircleSpotLight::ComputeScreenRadius(const core::Vec3f& eye_pos,
   return ScreenRadius(center, sphere_r, eye_pos, half_screen_height, tan_half_fov);
 }
 
-std::optional<core::Mat4f> CircleSpotLight::ComputeShadowVP() const {
+core::Mat4f CircleSpotLight::GetLightSpaceMatrix() const {
   static constexpr float kNear = 0.1f;
   const core::Mat4f& wm = GetWorldMatrix();
   const core::Vec3f  pos(wm(0, 3), wm(1, 3), wm(2, 3));
@@ -68,7 +68,11 @@ std::optional<core::Mat4f> CircleSpotLight::ComputeShadowVP() const {
   const core::Mat4f view = core::Mat4f::LookAtRH(pos, pos + direction_, up);
   const core::Mat4f proj =
       core::Mat4f::PerspectiveRH(2.f * outer_angle_, 1.f, kNear, range_);
-  return view * proj;
+  return proj * view;
+}
+
+std::optional<core::Mat4f> CircleSpotLight::ComputeShadowVP() const {
+  return GetLightSpaceMatrix();
 }
 
 }  // namespace renderer

@@ -199,6 +199,13 @@ void LightRenderer::RenderLocalLights() {
       current_geo = geo;
     }
 
+    // Bind shadow depth RT at sampler 9 for spot lights that cast shadows.
+    if (light->GetType() == LightType::kCircleSpot ||
+        light->GetType() == LightType::kRectSpot) {
+      const ShadowMap* smap = ShadowRenderer::Instance().GetShadowMap(light);
+      if (smap) smap->GetDepthRT()->BindAsSampler(9);
+    }
+
     // Sub-pass A: mark pixels inside the light volume in the stencil buffer.
     video_->ClearStencil(0);
     video_->SetColorWriteEnabled(false);
