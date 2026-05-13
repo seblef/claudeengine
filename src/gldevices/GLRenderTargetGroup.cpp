@@ -19,7 +19,13 @@ GLRenderTargetGroup::GLRenderTargetGroup(
   }
 
   if (depth_target_) {
-    depth_target_->BindAsOutput(0);  // index ignored for depth+stencil
+    depth_target_->BindAsOutput(0);  // index ignored for depth attachments
+  }
+
+  // Depth-only FBOs require explicit GL_NONE draw/read buffers to be complete.
+  if (color_targets_.empty()) {
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
   }
 
   const GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -40,11 +46,15 @@ GLRenderTargetGroup::~GLRenderTargetGroup() {
 void GLRenderTargetGroup::BindForWriting() {
   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo_);
 
-  std::vector<GLenum> draw_buffers(color_targets_.size());
-  for (int i = 0; i < static_cast<int>(color_targets_.size()); ++i) {
-    draw_buffers[i] = GL_COLOR_ATTACHMENT0 + i;
+  if (color_targets_.empty()) {
+    glDrawBuffer(GL_NONE);
+  } else {
+    std::vector<GLenum> draw_buffers(color_targets_.size());
+    for (int i = 0; i < static_cast<int>(color_targets_.size()); ++i) {
+      draw_buffers[i] = GL_COLOR_ATTACHMENT0 + i;
+    }
+    glDrawBuffers(static_cast<GLsizei>(draw_buffers.size()), draw_buffers.data());
   }
-  glDrawBuffers(static_cast<GLsizei>(draw_buffers.size()), draw_buffers.data());
 }
 
 void GLRenderTargetGroup::UnbindForWriting() {

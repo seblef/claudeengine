@@ -238,6 +238,10 @@ void GLVideoDevice::SetDepthWriteEnabled(bool enabled) {
   glDepthMask(enabled ? GL_TRUE : GL_FALSE);
 }
 
+void GLVideoDevice::SetViewport(int x, int y, int width, int height) {
+  glViewport(x, y, width, height);
+}
+
 std::unique_ptr<abstract::RenderTarget> GLVideoDevice::CreateRenderTarget(
     int width, int height, abstract::TextureFormat format) {
   return std::make_unique<GLRenderTarget>(width, height, format);
