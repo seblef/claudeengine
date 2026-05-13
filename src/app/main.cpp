@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
       data_dir + "/meshes/demo.fbx", video);
 
   const core::Mat4f obj_world =
-      core::Mat4f::Translation({-10.f, 0.f, 0.f}) * core::Mat4f::Scale3D({3.f, 3.f, 3.f});
+      core::Mat4f::Translation({-10.f, 0.f, 0.f});
   const core::Mat4f fbx_world =
       core::Mat4f::Translation({ 10.f, 0.f, 0.f}) * core::Mat4f::Scale3D({3.f, 3.f, 3.f});
 
