@@ -23,6 +23,9 @@ void GameSystem::Update() {
 
   while (core::EventManager::Instance().HasEvents()) {
     core::Event e = core::EventManager::Instance().Consume();
+    if (event_callback_) {
+      event_callback_(e);
+    }
     if (e.type == core::EventType::kWindowClose) {
       running_ = false;
     } else if (camera_controller_) {
@@ -62,6 +65,11 @@ void GameSystem::SetCamera(GameCamera* camera) {
 void GameSystem::SetCameraController(ICameraController* controller) {
   camera_controller_ = controller;
   controller->SetCamera(active_camera_);
+}
+
+void GameSystem::SetEventCallback(
+    std::function<void(const core::Event&)> cb) {
+  event_callback_ = std::move(cb);
 }
 
 }  // namespace game

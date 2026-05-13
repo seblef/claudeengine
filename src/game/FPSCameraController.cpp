@@ -12,6 +12,10 @@ namespace game {
 
 FPSCameraController::FPSCameraController() : position_(core::Vec3f::kZero) {}
 
+void FPSCameraController::SetPosition(core::Vec3f pos) {
+  position_ = pos;
+}
+
 void FPSCameraController::SetCamera(GameCamera* camera) {
   camera_ = camera;
 }

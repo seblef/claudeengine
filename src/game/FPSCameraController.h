@@ -21,6 +21,9 @@ class FPSCameraController : public ICameraController {
   void OnEvent(const core::Event& event) override;
   void Update(float dt) override;
 
+  // Sets the initial world-space position. Call before the first Update().
+  void SetPosition(core::Vec3f pos);
+
  private:
   // cppcheck-suppress unusedStructMember
   static constexpr float kMoveSpeed        = 10.f;    // units/s

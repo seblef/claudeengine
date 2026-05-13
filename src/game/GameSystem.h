@@ -1,9 +1,11 @@
 #pragma once
 
 #include <chrono>
+#include <functional>
 #include <vector>
 
 #include "abstract/Devices.h"
+#include "core/Event.h"
 #include "core/Singleton.h"
 #include "game/GameCamera.h"
 #include "game/GameObject.h"
@@ -47,6 +49,12 @@ class GameSystem : public core::Singleton<GameSystem> {
   // Sets the active camera controller and binds the current camera to it.
   void SetCameraController(ICameraController* controller);
 
+  // Registers a callback invoked for every event drained from the EventManager,
+  // before the event is routed to the camera controller. Use this to handle
+  // application-level events (e.g. debug key toggles) without competing for
+  // the shared queue.
+  void SetEventCallback(std::function<void(const core::Event&)> cb);
+
   // Returns false after a kWindowClose event has been received.
   [[nodiscard]] bool  IsRunning()     const { return running_; }
 
@@ -67,6 +75,8 @@ class GameSystem : public core::Singleton<GameSystem> {
   // cppcheck-suppress unusedStructMember
   float               elapsed_time_       = 0.f;
   std::chrono::steady_clock::time_point prev_time_;
+  // cppcheck-suppress unusedStructMember
+  std::function<void(const core::Event&)> event_callback_;
 };
 
 }  // namespace game
