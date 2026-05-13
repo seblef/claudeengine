@@ -23,8 +23,10 @@ struct GameLightDesc {
   float        inner_angle   = 0.2f;                          // CircleSpotLight
   float        outer_angle   = 0.4f;                          // CircleSpotLight
   float        range         = 20.f;                          // CircleSpotLight + RectangleSpotLight
-  float        h_angle       = 0.4f;                          // RectangleSpotLight
-  float        v_angle       = 0.3f;                          // RectangleSpotLight
+  float        h_angle            = 0.4f;    // RectangleSpotLight
+  float        v_angle            = 0.3f;    // RectangleSpotLight
+  bool         cast_shadow        = true;    // All types: false skips shadow map entirely
+  int          shadow_resolution  = 1024;    // Max shadow map resolution cap (pool may assign lower)
 };
 
 }  // namespace game

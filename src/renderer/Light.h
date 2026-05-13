@@ -59,6 +59,15 @@ class Light : public Renderable {
   void SetColor(const core::Color& color) { color_ = color; }
   void SetIntensity(float intensity)      { intensity_ = intensity; }
 
+  // When false the light never renders a shadow map (useful for fill lights).
+  [[nodiscard]] bool GetCastShadow() const        { return cast_shadow_; }
+  void               SetCastShadow(bool b)        { cast_shadow_ = b; }
+
+  // Maximum shadow map resolution cap for this light (default 1024).
+  // The pool may assign a lower resolution based on screen-space size (#147).
+  [[nodiscard]] int  GetShadowResolution() const  { return shadow_resolution_; }
+  void               SetShadowResolution(int r)   { shadow_resolution_ = r; }
+
  private:
   // cppcheck-suppress unusedStructMember
   LightType   type_;
@@ -66,6 +75,10 @@ class Light : public Renderable {
   core::Color color_;
   // cppcheck-suppress unusedStructMember
   float       intensity_;
+  // cppcheck-suppress unusedStructMember
+  bool        cast_shadow_       = true;
+  // cppcheck-suppress unusedStructMember
+  int         shadow_resolution_ = 1024;
 };
 
 }  // namespace renderer

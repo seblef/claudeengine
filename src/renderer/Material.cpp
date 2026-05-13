@@ -55,6 +55,7 @@ Material::Material(const MaterialDesc& desc, abstract::VideoDevice* video) {
   emissive_color_ = desc.GetEmissiveColor();
   ambient_color_  = desc.GetAmbientColor();
   shininess_      = desc.GetShininess();
+  cast_shadow_    = desc.GetCastShadow();
 }
 
 Material::Material(const std::string& name, abstract::VideoDevice* video) {
@@ -149,6 +150,8 @@ void Material::LoadFromYaml(const YAML::Node& yaml, abstract::VideoDevice* video
     if (c["ambient"])   ambient_color_  = ParseColor(c["ambient"]);
     if (c["shininess"]) shininess_      = c["shininess"].as<float>();
   }
+
+  if (yaml["cast_shadow"]) cast_shadow_ = yaml["cast_shadow"].as<bool>();
 }
 
 }  // namespace renderer

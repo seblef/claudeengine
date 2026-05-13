@@ -35,17 +35,21 @@ void ShadowRenderer::RenderShadowMaps(const std::vector<Light*>& lights,
   video_->SetFaceCulling(abstract::CullFace::kFront);
 
   for (Light* light : lights) {
+    // Skip lights with shadow casting disabled.
+    if (!light->GetCastShadow()) continue;
+
     // Lights that return nullopt do not support 2D shadow maps (GlobalLight
     // uses CSM; OmniLight uses a cube map — both deferred to later issues).
     const auto vp_opt = light->ComputeShadowVP();
     if (!vp_opt.has_value()) continue;
     const core::Mat4f& light_vp = *vp_opt;
 
-    // Allocate a shadow map for this light if needed.
+    // Allocate a shadow map for this light if needed, using the light's
+    // resolution cap (pool-based dynamic allocation comes in issue #147).
     auto it = shadow_maps_.find(light);
     if (it == shadow_maps_.end()) {
       auto result = shadow_maps_.emplace(
-          light, std::make_unique<ShadowMap>(video_, kDefaultShadowResolution));
+          light, std::make_unique<ShadowMap>(video_, light->GetShadowResolution()));
       it = result.first;
     }
     ShadowMap* smap = it->second.get();
