@@ -146,6 +146,11 @@ class VideoDevice {
   // Note: glClear(GL_DEPTH_BUFFER_BIT) also respects this mask.
   virtual void SetDepthWriteEnabled(bool enabled) = 0;
 
+  // Sets the rendering viewport to the given rectangle.
+  // Use before rendering into a shadow map (non-screen-sized target).
+  // BeginFrame() resets the viewport to the full screen dimensions.
+  virtual void SetViewport(int x, int y, int width, int height) = 0;
+
   // Creates an off-screen render target texture of the given format.
   // The caller owns the returned object exclusively (unique_ptr).
   [[nodiscard]] virtual std::unique_ptr<RenderTarget> CreateRenderTarget(

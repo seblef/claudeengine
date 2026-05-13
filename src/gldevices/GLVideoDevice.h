@@ -99,6 +99,9 @@ class GLVideoDevice : public abstract::VideoDevice {
   // Controls glDepthMask (depth buffer write enable).
   void SetDepthWriteEnabled(bool enabled) override;
 
+  // Sets the GL viewport via glViewport.
+  void SetViewport(int x, int y, int width, int height) override;
+
   // Creates a GLRenderTarget (off-screen texture) of the given format.
   [[nodiscard]] std::unique_ptr<abstract::RenderTarget> CreateRenderTarget(
       int width, int height, abstract::TextureFormat format) override;

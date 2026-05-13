@@ -19,6 +19,7 @@ enum class TextureFormat : uint8_t {
   kRGBA8,           // 4×8-bit unsigned normalised — G-buffer albedo/specular.
   kRGBA16F,         // 4×16-bit half-float — G-buffer normals and HDR accumulation.
   kDepth24Stencil8,  // 24-bit depth + 8-bit stencil — G-buffer depth+stencil.
+  kDepth32F,         // 32-bit float depth-only — shadow maps (sampler2DShadow).
 };
 
 }  // namespace abstract
