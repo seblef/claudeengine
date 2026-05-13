@@ -1,6 +1,7 @@
 #include "renderer/CircleSpotLight.h"
 
 #include <cmath>
+#include <optional>
 
 namespace renderer {
 
@@ -44,6 +45,19 @@ core::Mat4f CircleSpotLight::GetVolumeMatrix() const {
   return core::Mat4f::Translation(pos) *
          AlignZToDir(direction_) *
          core::Mat4f::Scale3D({r, r, range_});
+}
+
+std::optional<core::Mat4f> CircleSpotLight::ComputeShadowVP() const {
+  static constexpr float kNear = 0.1f;
+  const core::Mat4f& wm = GetWorldMatrix();
+  const core::Vec3f  pos(wm(0, 3), wm(1, 3), wm(2, 3));
+  const core::Vec3f  up = (std::abs(direction_.y) > 0.9f)
+                              ? core::Vec3f(1.f, 0.f, 0.f)
+                              : core::Vec3f(0.f, 1.f, 0.f);
+  const core::Mat4f view = core::Mat4f::LookAtRH(pos, pos + direction_, up);
+  const core::Mat4f proj =
+      core::Mat4f::PerspectiveRH(2.f * outer_angle_, 1.f, kNear, range_);
+  return view * proj;
 }
 
 }  // namespace renderer

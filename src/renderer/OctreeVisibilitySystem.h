@@ -40,6 +40,8 @@ class OctreeVisibilitySystem : public IVisibilitySystem {
   void RemoveRenderable(Renderable* r) override;
   void OnRenderableMoved(Renderable* r) override;
   void CullAndEnqueue(const core::ViewFrustum& frustum) override;
+  void CullAndCollect(const core::ViewFrustum& frustum,
+                      std::vector<Renderable*>& out) const override;
   void Clear() override;
 
  private:
@@ -64,6 +66,10 @@ class OctreeVisibilitySystem : public IVisibilitySystem {
   // Enqueues all renderables in visible nodes using DFS + frustum culling.
   void CullNode(const OctreeNode* node,
                 const core::ViewFrustum& frustum) const;
+
+  // Appends all renderables in visible nodes to out using DFS + frustum culling.
+  void CollectNode(const OctreeNode* node, const core::ViewFrustum& frustum,
+                   std::vector<Renderable*>& out) const;
 
   // Creates the 8 child nodes for node by halving its bounds.
   void SplitNode(OctreeNode* node) const;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "core/BBox3.h"
 
 namespace core { class ViewFrustum; }
@@ -41,6 +43,13 @@ class IVisibilitySystem {
 
   // Determines visible renderables and calls Enqueue() on each of them.
   virtual void CullAndEnqueue(const core::ViewFrustum& frustum) = 0;
+
+  // Appends all renderables passing the frustum test to out without
+  // enqueuing them.  Safe to call in parallel with the main render queue.
+  // NoCullingVisibilitySystem ignores the frustum and appends everything.
+  // OctreeVisibilitySystem tests against the frustum before appending.
+  virtual void CullAndCollect(const core::ViewFrustum& frustum,
+                               std::vector<Renderable*>& out) const = 0;
 
   // Removes all registered renderables from this system.
   virtual void Clear() = 0;

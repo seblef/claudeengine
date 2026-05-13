@@ -34,6 +34,15 @@ class Renderable {
   // Enqueues this object for rendering in the current frame.
   virtual void Enqueue() = 0;
 
+  // Returns true if this object should cast shadows.  Defaults to false; only
+  // mesh-based renderables that belong to shadow-casting materials override this.
+  [[nodiscard]] virtual bool IsShadowCaster() const { return false; }
+
+  // Enqueues this object into the appropriate renderer's depth queue for the
+  // current shadow pass.  No-op by default; mesh-based renderables override
+  // this to call ObjectRenderer::AddDepthInstance.
+  virtual void EnqueueDepth() {}
+
   [[nodiscard]] const core::Mat4f& GetWorldMatrix() const;
 
   // Sets the world matrix and recomputes the world bounding box.

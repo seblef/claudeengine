@@ -104,6 +104,24 @@ void OctreeVisibilitySystem::CullAndEnqueue(
   CullNode(&root_, frustum);
 }
 
+void OctreeVisibilitySystem::CollectNode(
+    const OctreeNode* node, const core::ViewFrustum& frustum,
+    std::vector<Renderable*>& out) const {
+  if (!frustum.ContainsBBox(node->bounds)) return;
+
+  out.insert(out.end(), node->renderables.begin(), node->renderables.end());
+
+  for (const auto& child : node->children) {
+    if (child) CollectNode(child.get(), frustum, out);
+  }
+}
+
+void OctreeVisibilitySystem::CullAndCollect(
+    const core::ViewFrustum& frustum,
+    std::vector<Renderable*>& out) const {
+  CollectNode(&root_, frustum, out);
+}
+
 void OctreeVisibilitySystem::ClearNode(OctreeNode* node) {
   for (Renderable* r : node->renderables) r->SetVisibilitySystem(nullptr);
   node->renderables.clear();

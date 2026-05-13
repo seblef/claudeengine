@@ -14,6 +14,10 @@ void MeshInstance::Enqueue() {
   MeshRenderer::Instance().AddInstance(this);
 }
 
+void MeshInstance::EnqueueDepth() {
+  if (IsShadowCaster()) MeshRenderer::Instance().AddDepthInstance(this);
+}
+
 Mesh* MeshInstance::GetModel() const { return model_; }
 
 }  // namespace renderer

@@ -15,8 +15,11 @@ namespace renderer {
 // GetMaterial(). Both are used as sort keys in PrepareRender() to minimise
 // texture and geometry switching across draw calls.
 //
-// Concrete subclasses implement Render() to issue GPU draw calls for the
-// sorted instance list.
+// Depth rendering (shadow pass):
+//   AddDepthInstance() queues an instance for depth-only rendering.
+//   RenderDepth() (pure virtual) must sort by geometry, activate the
+//   depth-only shader loaded by the subclass, render, and clear the queue.
+//   Each concrete subclass sets depth_shader_ in its constructor.
 template <typename T>
 class ObjectRenderer {
  public:
@@ -45,13 +48,25 @@ class ObjectRenderer {
   // pass. Must be called after Render() and before EndRender().
   virtual void RenderEmissive() {}
 
+  // Enqueues instance for depth-only rendering in the current shadow pass.
+  void AddDepthInstance(T* instance);
+
+  // Renders all depth-queued instances using the depth-only shader, sorted by
+  // geometry to minimise VAO switching.  Clears the depth queue when done.
+  virtual void RenderDepth() = 0;
+
   // Clears the instance list. Called by the global renderer after draw.
   void EndRender();
 
  protected:
   abstract::VideoDevice* video_;
   abstract::Shader*      shader_;
+  // Depth-only shader for the shadow pass; each concrete subclass sets this in
+  // its constructor.  Released by ~ObjectRenderer if non-null.
+  // cppcheck-suppress unusedStructMember
+  abstract::Shader*      depth_shader_ = nullptr;
   std::vector<T*>        instances_;
+  std::vector<T*>        depth_instances_;
 };
 
 template <typename T>
@@ -61,12 +76,18 @@ ObjectRenderer<T>::ObjectRenderer(const std::string& shader_name,
 
 template <typename T>
 ObjectRenderer<T>::~ObjectRenderer() {
+  if (depth_shader_) depth_shader_->Release();
   shader_->Release();
 }
 
 template <typename T>
 void ObjectRenderer<T>::AddInstance(T* instance) {
   instances_.push_back(instance);
+}
+
+template <typename T>
+void ObjectRenderer<T>::AddDepthInstance(T* instance) {
+  depth_instances_.push_back(instance);
 }
 
 template <typename T>

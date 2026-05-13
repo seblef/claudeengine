@@ -26,6 +26,12 @@ class RenderableMeshInstance : public Renderable {
 
   void Enqueue() override;
 
+  // Returns true if any sub-instance is a shadow caster.
+  [[nodiscard]] bool IsShadowCaster() const override;
+
+  // Delegates EnqueueDepth() to each sub-instance (which self-filter by IsShadowCaster).
+  void EnqueueDepth() override;
+
   [[nodiscard]] RenderableMesh* GetModel() const;
 
  private:

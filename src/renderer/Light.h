@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "core/BBox3.h"
 #include "core/Color.h"
 #include "core/Mat4f.h"
@@ -42,6 +44,14 @@ class Light : public Renderable {
   // Returns the transform that positions, orients, and scales the light volume
   // mesh.  Called by LightRenderer before each draw call.
   [[nodiscard]] virtual core::Mat4f GetVolumeMatrix() const = 0;
+
+  // Returns the light-space view-projection matrix used to render the shadow
+  // map for this light, or nullopt if this light type does not support 2D
+  // shadow maps (e.g. GlobalLight uses CSM; OmniLight uses a cube map).
+  // ShadowRenderer calls this without switching on light type.
+  [[nodiscard]] virtual std::optional<core::Mat4f> ComputeShadowVP() const {
+    return std::nullopt;
+  }
 
   [[nodiscard]] const core::Color& GetColor()    const { return color_; }
   [[nodiscard]] float              GetIntensity() const { return intensity_; }

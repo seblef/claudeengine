@@ -1,5 +1,7 @@
 #include "renderer/RenderableMeshInstance.h"
 
+#include <algorithm>
+
 #include "renderer/MeshRenderer.h"
 
 namespace renderer {
@@ -22,6 +24,15 @@ void RenderableMeshInstance::Enqueue() {
     inst->SetWorldMatrix(wm);
     MeshRenderer::Instance().AddInstance(inst.get());
   }
+}
+
+bool RenderableMeshInstance::IsShadowCaster() const {
+  return std::any_of(sub_instances_.begin(), sub_instances_.end(),
+                     [](const auto& inst) { return inst->IsShadowCaster(); });
+}
+
+void RenderableMeshInstance::EnqueueDepth() {
+  for (const auto& inst : sub_instances_) inst->EnqueueDepth();
 }
 
 RenderableMesh* RenderableMeshInstance::GetModel() const { return model_; }

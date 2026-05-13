@@ -26,6 +26,10 @@ class CircleSpotLight : public Light {
 
   [[nodiscard]] core::Mat4f GetVolumeMatrix() const override;
 
+  // Computes the light-space VP matrix for shadow map rendering.
+  // FOV = 2 * outer_angle, aspect = 1, near = 0.1, far = range.
+  [[nodiscard]] std::optional<core::Mat4f> ComputeShadowVP() const override;
+
   [[nodiscard]] float GetInnerAngle()              const { return inner_angle_; }
   [[nodiscard]] float GetOuterAngle()              const { return outer_angle_; }
   [[nodiscard]] float GetRange()                   const { return range_; }

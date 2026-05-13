@@ -36,6 +36,12 @@ void NoCullingVisibilitySystem::CullAndEnqueue(
   for (Renderable* r : renderables_) r->Enqueue();
 }
 
+void NoCullingVisibilitySystem::CullAndCollect(
+    const core::ViewFrustum& /*frustum*/,
+    std::vector<Renderable*>& out) const {
+  out.insert(out.end(), renderables_.begin(), renderables_.end());
+}
+
 void NoCullingVisibilitySystem::Clear() {
   for (Renderable* r : renderables_) r->SetVisibilitySystem(nullptr);
   renderables_.clear();
