@@ -53,6 +53,10 @@ class Material {
   // emissive_color.rgb or ambient_color.rgb is non-zero.
   [[nodiscard]] bool IsEmissive() const;
 
+  // Returns false if meshes with this material should be skipped in all shadow
+  // passes.  Corresponds to the YAML key `cast_shadow` (default true).
+  [[nodiscard]] bool GetCastShadow() const { return cast_shadow_; }
+
   // Returns the texture at the given slot.
   [[nodiscard]] abstract::Texture* GetTexture(TextureSlot slot) const;
 
@@ -82,6 +86,8 @@ class Material {
   // cppcheck-suppress unusedStructMember
   core::Color  ambient_color_  = core::Color::kTransparent;
   float        shininess_      = 32.f;
+  // cppcheck-suppress unusedStructMember
+  bool         cast_shadow_    = true;
 };
 
 }  // namespace renderer

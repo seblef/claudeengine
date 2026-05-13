@@ -72,12 +72,17 @@ class MaterialDesc {
   [[nodiscard]] core::Color GetAmbientColor()  const { return ambient_color_; }
   [[nodiscard]] float       GetShininess()     const { return shininess_; }
 
+  // When false the material's meshes are excluded from all shadow passes.
+  MaterialDesc& SetCastShadow(bool b) { cast_shadow_ = b; return *this; }
+  [[nodiscard]] bool GetCastShadow()  const { return cast_shadow_; }
+
  private:
   std::array<std::string, kTextureSlotCount> names_{};
   core::Color diffuse_color_  = core::Color::kWhite;
   core::Color emissive_color_ = core::Color::kTransparent;
   core::Color ambient_color_  = core::Color::kTransparent;
   float       shininess_      = 32.f;
+  bool        cast_shadow_    = true;
 };
 
 }  // namespace renderer

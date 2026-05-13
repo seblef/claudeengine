@@ -39,7 +39,10 @@ std::unique_ptr<renderer::Light> GameLight::CreateRendererLight(
 
 GameLight::GameLight(renderer::LightType type, const GameLightDesc& desc)
     : GameObject(GameObjectType::kLight, core::BBox3{}),
-      light_(CreateRendererLight(type, desc)) {}
+      light_(CreateRendererLight(type, desc)) {
+  light_->SetCastShadow(desc.cast_shadow);
+  light_->SetShadowResolution(desc.shadow_resolution);
+}
 
 void GameLight::OnWorldTransformUpdated() {
   light_->SetWorldMatrix(GetWorldTransform());
