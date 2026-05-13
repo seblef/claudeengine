@@ -66,11 +66,6 @@ class ShadowMapPool {
   static std::vector<TierSlots> BuildPool(abstract::VideoDevice*        video,
                                           const core::ShadowPoolConfig& cfg);
 
-  // Computes the screen-space projected radius (pixels) of the light's
-  // influence bounding sphere as seen from the given camera.
-  [[nodiscard]] float ComputeScreenRadius(const Light*        light,
-                                          const core::Camera& camera) const;
-
   // Returns the index into tiers of the highest-resolution tier whose screen-
   // size threshold is <= screen_radius, capped by max_resolution.
   [[nodiscard]] int FindTargetTierIdx(float                         screen_radius,

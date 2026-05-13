@@ -30,6 +30,10 @@ class CircleSpotLight : public Light {
   // FOV = 2 * outer_angle, aspect = 1, near = 0.1, far = range.
   [[nodiscard]] std::optional<core::Mat4f> ComputeShadowVP() const override;
 
+  [[nodiscard]] float ComputeScreenRadius(const core::Vec3f& eye_pos,
+                                          float              half_screen_height,
+                                          float              tan_half_fov) const override;
+
   [[nodiscard]] float GetInnerAngle()              const { return inner_angle_; }
   [[nodiscard]] float GetOuterAngle()              const { return outer_angle_; }
   [[nodiscard]] float GetRange()                   const { return range_; }

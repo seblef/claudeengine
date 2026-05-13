@@ -3,10 +3,6 @@
 #include <algorithm>
 #include <cmath>
 
-#include "renderer/CircleSpotLight.h"
-#include "renderer/OmniLight.h"
-#include "renderer/RectangleSpotLight.h"
-
 namespace renderer {
 
 std::vector<ShadowMapPool::TierSlots> ShadowMapPool::BuildPool(
@@ -33,6 +29,11 @@ ShadowMapPool::ShadowMapPool(abstract::VideoDevice*    video,
 
 void ShadowMapPool::Assign(const std::vector<Light*>& lights,
                            const core::Camera&         camera) {
+  // Pre-compute camera-derived values shared across all lights this frame.
+  const core::Vec3f eye_pos           = camera.GetPosition();
+  const float       half_screen_height = camera.GetScreenCenter().y;
+  const float       tan_half_fov       = std::tan(camera.GetFOV() * 0.5f);
+
   // Compute screen-space radius for every shadow-casting local light.
   std::unordered_map<const Light*, float> radii;
   std::vector<const Light*> eligible_2d;
@@ -42,7 +43,8 @@ void ShadowMapPool::Assign(const std::vector<Light*>& lights,
     const LightType type = light->GetType();
     if (type == LightType::kGlobal) continue;  // CSM handled separately
 
-    const float radius = ComputeScreenRadius(light, camera);
+    const float radius = light->ComputeScreenRadius(eye_pos, half_screen_height,
+                                                    tan_half_fov);
     radii[light] = radius;
 
     if (type == LightType::kCircleSpot || type == LightType::kRectSpot)
@@ -112,51 +114,6 @@ void ShadowMapPool::AssignPool(const std::vector<const Light*>&              eli
       }
     }
   }
-}
-
-float ShadowMapPool::ComputeScreenRadius(const Light*       light,
-                                          const core::Camera& camera) const {
-  const float screen_height = camera.GetScreenCenter().y * 2.f;
-  const float tan_half_fov  = std::tan(camera.GetFOV() * 0.5f);
-  if (tan_half_fov < 1e-6f) return 0.f;
-
-  const core::Mat4f& wm = light->GetWorldMatrix();
-  const core::Vec3f  light_pos(wm(0, 3), wm(1, 3), wm(2, 3));
-
-  float         sphere_radius;
-  core::Vec3f   sphere_center = light_pos;
-
-  switch (light->GetType()) {
-    case LightType::kOmni: {
-      const auto* omni  = static_cast<const OmniLight*>(light);
-      sphere_radius     = omni->GetRadius();
-      break;
-    }
-    case LightType::kCircleSpot: {
-      const auto* spot  = static_cast<const CircleSpotLight*>(light);
-      const float r     = spot->GetRange();
-      const float cos_a = std::cos(spot->GetOuterAngle());
-      sphere_radius     = (cos_a > 1e-6f) ? r / (2.f * cos_a) : r;
-      sphere_center     = light_pos + spot->GetDirection() * (r * 0.5f);
-      break;
-    }
-    case LightType::kRectSpot: {
-      const auto* spot  = static_cast<const RectangleSpotLight*>(light);
-      const float r     = spot->GetRange();
-      const float angle = std::max(spot->GetHAngle(), spot->GetVAngle());
-      const float cos_a = std::cos(angle);
-      sphere_radius     = (cos_a > 1e-6f) ? r / (2.f * cos_a) : r;
-      sphere_center     = light_pos + spot->GetDirection() * (r * 0.5f);
-      break;
-    }
-    default:
-      return 0.f;
-  }
-
-  const float dist = (sphere_center - camera.GetPosition()).Length();
-  if (dist < 1e-4f) return screen_height;  // camera inside sphere
-
-  return sphere_radius * screen_height / (2.f * tan_half_fov * dist);
 }
 
 int ShadowMapPool::FindTargetTierIdx(float                         screen_radius,
