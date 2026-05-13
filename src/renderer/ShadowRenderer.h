@@ -7,7 +7,6 @@
 #include "abstract/ConstantBuffer.h"
 #include "abstract/Shader.h"
 #include "abstract/VideoDevice.h"
-#include "core/Mat4f.h"
 #include "core/Singleton.h"
 #include "renderer/IVisibilitySystem.h"
 #include "renderer/Light.h"
@@ -27,7 +26,8 @@ constexpr int kDefaultShadowResolution = 1024;
 //   3. Culls shadow casters from both visibility systems.
 //   4. Renders them into the shadow map's depth-only FBO.
 //
-// GlobalLight (CSM) and OmniLight (cube maps) are deferred to later issues.
+// Light types that return nullopt from ComputeShadowVP() are skipped
+// automatically — no type-switching required to add a new shadow-capable type.
 //
 // Lifecycle: created by Renderer constructor; destroyed by Renderer destructor.
 class ShadowRenderer : public core::Singleton<ShadowRenderer> {
@@ -52,9 +52,6 @@ class ShadowRenderer : public core::Singleton<ShadowRenderer> {
   void ClearShadowMaps();
 
  private:
-  // Computes the light-space VP matrix for a spot light (circle or rectangle).
-  [[nodiscard]] static core::Mat4f ComputeLightVP(const Light* light);
-
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice* video_;
   // cppcheck-suppress unusedStructMember

@@ -1,6 +1,7 @@
 #include "renderer/RectangleSpotLight.h"
 
 #include <cmath>
+#include <optional>
 
 namespace renderer {
 
@@ -41,6 +42,21 @@ core::Mat4f RectangleSpotLight::GetVolumeMatrix() const {
          core::Mat4f::Scale3D({range_ * std::tan(h_angle_),
                                range_ * std::tan(v_angle_),
                                range_});
+}
+
+std::optional<core::Mat4f> RectangleSpotLight::ComputeShadowVP() const {
+  static constexpr float kNear = 0.1f;
+  const core::Mat4f& wm = GetWorldMatrix();
+  const core::Vec3f  pos(wm(0, 3), wm(1, 3), wm(2, 3));
+  const core::Vec3f  up = (std::abs(direction_.y) > 0.9f)
+                              ? core::Vec3f(1.f, 0.f, 0.f)
+                              : core::Vec3f(0.f, 1.f, 0.f);
+  const core::Mat4f view = core::Mat4f::LookAtRH(pos, pos + direction_, up);
+  // aspect = tan(h_angle) / tan(v_angle) maps the rectangular frustum correctly.
+  const float aspect = std::tan(h_angle_) / std::tan(v_angle_);
+  const core::Mat4f proj =
+      core::Mat4f::PerspectiveRH(2.f * v_angle_, aspect, kNear, range_);
+  return view * proj;
 }
 
 }  // namespace renderer
