@@ -106,6 +106,11 @@ class GLVideoDevice : public abstract::VideoDevice {
   [[nodiscard]] std::unique_ptr<abstract::RenderTarget> CreateRenderTarget(
       int width, int height, abstract::TextureFormat format) override;
 
+  // Creates a GLRenderTargetCube for omni-light cube shadow maps.
+  // Only kDepth32F is supported; the format parameter is reserved for future use.
+  [[nodiscard]] std::unique_ptr<abstract::RenderTargetCube> CreateRenderTargetCube(
+      int size, abstract::TextureFormat format) override;
+
   // Creates a GLRenderTargetGroup (FBO) from the given color and depth targets.
   [[nodiscard]] std::unique_ptr<abstract::RenderTargetGroup> CreateRenderTargetGroup(
       std::span<abstract::RenderTarget*> color_targets,

@@ -12,6 +12,7 @@
 #include "renderer/GlobalLight.h"
 #include "renderer/IVisibilitySystem.h"
 #include "renderer/Light.h"
+#include "renderer/ShadowCubeMap.h"
 #include "renderer/ShadowMap.h"
 #include "renderer/ShadowMapPool.h"
 
@@ -50,6 +51,9 @@ class ShadowRenderer : public core::Singleton<ShadowRenderer> {
   // Returns the shadow map assigned to a spot light this frame, or nullptr if none.
   [[nodiscard]] const ShadowMap* GetShadowMap(const Light* light) const;
 
+  // Returns the cube shadow map assigned to an omni light this frame, or nullptr.
+  [[nodiscard]] const ShadowCubeMap* GetShadowCubeMap(const Light* light) const;
+
   // Returns true if a GlobalLight with cast_shadow=true was rendered this frame.
   [[nodiscard]] bool HasCSM() const { return has_csm_; }
 
@@ -68,6 +72,10 @@ class ShadowRenderer : public core::Singleton<ShadowRenderer> {
                       const IVisibilitySystem* no_cull,
                       const IVisibilitySystem* octree,
                       const core::Camera&      camera);
+
+  void RenderCubeShadows(const std::vector<Light*>& lights,
+                         const IVisibilitySystem*   no_cull,
+                         const IVisibilitySystem*   octree);
 
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice*                     video_;

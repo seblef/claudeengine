@@ -4,6 +4,7 @@ add_library(gldevices STATIC
     GLGeometryBuffer.cpp
     GLIndexBuffer.cpp
     GLRenderTarget.cpp
+    GLRenderTargetCube.cpp
     GLRenderTargetGroup.cpp
     GLShader.cpp
     GLTexture.cpp

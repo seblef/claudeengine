@@ -9,6 +9,7 @@
 #include "core/Color.h"
 #include "core/ViewFrustum.h"
 #include "renderer/MeshRenderer.h"
+#include "renderer/OmniLight.h"
 #include "renderer/Renderable.h"
 #include "renderer/ShadowPassInfos.h"
 
@@ -52,6 +53,9 @@ void ShadowRenderer::RenderShadowMaps(const std::vector<Light*>& lights,
     RenderCascades(static_cast<const GlobalLight&>(**global_it),
                    no_cull, octree, camera);
   }
+
+  // Render cube shadow maps for omni lights from the pool.
+  RenderCubeShadows(lights, no_cull, octree);
 
   // Render 2D shadow maps for spot lights from the pool.
   for (const Light* light : lights) {
@@ -141,8 +145,54 @@ void ShadowRenderer::RenderCascades(const GlobalLight&       light,
   }
 }
 
+void ShadowRenderer::RenderCubeShadows(const std::vector<Light*>& lights,
+                                       const IVisibilitySystem*   no_cull,
+                                       const IVisibilitySystem*   octree) {
+  for (const Light* light : lights) {
+    if (light->GetType() != LightType::kOmni) continue;
+    if (!light->GetCastShadow()) continue;
+
+    ShadowCubeMap* scm = const_cast<ShadowCubeMap*>(pool_.GetShadowCubeMap(light));
+    if (!scm) continue;
+
+    const auto& ol  = static_cast<const OmniLight&>(*light);
+    const core::Mat4f& wm = ol.GetWorldMatrix();
+    const core::Vec3f  pos(wm(0, 3), wm(1, 3), wm(2, 3));
+    scm->ComputeFaceMatrices(pos, ol.GetRadius());
+
+    for (int face = 0; face < 6; ++face) {
+      const core::Mat4f& face_vp = scm->GetLightVP(face);
+
+      ShadowPassInfos spi;
+      spi.light_vp = face_vp;
+      shadow_pass_infos_cb_->Fill(&spi);
+
+      const core::ViewFrustum face_frustum(face_vp);
+      std::vector<Renderable*> casters;
+      no_cull->CullAndCollect(face_frustum, casters);
+      octree->CullAndCollect(face_frustum, casters);
+
+      const int size = scm->GetSize();
+      scm->BindFaceForWriting(face);
+      video_->SetViewport(0, 0, size, size);
+      video_->SetDepthTestEnabled(true);
+      video_->SetDepthWriteEnabled(true);
+      video_->ClearRenderTargets(core::Color::kBlack);
+
+      for (Renderable* r : casters) r->EnqueueDepth();
+      MeshRenderer::Instance().RenderDepth();
+
+      scm->UnbindForWriting();
+    }
+  }
+}
+
 const ShadowMap* ShadowRenderer::GetShadowMap(const Light* light) const {
   return pool_.GetShadowMap(light);
+}
+
+const ShadowCubeMap* ShadowRenderer::GetShadowCubeMap(const Light* light) const {
+  return pool_.GetShadowCubeMap(light);
 }
 
 const ShadowMap* ShadowRenderer::GetCascadeMap(int index) const {

@@ -9,6 +9,7 @@
 #include "core/Camera.h"
 #include "core/ShadowConfig.h"
 #include "renderer/Light.h"
+#include "renderer/ShadowCubeMap.h"
 #include "renderer/ShadowMap.h"
 
 namespace renderer {
@@ -35,8 +36,11 @@ class ShadowMapPool {
   // Must be called once per frame before rendering shadow maps.
   void Assign(const std::vector<Light*>& lights, const core::Camera& camera);
 
-  // Returns the ShadowMap assigned to this light this frame, or nullptr.
+  // Returns the ShadowMap assigned to this spot light this frame, or nullptr.
   [[nodiscard]] const ShadowMap* GetShadowMap(const Light* light) const;
+
+  // Returns the ShadowCubeMap assigned to this omni light this frame, or nullptr.
+  [[nodiscard]] const ShadowCubeMap* GetShadowCubeMap(const Light* light) const;
 
   // Returns the resolution of the shadow map assigned to this light, or 0.
   [[nodiscard]] int GetAssignedResolution(const Light* light) const;
@@ -62,9 +66,29 @@ class ShadowMapPool {
     std::vector<Slot> slots;
   };
 
-  // Allocates all ShadowMaps for one pool from the given config.
+  // One slot in the cube tier: a pre-allocated ShadowCubeMap plus its owner.
+  struct CubeSlot {
+    std::unique_ptr<ShadowCubeMap> map;
+    // cppcheck-suppress unusedStructMember
+    const Light*                   owner              = nullptr;
+    // cppcheck-suppress unusedStructMember
+    float                          last_screen_radius = 0.f;
+  };
+
+  struct CubeTierSlots {
+    // cppcheck-suppress unusedStructMember
+    int                  resolution;
+    // cppcheck-suppress unusedStructMember
+    std::vector<CubeSlot> slots;
+  };
+
+  // Allocates all ShadowMaps for one 2D pool from the given config.
   static std::vector<TierSlots> BuildPool(abstract::VideoDevice*        video,
                                           const core::ShadowPoolConfig& cfg);
+
+  // Allocates all ShadowCubeMaps for the cube pool from the given config.
+  static std::vector<CubeTierSlots> BuildCubePool(abstract::VideoDevice*        video,
+                                                   const core::ShadowPoolConfig& cfg);
 
   // Returns the index into tiers of the highest-resolution tier whose screen-
   // size threshold is <= screen_radius, capped by max_resolution.
@@ -72,22 +96,32 @@ class ShadowMapPool {
                                       int                           max_resolution,
                                       const std::vector<TierSlots>& tiers) const;
 
-  // Runs the assign loop for one pool (2D or cube).
-  // eligible: lights whose type is handled by this pool.
+  [[nodiscard]] int FindTargetCubeTierIdx(float                              screen_radius,
+                                          int                                max_resolution,
+                                          const std::vector<CubeTierSlots>&  tiers) const;
+
+  // Runs the assign loop for the 2D pool.
   void AssignPool(const std::vector<const Light*>&               eligible,
                   const std::unordered_map<const Light*, float>& radii,
                   std::vector<TierSlots>&                        pool);
+
+  // Runs the assign loop for the cube pool.
+  void AssignCubePool(const std::vector<const Light*>&               eligible,
+                      const std::unordered_map<const Light*, float>& radii,
+                      std::vector<CubeTierSlots>&                    pool);
 
   // cppcheck-suppress unusedStructMember
   core::ShadowConfig             config_;
   // cppcheck-suppress unusedStructMember
   std::vector<TierSlots>         pool_2d_;
   // cppcheck-suppress unusedStructMember
-  std::vector<TierSlots>         pool_cube_;
+  std::vector<CubeTierSlots>     pool_cube_;
 
-  // Maps light → assigned ShadowMap for the current frame.
+  // Maps light → assigned ShadowMap / ShadowCubeMap for the current frame.
   // cppcheck-suppress unusedStructMember
-  std::unordered_map<const Light*, ShadowMap*> assignments_;
+  std::unordered_map<const Light*, ShadowMap*>     assignments_;
+  // cppcheck-suppress unusedStructMember
+  std::unordered_map<const Light*, ShadowCubeMap*> cube_assignments_;
 };
 
 }  // namespace renderer

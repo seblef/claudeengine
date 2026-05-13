@@ -15,6 +15,7 @@
 #include "renderer/RectangleSpotLight.h"
 #include "renderer/Renderer.h"
 #include "renderer/CSMInfos.h"
+#include "renderer/ShadowCubeMap.h"
 #include "renderer/ShadowMap.h"
 #include "renderer/ShadowRenderer.h"
 
@@ -204,6 +205,12 @@ void LightRenderer::RenderLocalLights() {
         light->GetType() == LightType::kRectSpot) {
       const ShadowMap* smap = ShadowRenderer::Instance().GetShadowMap(light);
       if (smap) smap->GetDepthRT()->BindAsSampler(9);
+    }
+
+    // Bind cube shadow map at sampler 13 for omni lights that cast shadows.
+    if (light->GetType() == LightType::kOmni) {
+      const ShadowCubeMap* scm = ShadowRenderer::Instance().GetShadowCubeMap(light);
+      if (scm) scm->GetCubeRT()->BindAsSampler(13);
     }
 
     // Sub-pass A: mark pixels inside the light volume in the stencil buffer.
