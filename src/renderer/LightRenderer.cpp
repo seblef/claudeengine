@@ -14,13 +14,15 @@
 #include "renderer/OmniLight.h"
 #include "renderer/RectangleSpotLight.h"
 #include "renderer/Renderer.h"
+#include "renderer/ShadowMap.h"
+#include "renderer/ShadowRenderer.h"
 
 namespace renderer {
 
 namespace {
 
 constexpr int kLightInfosSlot    = 4;
-constexpr int kLightInfosFloat4s = sizeof(LightInfos) / 16;  // 80 / 16 = 5
+constexpr int kLightInfosFloat4s = sizeof(LightInfos) / 16;  // 160 / 16 = 10
 
 // ---- LightInfos filling helpers ---------------------------------------------
 
@@ -38,7 +40,7 @@ void FillCommonInfos(const Light& light, LightInfos* infos) {
   infos->pz = wm(2, 3);
 }
 
-void FillInfos(const Light& light, LightInfos* infos) {
+void FillInfos(const Light& light, const ShadowMap* smap, LightInfos* infos) {
   *infos = {};
   FillCommonInfos(light, infos);
 
@@ -75,6 +77,12 @@ void FillInfos(const Light& light, LightInfos* infos) {
       break;
     }
   }
+
+  // Shadow fields: cast_shadow drives the shader's shadow sample; light_vp is
+  // only used when cast_shadow == 1.0.
+  infos->cast_shadow = smap ? 1.0f : 0.0f;
+  if (smap) infos->light_vp = smap->GetLightVP();
+  infos->shadow_bias = light.GetShadowBias();
 }
 
 }  // namespace
@@ -132,7 +140,7 @@ void LightRenderer::RenderGlobalLights() {
     if (light->GetType() != LightType::kGlobal) continue;
 
     LightInfos infos;
-    FillInfos(*light, &infos);
+    FillInfos(*light, ShadowRenderer::Instance().GetShadowMap(light), &infos);
     light_infos_cb_->Fill(&infos);
     Renderer::Instance().SetRenderableInfos(light->GetVolumeMatrix());
     video_->RenderIndexed(quad_->GetNumIndices());
@@ -170,7 +178,7 @@ void LightRenderer::RenderLocalLights() {
 
     // Fill per-light constant buffer before both sub-passes.
     LightInfos infos;
-    FillInfos(*light, &infos);
+    FillInfos(*light, ShadowRenderer::Instance().GetShadowMap(light), &infos);
     light_infos_cb_->Fill(&infos);
     Renderer::Instance().SetRenderableInfos(light->GetVolumeMatrix());
 

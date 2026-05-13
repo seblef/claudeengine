@@ -27,6 +27,7 @@ struct GameLightDesc {
   float        v_angle            = 0.3f;    // RectangleSpotLight
   bool         cast_shadow        = true;    // All types: false skips shadow map entirely
   int          shadow_resolution  = 1024;    // Max shadow map resolution cap (pool may assign lower)
+  float        shadow_bias        = 0.005f;  // Depth bias to avoid self-shadowing acne
 };
 
 }  // namespace game

@@ -42,6 +42,7 @@ GameLight::GameLight(renderer::LightType type, const GameLightDesc& desc)
       light_(CreateRendererLight(type, desc)) {
   light_->SetCastShadow(desc.cast_shadow);
   light_->SetShadowResolution(desc.shadow_resolution);
+  light_->SetShadowBias(desc.shadow_bias);
 }
 
 void GameLight::OnWorldTransformUpdated() {
