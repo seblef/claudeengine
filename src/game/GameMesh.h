@@ -10,9 +10,9 @@ namespace game {
 
 // A game object that renders a mesh from a shared MeshTemplate.
 //
-// The underlying RenderableMeshInstance is created when the object is added to
-// the scene and destroyed when it is removed, so GPU resources are held only
-// while the object participates in rendering.
+// The underlying RenderableMeshInstance is created in the constructor and
+// destroyed in the destructor. OnAddedToScene / OnRemovedFromScene register
+// and unregister it with the Renderer without affecting its lifetime.
 //
 // Multiple GameMesh objects may share the same MeshTemplate; the geometry and
 // materials are loaded from disk only once.
@@ -29,13 +29,13 @@ class GameMesh : public GameObject {
   GameMesh(GameMesh&&)                 = delete;
   GameMesh& operator=(GameMesh&&)      = delete;
 
-  // Creates a RenderableMeshInstance and registers it with the Renderer.
+  // Registers the instance with the Renderer.
   void OnAddedToScene() override;
 
-  // Unregisters the instance from the Renderer and destroys it.
+  // Unregisters the instance from the Renderer.
   void OnRemovedFromScene() override;
 
-  // Forwards the new world transform to the RenderableMeshInstance if present.
+  // Forwards the new world transform to the RenderableMeshInstance.
   void OnWorldTransformUpdated() override;
 
  private:
