@@ -148,7 +148,9 @@ void LightRenderer::RenderGlobalLights() {
     if (light->GetType() != LightType::kGlobal) continue;
 
     LightInfos infos;
-    FillInfos(*light, ShadowRenderer::Instance().GetShadowMap(light), &infos);
+    FillInfos(*light, nullptr, &infos);
+    // CSM availability drives cast_shadow for GlobalLight, not the 2D pool.
+    infos.cast_shadow = ShadowRenderer::Instance().HasCSM() ? 1.0f : 0.0f;
     light_infos_cb_->Fill(&infos);
     Renderer::Instance().SetRenderableInfos(light->GetVolumeMatrix());
     video_->RenderIndexed(quad_->GetNumIndices());
