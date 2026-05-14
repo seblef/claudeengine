@@ -1,5 +1,6 @@
 add_library(editor STATIC
     EditorSystem.cpp
+    EditorWindow.cpp
 )
 
 target_include_directories(editor PUBLIC "${CMAKE_SOURCE_DIR}/src")

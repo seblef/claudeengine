@@ -1,20 +1,30 @@
 #pragma once
 
+#include <memory>
+
 #include "abstract/Devices.h"
+#include "abstract/VideoDevice.h"
 #include "core/Singleton.h"
 
 namespace editor {
 
+class EditorWindow;
+
 // Singleton orchestrating the editor loop.
 //
-// Owns the main Run() loop, ImGui lifecycle (init/shutdown), and top-level
-// editor subsystems (EditorWindow, EditorScene, EditorViewport).
+// Initialises ImGui (GLFW + OpenGL3 backends) in the constructor and tears
+// it down in the destructor. Each frame: pumps OS events, runs one ImGui
+// frame, delegates rendering to EditorWindow, then presents the draw data.
 //
 // Lifecycle: new EditorSystem(devices) → Run() → Shutdown().
 class EditorSystem : public core::Singleton<EditorSystem> {
  public:
+  // Initialises ImGui and creates the EditorWindow.
   // devices must outlive this EditorSystem.
   explicit EditorSystem(abstract::Devices* devices);
+
+  // Shuts down ImGui backends and destroys the context.
+  ~EditorSystem();
 
   // Enters the main editor loop; returns when Stop() is called or the window
   // is closed.
@@ -29,9 +39,12 @@ class EditorSystem : public core::Singleton<EditorSystem> {
 
  private:
   // cppcheck-suppress unusedStructMember
-  abstract::Devices* devices_;
+  abstract::Devices*            devices_;
   // cppcheck-suppress unusedStructMember
-  bool running_ = true;
+  abstract::VideoDevice*        video_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<EditorWindow> editor_window_;
+  bool                          running_ = true;
 };
 
 }  // namespace editor
