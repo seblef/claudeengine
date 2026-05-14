@@ -5,6 +5,6 @@
 namespace core {
 
 // Platform-independent mouse button identifier.
-enum class MouseButton : uint8_t { kLeft, kRight };
+enum class MouseButton : uint8_t { kLeft, kMiddle, kRight };
 
 }  // namespace core
