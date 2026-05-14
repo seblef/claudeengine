@@ -143,6 +143,77 @@ if(TIFF_FOUND)
     add_compile_definitions(HAVE_LIBTIFF)
 endif()
 
+# ---------------------------------------------------------------------------
+# Editor-only dependencies: ImGui, ImGuizmo, nfd
+# Guarded by BUILD_EDITOR so claude_engine builds without these on machines
+# that lack the editor system requirements (e.g. libgtk-3-dev on Linux).
+# ---------------------------------------------------------------------------
+option(BUILD_EDITOR "Build the editor executable (requires libgtk-3-dev on Linux)" OFF)
+
+if(BUILD_EDITOR)
+    find_package(OpenGL REQUIRED)
+
+    # ---- ImGui (docking branch) ---------------------------------------------
+    FetchContent_Declare(
+        imgui
+        GIT_REPOSITORY https://github.com/ocornut/imgui.git
+        GIT_TAG        docking
+        GIT_SHALLOW    TRUE
+    )
+    FetchContent_MakeAvailable(imgui)
+    message(STATUS "[ClaudeEngine] ImGui (docking) fetched")
+
+    add_library(imgui STATIC
+        ${imgui_SOURCE_DIR}/imgui.cpp
+        ${imgui_SOURCE_DIR}/imgui_draw.cpp
+        ${imgui_SOURCE_DIR}/imgui_tables.cpp
+        ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+        ${imgui_SOURCE_DIR}/imgui_demo.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+    )
+    target_include_directories(imgui PUBLIC
+        ${imgui_SOURCE_DIR}
+        ${imgui_SOURCE_DIR}/backends
+    )
+    target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
+    if(MSVC)
+        target_compile_options(imgui PRIVATE /W0)
+    else()
+        target_compile_options(imgui PRIVATE -w)
+    endif()
+
+    # ---- ImGuizmo -----------------------------------------------------------
+    # ImGuizmo's own CMakeLists.txt creates the imguizmo target; we only need
+    # to link it against our imgui so it can find imgui.h at build time.
+    FetchContent_Declare(
+        imguizmo
+        GIT_REPOSITORY https://github.com/CedricGuillemet/ImGuizmo.git
+        GIT_TAG        master
+        GIT_SHALLOW    TRUE
+    )
+    FetchContent_MakeAvailable(imguizmo)
+    message(STATUS "[ClaudeEngine] ImGuizmo fetched")
+    target_link_libraries(imguizmo PUBLIC imgui)
+    if(MSVC)
+        target_compile_options(imguizmo PRIVATE /W0)
+    else()
+        target_compile_options(imguizmo PRIVATE -w)
+    endif()
+
+    # ---- nfd (native file dialog extended) ----------------------------------
+    FetchContent_Declare(
+        nfd
+        GIT_REPOSITORY https://github.com/btzy/nativefiledialog-extended.git
+        GIT_TAG        master
+        GIT_SHALLOW    TRUE
+    )
+    set(NFD_BUILD_TESTS  OFF CACHE BOOL "" FORCE)
+    set(NFD_WAYLAND      OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(nfd)
+    message(STATUS "[ClaudeEngine] nfd (native file dialog) fetched")
+endif()
+
 add_subdirectory(src)
 
 # ---------------------------------------------------------------------------
