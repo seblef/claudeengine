@@ -8,7 +8,40 @@ A multi-platform 3D shoot'em up game engine written in modern C++.
 - A C++20 compiler (GCC 10+, Clang 12+, MSVC 2022+)
 - Git (for dependency fetching)
 
-[loguru](https://github.com/emilk/loguru) is fetched automatically at configure time — no manual download needed.
+### Linux system libraries
+
+Install the following packages before configuring:
+
+```bash
+# Game engine (required)
+sudo apt-get install \
+    libgl1-mesa-dev libglu1-mesa-dev \
+    libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
+
+# Editor (required only when building with -DBUILD_EDITOR=ON)
+sudo apt-get install libgtk-3-dev
+
+# Optional: TIFF texture support
+sudo apt-get install libtiff-dev
+```
+
+### Third-party libraries (auto-fetched)
+
+All dependencies are fetched automatically by CMake at configure time via `FetchContent` — no manual downloads needed.
+
+| Library | Version / tag | Purpose |
+|---|---|---|
+| [loguru](https://github.com/emilk/loguru) | `master` | Logging |
+| [GLFW](https://github.com/glfw/glfw) | `3.4` | Window and input |
+| [yaml-cpp](https://github.com/jbeder/yaml-cpp) | `0.8.0` | YAML config and material files |
+| [fast_obj](https://github.com/thisistherk/fast_obj) | `master` | OBJ mesh loading |
+| [ufbx](https://github.com/ufbx/ufbx) | `master` | FBX mesh loading |
+| [stb](https://github.com/nothings/stb) | `master` | JPEG / PNG texture loading |
+| [ImGui (docking)](https://github.com/ocornut/imgui) | `docking` | Editor UI *(editor only)* |
+| [ImGuizmo](https://github.com/CedricGuillemet/ImGuizmo) | `master` | Transform gizmo *(editor only)* |
+| [nfd-extended](https://github.com/btzy/nativefiledialog-extended) | `master` | Native file dialogs *(editor only)* |
+
+Editor-only libraries are fetched only when `-DBUILD_EDITOR=ON` is passed to CMake.
 
 ## Dev tools
 
@@ -19,10 +52,6 @@ The following tools are required for contributing. They mirror the CI quality ga
 Enforces the Google C++ Style Guide.
 
 ```bash
-# Linux / macOS
-pip install cpplint
-
-# Windows (same)
 pip install cpplint
 ```
 
@@ -52,39 +81,58 @@ The hook runs automatically on every `git commit`. It only checks files that are
 
 ## Build
 
+### Game engine
+
 ```bash
-# Clone the repository
 git clone <repo-url>
 cd claudeengine
 
-# Configure (dev profile — debug symbols, verbose logging)
+# Dev profile — debug symbols, verbose logging
 cmake -S . -B _build -DBUILD_PROFILE=dev
 
-# Configure (stable profile — optimised, minimal binary)
+# Stable profile — optimised, minimal binary
 cmake -S . -B _build -DBUILD_PROFILE=stable
 
-# Build
 cmake --build _build
 ```
 
-The binary is produced at `build/claude_engine` (Linux/macOS) or `build/claude_engine.exe` (Windows).
+The binary is produced at `build/claude_engine`.
+
+### Editor
+
+The editor requires `libgtk-3-dev` on Linux (native file dialogs). Enable it with the `BUILD_EDITOR` flag:
+
+```bash
+cmake -S . -B _build -DBUILD_PROFILE=dev -DBUILD_EDITOR=ON
+cmake --build _build
+```
+
+This produces a second binary at `build/claude_editor` alongside the game executable. Both binaries share the same `data/` directory.
 
 ## Run
+
+### Game engine
 
 ```bash
 ./build/claude_engine
 
-# Override log verbosity at runtime (0 = INFO, 9 = max)
-./build/claude_engine -v 9
-
 # Set the data folder (defaults to the current working directory)
 ./build/claude_engine --data-path /path/to/data
 
-# Typical dev setup: binary in build/, data in the repository root
-./build/claude_engine --data-path ../data
+# Override log verbosity at runtime (0 = INFO, 9 = max)
+./build/claude_engine -v 9
 ```
 
-Logs are written to both stderr and `claude_engine.log` in the working directory.
+### Editor
+
+```bash
+./build/claude_editor
+
+# Same flags as the game engine
+./build/claude_editor --data-path /path/to/data
+```
+
+Logs are written to both stderr and a `.log` file in the working directory.
 
 ### Command-line arguments
 
@@ -99,3 +147,10 @@ Logs are written to both stderr and `claude_engine.log` in the working directory
 |---|---|---|---|
 | `dev` (default) | Off (`-O0`) | Yes | Verbose |
 | `stable` | Aggressive (`-O3`, LTO) | No | Minimal |
+
+## CMake options
+
+| Option | Default | Description |
+|---|---|---|
+| `BUILD_PROFILE` | `dev` | Build profile: `dev` or `stable` |
+| `BUILD_EDITOR` | `OFF` | Build the editor executable (`claude_editor`) |
