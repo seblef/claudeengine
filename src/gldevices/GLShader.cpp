@@ -121,6 +121,14 @@ void GLShader::SetUniformInt(const std::string& name, int value) {
   glUniform1i(glGetUniformLocation(program_id_, name.c_str()), value);
 }
 
+void GLShader::SetUniformFloat(const std::string& name, float value) {
+  glUniform1f(glGetUniformLocation(program_id_, name.c_str()), value);
+}
+
+void GLShader::SetUniform2f(const std::string& name, float x, float y) {
+  glUniform2f(glGetUniformLocation(program_id_, name.c_str()), x, y);
+}
+
 GLuint GLShader::CompileStage(GLenum stage, const std::string& source,
                                const std::string& label) {
   const GLuint id = glCreateShader(stage);

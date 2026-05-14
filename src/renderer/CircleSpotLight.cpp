@@ -59,8 +59,11 @@ float CircleSpotLight::ComputeScreenRadius(const core::Vec3f& eye_pos,
 }
 
 core::Mat4f CircleSpotLight::GetLightSpaceMatrix() const {
-  static constexpr float kNear = 0.1f;
-  const core::Mat4f& wm = GetWorldMatrix();
+  // Near plane at 5 % of range gives a good depth spread: at near=range*0.05
+  // the depth values for objects at typical distances sit well below 0.95,
+  // keeping the per-light shadow_bias effective and shadow acne under control.
+  const float        kNear = range_ * 0.05f;
+  const core::Mat4f& wm    = GetWorldMatrix();
   const core::Vec3f  pos(wm(0, 3), wm(1, 3), wm(2, 3));
   const core::Vec3f  up = (std::abs(direction_.y) > 0.9f)
                               ? core::Vec3f(1.f, 0.f, 0.f)

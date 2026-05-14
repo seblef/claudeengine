@@ -16,7 +16,7 @@ ShadowCubeMap::ShadowCubeMap(abstract::VideoDevice* video, int size)
       size_(size) {}
 
 void ShadowCubeMap::ComputeFaceMatrices(const core::Vec3f& position, float range) {
-  static constexpr float kNear  = 0.1f;
+  const float        kNear = range * 0.05f;
   static constexpr float kFov90 = std::numbers::pi_v<float> * 0.5f;
 
   const core::Mat4f proj = core::Mat4f::PerspectiveRH(kFov90, 1.f, kNear, range);

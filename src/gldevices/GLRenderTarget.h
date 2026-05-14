@@ -24,6 +24,10 @@ class GLRenderTarget : public abstract::RenderTarget {
   // Binds the texture to GL_TEXTURE0 + slot for sampling in shaders.
   void BindAsSampler(int slot) override;
 
+  // Toggles depth-compare mode (Depth32F only) using DSA, so no texture unit
+  // rebinding is needed and currently bound samplers are unaffected.
+  void EnableCompareMode(bool enable) override;
+
   // Attaches the texture to the currently bound FBO.
   // Color formats: attaches at GL_COLOR_ATTACHMENT0 + index.
   // Depth+stencil format: attaches at GL_DEPTH_STENCIL_ATTACHMENT (index ignored).

@@ -6,6 +6,20 @@
 
 namespace game {
 
+namespace {
+// Generates a unique registry key for each procedurally built mesh template.
+std::string GenerateProcId() {
+  static int counter = 0;
+  return "__proc_" + std::to_string(counter++);
+}
+}  // namespace
+
+MeshTemplate::MeshTemplate(renderer::RenderableMesh* mesh)
+    : Resource(GenerateProcId()),
+      mesh_(mesh) {
+  initialized_ = true;
+}
+
 MeshTemplate::MeshTemplate(const std::string& mesh_path,
                            abstract::VideoDevice* video)
     : Resource(mesh_path),

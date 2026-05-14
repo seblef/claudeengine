@@ -28,6 +28,10 @@ class MeshTemplate : public core::Resource<std::string, MeshTemplate> {
  public:
   MeshTemplate(const std::string& mesh_path, abstract::VideoDevice* video);
 
+  // Constructor for procedurally generated meshes.
+  // Takes ownership of `mesh`; bypasses file loading and the path-keyed registry.
+  explicit MeshTemplate(renderer::RenderableMesh* mesh);
+
   // Returns the loaded mesh, or nullptr if initialisation failed.
   [[nodiscard]] renderer::RenderableMesh* GetRenderableMesh() const;
 

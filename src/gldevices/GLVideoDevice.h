@@ -102,6 +102,9 @@ class GLVideoDevice : public abstract::VideoDevice {
   // Sets the GL viewport via glViewport.
   void SetViewport(int x, int y, int width, int height) override;
 
+  // Unbinds any texture from the given sampler slot (2D and cube-map targets).
+  void UnbindSampler(int slot) override;
+
   // Creates a GLRenderTarget (off-screen texture) of the given format.
   [[nodiscard]] std::unique_ptr<abstract::RenderTarget> CreateRenderTarget(
       int width, int height, abstract::TextureFormat format) override;

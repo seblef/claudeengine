@@ -15,6 +15,7 @@
 #include "renderer/GeometryData.h"
 #include "renderer/NoCullingVisibilitySystem.h"
 #include "renderer/OctreeVisibilitySystem.h"
+#include "renderer/ShadowDebugRenderer.h"
 #include "renderer/ShadowRenderer.h"
 
 namespace renderer {
@@ -108,6 +109,11 @@ class Renderer : public core::Singleton<Renderer> {
   // Selects which G-buffer attachment to visualize. kNone restores the full pipeline.
   void SetDebugMode(DebugMode mode) { debug_mode_ = mode; }
 
+  // Advances the shadow-map debug overlay to the next active shadow map.
+  // Cycles through: off → GlobalLight cascades → spot maps → omni cube maps → off.
+  // Bound to the Tab key in main.cpp.
+  void CycleShadowDebug();
+
   // ---- Render target accessors (for lighting, emissive, and debug passes) --
 
   [[nodiscard]] GBuffer*     GetGBuffer()     { return &gbuffer_; }
@@ -141,6 +147,8 @@ class Renderer : public core::Singleton<Renderer> {
   EmissiveFBO emissive_fbo_;
 
   DebugMode debug_mode_ = DebugMode::kNone;
+
+  std::unique_ptr<ShadowDebugRenderer> shadow_debug_renderer_;
 
   // Composite pass resources — gamma-correct the HDR RT to the default framebuffer.
   // cppcheck-suppress unusedStructMember

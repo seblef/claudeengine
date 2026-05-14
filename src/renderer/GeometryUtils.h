@@ -7,6 +7,9 @@
 
 namespace renderer {
 
+class Material;
+class RenderableMesh;
+
 // ---- Primitive geometry builders --------------------------------------------
 //
 // All functions return a GeometryData using the k3D vertex layout (Vertex3D).
@@ -33,5 +36,13 @@ namespace renderer {
 // 6 triangles (4 side faces + 2 base triangles).
 [[nodiscard]] std::unique_ptr<GeometryData> CreatePyramid(
     abstract::VideoDevice* video);
+
+// Horizontal plane facing up (+Y normal), centered at the origin in the XZ plane.
+// half_size: half-extent along both X and Z axes.
+// material: ownership is transferred — do not use the pointer after this call.
+// UVs are tiled: one tile covers 5 world units (tiles = half_size / 5).
+// Returns a heap-allocated RenderableMesh; ownership belongs to the caller.
+[[nodiscard]] RenderableMesh* CreatePlaneMesh(
+    abstract::VideoDevice* video, float half_size, Material* material);
 
 }  // namespace renderer

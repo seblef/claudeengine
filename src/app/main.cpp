@@ -22,6 +22,9 @@
 #include "game/GameSystem.h"
 #include "game/MeshTemplate.h"
 #include "gldevices/GLDevices.h"
+#include "renderer/GeometryUtils.h"
+#include "renderer/Material.h"
+#include "renderer/MaterialDesc.h"
 #include "renderer/Renderer.h"
 
 #include <memory>
@@ -45,7 +48,7 @@ int main(int argc, char* argv[]) {
   video->SetIndexType(abstract::IndexType::kUInt16);
 
   new renderer::Renderer(video);
-  renderer::Renderer::Instance().InitVisibilitySystems(100.f);
+  renderer::Renderer::Instance().InitVisibilitySystems(200.f);
 
   new game::GameSystem(&devices);
   game::GameSystem& game = game::GameSystem::Instance();
@@ -75,14 +78,14 @@ int main(int argc, char* argv[]) {
   if (obj_tmpl && obj_tmpl->GetRenderableMesh()) {
     obj_mesh = std::make_unique<game::GameMesh>(obj_tmpl);
     obj_mesh->SetWorldTransform(
-        core::Mat4f::Translation({-10.f, 0.f, 0.f}) *
+        core::Mat4f::Translation({-10.f, 3.f, 0.f}) *
         core::Mat4f::Scale3D({3.f, 3.f, 3.f}));
     game.AddObject(obj_mesh.get());
   }
   if (fbx_tmpl && fbx_tmpl->GetRenderableMesh()) {
     fbx_mesh = std::make_unique<game::GameMesh>(fbx_tmpl);
     fbx_mesh->SetWorldTransform(
-        core::Mat4f::Translation({10.f, 0.f, 0.f}) *
+        core::Mat4f::Translation({10.f, 3.f, 0.f}) *
         core::Mat4f::Scale3D({3.f, 3.f, 3.f}));
     game.AddObject(fbx_mesh.get());
   }
@@ -90,14 +93,34 @@ int main(int argc, char* argv[]) {
   if (obj_tmpl) obj_tmpl->Release();
   if (fbx_tmpl) fbx_tmpl->Release();
 
+  // ---- Floor plane ----------------------------------------------------------
+  auto* plane_mat  = new renderer::Material(
+      renderer::MaterialDesc().SetDiffuseColor({0.55f, 0.55f, 0.55f}), video);
+  renderer::RenderableMesh* plane_mesh = renderer::CreatePlaneMesh(video, 120.f, plane_mat);
+  auto* plane_tmpl = new game::MeshTemplate(plane_mesh);
+  auto  floor      = std::make_unique<game::GameMesh>(plane_tmpl);
+  floor->SetWorldTransform(core::Mat4f::kIdentity);
+  game.AddObject(floor.get());
+  plane_tmpl->Release();
+
   // ---- Lights ---------------------------------------------------------------
   game::GameLightDesc global_desc;
   global_desc.color         = core::Color(0.9f, 0.85f, 0.7f);
   global_desc.intensity     = 1.2f;
   global_desc.ambient_color = core::Vec3f(0.05f, 0.05f, 0.08f);
-  global_desc.direction     = core::Vec3f(-1.f, -1.f, -0.5f).Normalized();
+  global_desc.direction     = core::Vec3f(-0.4f, -0.8f, -0.3f).Normalized();
   game::GameLight global_light(renderer::LightType::kGlobal, global_desc);
   game.AddObject(&global_light);
+
+  game::GameLightDesc spot_desc;
+  spot_desc.color       = core::Color(1.f, 0.9f, 0.8f);
+  spot_desc.intensity   = 3.f;
+  spot_desc.direction   = core::Vec3f(0.f, -1.f, -0.3f).Normalized();
+  spot_desc.outer_angle = 0.4f;
+  spot_desc.range       = 50.f;
+  game::GameLight spot_light(renderer::LightType::kCircleSpot, spot_desc);
+  spot_light.SetWorldTransform(core::Mat4f::Translation({10.f, 20.f, 5.f}));
+  game.AddObject(&spot_light);
 
   game::GameLightDesc omni_obj_desc;
   omni_obj_desc.color     = core::Color(1.f, 0.6f, 0.2f);
@@ -125,6 +148,7 @@ int main(int argc, char* argv[]) {
 
   // ---- Debug mode -----------------------------------------------------------
   // Keys 0/Esc = full pipeline, 1-4 = G-buffer channels.
+  // Tab = cycle shadow-map debug overlay (one entry per light with shadows).
   renderer::DebugMode debug_mode = renderer::DebugMode::kNone;
   game.SetEventCallback([&debug_mode](const core::Event& e) {
     if (e.type != core::EventType::kKeyDown) return;
@@ -134,6 +158,8 @@ int main(int argc, char* argv[]) {
     if (e.key == core::Key::k2) debug_mode = renderer::DebugMode::kNormal;
     if (e.key == core::Key::k3) debug_mode = renderer::DebugMode::kSpecular;
     if (e.key == core::Key::k4) debug_mode = renderer::DebugMode::kDepth;
+    if (e.key == core::Key::kTab)
+      renderer::Renderer::Instance().CycleShadowDebug();
   });
 
   // ---- Main loop ------------------------------------------------------------

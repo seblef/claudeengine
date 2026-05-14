@@ -50,12 +50,17 @@ GLRenderTarget::GLRenderTarget(int width, int height,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE,
                     GL_COMPARE_REF_TO_TEXTURE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+    // Border depth 1.0: UV outside [0,1] → comparison returns "lit" (no shadow).
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    constexpr float kBorderDepth[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, kBorderDepth);
   } else {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   }
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glBindTexture(GL_TEXTURE_2D, 0);
   LOG_F(INFO, "GLRenderTarget: created %dx%d format=%d tex=%u",
         width, height, static_cast<int>(format), tex_id_);
@@ -63,6 +68,12 @@ GLRenderTarget::GLRenderTarget(int width, int height,
 
 GLRenderTarget::~GLRenderTarget() {
   if (tex_id_) glDeleteTextures(1, &tex_id_);
+}
+
+void GLRenderTarget::EnableCompareMode(bool enable) {
+  if (format_ != abstract::TextureFormat::kDepth32F) return;
+  glTextureParameteri(tex_id_, GL_TEXTURE_COMPARE_MODE,
+                      enable ? GL_COMPARE_REF_TO_TEXTURE : GL_NONE);
 }
 
 void GLRenderTarget::BindAsSampler(int slot) {

@@ -57,7 +57,7 @@ float RectangleSpotLight::ComputeScreenRadius(const core::Vec3f& eye_pos,
 }
 
 core::Mat4f RectangleSpotLight::GetLightSpaceMatrix() const {
-  static constexpr float kNear = 0.1f;
+  const float        kNear = range_ * 0.05f;
   const core::Mat4f& wm = GetWorldMatrix();
   const core::Vec3f  pos(wm(0, 3), wm(1, 3), wm(2, 3));
   const core::Vec3f  up = (std::abs(direction_.y) > 0.9f)

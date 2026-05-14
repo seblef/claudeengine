@@ -91,22 +91,27 @@ void GlobalLight::ComputeCascadeMatrices(const core::Camera& camera,
     const core::Vec3f  light_eye  = centroid - direction_ * half_depth;
     const core::Mat4f  light_view = core::Mat4f::LookAtRH(light_eye, centroid, up);
 
-    // Find tight AABB of the frustum corners in light-view space.
+    // Use a spherical fit (square of side 2*half_depth) for the XY extent so that
+    // shadow receivers outside the tight cascade frustum AABB — e.g. floor points
+    // whose shadow UV would otherwise exceed [0,1] when the camera is close to a
+    // caster — are still covered by the shadow map.
+    // Only min_z needs the per-corner loop (for far-plane tightness).
     const float kInf = std::numeric_limits<float>::max();
-    float min_x = kInf, max_x = -kInf;
-    float min_y = kInf, max_y = -kInf;
-    float min_z = kInf, max_z = -kInf;
+    float min_z = kInf;
     for (const auto& c : cw) {
       const core::Vec3f lc = c * light_view;
-      min_x = std::min(min_x, lc.x);  max_x = std::max(max_x, lc.x);
-      min_y = std::min(min_y, lc.y);  max_y = std::max(max_y, lc.y);
-      min_z = std::min(min_z, lc.z);  max_z = std::max(max_z, lc.z);
+      min_z = std::min(min_z, lc.z);
     }
+    const float min_x = -half_depth,  max_x = half_depth;
+    const float min_y = -half_depth,  max_y = half_depth;
 
-    // z_near/z_far from light-view z (negative for objects in front of camera).
-    // Extend z_far by half_depth to capture casters behind the cascade frustum.
+    // ls_near is always kMinNear: objects between the light eye and the cascade
+    // frustum corners (e.g. tall geometry above the camera frustum, or objects
+    // behind the camera that are closer to the light) are otherwise clipped.
+    // ls_far extends past the farthest cascade corner by half_depth to catch
+    // casters that sit beyond the camera frustum but still cast into it.
     static constexpr float kMinNear = 0.1f;
-    const float ls_near = std::max(kMinNear, -max_z);
+    const float ls_near = kMinNear;
     const float ls_far  = -min_z + half_depth;
 
     const core::Mat4f ortho = core::Mat4f::OrthoOffCenterRH(

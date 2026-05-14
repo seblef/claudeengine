@@ -17,7 +17,7 @@ namespace renderer {
 
 namespace {
 constexpr int kShadowPassInfosSlot    = 6;
-constexpr int kShadowPassInfosFloat4s = sizeof(ShadowPassInfos) / 16;  // 64/16 = 4
+constexpr int kShadowPassInfosFloat4s = sizeof(ShadowPassInfos) / 16;  // 80/16 = 5
 }  // namespace
 
 ShadowRenderer::ShadowRenderer(abstract::VideoDevice* video)
@@ -37,10 +37,16 @@ void ShadowRenderer::RenderShadowMaps(const std::vector<Light*>& lights,
                                       const core::Camera&        camera) {
   pool_.Assign(lights, camera);
 
+  // Break any feedback loops: slots 9–12 hold cascade/spot shadow maps, 13
+  // holds cube shadow maps.  If any of these textures were read last frame they
+  // must be unbound before we write into them via their FBOs.
+  for (int s = 9; s <= 13; ++s) video_->UnbindSampler(s);
+
   shadow_pass_infos_cb_->Bind();
 
-  // Front-face culling reduces shadow acne without a bias.
-  video_->SetFaceCulling(abstract::CullFace::kFront);
+  // Back-face culling keeps front faces for single-sided meshes; shadow acne is
+  // mitigated by the per-light shadow_bias rather than reverse culling.
+  video_->SetFaceCulling(abstract::CullFace::kBack);
 
   // Render CSM cascades for the scene's GlobalLight (if any, and cast_shadow=true).
   has_csm_ = false;
@@ -164,7 +170,8 @@ void ShadowRenderer::RenderCubeShadows(const std::vector<Light*>& lights,
       const core::Mat4f& face_vp = scm->GetLightVP(face);
 
       ShadowPassInfos spi;
-      spi.light_vp = face_vp;
+      spi.light_vp         = face_vp;
+      spi.light_pos_range  = {pos.x, pos.y, pos.z, ol.GetRadius()};
       shadow_pass_infos_cb_->Fill(&spi);
 
       const core::ViewFrustum face_frustum(face_vp);
@@ -180,7 +187,7 @@ void ShadowRenderer::RenderCubeShadows(const std::vector<Light*>& lights,
       video_->ClearRenderTargets(core::Color::kBlack);
 
       for (Renderable* r : casters) r->EnqueueDepth();
-      MeshRenderer::Instance().RenderDepth();
+      MeshRenderer::Instance().RenderDepthCube();
 
       scm->UnbindForWriting();
     }

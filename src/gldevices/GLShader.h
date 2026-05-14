@@ -19,8 +19,9 @@ class GLShader : public abstract::Shader {
   // Binds this program for subsequent draw calls.
   void Activate() override;
 
-  // Sets an integer uniform by name. Must be called after Activate().
   void SetUniformInt(const std::string& name, int value) override;
+  void SetUniformFloat(const std::string& name, float value) override;
+  void SetUniform2f(const std::string& name, float x, float y) override;
 
  private:
   GLuint program_id_ = 0;
