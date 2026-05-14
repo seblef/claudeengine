@@ -42,11 +42,12 @@ void FillCommonInfos(const Light& light, LightInfos* infos) {
   infos->pz = wm(2, 3);
 }
 
-void FillInfos(const Light& light, const ShadowMap* smap, LightInfos* infos) {
+void FillInfos(const Light& light, LightInfos* infos) {
   *infos = {};
   FillCommonInfos(light, infos);
 
-  switch (light.GetType()) {
+  const LightType ltype = light.GetType();
+  switch (ltype) {
     case LightType::kGlobal: {
       const auto& gl  = static_cast<const GlobalLight&>(light);
       const auto& dir = gl.GetDirection();
@@ -82,8 +83,14 @@ void FillInfos(const Light& light, const ShadowMap* smap, LightInfos* infos) {
 
   // Shadow fields: cast_shadow drives the shader's shadow sample; light_vp is
   // only used when cast_shadow == 1.0.
-  infos->cast_shadow = smap ? 1.0f : 0.0f;
-  if (smap) infos->light_vp = smap->GetLightVP();
+  if (ltype == LightType::kOmni) {
+    const ShadowCubeMap* csmap = ShadowRenderer::Instance().GetShadowCubeMap(&light);
+    infos->cast_shadow = csmap ? 1.0f : 0.0f;
+  } else if(ltype == LightType::kCircleSpot || ltype == LightType::kRectSpot) {
+    const ShadowMap* smap = ShadowRenderer::Instance().GetShadowMap(&light);
+    infos->cast_shadow = smap ? 1.0f : 0.0f;
+    if (smap) infos->light_vp = smap->GetLightVP();
+  }
   infos->shadow_bias = light.GetShadowBias();
 }
 
@@ -148,7 +155,7 @@ void LightRenderer::RenderGlobalLights() {
     if (light->GetType() != LightType::kGlobal) continue;
 
     LightInfos infos;
-    FillInfos(*light, nullptr, &infos);
+    FillInfos(*light, &infos);
     // CSM availability drives cast_shadow for GlobalLight, not the 2D pool.
     infos.cast_shadow = ShadowRenderer::Instance().HasCSM() ? 1.0f : 0.0f;
     light_infos_cb_->Fill(&infos);
@@ -188,7 +195,7 @@ void LightRenderer::RenderLocalLights() {
 
     // Fill per-light constant buffer before both sub-passes.
     LightInfos infos;
-    FillInfos(*light, ShadowRenderer::Instance().GetShadowMap(light), &infos);
+    FillInfos(*light, &infos);
     light_infos_cb_->Fill(&infos);
     Renderer::Instance().SetRenderableInfos(light->GetVolumeMatrix());
 
@@ -233,6 +240,12 @@ void LightRenderer::RenderLocalLights() {
     video_->RenderIndexed(geo->GetNumIndices());
 
     // Sub-pass B: shade only stencil-marked pixels (geometry already bound).
+    // kFront culling (not kBack) is intentional: the sphere/cone volumes have
+    // their outer faces as GL_BACK (sphere: far hemisphere, cone: side surface).
+    // When the camera is inside the light volume all sphere faces appear as
+    // GL_BACK (outward winding reversed), so kBack would cull everything and
+    // produce no fragments.  kFront correctly renders the outer faces in both
+    // camera-outside and camera-inside cases.
     video_->SetColorWriteEnabled(true);
     video_->SetFaceCulling(abstract::CullFace::kBack);
     video_->SetDepthTestEnabled(false);

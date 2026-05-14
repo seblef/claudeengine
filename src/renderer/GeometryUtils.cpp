@@ -109,10 +109,10 @@ RenderableMesh* CreatePlaneMesh(abstract::VideoDevice* video,
                                 Material* material) {
   const float tiles = half_size / 5.0f;
   const core::Vertex3D verts[4] = {
-    {{-half_size, 0.f, -half_size}, {0.f, 1.f, 0.f}, {}, {}, {0.f,   0.f  }},
-    {{ half_size, 0.f, -half_size}, {0.f, 1.f, 0.f}, {}, {}, {tiles, 0.f  }},
-    {{ half_size, 0.f,  half_size}, {0.f, 1.f, 0.f}, {}, {}, {tiles, tiles}},
-    {{-half_size, 0.f,  half_size}, {0.f, 1.f, 0.f}, {}, {}, {0.f,   tiles}},
+    {{-half_size, 0.f, -half_size}, {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 0.f, 0.f}, {0.f,   0.f  }},
+    {{ half_size, 0.f, -half_size}, {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 0.f, 0.f}, {tiles, 0.f  }},
+    {{ half_size, 0.f,  half_size}, {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 0.f, 0.f}, {tiles, tiles}},
+    {{-half_size, 0.f,  half_size}, {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 0.f, 0.f}, {0.f,   tiles}},
   };
   const uint16_t idx[6] = {0, 2, 1, 0, 3, 2};
 

@@ -35,9 +35,17 @@ class MeshRenderer : public core::Singleton<MeshRenderer>,
   // Sorts by geometry to minimise VAO switches; clears the depth queue.
   void RenderDepth() override;
 
+  // Like RenderDepth() but uses the cube shadow depth shader, which writes
+  // linear distance to the light (normalised by range) as gl_FragDepth.
+  // Must be used for omni-light cube shadow passes so that the stored depth
+  // matches the comparison in omni_light_ps.glsl.
+  void RenderDepthCube();
+
  private:
   // cppcheck-suppress unusedStructMember
   abstract::Shader* emissive_shader_;
+  // cppcheck-suppress unusedStructMember
+  abstract::Shader* cube_depth_shader_;
 };
 
 }  // namespace renderer

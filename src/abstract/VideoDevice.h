@@ -152,6 +152,11 @@ class VideoDevice {
   // BeginFrame() resets the viewport to the full screen dimensions.
   virtual void SetViewport(int x, int y, int width, int height) = 0;
 
+  // Unbinds any texture currently bound to the given sampler slot.
+  // Call this before writing to a texture that was previously read as a sampler,
+  // to avoid the OpenGL texture feedback loop (undefined behavior).
+  virtual void UnbindSampler(int slot) = 0;
+
   // Creates an off-screen render target texture of the given format.
   // The caller owns the returned object exclusively (unique_ptr).
   [[nodiscard]] virtual std::unique_ptr<RenderTarget> CreateRenderTarget(

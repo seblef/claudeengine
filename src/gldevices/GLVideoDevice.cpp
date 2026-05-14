@@ -243,6 +243,12 @@ void GLVideoDevice::SetViewport(int x, int y, int width, int height) {
   glViewport(x, y, width, height);
 }
 
+void GLVideoDevice::UnbindSampler(int slot) {
+  glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(slot));
+  glBindTexture(GL_TEXTURE_2D, 0);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+}
+
 std::unique_ptr<abstract::RenderTarget> GLVideoDevice::CreateRenderTarget(
     int width, int height, abstract::TextureFormat format) {
   return std::make_unique<GLRenderTarget>(width, height, format);

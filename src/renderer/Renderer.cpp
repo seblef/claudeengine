@@ -97,6 +97,12 @@ void Renderer::SetCamera(const core::Camera* camera) {
 }
 
 void Renderer::Update(float time, const core::Camera* camera) {
+  // Clear per-frame renderer lists before re-enqueuing so that the previous
+  // frame's snapshots remain available during event callbacks (e.g. Tab →
+  // CycleShadowDebug) that fire before this Update() is entered.
+  LightRenderer::Instance().EndRender();
+  MeshRenderer::Instance().EndRender();
+
   time_   = time;
   camera_ = camera;
   renderable_infos_cb_->Bind();
@@ -162,7 +168,6 @@ void Renderer::Update(float time, const core::Camera* camera) {
   gbuffer_.GetDepthRT()->BindAsSampler(8);       // depth=8 (position reconstruction)
   video_->SetBlendEnabled(true, abstract::BlendFactor::kOne, abstract::BlendFactor::kOne);
   LightRenderer::Instance().Render();
-  LightRenderer::Instance().EndRender();
   video_->SetBlendEnabled(false);
   emissive_fbo_.UnbindForWriting();
 

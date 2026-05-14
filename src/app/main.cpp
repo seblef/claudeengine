@@ -106,10 +106,8 @@ int main(int argc, char* argv[]) {
   // ---- Lights ---------------------------------------------------------------
   game::GameLightDesc global_desc;
   global_desc.color         = core::Color(0.9f, 0.85f, 0.7f);
-  // global_desc.color         = core::Color(0.0f, 0.0f, 0.0f);
   global_desc.intensity     = 1.2f;
   global_desc.ambient_color = core::Vec3f(0.05f, 0.05f, 0.08f);
-  // global_desc.ambient_color = core::Vec3f(0.0f, 0.0f, 0.0f);
   global_desc.direction     = core::Vec3f(-0.4f, -0.8f, -0.3f).Normalized();
   game::GameLight global_light(renderer::LightType::kGlobal, global_desc);
   game.AddObject(&global_light);
@@ -119,10 +117,10 @@ int main(int argc, char* argv[]) {
   spot_desc.intensity   = 3.f;
   spot_desc.direction   = core::Vec3f(0.f, -1.f, -0.3f).Normalized();
   spot_desc.outer_angle = 0.4f;
-  spot_desc.range       = 25.f;
+  spot_desc.range       = 50.f;
   game::GameLight spot_light(renderer::LightType::kCircleSpot, spot_desc);
-  spot_light.SetWorldTransform(core::Mat4f::Translation({0.f, 10.f, 5.f}));
-  // game.AddObject(&spot_light);
+  spot_light.SetWorldTransform(core::Mat4f::Translation({10.f, 20.f, 5.f}));
+  game.AddObject(&spot_light);
 
   game::GameLightDesc omni_obj_desc;
   omni_obj_desc.color     = core::Color(1.f, 0.6f, 0.2f);
@@ -130,7 +128,7 @@ int main(int argc, char* argv[]) {
   omni_obj_desc.radius    = 40.f;
   game::GameLight light_obj(renderer::LightType::kOmni, omni_obj_desc);
   light_obj.SetWorldTransform(core::Mat4f::Translation({-10.f, 8.f, 5.f}));
-  // game.AddObject(&light_obj);
+  game.AddObject(&light_obj);
 
   game::GameLightDesc omni_fbx_desc;
   omni_fbx_desc.color     = core::Color(0.3f, 0.6f, 1.f);
@@ -138,7 +136,7 @@ int main(int argc, char* argv[]) {
   omni_fbx_desc.radius    = 40.f;
   game::GameLight light_fbx(renderer::LightType::kOmni, omni_fbx_desc);
   light_fbx.SetWorldTransform(core::Mat4f::Translation({10.f, 8.f, 5.f}));
-  // game.AddObject(&light_fbx);
+  game.AddObject(&light_fbx);
 
   game::GameLightDesc omni_fill_desc;
   omni_fill_desc.color     = core::Color(0.9f, 0.9f, 1.f);
@@ -146,7 +144,7 @@ int main(int argc, char* argv[]) {
   omni_fill_desc.radius    = 60.f;
   game::GameLight light_fill(renderer::LightType::kOmni, omni_fill_desc);
   light_fill.SetWorldTransform(core::Mat4f::Translation({0.f, 20.f, 10.f}));
-  // game.AddObject(&light_fill);
+  game.AddObject(&light_fill);
 
   // ---- Debug mode -----------------------------------------------------------
   // Keys 0/Esc = full pipeline, 1-4 = G-buffer channels.
