@@ -77,8 +77,13 @@ void GLDevices::OnMouseButton(GLFWwindow*, int button, int action, int /*mods*/)
   if (action == GLFW_PRESS || action == GLFW_RELEASE) {
     core::EventType type = (action == GLFW_PRESS) ? core::EventType::kMouseButtonDown
                                                    : core::EventType::kMouseButtonUp;
-    core::MouseButton btn = (button == GLFW_MOUSE_BUTTON_LEFT) ? core::MouseButton::kLeft
-                                                                : core::MouseButton::kRight;
+    core::MouseButton btn;
+    if (button == GLFW_MOUSE_BUTTON_LEFT)
+      btn = core::MouseButton::kLeft;
+    else if (button == GLFW_MOUSE_BUTTON_MIDDLE)
+      btn = core::MouseButton::kMiddle;
+    else
+      btn = core::MouseButton::kRight;
     core::EventManager::Instance().Publish(core::Event::MouseButton(type, btn));
   }
 }
