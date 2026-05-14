@@ -32,6 +32,10 @@ class RenderTarget {
   // For depth+stencil formats: attaches at GL_DEPTH_STENCIL_ATTACHMENT (index is ignored).
   virtual void BindAsOutput(int index) = 0;
 
+  // Returns the backend-specific texture handle as a void*.
+  // On OpenGL: (void*)(intptr_t)gl_texture_id — suitable for ImGui::Image().
+  [[nodiscard]] virtual void* GetNativeHandle() const = 0;
+
   [[nodiscard]] int           GetWidth()  const { return width_; }
   [[nodiscard]] int           GetHeight() const { return height_; }
   [[nodiscard]] TextureFormat GetFormat() const { return format_; }
