@@ -20,6 +20,56 @@
 
 namespace editor {
 
+namespace {
+
+// Projects the 8 corners of bbox through vp and draws its 12 wireframe edges
+// onto dl. image_pos / image_size define the viewport rectangle for NDC → pixel
+// conversion. Edges where either endpoint falls behind the camera are skipped.
+void DrawBBoxWireframe(ImDrawList* dl, const core::BBox3& bbox,
+                       const core::Mat4f& vp, ImVec2 image_pos,
+                       ImVec2 image_size, ImU32 color, float thickness) {
+  const core::Vec3f& mn = bbox.GetMin();
+  const core::Vec3f& mx = bbox.GetMax();
+
+  const core::Vec3f corners[8] = {
+    {mn.x, mn.y, mn.z}, {mx.x, mn.y, mn.z},
+    {mx.x, mx.y, mn.z}, {mn.x, mx.y, mn.z},
+    {mn.x, mn.y, mx.z}, {mx.x, mn.y, mx.z},
+    {mx.x, mx.y, mx.z}, {mn.x, mx.y, mx.z},
+  };
+
+  struct ScreenPt { ImVec2 pos; bool valid; };
+  ScreenPt sc[8];
+
+  for (int i = 0; i < 8; ++i) {
+    const core::Vec4f clip =
+        core::Vec4f(corners[i].x, corners[i].y, corners[i].z, 1.f) * vp;
+    if (clip.w <= 0.f) {
+      sc[i].valid = false;
+      continue;
+    }
+    const float inv_w = 1.f / clip.w;
+    const float nx    = clip.x * inv_w;
+    const float ny    = clip.y * inv_w;
+    sc[i].pos.x = (nx + 1.f) * 0.5f * image_size.x + image_pos.x;
+    sc[i].pos.y = (1.f - ny) * 0.5f * image_size.y + image_pos.y;
+    sc[i].valid = true;
+  }
+
+  constexpr int kEdges[12][2] = {
+    {0, 1}, {1, 2}, {2, 3}, {3, 0},
+    {4, 5}, {5, 6}, {6, 7}, {7, 4},
+    {0, 4}, {1, 5}, {2, 6}, {3, 7},
+  };
+
+  for (int i = 0; i < 12; ++i) {
+    if (sc[kEdges[i][0]].valid && sc[kEdges[i][1]].valid)
+      dl->AddLine(sc[kEdges[i][0]].pos, sc[kEdges[i][1]].pos, color, thickness);
+  }
+}
+
+}  // namespace
+
 EditorViewport::EditorViewport(abstract::VideoDevice* video)
     : video_(video),
       camera_(std::make_unique<game::GameCamera>(
@@ -159,52 +209,10 @@ void EditorViewport::PickObjectAt(ImVec2 mouse_pos, ImVec2 image_pos,
 
 void EditorViewport::DrawSelectedBBox(ImDrawList* dl, ImVec2 image_pos,
                                        ImVec2 image_size) const {
-  const core::BBox3& bbox = scene_->GetSelectedObject()->GetWorldBBox();
-  const core::Vec3f& mn   = bbox.GetMin();
-  const core::Vec3f& mx   = bbox.GetMax();
-
-  // 8 corners in a consistent winding: front face (z=min), back face (z=max).
-  const core::Vec3f corners[8] = {
-    {mn.x, mn.y, mn.z}, {mx.x, mn.y, mn.z},
-    {mx.x, mx.y, mn.z}, {mn.x, mx.y, mn.z},
-    {mn.x, mn.y, mx.z}, {mx.x, mn.y, mx.z},
-    {mx.x, mx.y, mx.z}, {mn.x, mx.y, mx.z},
-  };
-
-  // Project each corner to screen space using the camera view-projection matrix.
-  const core::Mat4f& vp = camera_->GetCamera()->GetViewProjectionMatrix();
-
-  struct ScreenPt { ImVec2 pos; bool valid; };
-  ScreenPt sc[8];
-
-  for (int i = 0; i < 8; ++i) {
-    const core::Vec4f clip =
-        core::Vec4f(corners[i].x, corners[i].y, corners[i].z, 1.f) * vp;
-    if (clip.w <= 0.f) {
-      sc[i].valid = false;
-      continue;
-    }
-    const float inv_w = 1.f / clip.w;
-    const float nx    = clip.x * inv_w;
-    const float ny    = clip.y * inv_w;
-    sc[i].pos.x = (nx + 1.f) * 0.5f * image_size.x + image_pos.x;
-    sc[i].pos.y = (1.f - ny) * 0.5f * image_size.y + image_pos.y;
-    sc[i].valid = true;
-  }
-
-  // 12 edges: 4 front, 4 back, 4 connecting pillars.
-  constexpr int kEdges[12][2] = {
-    {0, 1}, {1, 2}, {2, 3}, {3, 0},  // front face
-    {4, 5}, {5, 6}, {6, 7}, {7, 4},  // back face
-    {0, 4}, {1, 5}, {2, 6}, {3, 7},  // connecting edges
-  };
-
-  constexpr ImU32 kColor = IM_COL32(255, 165, 0, 255);
-
-  for (int i = 0; i < 12; ++i) {
-    if (sc[kEdges[i][0]].valid && sc[kEdges[i][1]].valid)
-      dl->AddLine(sc[kEdges[i][0]].pos, sc[kEdges[i][1]].pos, kColor, 1.5f);
-  }
+  DrawBBoxWireframe(dl, scene_->GetSelectedObject()->GetWorldBBox(),
+                    camera_->GetCamera()->GetViewProjectionMatrix(),
+                    image_pos, image_size,
+                    IM_COL32(255, 165, 0, 255), 1.5f);
 }
 
 }  // namespace editor
