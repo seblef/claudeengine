@@ -47,10 +47,6 @@ void EditorViewport::Render() {
   const int w = std::max(1, static_cast<int>(avail.x));
   const int h = std::max(1, static_cast<int>(avail.y));
 
-  // ImGuizmo must be initialised once per frame before any other ImGuizmo call.
-  ImGuizmo::SetOrthographic(false);
-  ImGuizmo::BeginFrame();
-
   // Gate orbit/pan/zoom input: block when the ViewManipulate widget is hovered.
   const bool widget_hovered = ImGuizmo::IsViewManipulateHovered();
   camera_ctrl_->SetViewportHovered(ImGui::IsWindowHovered() && !widget_hovered);
@@ -80,6 +76,10 @@ void EditorViewport::Render() {
   const core::Mat4f view_t = camera_->GetCamera()->GetViewMatrix().Transpose();
   float view_cm[16];
   std::memcpy(view_cm, view_t.Data(), sizeof(view_cm));
+
+  // Route drawing to the current viewport window's draw list, not the
+  // background overlay created by BeginFrame().
+  ImGuizmo::SetDrawlist();
 
   constexpr float kWidgetSize = 88.f;
   const ImVec2 widget_pos = {
