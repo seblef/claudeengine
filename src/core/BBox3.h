@@ -197,6 +197,36 @@ class BBox3 {
     return t_enter <= t_exit && t_exit >= 0.f;
   }
 
+  // Same as IntersectsRay but also writes the t of the nearest hit to t_out.
+  // If the ray origin is inside the box, t_out is set to 0. Returns false and
+  // leaves t_out unchanged when the ray misses.
+  [[nodiscard]] inline bool IntersectsRay(const Vec3f& origin, const Vec3f& dir,
+                                          float& t_out) const {
+    const float inv_x = 1.f / dir.x;
+    const float inv_y = 1.f / dir.y;
+    const float inv_z = 1.f / dir.z;
+
+    const float tx1 = (min_.x - origin.x) * inv_x;
+    const float tx2 = (max_.x - origin.x) * inv_x;
+    const float ty1 = (min_.y - origin.y) * inv_y;
+    const float ty2 = (max_.y - origin.y) * inv_y;
+    const float tz1 = (min_.z - origin.z) * inv_z;
+    const float tz2 = (max_.z - origin.z) * inv_z;
+
+    const float t_enter = std::max({std::min(tx1, tx2),
+                                    std::min(ty1, ty2),
+                                    std::min(tz1, tz2)});
+    const float t_exit  = std::min({std::max(tx1, tx2),
+                                    std::max(ty1, ty2),
+                                    std::max(tz1, tz2)});
+
+    if (t_enter <= t_exit && t_exit >= 0.f) {
+      t_out = (t_enter >= 0.f) ? t_enter : 0.f;
+      return true;
+    }
+    return false;
+  }
+
  private:
   Vec3f min_;
   Vec3f max_;
