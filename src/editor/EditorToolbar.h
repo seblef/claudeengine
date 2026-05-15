@@ -1,5 +1,7 @@
 #pragma once
 
+#include "editor/EditorTool.h"
+
 namespace editor {
 
 // Toolbar providing tool-selection buttons: selection, camera, translate,
@@ -11,9 +13,16 @@ class EditorToolbar {
   // Renders the toolbar ImGui window.
   void Render();
 
-  // Returns true when the Selection tool is the active tool.
-  // Stub: always true until issue #174 implements full tool selection.
-  [[nodiscard]] bool IsSelectionToolActive() const { return true; }
+  // Returns the currently active tool (stub: always kSelection until #174).
+  [[nodiscard]] EditorTool GetActiveTool() const { return active_tool_; }
+
+  // Returns true when the Selection tool is active.
+  [[nodiscard]] bool IsSelectionToolActive() const {
+    return active_tool_ == EditorTool::kSelection;
+  }
+
+ private:
+  EditorTool active_tool_ = EditorTool::kSelection;
 };
 
 }  // namespace editor

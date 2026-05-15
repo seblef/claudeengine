@@ -7,6 +7,7 @@
 #include "abstract/VideoDevice.h"
 #include "core/Event.h"
 #include "editor/EditorCameraController.h"
+#include "editor/EditorTool.h"
 #include "game/GameCamera.h"
 
 #include <imgui.h>
@@ -53,6 +54,9 @@ class EditorViewport {
   // selection tool state (issue #174).
   void SetSelectionActive(bool active) { selection_active_ = active; }
 
+  // Sets the active tool, controlling which ImGuizmo operation is shown.
+  void SetActiveTool(EditorTool tool) { active_tool_ = tool; }
+
  private:
   void ResizeIfNeeded(int w, int h);
 
@@ -79,6 +83,8 @@ class EditorViewport {
   ImVec2            panel_size_       = {0.f, 0.f};
   // cppcheck-suppress unusedStructMember
   bool              selection_active_ = true;
+  // cppcheck-suppress unusedStructMember
+  EditorTool        active_tool_      = EditorTool::kSelection;
 };
 
 }  // namespace editor

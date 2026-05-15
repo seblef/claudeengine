@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstring>
 #include <limits>
+#include <optional>
 #include <span>
 
 #include "abstract/TextureFormat.h"
@@ -11,6 +12,7 @@
 #include "core/ProjectionType.h"
 #include "core/Vec4f.h"
 #include "editor/EditorScene.h"
+#include "editor/EditorTool.h"
 #include "game/GameObject.h"
 #include "game/GameObjectType.h"
 #include "renderer/Renderer.h"
@@ -65,6 +67,17 @@ void DrawBBoxWireframe(ImDrawList* dl, const core::BBox3& bbox,
   for (int i = 0; i < 12; ++i) {
     if (sc[kEdges[i][0]].valid && sc[kEdges[i][1]].valid)
       dl->AddLine(sc[kEdges[i][0]].pos, sc[kEdges[i][1]].pos, color, thickness);
+  }
+}
+
+// Returns the ImGuizmo operation for a tool, or nullopt if no gizmo should
+// be shown (kSelection and kCamera do not render a transform gizmo).
+std::optional<ImGuizmo::OPERATION> ToolToImGuizmoOp(EditorTool tool) {
+  switch (tool) {
+    case EditorTool::kTranslate: return ImGuizmo::TRANSLATE;
+    case EditorTool::kRotate:    return ImGuizmo::ROTATE;
+    case EditorTool::kScale:     return ImGuizmo::SCALE;
+    default:                     return std::nullopt;
   }
 }
 
@@ -123,8 +136,10 @@ void EditorViewport::Render() {
   }
 
   // Object picking: LMB release without Alt (Alt+LMB is camera orbit).
+  // Also skipped when a gizmo is being dragged or hovered.
   if (scene_ && selection_active_ &&
       ImGui::IsWindowHovered() && !ImGuizmo::IsViewManipulateHovered() &&
+      !ImGuizmo::IsOver() &&
       !ImGui::GetIO().KeyAlt && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
     PickObjectAt(ImGui::GetMousePos(), image_pos, avail);
   }
@@ -150,6 +165,22 @@ void EditorViewport::Render() {
   // Route drawing to the current viewport window's draw list, not the
   // background overlay created by BeginFrame().
   ImGuizmo::SetDrawlist();
+
+  // Transform gizmo for the selected object.
+  game::GameObject* selected = scene_ ? scene_->GetSelectedObject() : nullptr;
+  const auto gizmo_op = ToolToImGuizmoOp(active_tool_);
+  if (selected && gizmo_op) {
+    const core::Mat4f model_t = selected->GetWorldTransform().Transpose();
+    float model_im[16];
+    std::memcpy(model_im, model_t.Data(), sizeof(model_im));
+
+    ImGuizmo::Manipulate(view_im, proj_im, *gizmo_op, ImGuizmo::WORLD, model_im);
+
+    if (ImGuizmo::IsUsing()) {
+      const core::Mat4f model_t_after(model_im);
+      selected->SetWorldTransform(model_t_after.Transpose());
+    }
+  }
 
   // Use the 9-parameter overload so ComputeContext runs first and sets
   // gContext.mProjectionMat. Without it the 5-parameter form reads a zero
