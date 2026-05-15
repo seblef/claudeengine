@@ -1,10 +1,14 @@
 #include "editor/EditorSystem.h"
 
 #include "core/Color.h"
+#include "core/Config.h"
 #include "core/EventManager.h"
 #include "core/EventType.h"
 #include "editor/EditorWindow.h"
 
+#include <string>
+
+#include <IconsFontAwesome6.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
@@ -25,6 +29,23 @@ EditorSystem::EditorSystem(abstract::Devices* devices)
   ImGui_ImplGlfw_InitForOpenGL(glfw_window, true);
   ImGui_ImplOpenGL3_Init("#version 460");
   ImGui::StyleColorsDark();
+
+  // Pass explicit SizePixels so AddFontDefault does not set ImFontFlags_ImplicitRefSize,
+  // which would make MergeMode incompatible with the icon font added below.
+  ImFontConfig base_cfg;
+  base_cfg.SizePixels = 13.0f;
+  base_cfg.PixelSnapH = true;
+  io.Fonts->AddFontDefault(&base_cfg);
+  ImFontConfig icons_cfg;
+  icons_cfg.MergeMode        = true;
+  icons_cfg.PixelSnapH       = true;
+  icons_cfg.GlyphMinAdvanceX = 13.0f;
+  static const ImWchar kIconRanges[] = {ICON_MIN_FA, ICON_MAX_16_FA, 0};
+  const std::string font_path =
+      (core::Config::GetDataFolder() / "fonts/fa-solid-900.ttf").string();
+  io.Fonts->AddFontFromFileTTF(font_path.c_str(), 13.0f, &icons_cfg, kIconRanges);
+  io.Fonts->Build();
+
   NFD_Init();
 }
 

@@ -1,5 +1,6 @@
 #include "editor/EditorToolbar.h"
 
+#include <IconsFontAwesome6.h>
 #include <imgui.h>
 
 namespace editor {
@@ -9,15 +10,16 @@ namespace {
 struct ToolEntry {
   EditorTool  tool;
   const char* label;
+  const char* tooltip;
   ImGuiKey    shortcut;
 };
 
 constexpr ToolEntry kTools[] = {
-  {EditorTool::kSelection,  "[S]", ImGuiKey_Q},
-  {EditorTool::kCamera,     "[C]", ImGuiKey_C},
-  {EditorTool::kTranslate,  "[T]", ImGuiKey_W},
-  {EditorTool::kRotate,     "[R]", ImGuiKey_E},
-  {EditorTool::kScale,      "[Z]", ImGuiKey_R},
+  {EditorTool::kSelection, ICON_FA_ARROW_POINTER,             "Select (Q)",    ImGuiKey_Q},
+  {EditorTool::kCamera,    ICON_FA_VIDEO,                     "Camera (C)",    ImGuiKey_C},
+  {EditorTool::kTranslate, ICON_FA_ARROWS_UP_DOWN_LEFT_RIGHT, "Translate (W)", ImGuiKey_W},
+  {EditorTool::kRotate,    ICON_FA_ROTATE,                    "Rotate (E)",    ImGuiKey_E},
+  {EditorTool::kScale,     ICON_FA_EXPAND,                    "Scale (R)",     ImGuiKey_R},
 };
 constexpr int kToolCount = static_cast<int>(sizeof(kTools) / sizeof(kTools[0]));
 
@@ -48,6 +50,7 @@ void EditorToolbar::Render() {
       ImGui::PushStyleColor(ImGuiCol_Button, kActiveColour);
     if (ImGui::Button(kTools[i].label))
       active_tool_ = kTools[i].tool;
+    ImGui::SetItemTooltip("%s", kTools[i].tooltip);
     if (active)
       ImGui::PopStyleColor();
     ImGui::PopID();
