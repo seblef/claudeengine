@@ -30,7 +30,12 @@ EditorSystem::EditorSystem(abstract::Devices* devices)
   ImGui_ImplOpenGL3_Init("#version 460");
   ImGui::StyleColorsDark();
 
-  io.Fonts->AddFontDefault();
+  // Pass explicit SizePixels so AddFontDefault does not set ImFontFlags_ImplicitRefSize,
+  // which would make MergeMode incompatible with the icon font added below.
+  ImFontConfig base_cfg;
+  base_cfg.SizePixels = 13.0f;
+  base_cfg.PixelSnapH = true;
+  io.Fonts->AddFontDefault(&base_cfg);
   ImFontConfig icons_cfg;
   icons_cfg.MergeMode        = true;
   icons_cfg.PixelSnapH       = true;
