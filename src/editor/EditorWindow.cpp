@@ -40,6 +40,7 @@ void EditorWindow::Render() {
   // 3. Toolbar (wired in issue #174).
   toolbar_->Render();
   viewport_->SetSelectionActive(toolbar_->IsSelectionToolActive());
+  viewport_->SetActiveTool(toolbar_->GetActiveTool());
 
   // 4. Viewport panel.
   constexpr ImGuiWindowFlags kViewportFlags =
