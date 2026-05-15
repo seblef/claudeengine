@@ -51,6 +51,11 @@ class Resource {
     return (it != resources_.end()) ? it->second : nullptr;
   }
 
+  // Returns the full id→resource registry (read-only).
+  [[nodiscard]] static const std::map<TId, TDerived*>& GetRegistry() {
+    return resources_;
+  }
+
   // ---- Accessors -----------------------------------------------------------
 
   // Returns this resource's ID.

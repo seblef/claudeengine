@@ -35,6 +35,20 @@ renderer::RenderableMesh* MeshTemplate::GetRenderableMesh() const {
 }
 
 // static
+std::map<std::string, MeshTemplate*> MeshTemplate::GetAll() {
+  std::map<std::string, MeshTemplate*> result;
+  for (const auto& kv : Resource::GetRegistry()) {
+    if (kv.first.rfind("__proc_", 0) == 0) continue;
+    const auto pos = kv.first.find_last_of("/\\");
+    const std::string name = (pos == std::string::npos)
+                             ? kv.first
+                             : kv.first.substr(pos + 1);
+    result[name] = kv.second;
+  }
+  return result;
+}
+
+// static
 MeshTemplate* MeshTemplate::GetOrLoad(const std::string& mesh_path,
                                       abstract::VideoDevice* video) {
   MeshTemplate* existing = Get(mesh_path);

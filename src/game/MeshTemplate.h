@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <memory>
 #include <string>
 
@@ -39,6 +40,10 @@ class MeshTemplate : public core::Resource<std::string, MeshTemplate> {
   // a new one by loading the mesh from disk.
   [[nodiscard]] static MeshTemplate* GetOrLoad(const std::string& mesh_path,
                                                abstract::VideoDevice* video);
+
+  // Returns all file-backed templates keyed by their path basename.
+  // Procedurally generated templates (registered under "__proc_*") are excluded.
+  [[nodiscard]] static std::map<std::string, MeshTemplate*> GetAll();
 
  private:
   // cppcheck-suppress unusedStructMember
