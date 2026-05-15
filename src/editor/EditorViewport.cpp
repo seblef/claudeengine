@@ -65,17 +65,17 @@ void EditorViewport::Render() {
   }
 
   // XYZ axis overlay — bottom-right corner of the viewport panel.
-  // ImGuizmo expects a column-major float[16] view matrix, while our Mat4f
-  // is row-major, so we pass the transpose and transpose the result back.
   const ImVec2 vp_pos  = ImGui::GetWindowPos();
   const ImVec2 vp_size = {static_cast<float>(w), static_cast<float>(h)};
   ImGuizmo::SetRect(vp_pos.x, vp_pos.y, vp_size.x, vp_size.y);
 
-  // Build a column-major copy from the row-major view matrix.
-  // ImGuizmo modifies the float* in-place, so we need a writable buffer.
-  const core::Mat4f view_t = camera_->GetCamera()->GetViewMatrix().Transpose();
+  // ImGuizmo expects column-major. Passing view.Data() (row-major) makes
+  // ImGuizmo read each row as a column, giving it V^T = the camera world
+  // matrix. This is what ViewManipulate needs so the cube tracks the camera
+  // orientation rather than its inverse.
+  const core::Mat4f view = camera_->GetCamera()->GetViewMatrix();
   float view_cm[16];
-  std::memcpy(view_cm, view_t.Data(), sizeof(view_cm));
+  std::memcpy(view_cm, view.Data(), sizeof(view_cm));
 
   // Route drawing to the current viewport window's draw list, not the
   // background overlay created by BeginFrame().
@@ -90,11 +90,12 @@ void EditorViewport::Render() {
                            widget_pos, ImVec2(kWidgetSize, kWidgetSize),
                            0x10101080);
 
-  // If ViewManipulate changed the matrix the user clicked an axis face;
-  // convert back to row-major and update the controller orientation.
-  const core::Mat4f view_t_after(view_cm);
-  if (view_t_after != view_t) {
-    camera_ctrl_->SetViewMatrix(view_t_after.Transpose());
+  // If ViewManipulate changed the matrix the user clicked an axis face.
+  // Mat4f(view_cm) reads the column-major output as row-major, yielding
+  // (W')^T = V' — the updated view matrix — so no additional transpose needed.
+  const core::Mat4f view_after(view_cm);
+  if (view_after != view) {
+    camera_ctrl_->SetViewMatrix(view_after);
   }
 }
 
