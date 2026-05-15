@@ -41,10 +41,10 @@ Renderer::Renderer(abstract::VideoDevice* video)
   csm_infos_cb_ = video_->CreateConstantBuffer(
       kCSMInfosFloat4s, kCSMInfosSlot, abstract::BufferUsage::kDynamic);
 
-  const int w = video_->GetWidth();
-  const int h = video_->GetHeight();
-  gbuffer_.Create(video_, w, h);
-  emissive_fbo_.Create(video_, w, h, gbuffer_.GetDepthRT());
+  render_w_ = video_->GetWidth();
+  render_h_ = video_->GetHeight();
+  gbuffer_.Create(video_, render_w_, render_h_);
+  emissive_fbo_.Create(video_, render_w_, render_h_, gbuffer_.GetDepthRT());
 
   new MeshRenderer(video_);
   new LightRenderer(video_);
@@ -130,6 +130,8 @@ void Renderer::Update(float time, const core::Camera* camera,
   }
 
   // 1. Geometry pass — fill albedo, normal, specular MRTs and depth+stencil.
+  // Shadow passes set their own viewport; restore to the current render target size.
+  video_->SetViewport(0, 0, render_w_, render_h_);
   gbuffer_.BindForWriting();
   video_->SetDepthTestEnabled(true);
   video_->SetDepthWriteEnabled(true);
@@ -218,11 +220,15 @@ void Renderer::CycleShadowDebug() {
 }
 
 void Renderer::OnResize(int w, int h) {
+  render_w_ = w;
+  render_h_ = h;
   gbuffer_.Resize(video_, w, h);
   emissive_fbo_.Resize(video_, w, h, gbuffer_.GetDepthRT());
 }
 
 void Renderer::ResizeTargets(int w, int h) {
+  render_w_ = w;
+  render_h_ = h;
   gbuffer_.Resize(video_, w, h);
   emissive_fbo_.Resize(video_, w, h, gbuffer_.GetDepthRT());
 }

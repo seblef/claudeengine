@@ -139,6 +139,8 @@ class Renderer : public core::Singleton<Renderer> {
   abstract::VideoDevice* video_;
   const core::Camera*    camera_ = nullptr;
   float                  time_   = 0.f;
+  int                    render_w_ = 0;
+  int                    render_h_ = 0;
 
   std::unique_ptr<abstract::ConstantBuffer> renderable_infos_cb_;
   std::unique_ptr<abstract::ConstantBuffer> scene_infos_cb_;

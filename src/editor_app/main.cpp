@@ -1,3 +1,6 @@
+#include "abstract/IndexType.h"
+#include "abstract/PrimitiveType.h"
+#include "abstract/VideoDevice.h"
 #include "core/AppConfig.h"
 #include "core/Config.h"
 #include "core/EventManager.h"
@@ -19,12 +22,14 @@ int main(int argc, char* argv[]) {
 
   const core::GraphicsConfig& gfx = core::AppConfig::GetGraphics();
   gldevices::GLDevices devices(gfx.GetWidth(), gfx.GetHeight(), !gfx.IsWindowed());
+  abstract::VideoDevice* video = devices.GetVideoDevice();
+  video->SetDepthTestEnabled(true);
+  video->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
+  video->SetIndexType(abstract::IndexType::kUInt16);
 
-  new renderer::Renderer(devices.GetVideoDevice());
+  new renderer::Renderer(video);
   renderer::Renderer::Instance().InitVisibilitySystems(200.f);
 
-  // GameSystem provides object lifecycle management (AddObject/RemoveObject)
-  // for EditorScene. Its Update() is not called — the editor has its own loop.
   new game::GameSystem(&devices);
 
   new editor::EditorSystem(&devices);
