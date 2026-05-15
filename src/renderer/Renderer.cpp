@@ -96,7 +96,8 @@ void Renderer::SetCamera(const core::Camera* camera) {
   if (camera_) FillSceneInfos();
 }
 
-void Renderer::Update(float time, const core::Camera* camera) {
+void Renderer::Update(float time, const core::Camera* camera,
+                      abstract::RenderTargetGroup* output_fbo) {
   // Clear per-frame renderer lists before re-enqueuing so that the previous
   // frame's snapshots remain available during event callbacks (e.g. Tab →
   // CycleShadowDebug) that fire before this Update() is entered.
@@ -152,7 +153,9 @@ void Renderer::Update(float time, const core::Camera* camera) {
     debug_shader_->Activate();
     debug_shader_->SetUniformInt("u_debug_mode", static_cast<int>(debug_mode_));
     composite_quad_->Set();
+    if (output_fbo) output_fbo->BindForWriting();
     video_->RenderIndexed(composite_quad_->GetNumIndices());
+    if (output_fbo) output_fbo->UnbindForWriting();
     MeshRenderer::Instance().EndRender();
     LightRenderer::Instance().EndRender();
     return;
@@ -192,7 +195,9 @@ void Renderer::Update(float time, const core::Camera* camera) {
   emissive_fbo_.GetHDRRT()->BindAsSampler(0);
   composite_shader_->Activate();
   composite_quad_->Set();
+  if (output_fbo) output_fbo->BindForWriting();
   video_->RenderIndexed(composite_quad_->GetNumIndices());
+  if (output_fbo) output_fbo->UnbindForWriting();
 
   // 5. Shadow debug overlay — renders thumbnails on the left side of screen.
   shadow_debug_renderer_->Render(LightRenderer::Instance().GetLights());
@@ -213,6 +218,11 @@ void Renderer::CycleShadowDebug() {
 }
 
 void Renderer::OnResize(int w, int h) {
+  gbuffer_.Resize(video_, w, h);
+  emissive_fbo_.Resize(video_, w, h, gbuffer_.GetDepthRT());
+}
+
+void Renderer::ResizeTargets(int w, int h) {
   gbuffer_.Resize(video_, w, h);
   emissive_fbo_.Resize(video_, w, h, gbuffer_.GetDepthRT());
 }

@@ -5,6 +5,7 @@
 #include "abstract/BlendFactor.h"
 #include "abstract/ConstantBuffer.h"
 #include "abstract/RenderTarget.h"
+#include "abstract/RenderTargetGroup.h"
 #include "abstract/Shader.h"
 #include "abstract/VideoDevice.h"
 #include "core/Camera.h"
@@ -89,10 +90,12 @@ class Renderer : public core::Singleton<Renderer> {
   // Returns the currently active camera, or nullptr if none has been set.
   [[nodiscard]] const core::Camera* GetCamera() const { return camera_; }
 
-  // Runs the geometry pass (binds G-buffer, clears, renders meshes) and any
-  // subsequent phases that have been wired up. camera must remain valid until
-  // the next Update or SetCamera call.
-  void Update(float time, const core::Camera* camera);
+  // Runs the full deferred pipeline for one frame.
+  // camera must remain valid until the next Update or SetCamera call.
+  // When output_fbo is non-null the composite pass blits into it instead of
+  // the default framebuffer; the caller owns and manages the FBO lifetime.
+  void Update(float time, const core::Camera* camera,
+              abstract::RenderTargetGroup* output_fbo = nullptr);
 
   // Uploads world_matrix into the renderable infos CB (slot 1).
   void SetRenderableInfos(const core::Mat4f& world_matrix);
@@ -103,8 +106,13 @@ class Renderer : public core::Singleton<Renderer> {
     return material_infos_cb_.get();
   }
 
-  // Recreates all render targets at the new resolution.
+  // Recreates all render targets at the new resolution (window resize).
   void OnResize(int w, int h);
+
+  // Recreates G-buffer and emissive FBO at the given resolution.
+  // Call from the editor viewport when the panel size changes so the renderer
+  // runs at viewport-panel resolution rather than window resolution.
+  void ResizeTargets(int w, int h);
 
   // Selects which G-buffer attachment to visualize. kNone restores the full pipeline.
   void SetDebugMode(DebugMode mode) { debug_mode_ = mode; }

@@ -34,6 +34,9 @@ class GLRenderTarget : public abstract::RenderTarget {
   // Depth32F format: attaches at GL_DEPTH_ATTACHMENT (index ignored).
   void BindAsOutput(int index) override;
 
+  // Returns the GL texture name as (void*)(intptr_t)tex_id_ for ImGui::Image().
+  [[nodiscard]] void* GetNativeHandle() const override;
+
  private:
   GLuint tex_id_ = 0;
 };

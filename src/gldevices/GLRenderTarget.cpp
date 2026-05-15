@@ -81,6 +81,10 @@ void GLRenderTarget::BindAsSampler(int slot) {
   glBindTexture(GL_TEXTURE_2D, tex_id_);
 }
 
+void* GLRenderTarget::GetNativeHandle() const {
+  return reinterpret_cast<void*>(static_cast<intptr_t>(tex_id_));
+}
+
 void GLRenderTarget::BindAsOutput(int index) {
   if (format_ == abstract::TextureFormat::kDepth24Stencil8) {
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
