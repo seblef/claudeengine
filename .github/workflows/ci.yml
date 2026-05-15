@@ -87,6 +87,7 @@ jobs:
             libgl1-mesa-dev libglu1-mesa-dev \
             libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
             libtiff-dev \
+            libgtk-3-dev \
             valgrind
 
       - name: Cache FetchContent dependencies
@@ -170,7 +171,8 @@ jobs:
             cmake ninja-build \
             libgl1-mesa-dev libglu1-mesa-dev \
             libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
-            libtiff-dev
+            libtiff-dev \
+            libgtk-3-dev
 
       - name: Cache FetchContent dependencies
         uses: actions/cache@v4
@@ -180,7 +182,7 @@ jobs:
           restore-keys: deps-${{ runner.os }}-
 
       - name: CMake configure
-        run: cmake -S . -B _build -DBUILD_PROFILE=dev -G Ninja
+        run: cmake -S . -B _build -DBUILD_PROFILE=dev -DBUILD_EDITOR=ON -G Ninja
 
       - name: Build
         run: cmake --build _build
@@ -189,7 +191,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: claude-engine-dev-${{ github.ref_name }}
-          path: build/claude_engine
+          path: |
+            build/claude_engine
+            build/claude_editor
           retention-days: 14
 
   build-stable:
@@ -207,7 +211,8 @@ jobs:
             cmake ninja-build \
             libgl1-mesa-dev libglu1-mesa-dev \
             libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
-            libtiff-dev
+            libtiff-dev \
+            libgtk-3-dev
 
       - name: Cache FetchContent dependencies
         uses: actions/cache@v4
@@ -217,7 +222,7 @@ jobs:
           restore-keys: deps-${{ runner.os }}-
 
       - name: CMake configure
-        run: cmake -S . -B _build -DBUILD_PROFILE=stable -G Ninja
+        run: cmake -S . -B _build -DBUILD_PROFILE=stable -DBUILD_EDITOR=ON -G Ninja
 
       - name: Build
         run: cmake --build _build
@@ -226,7 +231,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: claude-engine-stable-${{ github.ref_name }}
-          path: build/claude_engine
+          path: |
+            build/claude_engine
+            build/claude_editor
           retention-days: 90
 
   package:
@@ -245,7 +252,7 @@ jobs:
 
       - name: Assemble package
         run: |
-          chmod +x dist/claude_engine
+          chmod +x dist/claude_engine dist/claude_editor
           cp -r data dist/data
           find dist -name "CLAUDE.md" -delete
           cd dist && zip -r "../claude-engine-${{ github.ref_name }}-linux.zip" .
