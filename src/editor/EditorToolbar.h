@@ -4,19 +4,22 @@
 
 namespace editor {
 
-// Toolbar providing tool-selection buttons: selection, camera, translate,
-// rotate, and scale. Full implementation in issue #174.
+// Horizontal toolbar with mutually exclusive tool-selector buttons.
+//
+// Each frame, Render() draws the five tool buttons and processes keyboard
+// shortcuts (Q/W/E/R/C). EditorWindow reads GetActiveTool() and forwards
+// the result to EditorViewport so the gizmo and selection mode stay in sync.
 class EditorToolbar {
  public:
   EditorToolbar() = default;
 
-  // Renders the toolbar ImGui window.
+  // Renders the toolbar ImGui window and handles keyboard shortcuts.
   void Render();
 
-  // Returns the currently active tool (stub: always kSelection until #174).
   [[nodiscard]] EditorTool GetActiveTool() const { return active_tool_; }
+  void SetActiveTool(EditorTool tool)            { active_tool_ = tool;  }
 
-  // Returns true when the Selection tool is active.
+  // Convenience: true when the selection tool (no gizmo) is active.
   [[nodiscard]] bool IsSelectionToolActive() const {
     return active_tool_ == EditorTool::kSelection;
   }
