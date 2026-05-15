@@ -69,33 +69,36 @@ void EditorViewport::Render() {
   const ImVec2 vp_size = {static_cast<float>(w), static_cast<float>(h)};
   ImGuizmo::SetRect(vp_pos.x, vp_pos.y, vp_size.x, vp_size.y);
 
-  // ImGuizmo expects column-major. Passing view.Data() (row-major) makes
-  // ImGuizmo read each row as a column, giving it V^T = the camera world
-  // matrix. This is what ViewManipulate needs so the cube tracks the camera
-  // orientation rather than its inverse.
-  const core::Mat4f view = camera_->GetCamera()->GetViewMatrix();
-  float view_cm[16];
-  std::memcpy(view_cm, view.Data(), sizeof(view_cm));
+  // ImGuizmo uses row-major storage with row-vector convention (translation in
+  // last row), which is the transpose of our column-vector Mat4f convention.
+  const core::Mat4f view_t = camera_->GetCamera()->GetViewMatrix().Transpose();
+  const core::Mat4f proj_t = camera_->GetCamera()->GetProjectionMatrix().Transpose();
+  float view_im[16], proj_im[16];
+  std::memcpy(view_im, view_t.Data(), sizeof(view_im));
+  std::memcpy(proj_im, proj_t.Data(), sizeof(proj_im));
 
   // Route drawing to the current viewport window's draw list, not the
   // background overlay created by BeginFrame().
   ImGuizmo::SetDrawlist();
 
+  // Use the 9-parameter overload so ComputeContext runs first and sets
+  // gContext.mProjectionMat. Without it the 5-parameter form reads a zero
+  // projection matrix, concludes left-handed, and negates all angles.
+  float dummy_model[16] = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
   constexpr float kWidgetSize = 88.f;
   const ImVec2 widget_pos = {
       vp_pos.x + vp_size.x - kWidgetSize,
       vp_pos.y + vp_size.y - kWidgetSize,
   };
-  ImGuizmo::ViewManipulate(view_cm, camera_ctrl_->GetDistance(),
-                           widget_pos, ImVec2(kWidgetSize, kWidgetSize),
-                           0x10101080);
+  ImGuizmo::ViewManipulate(view_im, proj_im, ImGuizmo::TRANSLATE, ImGuizmo::WORLD,
+                           dummy_model, camera_ctrl_->GetDistance(),
+                           widget_pos, ImVec2(kWidgetSize, kWidgetSize), 0x10101080);
 
-  // If ViewManipulate changed the matrix the user clicked an axis face.
-  // ImGuizmo writes a column-major view matrix; Mat4f(view_cm) reads that as
-  // row-major, giving M'^T (world matrix). Transpose back to get V' (view).
-  const core::Mat4f view_after(view_cm);
-  if (view_after != view) {
-    camera_ctrl_->SetViewMatrix(view_after.Transpose());
+  // ImGuizmo wrote back its row-vector view matrix; transpose to our
+  // column-vector convention before updating the camera controller.
+  const core::Mat4f view_t_after(view_im);
+  if (view_t_after != view_t) {
+    camera_ctrl_->SetViewMatrix(view_t_after.Transpose());
   }
 }
 
