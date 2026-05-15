@@ -28,9 +28,13 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       objects_panel_(std::make_unique<ObjectsPanel>()),
       log_panel_(std::make_unique<LogPanel>()) {
   viewport_->SetScene(scene_.get());
+  loguru::add_callback("editor_log", &LogPanel::LogCallback,
+                       log_panel_.get(), loguru::Verbosity_INFO);
 }
 
-EditorWindow::~EditorWindow() = default;
+EditorWindow::~EditorWindow() {
+  loguru::remove_callback("editor_log");
+}
 
 void EditorWindow::OnEvent(const core::Event& event) {
   viewport_->OnEvent(event);
