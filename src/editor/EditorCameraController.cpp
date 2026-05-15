@@ -147,4 +147,26 @@ void EditorCameraController::Update(float /*dt*/) {
       0.f,                  0.f,                     0.f,         1.f));
 }
 
+void EditorCameraController::SetViewMatrix(const core::Mat4f& view) {
+  // Extract eye position: eye = -R^T * t  (R is rows 0-2 cols 0-2, t is col 3 rows 0-2).
+  const float tx = view(0, 3);
+  const float ty = view(1, 3);
+  const float tz = view(2, 3);
+  const core::Vec3f eye = {
+      -(view(0, 0) * tx + view(1, 0) * ty + view(2, 0) * tz),
+      -(view(0, 1) * tx + view(1, 1) * ty + view(2, 1) * tz),
+      -(view(0, 2) * tx + view(1, 2) * ty + view(2, 2) * tz),
+  };
+
+  // Recompute spherical coords relative to the unchanged focus point.
+  const core::Vec3f dir = eye - focus_;
+  const float len = std::sqrt(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
+  if (len < kMinDistance) return;
+
+  distance_  = len;
+  const core::Vec3f unit = dir * (1.f / len);
+  elevation_ = std::asin(std::max(-1.f, std::min(1.f, unit.y)));
+  azimuth_   = std::atan2(unit.x, unit.z);
+}
+
 }  // namespace editor

@@ -8,6 +8,7 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include <ImGuizmo.h>
 
 namespace editor {
 
@@ -49,6 +50,8 @@ void EditorSystem::Run() {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+    ImGuizmo::SetOrthographic(false);
+    ImGuizmo::BeginFrame();
 
     editor_window_->Render();
 
