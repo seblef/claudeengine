@@ -17,7 +17,7 @@ constexpr ImGuiTreeNodeFlags kRootFlags = ImGuiTreeNodeFlags_DefaultOpen;
 constexpr ImGuiTreeNodeFlags kLeafFlags =
     ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 
-constexpr ImVec4 kSelectedColor{0.26f, 0.59f, 0.98f, 0.55f};
+constexpr ImVec4 kSelectedColor{0.184f, 0.769f, 0.698f, 0.35f};  // teal accent #2FC4B2
 
 void RenderGroup(const char* icon, const char* group_name,
                  game::GameObjectType type,
