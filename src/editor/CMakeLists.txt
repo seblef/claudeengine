@@ -10,6 +10,9 @@ add_library(editor STATIC
     ResourcesPanel.cpp
 )
 
-target_include_directories(editor PUBLIC "${CMAKE_SOURCE_DIR}/src")
+target_include_directories(editor PUBLIC
+    "${CMAKE_SOURCE_DIR}/src"
+    "${CMAKE_SOURCE_DIR}/external"
+)
 
 target_link_libraries(editor PUBLIC game renderer gldevices core imgui imguizmo nfd)

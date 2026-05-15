@@ -5,7 +5,7 @@
 set -euo pipefail
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
-STAGED=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(cpp|h)$' || true)
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(cpp|h)$' | grep -v '^external/' || true)
 
 if [ -z "$STAGED" ]; then
   exit 0
