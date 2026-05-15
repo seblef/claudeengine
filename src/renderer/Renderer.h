@@ -92,10 +92,10 @@ class Renderer : public core::Singleton<Renderer> {
 
   // Runs the full deferred pipeline for one frame.
   // camera must remain valid until the next Update or SetCamera call.
-  // When output is non-null the composite pass blits to output instead of the
-  // default framebuffer; the caller-supplied RT must stay valid for the call.
+  // When output_fbo is non-null the composite pass blits into it instead of
+  // the default framebuffer; the caller owns and manages the FBO lifetime.
   void Update(float time, const core::Camera* camera,
-              abstract::RenderTarget* output = nullptr);
+              abstract::RenderTargetGroup* output_fbo = nullptr);
 
   // Uploads world_matrix into the renderable infos CB (slot 1).
   void SetRenderableInfos(const core::Mat4f& world_matrix);
@@ -164,13 +164,6 @@ class Renderer : public core::Singleton<Renderer> {
   // cppcheck-suppress unusedStructMember
   abstract::Shader*             debug_shader_;
   std::unique_ptr<GeometryData> composite_quad_;
-
-  // Optional render-to-texture output for the editor viewport.
-  // output_fbo_ is recreated whenever last_output_rt_ changes.
-  // cppcheck-suppress unusedStructMember
-  abstract::RenderTarget*                      last_output_rt_ = nullptr;
-  // cppcheck-suppress unusedStructMember
-  std::unique_ptr<abstract::RenderTargetGroup> output_fbo_;
 };
 
 }  // namespace renderer

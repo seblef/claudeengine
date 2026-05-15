@@ -97,7 +97,7 @@ void Renderer::SetCamera(const core::Camera* camera) {
 }
 
 void Renderer::Update(float time, const core::Camera* camera,
-                      abstract::RenderTarget* output) {
+                      abstract::RenderTargetGroup* output_fbo) {
   // Clear per-frame renderer lists before re-enqueuing so that the previous
   // frame's snapshots remain available during event callbacks (e.g. Tab →
   // CycleShadowDebug) that fire before this Update() is entered.
@@ -111,17 +111,6 @@ void Renderer::Update(float time, const core::Camera* camera,
   material_infos_cb_->Bind();
   csm_infos_cb_->Bind();
   if (camera_) FillSceneInfos();
-
-  // (Re)create the single-color FBO wrapping the caller's output RT when needed.
-  if (output != last_output_rt_) {
-    last_output_rt_ = output;
-    if (output) {
-      output_fbo_ = video_->CreateRenderTargetGroup(
-          std::span<abstract::RenderTarget*>(&output, 1), nullptr);
-    } else {
-      output_fbo_.reset();
-    }
-  }
 
   if (camera_) {
     const core::ViewFrustum frustum(camera_->GetViewProjectionMatrix());
@@ -164,9 +153,9 @@ void Renderer::Update(float time, const core::Camera* camera,
     debug_shader_->Activate();
     debug_shader_->SetUniformInt("u_debug_mode", static_cast<int>(debug_mode_));
     composite_quad_->Set();
-    if (output_fbo_) output_fbo_->BindForWriting();
+    if (output_fbo) output_fbo->BindForWriting();
     video_->RenderIndexed(composite_quad_->GetNumIndices());
-    if (output_fbo_) output_fbo_->UnbindForWriting();
+    if (output_fbo) output_fbo->UnbindForWriting();
     MeshRenderer::Instance().EndRender();
     LightRenderer::Instance().EndRender();
     return;
@@ -206,9 +195,9 @@ void Renderer::Update(float time, const core::Camera* camera,
   emissive_fbo_.GetHDRRT()->BindAsSampler(0);
   composite_shader_->Activate();
   composite_quad_->Set();
-  if (output_fbo_) output_fbo_->BindForWriting();
+  if (output_fbo) output_fbo->BindForWriting();
   video_->RenderIndexed(composite_quad_->GetNumIndices());
-  if (output_fbo_) output_fbo_->UnbindForWriting();
+  if (output_fbo) output_fbo->UnbindForWriting();
 
   // 5. Shadow debug overlay — renders thumbnails on the left side of screen.
   shadow_debug_renderer_->Render(LightRenderer::Instance().GetLights());
@@ -236,8 +225,6 @@ void Renderer::OnResize(int w, int h) {
 void Renderer::ResizeTargets(int w, int h) {
   gbuffer_.Resize(video_, w, h);
   emissive_fbo_.Resize(video_, w, h, gbuffer_.GetDepthRT());
-  last_output_rt_ = nullptr;
-  output_fbo_.reset();
 }
 
 void Renderer::FillSceneInfos() {
