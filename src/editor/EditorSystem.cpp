@@ -9,6 +9,7 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include <ImGuizmo.h>
+#include <nfd.h>
 
 namespace editor {
 
@@ -24,9 +25,11 @@ EditorSystem::EditorSystem(abstract::Devices* devices)
   ImGui_ImplGlfw_InitForOpenGL(glfw_window, true);
   ImGui_ImplOpenGL3_Init("#version 460");
   ImGui::StyleColorsDark();
+  NFD_Init();
 }
 
 EditorSystem::~EditorSystem() {
+  NFD_Quit();
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
   ImGui::DestroyContext();
