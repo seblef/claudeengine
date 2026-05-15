@@ -1,6 +1,7 @@
 #include "editor/EditorWindow.h"
 
 #include "core/Event.h"
+#include "editor/EditorScene.h"
 #include "editor/EditorToolbar.h"
 #include "editor/EditorViewport.h"
 #include "editor/LogPanel.h"
@@ -12,11 +13,14 @@
 namespace editor {
 
 EditorWindow::EditorWindow(abstract::VideoDevice* video)
-    : toolbar_(std::make_unique<EditorToolbar>()),
+    : scene_(std::make_unique<EditorScene>(video)),
+      toolbar_(std::make_unique<EditorToolbar>()),
       viewport_(std::make_unique<EditorViewport>(video)),
       resources_panel_(std::make_unique<ResourcesPanel>()),
       objects_panel_(std::make_unique<ObjectsPanel>()),
-      log_panel_(std::make_unique<LogPanel>()) {}
+      log_panel_(std::make_unique<LogPanel>()) {
+  viewport_->SetScene(scene_.get());
+}
 
 EditorWindow::~EditorWindow() = default;
 

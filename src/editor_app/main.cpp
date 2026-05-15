@@ -3,6 +3,7 @@
 #include "core/EventManager.h"
 #include "core/Logger.h"
 #include "editor/EditorSystem.h"
+#include "game/GameSystem.h"
 #include "gldevices/GLDevices.h"
 #include "renderer/Renderer.h"
 
@@ -22,10 +23,15 @@ int main(int argc, char* argv[]) {
   new renderer::Renderer(devices.GetVideoDevice());
   renderer::Renderer::Instance().InitVisibilitySystems(200.f);
 
+  // GameSystem provides object lifecycle management (AddObject/RemoveObject)
+  // for EditorScene. Its Update() is not called — the editor has its own loop.
+  new game::GameSystem(&devices);
+
   new editor::EditorSystem(&devices);
   editor::EditorSystem::Instance().Run();
 
   editor::EditorSystem::Shutdown();
+  game::GameSystem::Shutdown();
   renderer::Renderer::Shutdown();
   core::EventManager::Shutdown();
 
