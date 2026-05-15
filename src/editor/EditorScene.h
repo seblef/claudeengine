@@ -9,6 +9,7 @@
 #include "game/GameLight.h"
 #include "game/GameMesh.h"
 #include "game/GameObject.h"
+#include "game/MeshTemplate.h"
 
 namespace renderer { class Material; }
 
@@ -44,6 +45,12 @@ class EditorScene {
     materials_[name] = mat;
   }
 
+  // Registers an imported mesh template. Stores it for lifetime management;
+  // the template is released on EditorScene destruction.
+  void AddMeshTemplate(game::MeshTemplate* tmpl) {
+    mesh_templates_.push_back(tmpl);
+  }
+
   [[nodiscard]] game::GameObject* GetSelectedObject() const { return selected_; }
   void SetSelectedObject(game::GameObject* obj)             { selected_ = obj; }
 
@@ -54,6 +61,7 @@ class EditorScene {
 
   std::map<std::string, renderer::Material*> materials_;
   std::vector<game::GameObject*>             objects_;
+  std::vector<game::MeshTemplate*>           mesh_templates_;
   // cppcheck-suppress unusedStructMember
   game::GameObject*                          selected_ = nullptr;
 };

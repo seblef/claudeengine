@@ -53,6 +53,9 @@ EditorScene::~EditorScene() {
   for (auto* obj : objects_) {
     game::GameSystem::Instance().RemoveObject(obj);
   }
+  for (auto* tmpl : mesh_templates_) {
+    tmpl->Release();
+  }
 }
 
 }  // namespace editor

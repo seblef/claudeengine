@@ -37,6 +37,12 @@ class EditorWindow {
   void OnEvent(const core::Event& event);
 
  private:
+  void RenderMenuBar();
+  void ImportMaterial();
+  void ImportMesh();
+
+  // cppcheck-suppress unusedStructMember
+  abstract::VideoDevice* video_;
   // scene_ must be declared before viewport_ so it is created first and
   // destroyed after (viewport_ holds a non-owning pointer to it).
   // cppcheck-suppress unusedStructMember
