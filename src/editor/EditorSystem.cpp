@@ -4,6 +4,7 @@
 #include "core/Config.h"
 #include "core/EventManager.h"
 #include "core/EventType.h"
+#include "editor/EditorTheme.h"
 #include "editor/EditorWindow.h"
 
 #include <string>
@@ -28,7 +29,7 @@ EditorSystem::EditorSystem(abstract::Devices* devices)
   auto* glfw_window = static_cast<GLFWwindow*>(devices_->GetWindow());
   ImGui_ImplGlfw_InitForOpenGL(glfw_window, true);
   ImGui_ImplOpenGL3_Init("#version 460");
-  ImGui::StyleColorsDark();
+  ApplySlateAndTealTheme();
 
   // Pass explicit SizePixels so AddFontDefault does not set ImFontFlags_ImplicitRefSize,
   // which would make MergeMode incompatible with the icon font added below.

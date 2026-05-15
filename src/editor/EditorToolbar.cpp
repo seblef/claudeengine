@@ -23,7 +23,7 @@ constexpr ToolEntry kTools[] = {
 };
 constexpr int kToolCount = static_cast<int>(sizeof(kTools) / sizeof(kTools[0]));
 
-const ImVec4 kActiveColour = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+const ImVec4 kActiveColour = ImVec4(0.184f, 0.769f, 0.698f, 1.0f);  // teal accent #2FC4B2
 
 }  // namespace
 
