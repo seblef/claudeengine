@@ -1,12 +1,16 @@
 #pragma once
 
+#include <map>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "abstract/VideoDevice.h"
 #include "game/GameLight.h"
 #include "game/GameMesh.h"
 #include "game/GameObject.h"
+
+namespace renderer { class Material; }
 
 namespace editor {
 
@@ -31,6 +35,15 @@ class EditorScene {
   // Returns all scene objects (floor, cube, light) in creation order.
   [[nodiscard]] const std::vector<game::GameObject*>& GetObjects() const { return objects_; }
 
+  // Returns the name → material registry (non-owning pointers).
+  [[nodiscard]] const std::map<std::string, renderer::Material*>&
+      GetMaterials() const { return materials_; }
+
+  // Registers a named material. Does not transfer ownership.
+  void AddMaterial(const std::string& name, renderer::Material* mat) {
+    materials_[name] = mat;
+  }
+
   [[nodiscard]] game::GameObject* GetSelectedObject() const { return selected_; }
   void SetSelectedObject(game::GameObject* obj)             { selected_ = obj; }
 
@@ -39,9 +52,10 @@ class EditorScene {
   std::unique_ptr<game::GameMesh>  cube_;
   std::unique_ptr<game::GameLight> light_;
 
-  std::vector<game::GameObject*> objects_;
+  std::map<std::string, renderer::Material*> materials_;
+  std::vector<game::GameObject*>             objects_;
   // cppcheck-suppress unusedStructMember
-  game::GameObject*              selected_ = nullptr;
+  game::GameObject*                          selected_ = nullptr;
 };
 
 }  // namespace editor

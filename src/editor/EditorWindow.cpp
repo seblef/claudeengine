@@ -54,7 +54,7 @@ void EditorWindow::Render() {
   if (ImGui::Begin("Scene")) {
     if (ImGui::BeginTabBar("##scene_tabs")) {
       if (ImGui::BeginTabItem("Resources")) {
-        resources_panel_->Render();
+        resources_panel_->Render(*scene_);
         ImGui::EndTabItem();
       }
       if (ImGui::BeginTabItem("Objects")) {
