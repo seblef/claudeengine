@@ -30,7 +30,15 @@ class alignas(16) Mat4f {
   // ---- Construction --------------------------------------------------------
 
   Mat4f() = default;
-  Mat4f(const Mat4f&) = default;
+
+  inline Mat4f(const Mat4f& other) noexcept {
+    for (int i = 0; i < 16; ++i) data_[i] = other.data_[i];
+  }
+
+  // Constructs from a raw float[16] in the same row-major layout as data_.
+  explicit inline Mat4f(const float* data) noexcept {
+    for (int i = 0; i < 16; ++i) data_[i] = data[i];
+  }
 
   // Constructs from 16 elements in row-major order.
   inline Mat4f(float m00, float m01, float m02, float m03,
@@ -53,7 +61,10 @@ class alignas(16) Mat4f {
 
   // ---- Assignment ----------------------------------------------------------
 
-  Mat4f& operator=(const Mat4f&) = default;
+  inline Mat4f& operator=(const Mat4f& other) noexcept {
+    for (int i = 0; i < 16; ++i) data_[i] = other.data_[i];
+    return *this;
+  }
 
   // Copies the upper-left 3x3 from mat3.  Row 3 and column 3 become the
   // identity row/column ([0,0,0,1] on the diagonal).
@@ -65,6 +76,19 @@ class alignas(16) Mat4f {
     }
     data_[12] = 0.f; data_[13] = 0.f; data_[14] = 0.f; data_[15] = 1.f;
     return *this;
+  }
+
+  // ---- Comparison ----------------------------------------------------------
+
+  // Exact element-wise equality (bit-identical floats).
+  [[nodiscard]] inline bool operator==(const Mat4f& rhs) const noexcept {
+    for (int i = 0; i < 16; ++i)
+      if (data_[i] != rhs.data_[i]) return false;
+    return true;
+  }
+
+  [[nodiscard]] inline bool operator!=(const Mat4f& rhs) const noexcept {
+    return !(*this == rhs);
   }
 
   // ---- Arithmetic ----------------------------------------------------------

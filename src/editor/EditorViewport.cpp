@@ -76,11 +76,10 @@ void EditorViewport::Render() {
   ImGuizmo::SetRect(vp_pos.x, vp_pos.y, vp_size.x, vp_size.y);
 
   // Build a column-major copy from the row-major view matrix.
+  // ImGuizmo modifies the float* in-place, so we need a writable buffer.
+  const core::Mat4f view_t = camera_->GetCamera()->GetViewMatrix().Transpose();
   float view_cm[16];
-  std::memcpy(view_cm, camera_->GetCamera()->GetViewMatrix().Transpose().Data(),
-              sizeof(view_cm));
-  float view_cm_before[16];
-  std::memcpy(view_cm_before, view_cm, sizeof(view_cm));
+  std::memcpy(view_cm, view_t.Data(), sizeof(view_cm));
 
   constexpr float kWidgetSize = 88.f;
   const ImVec2 widget_pos = {
@@ -93,13 +92,9 @@ void EditorViewport::Render() {
 
   // If ViewManipulate changed the matrix the user clicked an axis face;
   // convert back to row-major and update the controller orientation.
-  if (std::memcmp(view_cm, view_cm_before, sizeof(view_cm)) != 0) {
-    const core::Mat4f new_view_t(
-        view_cm[0],  view_cm[1],  view_cm[2],  view_cm[3],
-        view_cm[4],  view_cm[5],  view_cm[6],  view_cm[7],
-        view_cm[8],  view_cm[9],  view_cm[10], view_cm[11],
-        view_cm[12], view_cm[13], view_cm[14], view_cm[15]);
-    camera_ctrl_->SetViewMatrix(new_view_t.Transpose());
+  const core::Mat4f view_t_after(view_cm);
+  if (view_t_after != view_t) {
+    camera_ctrl_->SetViewMatrix(view_t_after.Transpose());
   }
 }
 
