@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/BBox3.h"
+#include "core/Mat4f.h"
 #include "core/Vec3f.h"
 #include "game/ICameraController.h"
 
@@ -37,8 +38,16 @@ class EditorCameraController : public game::ICameraController {
   // Set the orbit radius (clamped to [0.1, 1000]).
   void SetDistance(float distance);
 
+  // Returns the current orbit radius.
+  [[nodiscard]] float GetDistance() const { return distance_; }
+
   // Adjusts focus and distance so that bbox fits in the view.
   void FrameObject(const core::BBox3& bbox);
+
+  // Snaps the camera orientation to match the given row-major view matrix
+  // while keeping the current focus point. Called by EditorViewport when
+  // ImGuizmo::ViewManipulate returns a modified matrix.
+  void SetViewMatrix(const core::Mat4f& view);
 
  private:
   // cppcheck-suppress unusedStructMember
