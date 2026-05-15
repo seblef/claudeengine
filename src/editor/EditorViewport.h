@@ -49,8 +49,18 @@ class EditorViewport {
   [[nodiscard]] const game::GameObject* GetSelectedObject() const { return selected_object_; }
   void SetSelectedObject(game::GameObject* obj) { selected_object_ = obj; }
 
+  // Enables or disables object picking on LMB release. Driven by the toolbar
+  // selection tool state (issue #174).
+  void SetSelectionActive(bool active) { selection_active_ = active; }
+
  private:
   void ResizeIfNeeded(int w, int h);
+
+  // Casts a world-space ray from mouse_pos and selects the nearest hit object.
+  void PickObjectAt(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size);
+
+  // Draws the selected object's world bounding box as 12 orange wireframe edges.
+  void DrawSelectedBBox(ImDrawList* dl, ImVec2 image_pos, ImVec2 image_size) const;
 
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice*                       video_;
@@ -62,11 +72,13 @@ class EditorViewport {
   std::unique_ptr<abstract::RenderTargetGroup> render_fbo_;
 
   // cppcheck-suppress unusedStructMember
-  EditorScene*      scene_           = nullptr;  // not owned; set by EditorWindow (issue #170)
+  EditorScene*      scene_            = nullptr;  // not owned; set by EditorWindow (issue #170)
   // cppcheck-suppress unusedStructMember
-  game::GameObject* selected_object_ = nullptr;
+  game::GameObject* selected_object_  = nullptr;
   // cppcheck-suppress unusedStructMember
-  ImVec2            panel_size_      = {0.f, 0.f};
+  ImVec2            panel_size_       = {0.f, 0.f};
+  // cppcheck-suppress unusedStructMember
+  bool              selection_active_ = true;
 };
 
 }  // namespace editor

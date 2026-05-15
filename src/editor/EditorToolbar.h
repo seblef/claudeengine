@@ -10,6 +10,10 @@ class EditorToolbar {
 
   // Renders the toolbar ImGui window.
   void Render();
+
+  // Returns true when the Selection tool is the active tool.
+  // Stub: always true until issue #174 implements full tool selection.
+  [[nodiscard]] bool IsSelectionToolActive() const { return true; }
 };
 
 }  // namespace editor

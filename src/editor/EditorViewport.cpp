@@ -2,12 +2,17 @@
 
 #include <algorithm>
 #include <cstring>
+#include <limits>
 #include <span>
 
 #include "abstract/TextureFormat.h"
 #include "core/CoordinateSystem.h"
 #include "core/Mat4f.h"
 #include "core/ProjectionType.h"
+#include "core/Vec4f.h"
+#include "editor/EditorScene.h"
+#include "game/GameObject.h"
+#include "game/GameObjectType.h"
 #include "renderer/Renderer.h"
 
 #include <ImGuizmo.h>
@@ -59,9 +64,24 @@ void EditorViewport::Render() {
       camera_->GetCamera(),
       render_fbo_.get());
 
+  // Capture the image top-left before the Image widget advances the cursor.
+  const ImVec2 image_pos = ImGui::GetCursorScreenPos();
+
   if (render_target_) {
     // uv0=(0,1) uv1=(1,0): Y-flip because OpenGL FBO origin is bottom-left.
     ImGui::Image(render_target_->GetNativeHandle(), avail, ImVec2(0.f, 1.f), ImVec2(1.f, 0.f));
+  }
+
+  // Object picking: LMB release without Alt (Alt+LMB is camera orbit).
+  if (scene_ && selection_active_ &&
+      ImGui::IsWindowHovered() && !ImGuizmo::IsViewManipulateHovered() &&
+      !ImGui::GetIO().KeyAlt && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+    PickObjectAt(ImGui::GetMousePos(), image_pos, avail);
+  }
+
+  // Bounding box wireframe for the selected object.
+  if (scene_ && scene_->GetSelectedObject()) {
+    DrawSelectedBBox(ImGui::GetWindowDrawList(), image_pos, avail);
   }
 
   // XYZ axis overlay — bottom-right corner of the viewport panel.
@@ -99,6 +119,91 @@ void EditorViewport::Render() {
   const core::Mat4f view_t_after(view_im);
   if (view_t_after != view_t) {
     camera_ctrl_->SetViewMatrix(view_t_after.Transpose());
+  }
+}
+
+void EditorViewport::PickObjectAt(ImVec2 mouse_pos, ImVec2 image_pos,
+                                   ImVec2 image_size) {
+  // Normalised device coordinates: x in [-1,1], y in [-1,1] (Y flipped).
+  const float ndc_x = (mouse_pos.x - image_pos.x) / image_size.x * 2.f - 1.f;
+  const float ndc_y = 1.f - (mouse_pos.y - image_pos.y) / image_size.y * 2.f;
+
+  // Unproject the NDC point on the near plane back to world space.
+  const core::Camera* cam = camera_->GetCamera();
+  const core::Vec3f   ray_origin = cam->GetPosition();
+  const core::Mat4f   vp_inv     = cam->GetViewProjectionMatrix().Inverse();
+
+  const core::Vec4f clip(ndc_x, ndc_y, -1.f, 1.f);
+  const core::Vec4f world4 = clip * vp_inv;
+  if (std::abs(world4.w) < 1e-6f) return;
+  const core::Vec3f world3(world4.x / world4.w,
+                           world4.y / world4.w,
+                           world4.z / world4.w);
+  const core::Vec3f ray_dir = (world3 - ray_origin).Normalized();
+
+  // Ray-AABB test against each mesh object; lights are skipped (infinite bbox).
+  game::GameObject* hit    = nullptr;
+  float             t_best = std::numeric_limits<float>::max();
+
+  for (game::GameObject* obj : scene_->GetObjects()) {
+    if (obj->GetType() == game::GameObjectType::kLight) continue;
+    float t;
+    if (obj->GetWorldBBox().IntersectsRay(ray_origin, ray_dir, t) && t < t_best) {
+      t_best = t;
+      hit    = obj;
+    }
+  }
+
+  scene_->SetSelectedObject(hit);
+}
+
+void EditorViewport::DrawSelectedBBox(ImDrawList* dl, ImVec2 image_pos,
+                                       ImVec2 image_size) const {
+  const core::BBox3& bbox = scene_->GetSelectedObject()->GetWorldBBox();
+  const core::Vec3f& mn   = bbox.GetMin();
+  const core::Vec3f& mx   = bbox.GetMax();
+
+  // 8 corners in a consistent winding: front face (z=min), back face (z=max).
+  const core::Vec3f corners[8] = {
+    {mn.x, mn.y, mn.z}, {mx.x, mn.y, mn.z},
+    {mx.x, mx.y, mn.z}, {mn.x, mx.y, mn.z},
+    {mn.x, mn.y, mx.z}, {mx.x, mn.y, mx.z},
+    {mx.x, mx.y, mx.z}, {mn.x, mx.y, mx.z},
+  };
+
+  // Project each corner to screen space using the camera view-projection matrix.
+  const core::Mat4f& vp = camera_->GetCamera()->GetViewProjectionMatrix();
+
+  struct ScreenPt { ImVec2 pos; bool valid; };
+  ScreenPt sc[8];
+
+  for (int i = 0; i < 8; ++i) {
+    const core::Vec4f clip =
+        core::Vec4f(corners[i].x, corners[i].y, corners[i].z, 1.f) * vp;
+    if (clip.w <= 0.f) {
+      sc[i].valid = false;
+      continue;
+    }
+    const float inv_w = 1.f / clip.w;
+    const float nx    = clip.x * inv_w;
+    const float ny    = clip.y * inv_w;
+    sc[i].pos.x = (nx + 1.f) * 0.5f * image_size.x + image_pos.x;
+    sc[i].pos.y = (1.f - ny) * 0.5f * image_size.y + image_pos.y;
+    sc[i].valid = true;
+  }
+
+  // 12 edges: 4 front, 4 back, 4 connecting pillars.
+  constexpr int kEdges[12][2] = {
+    {0, 1}, {1, 2}, {2, 3}, {3, 0},  // front face
+    {4, 5}, {5, 6}, {6, 7}, {7, 4},  // back face
+    {0, 4}, {1, 5}, {2, 6}, {3, 7},  // connecting edges
+  };
+
+  constexpr ImU32 kColor = IM_COL32(255, 165, 0, 255);
+
+  for (int i = 0; i < 12; ++i) {
+    if (sc[kEdges[i][0]].valid && sc[kEdges[i][1]].valid)
+      dl->AddLine(sc[kEdges[i][0]].pos, sc[kEdges[i][1]].pos, kColor, 1.5f);
   }
 }
 
