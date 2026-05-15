@@ -2,6 +2,9 @@
 
 #include <memory>
 
+#include "abstract/VideoDevice.h"
+#include "core/Event.h"
+
 namespace editor {
 
 class EditorToolbar;
@@ -23,11 +26,14 @@ class LogPanel;
 // ImGui::NewFrame() and ImGui::Render().
 class EditorWindow {
  public:
-  EditorWindow();
+  explicit EditorWindow(abstract::VideoDevice* video);
   ~EditorWindow();
 
   // Renders the full docking layout and all child panels.
   void Render();
+
+  // Forwards a platform event to child panels that need input.
+  void OnEvent(const core::Event& event);
 
  private:
   // cppcheck-suppress unusedStructMember

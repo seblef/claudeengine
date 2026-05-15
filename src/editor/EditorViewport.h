@@ -1,15 +1,69 @@
 #pragma once
 
+#include <memory>
+
+#include "abstract/RenderTarget.h"
+#include "abstract/RenderTargetGroup.h"
+#include "abstract/VideoDevice.h"
+#include "core/Event.h"
+#include "editor/EditorCameraController.h"
+#include "game/GameCamera.h"
+
+#include <imgui.h>
+
+namespace game {
+class GameObject;
+}
+
 namespace editor {
 
-// Viewport panel: renders the scene to a texture and displays it inside an
-// ImGui window. Full implementation in issue #169.
+class EditorScene;
+
+// Viewport panel: owns the offscreen render target and camera, and drives the
+// scene render each frame.
+//
+// Each frame (inside ImGui::Begin("Viewport")):
+//   1. Detects panel-size changes and recreates the render target + FBO.
+//   2. Calls Renderer::Update() to render the scene into the offscreen texture.
+//   3. Blits the texture into the panel via ImGui::Image() with a Y-flip
+//      (OpenGL FBO origin is bottom-left).
+//
+// Event routing: the owning EditorWindow calls OnEvent() for every queued
+// platform event so the camera controller receives input.
 class EditorViewport {
  public:
-  EditorViewport() = default;
+  explicit EditorViewport(abstract::VideoDevice* video);
+  ~EditorViewport() = default;
 
-  // Renders the viewport content inside the current ImGui window.
+  // Called from within ImGui::Begin("Viewport"). Checks panel size, runs the
+  // render pass, and blits the result via ImGui::Image().
   void Render();
+
+  // Forwards a platform event to the camera controller.
+  void OnEvent(const core::Event& event);
+
+  [[nodiscard]] ImVec2                  GetPanelSize()      const { return panel_size_; }
+  [[nodiscard]] const game::GameObject* GetSelectedObject() const { return selected_object_; }
+  void SetSelectedObject(game::GameObject* obj) { selected_object_ = obj; }
+
+ private:
+  void ResizeIfNeeded(int w, int h);
+
+  // cppcheck-suppress unusedStructMember
+  abstract::VideoDevice*                       video_;
+
+  std::unique_ptr<game::GameCamera>            camera_;
+  std::unique_ptr<EditorCameraController>      camera_ctrl_;
+
+  std::unique_ptr<abstract::RenderTarget>      render_target_;
+  std::unique_ptr<abstract::RenderTargetGroup> render_fbo_;
+
+  // cppcheck-suppress unusedStructMember
+  EditorScene*      scene_           = nullptr;  // not owned; set by EditorWindow (issue #170)
+  // cppcheck-suppress unusedStructMember
+  game::GameObject* selected_object_ = nullptr;
+  // cppcheck-suppress unusedStructMember
+  ImVec2            panel_size_      = {0.f, 0.f};
 };
 
 }  // namespace editor

@@ -14,7 +14,7 @@ namespace editor {
 EditorSystem::EditorSystem(abstract::Devices* devices)
     : devices_(devices),
       video_(devices->GetVideoDevice()),
-      editor_window_(std::make_unique<EditorWindow>()) {
+      editor_window_(std::make_unique<EditorWindow>(video_)) {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   ImGuiIO& io = ImGui::GetIO();
@@ -37,9 +37,8 @@ void EditorSystem::Run() {
 
     while (core::EventManager::Instance().HasEvents()) {
       core::Event e = core::EventManager::Instance().Consume();
-      if (e.type == core::EventType::kWindowClose) {
-        running_ = false;
-      }
+      if (e.type == core::EventType::kWindowClose) running_ = false;
+      editor_window_->OnEvent(e);
     }
 
     if (!running_) break;
