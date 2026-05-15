@@ -1,8 +1,12 @@
+#include "abstract/IndexType.h"
+#include "abstract/PrimitiveType.h"
+#include "abstract/VideoDevice.h"
 #include "core/AppConfig.h"
 #include "core/Config.h"
 #include "core/EventManager.h"
 #include "core/Logger.h"
 #include "editor/EditorSystem.h"
+#include "game/GameSystem.h"
 #include "gldevices/GLDevices.h"
 #include "renderer/Renderer.h"
 
@@ -18,14 +22,21 @@ int main(int argc, char* argv[]) {
 
   const core::GraphicsConfig& gfx = core::AppConfig::GetGraphics();
   gldevices::GLDevices devices(gfx.GetWidth(), gfx.GetHeight(), !gfx.IsWindowed());
+  abstract::VideoDevice* video = devices.GetVideoDevice();
+  video->SetDepthTestEnabled(true);
+  video->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
+  video->SetIndexType(abstract::IndexType::kUInt16);
 
-  new renderer::Renderer(devices.GetVideoDevice());
+  new renderer::Renderer(video);
   renderer::Renderer::Instance().InitVisibilitySystems(200.f);
+
+  new game::GameSystem(&devices);
 
   new editor::EditorSystem(&devices);
   editor::EditorSystem::Instance().Run();
 
   editor::EditorSystem::Shutdown();
+  game::GameSystem::Shutdown();
   renderer::Renderer::Shutdown();
   core::EventManager::Shutdown();
 

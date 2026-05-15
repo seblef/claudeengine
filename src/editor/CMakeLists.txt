@@ -1,5 +1,6 @@
 add_library(editor STATIC
     EditorCameraController.cpp
+    EditorScene.cpp
     EditorSystem.cpp
     EditorToolbar.cpp
     EditorViewport.cpp

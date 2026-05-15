@@ -42,6 +42,9 @@ class EditorViewport {
   // Forwards a platform event to the camera controller.
   void OnEvent(const core::Event& event);
 
+  // Sets the scene reference (not owned). Call once after scene creation.
+  void SetScene(EditorScene* scene) { scene_ = scene; }
+
   [[nodiscard]] ImVec2                  GetPanelSize()      const { return panel_size_; }
   [[nodiscard]] const game::GameObject* GetSelectedObject() const { return selected_object_; }
   void SetSelectedObject(game::GameObject* obj) { selected_object_ = obj; }

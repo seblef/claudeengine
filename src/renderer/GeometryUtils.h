@@ -12,9 +12,10 @@ class RenderableMesh;
 
 // ---- Primitive geometry builders --------------------------------------------
 //
-// All functions return a GeometryData using the k3D vertex layout (Vertex3D).
-// Only the position field is populated; normal/binormal/tangent/UV are zeroed.
-// The returned object is owned by the caller.
+// Quad/sphere/cone/pyramid functions return a GeometryData using the k3D
+// vertex layout (Vertex3D) with only position populated; other fields are zeroed.
+// CreatePlaneMesh and CreateCubeMesh populate all fields (normal/binormal/tangent/UV).
+// All returned objects are owned by the caller.
 
 // Fullscreen quad: two triangles covering NDC [-1,1]² at z=0.
 // Intended for full-screen passes (GlobalLight, composite, debug blit).
@@ -44,5 +45,13 @@ class RenderableMesh;
 // Returns a heap-allocated RenderableMesh; ownership belongs to the caller.
 [[nodiscard]] RenderableMesh* CreatePlaneMesh(
     abstract::VideoDevice* video, float half_size, Material* material);
+
+// Unit cube centred at the origin with side length 1.
+// Uses 24 vertices (4 per face) so each face has per-face normal, binormal,
+// tangent, and UV (0→1 in both axes).
+// material: ownership is transferred — do not use the pointer after this call.
+// Returns a heap-allocated RenderableMesh; ownership belongs to the caller.
+[[nodiscard]] RenderableMesh* CreateCubeMesh(
+    abstract::VideoDevice* video, Material* material);
 
 }  // namespace renderer

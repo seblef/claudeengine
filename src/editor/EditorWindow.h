@@ -7,6 +7,7 @@
 
 namespace editor {
 
+class EditorScene;
 class EditorToolbar;
 class EditorViewport;
 class ResourcesPanel;
@@ -36,6 +37,10 @@ class EditorWindow {
   void OnEvent(const core::Event& event);
 
  private:
+  // scene_ must be declared before viewport_ so it is created first and
+  // destroyed after (viewport_ holds a non-owning pointer to it).
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<EditorScene>    scene_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<EditorToolbar>  toolbar_;
   // cppcheck-suppress unusedStructMember
