@@ -91,11 +91,11 @@ void EditorViewport::Render() {
                            0x10101080);
 
   // If ViewManipulate changed the matrix the user clicked an axis face.
-  // Mat4f(view_cm) reads the column-major output as row-major, yielding
-  // (W')^T = V' — the updated view matrix — so no additional transpose needed.
+  // ImGuizmo writes a column-major view matrix; Mat4f(view_cm) reads that as
+  // row-major, giving M'^T (world matrix). Transpose back to get V' (view).
   const core::Mat4f view_after(view_cm);
   if (view_after != view) {
-    camera_ctrl_->SetViewMatrix(view_after);
+    camera_ctrl_->SetViewMatrix(view_after.Transpose());
   }
 }
 
