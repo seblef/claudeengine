@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include "core/BBox3.h"
 #include "core/Mat4f.h"
 #include "game/GameObjectType.h"
@@ -31,6 +33,9 @@ class GameObject {
   // local_bbox * transform, and calls OnWorldTransformUpdated().
   void SetWorldTransform(const core::Mat4f& transform);
 
+  void SetName(const std::string& name);
+  [[nodiscard]] const std::string& GetName() const;
+
   [[nodiscard]] const core::Mat4f& GetWorldTransform() const;
   [[nodiscard]] const core::BBox3& GetLocalBBox()      const;
   [[nodiscard]] const core::BBox3& GetWorldBBox()      const;
@@ -48,6 +53,8 @@ class GameObject {
  private:
   // cppcheck-suppress unusedStructMember
   GameObjectType type_;
+  // cppcheck-suppress unusedStructMember
+  std::string    name_ = "Object";
   // cppcheck-suppress unusedStructMember
   core::BBox3    local_bbox_;
   // cppcheck-suppress unusedStructMember

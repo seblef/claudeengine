@@ -58,7 +58,7 @@ void EditorWindow::Render() {
         ImGui::EndTabItem();
       }
       if (ImGui::BeginTabItem("Objects")) {
-        objects_panel_->Render();
+        objects_panel_->Render(*scene_);
         ImGui::EndTabItem();
       }
       ImGui::EndTabBar();
