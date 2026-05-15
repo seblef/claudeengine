@@ -30,4 +30,12 @@ GameObjectType GameObject::GetType() const {
   return type_;
 }
 
+void GameObject::SetName(const std::string& name) {
+  name_ = name;
+}
+
+const std::string& GameObject::GetName() const {
+  return name_;
+}
+
 }  // namespace game
