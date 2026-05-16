@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstring>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <span>
 
@@ -16,8 +17,10 @@
 #include "editor/EditorScene.h"
 #include "editor/EditorTool.h"
 #include "game/GameLight.h"
+#include "game/GameMesh.h"
 #include "game/GameObject.h"
 #include "game/GameObjectType.h"
+#include "game/MeshTemplate.h"
 #include "renderer/CircleSpotLight.h"
 #include "renderer/GlobalLight.h"
 #include "renderer/Light.h"
@@ -272,6 +275,23 @@ void EditorViewport::OnEvent(const core::Event& event) {
   camera_ctrl_->OnEvent(event);
 }
 
+void EditorViewport::SetPendingMeshTemplate(game::MeshTemplate* tmpl) {
+  if (tmpl) {
+    pending_preview_       = std::make_unique<game::GameMesh>(tmpl);
+    pending_mesh_template_ = tmpl;
+    SetSelectionActive(false);
+  } else {
+    // Cancellation: discard the preview object if it was already added to the scene.
+    if (preview_object_ && scene_) {
+      scene_->RemoveDynamicObject(preview_object_);
+      preview_object_ = nullptr;
+    }
+    pending_preview_.reset();
+    pending_mesh_template_ = nullptr;
+    SetSelectionActive(true);
+  }
+}
+
 void EditorViewport::ResizeIfNeeded(int w, int h) {
   if (w == static_cast<int>(panel_size_.x) && h == static_cast<int>(panel_size_.y)) return;
   panel_size_ = {static_cast<float>(w), static_cast<float>(h)};
@@ -306,6 +326,14 @@ void EditorViewport::Render() {
   if (render_target_) {
     // uv0=(0,1) uv1=(1,0): Y-flip because OpenGL FBO origin is bottom-left.
     ImGui::Image(render_target_->GetNativeHandle(), avail, ImVec2(0.f, 1.f), ImVec2(1.f, 0.f));
+  }
+
+  // Mesh placement mode: update preview position and place on LMB.
+  if (scene_ && pending_mesh_template_ && ImGui::IsWindowHovered()) {
+    ImGui::SetMouseCursor(ImGuiMouseCursor_None);
+    UpdatePreviewPosition(ImGui::GetMousePos(), image_pos, avail);
+    if (!ImGui::GetIO().KeyAlt && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+      PlaceMesh();
   }
 
   // Object picking: LMB release without Alt (Alt+LMB is camera orbit).
@@ -422,6 +450,49 @@ void EditorViewport::DrawSelectedBBox(ImDrawList* dl, ImVec2 image_pos,
                     camera_->GetCamera()->GetViewProjectionMatrix(),
                     image_pos, image_size,
                     IM_COL32(255, 165, 0, 255), 1.5f);
+}
+
+void EditorViewport::UpdatePreviewPosition(ImVec2 mouse_pos, ImVec2 image_pos,
+                                            ImVec2 image_size) {
+  const float ndc_x = (mouse_pos.x - image_pos.x) / image_size.x * 2.f - 1.f;
+  const float ndc_y = 1.f - (mouse_pos.y - image_pos.y) / image_size.y * 2.f;
+
+  const core::Camera* cam        = camera_->GetCamera();
+  const core::Vec3f   ray_origin = cam->GetPosition();
+  const core::Mat4f   vp_inv     = cam->GetViewProjectionMatrix().Inverse();
+
+  const core::Vec4f clip(ndc_x, ndc_y, -1.f, 1.f);
+  const core::Vec4f world4 = clip * vp_inv;
+  if (std::abs(world4.w) < 1e-6f) return;
+  const core::Vec3f world3(world4.x / world4.w,
+                           world4.y / world4.w,
+                           world4.z / world4.w);
+  const core::Vec3f ray_dir = (world3 - ray_origin).Normalized();
+
+  if (std::abs(ray_dir.y) < 1e-4f) return;  // nearly parallel to floor
+  const float t = -ray_origin.y / ray_dir.y;
+  if (t < 0.f) return;  // behind the camera
+
+  const core::Vec3f hit = ray_origin + ray_dir * t;
+
+  // First valid hit: transfer the preview object into the scene.
+  if (pending_preview_) {
+    preview_object_ = scene_->AddDynamicObject(std::move(pending_preview_));
+  }
+
+  if (preview_object_)
+    preview_object_->SetWorldTransform(core::Mat4f::Translation({hit.x, 0.f, hit.z}));
+}
+
+void EditorViewport::PlaceMesh() {
+  if (!preview_object_) return;  // no valid floor hit yet
+
+  scene_->SetSelectedObject(preview_object_);
+  preview_object_        = nullptr;
+  pending_mesh_template_ = nullptr;
+  SetSelectionActive(true);
+
+  if (on_placement_done_) on_placement_done_();
 }
 
 void EditorViewport::DrawLightsOverlay(ImDrawList* dl, ImVec2 image_pos,

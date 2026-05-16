@@ -9,6 +9,7 @@ add_library(editor STATIC
     LogPanel.cpp
     MaterialEditorWindow.cpp
     MeshPreview.cpp
+    MeshSelectionModal.cpp
     ObjectsPanel.cpp
     ResourcesPanel.cpp
 )

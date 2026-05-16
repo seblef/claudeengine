@@ -12,6 +12,7 @@ class EditorScene;
 class EditorToolbar;
 class EditorViewport;
 class MaterialEditorWindow;
+class MeshSelectionModal;
 class ResourcesPanel;
 class ObjectsPanel;
 class LogPanel;
@@ -56,6 +57,8 @@ class EditorWindow {
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<MaterialEditorWindow>  material_editor_;
   // cppcheck-suppress unusedStructMember
+  std::unique_ptr<MeshSelectionModal>    mesh_modal_;
+  // cppcheck-suppress unusedStructMember
   std::unique_ptr<ResourcesPanel>        resources_panel_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<ObjectsPanel>          objects_panel_;
@@ -65,6 +68,9 @@ class EditorWindow {
   // Tracks the previous frame's active tool to detect transitions.
   // cppcheck-suppress unusedStructMember
   EditorTool                             prev_tool_      = EditorTool::kSelection;
+  // True while waiting for the user to click to place a mesh in the viewport.
+  // cppcheck-suppress unusedStructMember
+  bool                                   placement_active_ = false;
 };
 
 }  // namespace editor

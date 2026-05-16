@@ -13,6 +13,7 @@
 #include "editor/EditorViewport.h"
 #include "editor/LogPanel.h"
 #include "editor/MaterialEditorWindow.h"
+#include "editor/MeshSelectionModal.h"
 #include "editor/ObjectsPanel.h"
 #include "editor/ResourcesPanel.h"
 #include "game/GameMaterial.h"
@@ -26,10 +27,15 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       toolbar_(std::make_unique<EditorToolbar>()),
       viewport_(std::make_unique<EditorViewport>(video)),
       material_editor_(std::make_unique<MaterialEditorWindow>(video)),
+      mesh_modal_(std::make_unique<MeshSelectionModal>()),
       resources_panel_(std::make_unique<ResourcesPanel>()),
       objects_panel_(std::make_unique<ObjectsPanel>()),
       log_panel_(std::make_unique<LogPanel>()) {
   viewport_->SetScene(scene_.get());
+  viewport_->SetOnPlacementDone([this]() {
+    toolbar_->SetActiveTool(EditorTool::kSelection);
+    placement_active_ = false;
+  });
   resources_panel_->SetOnMaterialOpen(
       [this](game::GameMaterial* mat) { material_editor_->Open(mat); });
   loguru::add_callback("editor_log", &LogPanel::LogCallback,
@@ -59,12 +65,29 @@ void EditorWindow::Render() {
   viewport_->SetSelectionActive(active_tool == EditorTool::kSelection);
   viewport_->SetActiveTool(active_tool);
 
+  // Cancel placement if the user switches tool while hovering to place.
+  if (active_tool != prev_tool_ && placement_active_) {
+    viewport_->SetPendingMeshTemplate(nullptr);
+    placement_active_ = false;
+  }
+
   // Detect tool transitions into creation tools.
   if (active_tool != prev_tool_ && IsCreationTool(active_tool)) {
-    LOG_F(INFO, "Creation tool activated: %d (placement/modal NYI)",
-          static_cast<int>(active_tool));
+    if (active_tool == EditorTool::kCreateMesh) {
+      mesh_modal_->Open();
+    } else {
+      LOG_F(INFO, "Creation tool activated: %d (placement NYI)",
+            static_cast<int>(active_tool));
+    }
   }
   prev_tool_ = active_tool;
+
+  // Mesh selection modal — open when kCreateMesh is activated.
+  if (game::MeshTemplate* tmpl = mesh_modal_->Render()) {
+    viewport_->SetPendingMeshTemplate(tmpl);
+    placement_active_ = true;
+    LOG_F(INFO, "Mesh template selected, click viewport to place");
+  }
 
   // 4. Viewport panel.
   constexpr ImGuiWindowFlags kViewportFlags =
