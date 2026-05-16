@@ -8,17 +8,17 @@
 #include "core/BBox3.h"
 #include "core/Resource.h"
 #include "renderer/GeometryData.h"
-#include "renderer/Material.h"
 #include "renderer/Mesh.h"
+
+namespace game { class GameMaterial; }
 
 namespace game {
 
-// Reference-counted resource pairing GPU geometry with a surface material.
+// Reference-counted resource pairing GPU geometry with a GameMaterial.
 //
-// Keyed by mesh file path so each file is loaded from disk at most once.
-// Material assignment will move to game::GameMaterial (Issue #204); for now
-// each template holds a default (untextured) Material.
-// Always obtain file-backed instances via GetOrLoad(), never via direct construction.
+// Keyed by mesh file path (file-backed) or an explicit id (procedural).
+// Use an id starting with "__proc_" for procedural instances to exclude them
+// from GetAll(). Always obtain file-backed instances via GetOrLoad().
 //
 // Lifecycle:
 //   MeshTemplate* t = MeshTemplate::GetOrLoad(path, video);
@@ -30,16 +30,30 @@ namespace game {
 // of a GameMesh.
 class MeshTemplate : public core::Resource<std::string, MeshTemplate> {
  public:
+  // File-backed: loads geometry from disk, assigns a default GameMaterial.
   MeshTemplate(const std::string& mesh_path, abstract::VideoDevice* video);
 
-  // Constructor for procedurally generated meshes.
-  // Takes ownership of geo and mat; bypasses file loading and the path-keyed registry.
-  MeshTemplate(std::unique_ptr<renderer::GeometryData> geo,
-               std::unique_ptr<renderer::Material> mat);
+  // Procedural: takes explicit id, owned geometry, and an AddRef'd material.
+  // Use an id starting with "__proc_" to exclude from GetAll().
+  MeshTemplate(const std::string& id,
+               std::unique_ptr<renderer::GeometryData> geo,
+               GameMaterial* mat);
+
+  ~MeshTemplate() override;
+
+  MeshTemplate(const MeshTemplate&)            = delete;
+  MeshTemplate& operator=(const MeshTemplate&) = delete;
+
+  // Swaps the assigned material: releases old ref, AddRef's new,
+  // then calls mesh_->SetMaterial() so all live MeshInstances
+  // pick up the change automatically on the next frame.
+  void SetMaterial(GameMaterial* mat);
 
   // Returns the geometry+material pair, or nullptr if initialisation failed.
-  [[nodiscard]] renderer::Mesh*        GetMesh()       const;
-  [[nodiscard]] const core::BBox3&     GetLocalBBox()  const;
+  [[nodiscard]] renderer::Mesh*         GetMesh()     const;
+  [[nodiscard]] renderer::GeometryData* GetGeometry() const;
+  [[nodiscard]] GameMaterial*           GetMaterial() const;
+  [[nodiscard]] const core::BBox3&      GetLocalBBox() const;
 
   // Returns the existing MeshTemplate for mesh_path (AddRef'd), or creates
   // a new one by loading the mesh from disk.
@@ -47,14 +61,14 @@ class MeshTemplate : public core::Resource<std::string, MeshTemplate> {
                                                abstract::VideoDevice* video);
 
   // Returns all file-backed templates keyed by their path basename.
-  // Procedurally generated templates (registered under "__proc_*") are excluded.
+  // Procedural templates (ids starting with "__proc_") are excluded.
   [[nodiscard]] static std::map<std::string, MeshTemplate*> GetAll();
 
  private:
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<renderer::GeometryData> geometry_;
   // cppcheck-suppress unusedStructMember
-  std::unique_ptr<renderer::Material>     material_;
+  GameMaterial*                           material_ = nullptr;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<renderer::Mesh>         mesh_;
 };

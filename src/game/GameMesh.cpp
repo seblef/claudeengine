@@ -29,4 +29,8 @@ void GameMesh::OnWorldTransformUpdated() {
   instance_->SetWorldMatrix(GetWorldTransform());
 }
 
+MeshTemplate* GameMesh::GetTemplate() const {
+  return template_;
+}
+
 }  // namespace game
