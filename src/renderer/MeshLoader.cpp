@@ -1,11 +1,9 @@
 #include "renderer/MeshLoader.h"
 
 #include <algorithm>
-#include <filesystem>
 #include <string>
 #include <vector>
 
-#include "core/Config.h"
 #include "mesh/EmeshReader.h"
 #include "mesh/FbxImporter.h"
 #include "mesh/LodData.h"
@@ -33,7 +31,7 @@ std::string Extension(const std::string& path) {
 std::unique_ptr<GeometryData> MakeGeometry(abstract::VideoDevice* video,
                                            const mesh::LodData& lod) {
   if (lod.vertices.size() > 65535u) {
-    LOG_F(ERROR, "MeshLoader: submesh exceeds 16-bit index limit (%zu vertices)",
+    LOG_F(ERROR, "MeshLoader: mesh exceeds 16-bit index limit (%zu vertices)",
           lod.vertices.size());
     return nullptr;
   }
@@ -44,33 +42,6 @@ std::unique_ptr<GeometryData> MakeGeometry(abstract::VideoDevice* video,
       video,
       static_cast<int>(lod.vertices.size()), lod.vertices.data(),
       static_cast<int>(lod.indices.size()) / 3, idx16.data());
-}
-
-std::unique_ptr<RenderableMesh> FromMeshData(const mesh::MeshData& data,
-                                             abstract::VideoDevice* video) {
-  auto result = std::make_unique<RenderableMesh>();
-  for (const auto& sub : data.submeshes) {
-    if (sub.lods.empty()) continue;
-    auto geo = MakeGeometry(video, sub.lods[0]);
-    if (!geo) continue;
-    std::unique_ptr<Material> mat;
-    if (!sub.material_slot.empty()) {
-      const auto mat_path = core::Config::GetDataFolder() / "materials" /
-                            (sub.material_slot + ".yaml");
-      if (std::filesystem::exists(mat_path)) {
-        mat = std::make_unique<Material>(sub.material_slot + ".yaml", video);
-      } else {
-        LOG_F(WARNING, "MeshLoader: material '%s' not found, using default",
-              sub.material_slot.c_str());
-        mat = std::make_unique<Material>(video);
-      }
-    } else {
-      mat = std::make_unique<Material>(video);
-    }
-    result->AddSubmesh(std::move(geo), std::move(mat));
-  }
-  if (result->GetSubmeshCount() == 0) return nullptr;
-  return result;
 }
 
 }  // namespace
@@ -94,7 +65,14 @@ std::unique_ptr<RenderableMesh> MeshLoader::Load(const std::string& path,
   }
 
   if (!ok) return nullptr;
-  return FromMeshData(data, video);
+
+  auto geo = MakeGeometry(video, data.lod);
+  if (!geo) return nullptr;
+
+  auto mat = std::make_unique<Material>(video);
+  auto result = std::make_unique<RenderableMesh>();
+  result->AddSubmesh(std::move(geo), std::move(mat));
+  return result;
 }
 
 }  // namespace renderer

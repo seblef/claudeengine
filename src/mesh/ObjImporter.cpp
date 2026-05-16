@@ -11,7 +11,6 @@
 #include "mesh/LodData.h"
 #include "mesh/MeshData.h"
 #include "mesh/MeshUtils.h"
-#include "mesh/SubmeshData.h"
 
 // fast_obj: define implementation in this translation unit only.
 #define FAST_OBJ_IMPLEMENTATION
@@ -22,16 +21,6 @@
 namespace mesh {
 
 namespace {
-
-// Returns the material slot name for the first face of a group, or empty.
-std::string MaterialSlotName(const fastObjMesh* obj, unsigned int face_offset) {
-  if (!obj->face_materials || obj->material_count == 0)
-    return {};
-  const unsigned int mat_idx = obj->face_materials[face_offset];
-  if (mat_idx >= obj->material_count || !obj->materials[mat_idx].name)
-    return {};
-  return obj->materials[mat_idx].name;
-}
 
 // Builds the global index offset into obj->indices for the first vertex of
 // faces[face_offset].
@@ -50,7 +39,7 @@ void AppendGroupGeometry(const fastObjMesh* obj, const fastObjGroup& grp,
   unsigned int local_offset = 0;
 
   for (unsigned int fi = 0; fi < grp.face_count; ++fi) {
-    const unsigned int face_idx  = grp.face_offset + fi;
+    const unsigned int face_idx   = grp.face_offset + fi;
     const unsigned int vert_count = obj->face_vertices[face_idx];
 
     // Fan triangulation: (0,1,2), (0,2,3), …
@@ -104,34 +93,31 @@ bool ObjImporter::Import(const std::string& path, MeshData* mesh) const {
   const bool has_normals = obj->normal_count > 1;
   const bool has_uvs     = obj->texcoord_count > 1;
 
-  const unsigned int group_count = obj->group_count;
-  mesh->submeshes.reserve(group_count);
+  // Merge all groups into a single LodData; material slots are ignored.
+  LodData& lod = mesh->lod;
+  bool has_any_faces = false;
 
-  for (unsigned int g = 0; g < group_count; ++g) {
+  for (unsigned int g = 0; g < obj->group_count; ++g) {
     const fastObjGroup& grp = obj->groups[g];
     if (grp.face_count == 0) continue;
-
-    SubmeshData& sub = mesh->submeshes.emplace_back();
-    sub.material_slot = MaterialSlotName(obj, grp.face_offset);
-
-    LodData& lod = sub.lods.emplace_back();
     AppendGroupGeometry(obj, grp, has_normals, has_uvs, &lod);
-
-    WeldVertices(&lod);
-    if (!has_normals) ComputeNormals(&lod);
-    ComputeTangents(&lod);
-    ComputeAabb(&lod);
+    has_any_faces = true;
   }
 
   fast_obj_destroy(obj);
 
-  if (mesh->submeshes.empty()) {
+  if (!has_any_faces) {
     LOG_F(WARNING, "ObjImporter: no geometry found in '%s'", path.c_str());
     return false;
   }
 
-  LOG_F(INFO, "ObjImporter: loaded %zu submesh(es) from '%s'",
-        mesh->submeshes.size(), path.c_str());
+  WeldVertices(&lod);
+  if (!has_normals) ComputeNormals(&lod);
+  ComputeTangents(&lod);
+  ComputeAabb(&lod);
+
+  LOG_F(INFO, "ObjImporter: loaded %zu vertices from '%s'",
+        lod.vertices.size(), path.c_str());
   return true;
 }
 
