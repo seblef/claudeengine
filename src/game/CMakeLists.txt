@@ -3,6 +3,7 @@ add_library(game STATIC
     GameCamera.cpp
     GameObject.cpp
     GameLight.cpp
+    GameMaterial.cpp
     GameMesh.cpp
     GameSystem.cpp
     MeshTemplate.cpp
