@@ -1,5 +1,6 @@
 #include "editor/EditorScene.h"
 
+#include <algorithm>
 #include <memory>
 
 #include "core/Color.h"
@@ -29,21 +30,6 @@ EditorScene::EditorScene(abstract::VideoDevice* video) {
   game::GameSystem::Instance().AddObject(floor_.get());
   objects_.push_back(floor_.get());
 
-  // Unit cube scaled ×2 and placed at (0,1,0) so its bottom face sits on the floor.
-  auto* cube_mat = new game::GameMaterial(
-      "__proc_editor_cube",
-      renderer::MaterialDesc().SetDiffuseColor(core::Color(0.7f, 0.7f, 0.7f)), video);
-  auto* cube_tmpl = new game::MeshTemplate(
-      "__proc_editor_cube", renderer::CreateCubeMesh(video), cube_mat);
-  cube_mat->Release();  // cube_tmpl holds the ref
-  cube_ = std::make_unique<game::GameMesh>(cube_tmpl);
-  cube_->SetName("Cube");
-  cube_tmpl->Release();
-  cube_->SetWorldTransform(
-      core::Mat4f::Translation({0.f, 1.f, 0.f}) * core::Mat4f::Scale3D({2.f, 2.f, 2.f}));
-  game::GameSystem::Instance().AddObject(cube_.get());
-  objects_.push_back(cube_.get());
-
   // Global directional light — warm sun-like colour from the upper-left.
   game::GameLightDesc desc;
   desc.color     = core::Color(0.9f, 0.85f, 0.7f);
@@ -53,18 +39,69 @@ EditorScene::EditorScene(abstract::VideoDevice* video) {
   light_->SetName("Sun");
   game::GameSystem::Instance().AddObject(light_.get());
   objects_.push_back(light_.get());
+
+  // Unit cube scaled ×2 and placed at (0,1,0) so its bottom face sits on the floor.
+  // Added as the first dynamic (user-deletable) object.
+  auto* cube_mat = new game::GameMaterial(
+      "__proc_editor_cube",
+      renderer::MaterialDesc().SetDiffuseColor(core::Color(0.7f, 0.7f, 0.7f)), video);
+  auto* cube_tmpl = new game::MeshTemplate(
+      "__proc_editor_cube", renderer::CreateCubeMesh(video), cube_mat);
+  cube_mat->Release();  // cube_tmpl holds the ref
+  auto cube = std::make_unique<game::GameMesh>(cube_tmpl);
+  cube->SetName("Cube");
+  cube_tmpl->Release();
+  cube->SetWorldTransform(
+      core::Mat4f::Translation({0.f, 1.f, 0.f}) * core::Mat4f::Scale3D({2.f, 2.f, 2.f}));
+  AddDynamicObject(std::move(cube));
 }
 
 EditorScene::~EditorScene() {
-  for (auto* obj : objects_) {
-    game::GameSystem::Instance().RemoveObject(obj);
+  // Unregister dynamic objects first (dynamic_objects_ is declared before the
+  // static unique_ptrs, so it is destroyed last — but we unregister explicitly
+  // here to keep symmetry with AddDynamicObject).
+  for (auto& obj : dynamic_objects_) {
+    game::GameSystem::Instance().RemoveObject(obj.get());
   }
+  game::GameSystem::Instance().RemoveObject(light_.get());
+  game::GameSystem::Instance().RemoveObject(floor_.get());
+
   for (auto* mat : game_materials_) {
     mat->Release();
   }
   for (auto* tmpl : mesh_templates_) {
     tmpl->Release();
   }
+}
+
+game::GameObject* EditorScene::AddDynamicObject(std::unique_ptr<game::GameObject> obj) {
+  game::GameObject* raw = obj.get();
+  dynamic_objects_.push_back(std::move(obj));
+  game::GameSystem::Instance().AddObject(raw);
+  objects_.push_back(raw);
+  return raw;
+}
+
+void EditorScene::RemoveDynamicObject(game::GameObject* obj) {
+  auto it = std::find_if(dynamic_objects_.begin(), dynamic_objects_.end(),
+                         [obj](const auto& p) { return p.get() == obj; });
+  if (it == dynamic_objects_.end()) {
+    return;  // not a dynamic object — no-op
+  }
+
+  if (selected_ == obj) {
+    selected_ = nullptr;
+  }
+
+  game::GameSystem::Instance().RemoveObject(obj);
+
+  objects_.erase(std::remove(objects_.begin(), objects_.end(), obj), objects_.end());
+  dynamic_objects_.erase(it);
+}
+
+bool EditorScene::IsDynamic(const game::GameObject* obj) const {
+  return std::any_of(dynamic_objects_.begin(), dynamic_objects_.end(),
+                     [obj](const auto& p) { return p.get() == obj; });
 }
 
 }  // namespace editor
