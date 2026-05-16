@@ -1,6 +1,7 @@
 #include "editor/EditorViewport.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <limits>
 #include <optional>
@@ -10,11 +11,18 @@
 #include "core/CoordinateSystem.h"
 #include "core/Mat4f.h"
 #include "core/ProjectionType.h"
+#include "core/Vec3f.h"
 #include "core/Vec4f.h"
 #include "editor/EditorScene.h"
 #include "editor/EditorTool.h"
+#include "game/GameLight.h"
 #include "game/GameObject.h"
 #include "game/GameObjectType.h"
+#include "renderer/CircleSpotLight.h"
+#include "renderer/GlobalLight.h"
+#include "renderer/Light.h"
+#include "renderer/OmniLight.h"
+#include "renderer/RectangleSpotLight.h"
 #include "renderer/Renderer.h"
 
 #include <ImGuizmo.h>
@@ -67,6 +75,171 @@ void DrawBBoxWireframe(ImDrawList* dl, const core::BBox3& bbox,
   for (int i = 0; i < 12; ++i) {
     if (sc[kEdges[i][0]].valid && sc[kEdges[i][1]].valid)
       dl->AddLine(sc[kEdges[i][0]].pos, sc[kEdges[i][1]].pos, color, thickness);
+  }
+}
+
+// Projects a 3D line segment p0→p1 and draws it on dl.
+// Skips segments where either endpoint is behind the camera (clip.w <= 0).
+void DrawLineSegment3D(ImDrawList* dl,
+                       const core::Vec3f& p0, const core::Vec3f& p1,
+                       const core::Mat4f& vp,
+                       ImVec2 image_pos, ImVec2 image_size,
+                       ImU32 color, float thickness) {
+  const core::Vec4f c0 =
+      core::Vec4f(p0.x, p0.y, p0.z, 1.f) * vp;
+  const core::Vec4f c1 =
+      core::Vec4f(p1.x, p1.y, p1.z, 1.f) * vp;
+
+  if (c0.w <= 0.f || c1.w <= 0.f) return;
+
+  const float inv0 = 1.f / c0.w;
+  const float inv1 = 1.f / c1.w;
+
+  ImVec2 s0, s1;
+  s0.x = (c0.x * inv0 + 1.f) * 0.5f * image_size.x + image_pos.x;
+  s0.y = (1.f - c0.y * inv0) * 0.5f * image_size.y + image_pos.y;
+  s1.x = (c1.x * inv1 + 1.f) * 0.5f * image_size.x + image_pos.x;
+  s1.y = (1.f - c1.y * inv1) * 0.5f * image_size.y + image_pos.y;
+
+  dl->AddLine(s0, s1, color, thickness);
+}
+
+// Approximates a circle as a 32-segment polyline and draws it on dl.
+// center: world-space center; ax/ay: two orthogonal world-space axis vectors
+// spanning the circle plane; radius: circle radius.
+void DrawCircle3D(ImDrawList* dl,
+                  const core::Vec3f& center,
+                  const core::Vec3f& ax, const core::Vec3f& ay,
+                  float radius,
+                  const core::Mat4f& vp,
+                  ImVec2 image_pos, ImVec2 image_size,
+                  ImU32 color, float thickness) {
+  constexpr int kSegments = 32;
+  for (int i = 0; i < kSegments; ++i) {
+    const float a0 = static_cast<float>(i)     / kSegments * 2.f * 3.14159265f;
+    const float a1 = static_cast<float>(i + 1) / kSegments * 2.f * 3.14159265f;
+    const core::Vec3f p0 = center + ax * (std::cos(a0) * radius)
+                                  + ay * (std::sin(a0) * radius);
+    const core::Vec3f p1 = center + ax * (std::cos(a1) * radius)
+                                  + ay * (std::sin(a1) * radius);
+    DrawLineSegment3D(dl, p0, p1, vp, image_pos, image_size, color, thickness);
+  }
+}
+
+// Draws a wireframe representation of a light onto dl.
+// world_pos: light position; light: the renderer light; vp: camera VP matrix.
+// is_selected: true ↔ use orange highlight colour, else yellow.
+void DrawLightWireframe(ImDrawList* dl,
+                        const core::Vec3f& world_pos,
+                        const renderer::Light& light,
+                        const core::Mat4f& vp,
+                        ImVec2 image_pos, ImVec2 image_size,
+                        bool is_selected) {
+  constexpr ImU32 kColorUnselected = 0xFFFFCC00u;  // yellow, ABGR
+  constexpr ImU32 kColorSelected   = 0xFF0088FFu;  // orange, ABGR
+  constexpr float kThickness       = 1.5f;
+
+  const ImU32 color = is_selected ? kColorSelected : kColorUnselected;
+
+  switch (light.GetType()) {
+    case renderer::LightType::kOmni: {
+      const auto& omni = static_cast<const renderer::OmniLight&>(light);
+      const float r    = omni.GetRadius();
+      DrawCircle3D(dl, world_pos,
+                   core::Vec3f::kAxisX, core::Vec3f::kAxisY, r,
+                   vp, image_pos, image_size, color, kThickness);
+      DrawCircle3D(dl, world_pos,
+                   core::Vec3f::kAxisX, core::Vec3f::kAxisZ, r,
+                   vp, image_pos, image_size, color, kThickness);
+      DrawCircle3D(dl, world_pos,
+                   core::Vec3f::kAxisY, core::Vec3f::kAxisZ, r,
+                   vp, image_pos, image_size, color, kThickness);
+      break;
+    }
+
+    case renderer::LightType::kCircleSpot: {
+      const auto& spot = static_cast<const renderer::CircleSpotLight&>(light);
+      const float range = spot.GetRange();
+      const core::Vec3f& dir = spot.GetDirection();
+
+      // Build two orthogonal axes in the base plane.
+      const core::Vec3f up =
+          (std::abs(dir.y) < 0.99f) ? core::Vec3f::kAxisY : core::Vec3f::kAxisX;
+      const core::Vec3f right = dir.Cross(up).Normalized();
+      const core::Vec3f fwd   = dir.Cross(right);
+
+      const float base_r = std::tan(spot.GetOuterAngle()) * range;
+      const core::Vec3f base_center = world_pos + dir * range;
+
+      // 4 lines from apex to rim at 0°/90°/180°/270°.
+      DrawLineSegment3D(dl, world_pos, base_center + right * base_r,
+                        vp, image_pos, image_size, color, kThickness);
+      DrawLineSegment3D(dl, world_pos, base_center - right * base_r,
+                        vp, image_pos, image_size, color, kThickness);
+      DrawLineSegment3D(dl, world_pos, base_center + fwd * base_r,
+                        vp, image_pos, image_size, color, kThickness);
+      DrawLineSegment3D(dl, world_pos, base_center - fwd * base_r,
+                        vp, image_pos, image_size, color, kThickness);
+
+      // Base circle.
+      DrawCircle3D(dl, base_center, right, fwd, base_r,
+                   vp, image_pos, image_size, color, kThickness);
+      break;
+    }
+
+    case renderer::LightType::kRectSpot: {
+      const auto& spot = static_cast<const renderer::RectangleSpotLight&>(light);
+      const float range = spot.GetRange();
+      const core::Vec3f& dir = spot.GetDirection();
+
+      const core::Vec3f up =
+          (std::abs(dir.y) < 0.99f) ? core::Vec3f::kAxisY : core::Vec3f::kAxisX;
+      const core::Vec3f right = dir.Cross(up).Normalized();
+      const core::Vec3f fwd   = dir.Cross(right);
+
+      const float half_w = std::tan(spot.GetHAngle()) * range;
+      const float half_h = std::tan(spot.GetVAngle()) * range;
+      const core::Vec3f base_center = world_pos + dir * range;
+
+      // 4 corners of the base rectangle.
+      const core::Vec3f c0 = base_center + right * half_w + fwd * half_h;
+      const core::Vec3f c1 = base_center - right * half_w + fwd * half_h;
+      const core::Vec3f c2 = base_center - right * half_w - fwd * half_h;
+      const core::Vec3f c3 = base_center + right * half_w - fwd * half_h;
+
+      // 4 lines from apex to corners.
+      DrawLineSegment3D(dl, world_pos, c0, vp, image_pos, image_size, color, kThickness);
+      DrawLineSegment3D(dl, world_pos, c1, vp, image_pos, image_size, color, kThickness);
+      DrawLineSegment3D(dl, world_pos, c2, vp, image_pos, image_size, color, kThickness);
+      DrawLineSegment3D(dl, world_pos, c3, vp, image_pos, image_size, color, kThickness);
+
+      // Base rectangle perimeter.
+      DrawLineSegment3D(dl, c0, c1, vp, image_pos, image_size, color, kThickness);
+      DrawLineSegment3D(dl, c1, c2, vp, image_pos, image_size, color, kThickness);
+      DrawLineSegment3D(dl, c2, c3, vp, image_pos, image_size, color, kThickness);
+      DrawLineSegment3D(dl, c3, c0, vp, image_pos, image_size, color, kThickness);
+      break;
+    }
+
+    case renderer::LightType::kGlobal: {
+      const auto& global = static_cast<const renderer::GlobalLight&>(light);
+      const core::Vec3f& d = global.GetDirection();
+      constexpr float kLen = 5.f;
+
+      // Two arrow lines from world origin in the light direction.
+      const core::Vec3f tip = d * kLen;
+      DrawLineSegment3D(dl, core::Vec3f::kZero, tip,
+                        vp, image_pos, image_size, color, kThickness);
+      // Arrowhead: small orthogonal lines at the tip.
+      const core::Vec3f perp =
+          (std::abs(d.y) < 0.99f) ? core::Vec3f::kAxisY : core::Vec3f::kAxisX;
+      const core::Vec3f side = d.Cross(perp).Normalized() * (kLen * 0.15f);
+      DrawLineSegment3D(dl, tip, tip - d * (kLen * 0.2f) + side,
+                        vp, image_pos, image_size, color, kThickness);
+      DrawLineSegment3D(dl, tip, tip - d * (kLen * 0.2f) - side,
+                        vp, image_pos, image_size, color, kThickness);
+      break;
+    }
   }
 }
 
@@ -147,6 +320,11 @@ void EditorViewport::Render() {
   // Bounding box wireframe for the selected object.
   if (scene_ && scene_->GetSelectedObject()) {
     DrawSelectedBBox(ImGui::GetWindowDrawList(), image_pos, avail);
+  }
+
+  // Light wireframe overlays.
+  if (scene_) {
+    DrawLightsOverlay(ImGui::GetWindowDrawList(), image_pos, avail);
   }
 
   // XYZ axis overlay — bottom-right corner of the viewport panel.
@@ -244,6 +422,28 @@ void EditorViewport::DrawSelectedBBox(ImDrawList* dl, ImVec2 image_pos,
                     camera_->GetCamera()->GetViewProjectionMatrix(),
                     image_pos, image_size,
                     IM_COL32(255, 165, 0, 255), 1.5f);
+}
+
+void EditorViewport::DrawLightsOverlay(ImDrawList* dl, ImVec2 image_pos,
+                                        ImVec2 image_size) const {
+  const core::Mat4f vp = camera_->GetCamera()->GetViewProjectionMatrix();
+  const game::GameObject* selected = scene_->GetSelectedObject();
+
+  for (const game::GameObject* obj : scene_->GetObjects()) {
+    if (obj->GetType() != game::GameObjectType::kLight) continue;
+
+    const auto* game_light = static_cast<const game::GameLight*>(obj);
+    const renderer::Light* light = game_light->GetLight();
+    if (!light) continue;
+
+    // Extract world position from the world transform (translation is in col 3).
+    const core::Mat4f& wt = obj->GetWorldTransform();
+    const core::Vec3f world_pos(wt(0, 3), wt(1, 3), wt(2, 3));
+
+    const bool is_selected = (obj == selected);
+    DrawLightWireframe(dl, world_pos, *light, vp, image_pos, image_size,
+                       is_selected);
+  }
 }
 
 }  // namespace editor

@@ -66,6 +66,10 @@ class EditorViewport {
   // Draws the selected object's world bounding box as 12 orange wireframe edges.
   void DrawSelectedBBox(ImDrawList* dl, ImVec2 image_pos, ImVec2 image_size) const;
 
+  // Draws wireframe overlays for all lights in the scene onto dl.
+  // Selected lights are drawn in orange; others in yellow.
+  void DrawLightsOverlay(ImDrawList* dl, ImVec2 image_pos, ImVec2 image_size) const;
+
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice*                       video_;
 
