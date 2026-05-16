@@ -55,12 +55,24 @@ void RenderToolButton(const ToolEntry& entry, EditorTool& active_tool, int id) {
 }  // namespace
 
 void EditorToolbar::Render() {
-  // Keyboard shortcuts for transform tools (skip when a text input is focused).
-  if (!ImGui::GetIO().WantTextInput) {
+  const ImGuiIO& io = ImGui::GetIO();
+
+  // Keyboard shortcuts — skip when a text input widget has keyboard focus.
+  if (!io.WantCaptureKeyboard) {
     for (int i = 0; i < kTransformToolCount; ++i) {
       if (kTransformTools[i].shortcut != ImGuiKey_None &&
           ImGui::IsKeyPressed(kTransformTools[i].shortcut, /*repeat=*/false)) {
         active_tool_ = kTransformTools[i].tool;
+      }
+    }
+
+    if (history_) {
+      if (io.KeyCtrl && !io.KeyShift &&
+          ImGui::IsKeyPressed(ImGuiKey_Z, /*repeat=*/false)) {
+        history_->Undo();
+      } else if (io.KeyCtrl && io.KeyShift &&
+                 ImGui::IsKeyPressed(ImGuiKey_Z, /*repeat=*/false)) {
+        history_->Redo();
       }
     }
   }
@@ -70,6 +82,29 @@ void EditorToolbar::Render() {
   if (!ImGui::Begin("Toolbar", nullptr, kFlags)) {
     ImGui::End();
     return;
+  }
+
+  // Undo / Redo buttons — disabled when the history cannot perform the action.
+  if (history_) {
+    const bool can_undo = history_->CanUndo();
+    ImGui::BeginDisabled(!can_undo);
+    if (ImGui::Button(ICON_FA_ROTATE_LEFT))
+      history_->Undo();
+    ImGui::SetItemTooltip("Undo (Ctrl+Z)");
+    ImGui::EndDisabled();
+
+    ImGui::SameLine();
+
+    const bool can_redo = history_->CanRedo();
+    ImGui::BeginDisabled(!can_redo);
+    if (ImGui::Button(ICON_FA_ROTATE_RIGHT))
+      history_->Redo();
+    ImGui::SetItemTooltip("Redo (Ctrl+Shift+Z)");
+    ImGui::EndDisabled();
+
+    ImGui::SameLine();
+    ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+    ImGui::SameLine();
   }
 
   for (int i = 0; i < kTransformToolCount; ++i)
