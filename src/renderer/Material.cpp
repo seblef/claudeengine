@@ -62,7 +62,8 @@ Material::Material(const std::string& name, abstract::VideoDevice* video) {
   const auto path = core::Config::GetDataFolder() / "materials" / name;
   try {
     const YAML::Node root = core::LoadYamlFile(path);
-    LoadFromYaml(root, video);
+    // Support both the new format (rendering: section) and the old flat format.
+    LoadFromYaml(root["rendering"] ? root["rendering"] : root, video);
   } catch (const std::exception& e) {
     LOG_F(ERROR, "Material '%s': load error: %s", name.c_str(), e.what());
     LoadDefaults(video);
@@ -143,6 +144,13 @@ void Material::LoadFromYaml(const YAML::Node& yaml, abstract::VideoDevice* video
     }
   }
 
+  // New format: flat color keys at the node level.
+  if (yaml["diffuse_color"])  diffuse_color_  = ParseColor(yaml["diffuse_color"]);
+  if (yaml["emissive_color"]) emissive_color_ = ParseColor(yaml["emissive_color"]);
+  if (yaml["ambient_color"])  ambient_color_  = ParseColor(yaml["ambient_color"]);
+  if (yaml["shininess"])      shininess_      = yaml["shininess"].as<float>();
+
+  // Old format: colors: sub-node (backward compatibility for legacy files).
   if (yaml["colors"]) {
     const YAML::Node& c = yaml["colors"];
     if (c["diffuse"])   diffuse_color_  = ParseColor(c["diffuse"]);

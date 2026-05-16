@@ -1,2 +1,3 @@
-textures:
-  diffuse: demo.png
+rendering:
+  textures:
+    diffuse: demo.png
