@@ -70,11 +70,20 @@ void MeshPreview::Render(float time) {
   }
 
   const ImVec2 size(static_cast<float>(w_), static_cast<float>(h_));
-  // uv0=(0,1) uv1=(1,0): Y-flip because OpenGL FBO origin is bottom-left.
-  ImGui::Image(color_rt_->GetNativeHandle(), size, ImVec2(0.f, 1.f),
-               ImVec2(1.f, 0.f));
 
-  if (ImGui::IsItemHovered()) {
+  // InvisibleButton captures mouse input (including LMB drag), preventing the
+  // parent window from being moved when the user orbits the camera.
+  const ImVec2 pos = ImGui::GetCursorScreenPos();
+  ImGui::InvisibleButton("##preview", size);
+
+  // Draw the render target over the button area with a Y-flip (OpenGL FBO
+  // origin is bottom-left).
+  ImGui::GetWindowDrawList()->AddImage(
+      color_rt_->GetNativeHandle(),
+      pos, ImVec2(pos.x + size.x, pos.y + size.y),
+      ImVec2(0.f, 1.f), ImVec2(1.f, 0.f));
+
+  if (ImGui::IsItemHovered() || ImGui::IsItemActive()) {
     const ImGuiIO& io = ImGui::GetIO();
 
     if (io.MouseDown[ImGuiMouseButton_Left]) {
