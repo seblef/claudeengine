@@ -1,43 +1,336 @@
 #include "editor/MaterialEditorWindow.h"
 
-#include <imgui.h>
+#include <filesystem>
+#include <fstream>
 
+#include <IconsFontAwesome6.h>
+#include <imgui.h>
+#include <loguru.hpp>
+#include <nfd.h>
+#include <yaml-cpp/yaml.h>
+
+#include "abstract/Texture.h"
+#include "core/Color.h"
+#include "core/Config.h"
+#include "editor/EditorScene.h"
 #include "game/GameMaterial.h"
+#include "game/GameMesh.h"
+#include "game/GameObjectType.h"
 #include "game/MeshTemplate.h"
+#include "renderer/GeometryUtils.h"
+#include "renderer/Material.h"
+#include "renderer/MaterialDesc.h"
+#include "renderer/TextureSlot.h"
 
 namespace editor {
 
 namespace {
-constexpr int kPreviewWidth  = 256;
-constexpr int kPreviewHeight = 256;
+
+constexpr int   kPreviewSize    = 300;
+constexpr float kLabelColWidth  = 74.f;
+constexpr float kClearBtnWidth  = 22.f;
+
+// Parallel arrays indexed by TextureSlot integer value.
+constexpr const char* kSlotNames[renderer::kTextureSlotCount] = {
+    "diffuse", "normal", "specular", "emissive", "environment",
+};
+constexpr const char* kSlotLabels[renderer::kTextureSlotCount] = {
+    "Diffuse", "Normal", "Specular", "Emissive", "Environ.",
+};
+constexpr const char* kDefaultTextures[renderer::kTextureSlotCount] = {
+    "default/diffuse.png",
+    "default/normal.png",
+    "default/specular.png",
+    "default/emissive.png",
+    "default/environment.png",
+};
+
+bool IsDefaultTexture(const abstract::Texture* tex) {
+  return !tex || tex->GetId().rfind("default/", 0) == 0;
+}
+
 }  // namespace
 
 MaterialEditorWindow::MaterialEditorWindow(abstract::VideoDevice* video)
-    : preview_(video, kPreviewWidth, kPreviewHeight) {
-  // Default preview geometry — the procedural cube created by EditorScene.
-  game::MeshTemplate* cube = game::MeshTemplate::Get("__proc_editor_cube");
-  if (cube) preview_.SetTemplate(cube);
+    : video_(video),
+      preview_(video, kPreviewSize, kPreviewSize) {
+  auto* def_mat = new game::GameMaterial(
+      "__proc_preview_default",
+      renderer::MaterialDesc().SetDiffuseColor(core::Color(0.7f, 0.7f, 0.7f)),
+      video);
+  cube_tmpl_ = new game::MeshTemplate(
+      "__proc_preview_cube", renderer::CreateCubeMesh(video), def_mat);
+  sphere_tmpl_ = new game::MeshTemplate(
+      "__proc_preview_sphere",
+      renderer::CreateSphere(video, /*stacks=*/32, /*rings=*/64), def_mat);
+  def_mat->Release();  // cube_tmpl_ and sphere_tmpl_ each hold a ref
+
+  preview_.SetTemplate(cube_tmpl_);
 }
 
-MaterialEditorWindow::~MaterialEditorWindow() = default;
+MaterialEditorWindow::~MaterialEditorWindow() {
+  // Clear the preview instance before releasing templates so MeshInstance
+  // is destroyed while the Mesh it references is still alive.
+  preview_.SetTemplate(nullptr);
+  if (cube_tmpl_)   cube_tmpl_->Release();
+  if (sphere_tmpl_) sphere_tmpl_->Release();
+}
 
 void MaterialEditorWindow::Open(game::GameMaterial* mat) {
   material_ = mat;
   open_     = (mat != nullptr);
+  if (!mat) return;
+
+  cube_tmpl_->SetMaterial(mat);
+  sphere_tmpl_->SetMaterial(mat);
+  preview_.SetTemplate(
+      preview_geo_ == PreviewGeometry::kCube ? cube_tmpl_ : sphere_tmpl_);
 }
 
-void MaterialEditorWindow::Render() {
+void MaterialEditorWindow::Render(const EditorScene& scene) {
   if (!open_ || !material_) return;
 
   const std::string title = "Material: " + material_->GetId();
+  ImGui::SetNextWindowSize(ImVec2(720.f, 520.f), ImGuiCond_FirstUseEver);
   if (!ImGui::Begin(title.c_str(), &open_)) {
     ImGui::End();
     return;
   }
 
-  preview_.Render(static_cast<float>(ImGui::GetTime()));
+  const float bot_h =
+      ImGui::GetFrameHeightWithSpacing() + ImGui::GetStyle().ItemSpacing.y * 2.f;
+
+  if (ImGui::BeginChild("##mat_content", ImVec2(0.f, -bot_h))) {
+    constexpr ImGuiTableFlags kTableFlags = ImGuiTableFlags_None;
+    if (ImGui::BeginTable("##mat_cols", 2, kTableFlags)) {
+      ImGui::TableSetupColumn("##left",
+                               ImGuiTableColumnFlags_WidthFixed,
+                               static_cast<float>(kPreviewSize) + 8.f);
+      ImGui::TableSetupColumn("##right",
+                               ImGuiTableColumnFlags_WidthStretch);
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+      RenderPreviewColumn();
+      ImGui::TableNextColumn();
+      RenderPropertiesColumn();
+      ImGui::EndTable();
+    }
+  }
+  ImGui::EndChild();
+
+  ImGui::Separator();
+  RenderBottomBar(scene);
 
   ImGui::End();
+}
+
+void MaterialEditorWindow::RenderPreviewColumn() {
+  preview_.Render(static_cast<float>(ImGui::GetTime()));
+
+  const float btn_w =
+      (static_cast<float>(kPreviewSize) - ImGui::GetStyle().ItemSpacing.x) *
+      0.5f;
+
+  const bool cube_on = (preview_geo_ == PreviewGeometry::kCube);
+  if (cube_on)
+    ImGui::PushStyleColor(ImGuiCol_Button,
+                           ImGui::GetStyle().Colors[ImGuiCol_ButtonActive]);
+  if (ImGui::Button(ICON_FA_CUBE " Cube", ImVec2(btn_w, 0.f))) {
+    preview_geo_ = PreviewGeometry::kCube;
+    preview_.SetTemplate(cube_tmpl_);
+  }
+  if (cube_on) ImGui::PopStyleColor();
+
+  ImGui::SameLine();
+
+  const bool sphere_on = (preview_geo_ == PreviewGeometry::kSphere);
+  if (sphere_on)
+    ImGui::PushStyleColor(ImGuiCol_Button,
+                           ImGui::GetStyle().Colors[ImGuiCol_ButtonActive]);
+  if (ImGui::Button(ICON_FA_CIRCLE " Sphere", ImVec2(btn_w, 0.f))) {
+    preview_geo_ = PreviewGeometry::kSphere;
+    preview_.SetTemplate(sphere_tmpl_);
+  }
+  if (sphere_on) ImGui::PopStyleColor();
+}
+
+void MaterialEditorWindow::RenderPropertiesColumn() {
+  if (ImGui::CollapsingHeader("Rendering", ImGuiTreeNodeFlags_DefaultOpen)) {
+    RenderRenderingSection();
+  }
+  if (ImGui::CollapsingHeader("Sound")) {
+    ImGui::TextDisabled("(no sound properties yet)");
+  }
+  if (ImGui::CollapsingHeader("Physics")) {
+    ImGui::TextDisabled("(no physics properties yet)");
+  }
+}
+
+void MaterialEditorWindow::RenderRenderingSection() {
+  auto* mat = material_->GetMaterial();
+
+  ImGui::SeparatorText("Textures");
+  constexpr ImGuiTableFlags kTexFlags =
+      ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoHostExtendX;
+  if (ImGui::BeginTable("##tex_slots", 3, kTexFlags)) {
+    ImGui::TableSetupColumn("##tex_label", ImGuiTableColumnFlags_WidthFixed,
+                             kLabelColWidth);
+    ImGui::TableSetupColumn("##tex_btn", ImGuiTableColumnFlags_WidthStretch);
+    ImGui::TableSetupColumn("##tex_clear", ImGuiTableColumnFlags_WidthFixed,
+                             kClearBtnWidth);
+    for (int i = 0; i < renderer::kTextureSlotCount; ++i) {
+      RenderTextureSlot(static_cast<renderer::TextureSlot>(i), kSlotLabels[i]);
+    }
+    ImGui::EndTable();
+  }
+
+  ImGui::SeparatorText("Colors");
+
+  {
+    core::Color dc = mat->GetDiffuseColor();
+    float c[4] = {dc.r, dc.g, dc.b, dc.a};
+    if (ImGui::ColorEdit4("Diffuse color", c))
+      mat->SetDiffuseColor({c[0], c[1], c[2], c[3]});
+  }
+  {
+    core::Color ec = mat->GetEmissiveColor();
+    float c[4] = {ec.r, ec.g, ec.b, ec.a};
+    if (ImGui::ColorEdit4("Emissive color", c))
+      mat->SetEmissiveColor({c[0], c[1], c[2], c[3]});
+  }
+  {
+    core::Color ac = mat->GetAmbientColor();
+    float c[4] = {ac.r, ac.g, ac.b, ac.a};
+    if (ImGui::ColorEdit4("Ambient color", c))
+      mat->SetAmbientColor({c[0], c[1], c[2], c[3]});
+  }
+
+  float shine = mat->GetShininess();
+  if (ImGui::SliderFloat("Shininess", &shine, 1.f, 256.f))
+    mat->SetShininess(shine);
+}
+
+void MaterialEditorWindow::RenderTextureSlot(renderer::TextureSlot slot,
+                                             const char* label) {
+  auto* mat       = material_->GetMaterial();
+  auto* tex       = mat->GetTexture(slot);
+  const bool def  = IsDefaultTexture(tex);
+  const char* disp = def ? "None" : tex->GetId().c_str();
+
+  ImGui::TableNextRow();
+
+  ImGui::TableNextColumn();
+  ImGui::TextUnformatted(label);
+
+  ImGui::TableNextColumn();
+  ImGui::PushID(static_cast<int>(slot));
+  const float btn_w = ImGui::GetContentRegionAvail().x;
+  if (ImGui::Button(disp, ImVec2(btn_w, 0.f))) {
+    const auto tex_dir = core::Config::GetDataFolder() / "textures";
+    nfdu8char_t* path  = nullptr;
+    const nfdu8filteritem_t filters[] = {{"Image files", "png,jpg,jpeg,tga"}};
+    const nfdresult_t res =
+        NFD_OpenDialogU8(&path, filters, 1, tex_dir.c_str());
+    if (res == NFD_OKAY) {
+      const auto rel = std::filesystem::relative(
+          std::filesystem::path(path), tex_dir);
+      abstract::Texture* new_tex =
+          video_->CreateTexture(rel.generic_string());
+      if (new_tex) {
+        mat->SetTexture(slot, new_tex);
+        new_tex->Release();
+      }
+      NFD_FreePathU8(path);
+    } else if (res == NFD_ERROR) {
+      LOG_F(ERROR, "NFD error opening texture dialog");
+    }
+  }
+
+  ImGui::TableNextColumn();
+  if (ImGui::Button("x", ImVec2(kClearBtnWidth, 0.f))) {
+    const int idx = static_cast<int>(slot);
+    abstract::Texture* def_tex =
+        video_->CreateTexture(kDefaultTextures[idx]);
+    if (def_tex) {
+      mat->SetTexture(slot, def_tex);
+      def_tex->Release();
+    }
+  }
+  ImGui::PopID();
+}
+
+void MaterialEditorWindow::RenderBottomBar(const EditorScene& scene) {
+  if (ImGui::Button(ICON_FA_FLOPPY_DISK " Save")) {
+    Save();
+  }
+  ImGui::SameLine();
+
+  const game::GameObject* sel = scene.GetSelectedObject();
+  const bool can_apply = (sel != nullptr &&
+                           sel->GetType() == game::GameObjectType::kMesh);
+  if (!can_apply) ImGui::BeginDisabled();
+  if (ImGui::Button(ICON_FA_FILL_DRIP " Apply to selection")) {
+    ApplyToSelection(scene);
+  }
+  if (!can_apply) ImGui::EndDisabled();
+}
+
+void MaterialEditorWindow::Save() {
+  if (!material_) return;
+  const auto* mat = material_->GetMaterial();
+
+  YAML::Emitter out;
+  out << YAML::BeginMap;
+  out << YAML::Key << "rendering" << YAML::Value << YAML::BeginMap;
+
+  // Emit only non-default texture slots.
+  bool any_tex = false;
+  for (int i = 0; i < renderer::kTextureSlotCount; ++i) {
+    const auto* tex =
+        mat->GetTexture(static_cast<renderer::TextureSlot>(i));
+    if (!IsDefaultTexture(tex)) {
+      if (!any_tex) {
+        out << YAML::Key << "textures" << YAML::Value << YAML::BeginMap;
+        any_tex = true;
+      }
+      out << YAML::Key << kSlotNames[i] << YAML::Value << tex->GetId();
+    }
+  }
+  if (any_tex) out << YAML::EndMap;
+
+  auto write_color = [&](const char* key, core::Color c) {
+    out << YAML::Key << key << YAML::Value
+        << YAML::Flow << YAML::BeginSeq
+        << c.r << c.g << c.b << c.a
+        << YAML::EndSeq;
+  };
+  write_color("diffuse_color",  mat->GetDiffuseColor());
+  write_color("emissive_color", mat->GetEmissiveColor());
+  write_color("ambient_color",  mat->GetAmbientColor());
+  out << YAML::Key << "shininess" << YAML::Value << mat->GetShininess();
+
+  out << YAML::EndMap;  // rendering
+  out << YAML::EndMap;  // root
+
+  const auto path = core::Config::GetDataFolder() / "materials" /
+                    (material_->GetId() + ".yaml");
+  std::ofstream file(path);
+  if (file) {
+    file << out.c_str();
+    LOG_F(INFO, "Saved material '%s'", material_->GetId().c_str());
+  } else {
+    LOG_F(ERROR, "Failed to save material '%s' to '%s'",
+          material_->GetId().c_str(), path.c_str());
+  }
+}
+
+void MaterialEditorWindow::ApplyToSelection(const EditorScene& scene) {
+  game::GameObject* sel = scene.GetSelectedObject();
+  if (!sel || sel->GetType() != game::GameObjectType::kMesh) return;
+  const auto* mesh = static_cast<const game::GameMesh*>(sel);
+  mesh->GetTemplate()->SetMaterial(material_);
+  LOG_F(INFO, "Applied material '%s' to '%s'",
+        material_->GetId().c_str(), sel->GetName().c_str());
 }
 
 }  // namespace editor

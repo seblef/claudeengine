@@ -91,7 +91,7 @@ void EditorWindow::Render() {
   ImGui::End();
 
   // 8. Material editor — floating window, shown when a material is open.
-  material_editor_->Render();
+  material_editor_->Render(*scene_);
 
   // 9. Status bar — pinned to the bottom of the screen.
   const ImGuiViewport* vp = ImGui::GetMainViewport();
