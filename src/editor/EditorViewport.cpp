@@ -257,15 +257,6 @@ std::optional<ImGuizmo::OPERATION> ToolToImGuizmoOp(EditorTool tool) {
   }
 }
 
-// Maps light-creation tools to their renderer::LightType, or nullopt otherwise.
-std::optional<renderer::LightType> ToolToLightType(EditorTool tool) {
-  switch (tool) {
-    case EditorTool::kCreateOmniLight:  return renderer::LightType::kOmni;
-    case EditorTool::kCreateCircleSpot: return renderer::LightType::kCircleSpot;
-    case EditorTool::kCreateRectSpot:   return renderer::LightType::kRectSpot;
-    default:                            return std::nullopt;
-  }
-}
 
 }  // namespace
 
@@ -353,13 +344,12 @@ void EditorViewport::Render() {
       PlaceMesh();
   }
 
-  // Light placement mode: crosshair cursor; LMB click places a light.
-  if (scene_ && ImGui::IsWindowHovered()) {
-    if (const auto light_type = ToolToLightType(active_tool_)) {
-      ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
-      if (!ImGui::GetIO().KeyAlt && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
-        PlaceLightAt(ImGui::GetMousePos(), image_pos, avail, *light_type);
-    }
+  // Light placement mode: preview follows cursor at y=10; LMB click confirms.
+  if (scene_ && pending_light_type_ && ImGui::IsWindowHovered()) {
+    ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
+    UpdateLightPreviewPosition(ImGui::GetMousePos(), image_pos, avail);
+    if (!ImGui::GetIO().KeyAlt && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+      PlaceLight();
   }
 
   // Object picking: LMB release without Alt (Alt+LMB is camera orbit).
@@ -552,10 +542,24 @@ void EditorViewport::PlaceMeshAt(ImVec2 mouse_pos, ImVec2 image_pos,
   scene_->SetSelectedObject(obj);
 }
 
-void EditorViewport::PlaceLightAt(ImVec2 mouse_pos, ImVec2 image_pos,
-                                   ImVec2 image_size, renderer::LightType type) {
-  if (!scene_) return;
+void EditorViewport::SetPendingLightType(std::optional<renderer::LightType> type) {
+  if (type.has_value()) {
+    pending_light_preview_ = std::make_unique<game::GameLight>(*type);
+    pending_light_type_    = type;
+    SetSelectionActive(false);
+  } else {
+    if (preview_light_object_ && scene_) {
+      scene_->RemoveDynamicObject(preview_light_object_);
+      preview_light_object_ = nullptr;
+    }
+    pending_light_preview_.reset();
+    pending_light_type_.reset();
+    SetSelectionActive(true);
+  }
+}
 
+void EditorViewport::UpdateLightPreviewPosition(ImVec2 mouse_pos, ImVec2 image_pos,
+                                                 ImVec2 image_size) {
   const float ndc_x = (mouse_pos.x - image_pos.x) / image_size.x * 2.f - 1.f;
   const float ndc_y = 1.f - (mouse_pos.y - image_pos.y) / image_size.y * 2.f;
 
@@ -577,10 +581,21 @@ void EditorViewport::PlaceLightAt(ImVec2 mouse_pos, ImVec2 image_pos,
 
   const core::Vec3f hit = ray_origin + ray_dir * t;
 
-  auto obj = std::make_unique<game::GameLight>(type);
-  obj->SetWorldTransform(core::Mat4f::Translation({hit.x, 0.f, hit.z}));
-  game::GameObject* placed = scene_->AddDynamicObject(std::move(obj));
-  scene_->SetSelectedObject(placed);
+  if (pending_light_preview_)
+    preview_light_object_ = scene_->AddDynamicObject(std::move(pending_light_preview_));
+
+  if (preview_light_object_)
+    preview_light_object_->SetWorldTransform(
+        core::Mat4f::Translation({hit.x, 10.f, hit.z}));
+}
+
+void EditorViewport::PlaceLight() {
+  if (!preview_light_object_) return;  // no valid floor hit yet
+
+  scene_->SetSelectedObject(preview_light_object_);
+  preview_light_object_ = nullptr;
+  pending_light_type_.reset();
+  SetSelectionActive(true);
 
   if (on_placement_done_) on_placement_done_();
 }

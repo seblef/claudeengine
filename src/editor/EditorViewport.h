@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 
 #include "abstract/RenderTarget.h"
 #include "abstract/RenderTargetGroup.h"
@@ -10,17 +11,15 @@
 #include "editor/EditorCameraController.h"
 #include "editor/EditorTool.h"
 #include "game/GameCamera.h"
+#include "game/GameLight.h"
 #include "game/GameMesh.h"
+#include "renderer/Light.h"
 
 #include <imgui.h>
 
 namespace game {
 class MeshTemplate;
 }  // namespace game
-
-namespace renderer {
-enum class LightType : int;
-}  // namespace renderer
 
 namespace editor {
 
@@ -67,6 +66,11 @@ class EditorViewport {
   // from tmpl at the y=0 floor-plane hit, then clears the pending template.
   void SetPendingMeshTemplate(game::MeshTemplate* tmpl);
 
+  // Enters light placement mode: a preview light of the given type follows the
+  // cursor at y=10 until the user clicks (LMB) to confirm placement.
+  // Pass std::nullopt to cancel and remove the preview from the scene.
+  void SetPendingLightType(std::optional<renderer::LightType> type);
+
   // Called after a mesh is placed to restore the selection tool.
   // Set by EditorWindow so EditorViewport can notify it without a back-pointer.
   void SetOnPlacementDone(std::function<void()> cb) { on_placement_done_ = std::move(cb); }
@@ -90,10 +94,12 @@ class EditorViewport {
   void PlaceMeshAt(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size,
                    game::MeshTemplate* tmpl);
 
-  // Places a new GameLight of the given type at the y=0 floor-plane hit of
-  // the ray through mouse_pos, selects it, and reverts to the selection tool.
-  void PlaceLightAt(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size,
-                    renderer::LightType type);
+  // Moves the light preview to the y=0 floor-plane intersection + y=10 offset.
+  // Adds the preview to the scene on the first valid hit.
+  void UpdateLightPreviewPosition(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size);
+
+  // Finalises light placement: selects the preview light and exits placement mode.
+  void PlaceLight();
 
   // Draws the selected object's world bounding box as 12 orange wireframe edges.
   void DrawSelectedBBox(ImDrawList* dl, ImVec2 image_pos, ImVec2 image_size) const;
@@ -131,6 +137,15 @@ class EditorViewport {
   // Raw (non-owning) pointer to the preview once it lives in the scene.
   // cppcheck-suppress unusedStructMember
   game::GameObject*   preview_object_         = nullptr;
+  // Set while in light placement mode.
+  // cppcheck-suppress unusedStructMember
+  std::optional<renderer::LightType>  pending_light_type_;
+  // Light preview held locally until the first valid floor hit, then transferred to scene.
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<game::GameLight>    pending_light_preview_;
+  // Non-owning pointer to the light preview once it lives in the scene.
+  // cppcheck-suppress unusedStructMember
+  game::GameObject*                   preview_light_object_   = nullptr;
   // cppcheck-suppress unusedStructMember
   std::function<void()> on_placement_done_;
 };

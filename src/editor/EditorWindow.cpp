@@ -18,8 +18,23 @@
 #include "editor/ResourcesPanel.h"
 #include "game/GameMaterial.h"
 #include "game/MeshTemplate.h"
+#include "renderer/Light.h"
 
 namespace editor {
+
+namespace {
+
+// Maps light-creation tools to their renderer::LightType.
+std::optional<renderer::LightType> ToolToLightType(EditorTool tool) {
+  switch (tool) {
+    case EditorTool::kCreateOmniLight:  return renderer::LightType::kOmni;
+    case EditorTool::kCreateCircleSpot: return renderer::LightType::kCircleSpot;
+    case EditorTool::kCreateRectSpot:   return renderer::LightType::kRectSpot;
+    default:                            return std::nullopt;
+  }
+}
+
+}  // namespace
 
 EditorWindow::EditorWindow(abstract::VideoDevice* video)
     : video_(video),
@@ -68,6 +83,7 @@ void EditorWindow::Render() {
   // Cancel placement if the user switches tool while hovering to place.
   if (active_tool != prev_tool_ && placement_active_) {
     viewport_->SetPendingMeshTemplate(nullptr);
+    viewport_->SetPendingLightType(std::nullopt);
     placement_active_ = false;
   }
 
@@ -75,8 +91,11 @@ void EditorWindow::Render() {
   if (active_tool != prev_tool_ && IsCreationTool(active_tool)) {
     if (active_tool == EditorTool::kCreateMesh) {
       mesh_modal_->Open();
+    } else if (const auto light_type = ToolToLightType(active_tool)) {
+      viewport_->SetPendingLightType(light_type);
+      placement_active_ = true;
+      LOG_F(INFO, "Light creation tool activated, click viewport to place");
     }
-    // Light creation tools: next LMB click in the viewport places the light.
   }
   prev_tool_ = active_tool;
 
