@@ -23,7 +23,8 @@ game::MeshTemplate* MeshSelectionModal::Render() {
   }
 
   for (auto& [name, tmpl] : game::MeshTemplate::GetAll()) {
-    if (ImGui::Selectable(name.c_str(), selected_ == tmpl))
+    if (ImGui::Selectable(name.c_str(), selected_ == tmpl,
+                          ImGuiSelectableFlags_DontClosePopups))
       selected_ = tmpl;
   }
 
