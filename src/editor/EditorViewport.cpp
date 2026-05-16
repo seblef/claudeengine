@@ -30,6 +30,7 @@
 
 #include <ImGuizmo.h>
 #include <imgui.h>
+#include <loguru.hpp>
 
 namespace editor {
 
@@ -273,6 +274,17 @@ EditorViewport::EditorViewport(abstract::VideoDevice* video)
 }
 
 void EditorViewport::OnEvent(const core::Event& event) {
+  if (event.type == core::EventType::kKeyDown &&
+      event.key == core::Key::kDelete &&
+      !ImGuizmo::IsUsing() &&
+      scene_ != nullptr) {
+    game::GameObject* selected = scene_->GetSelectedObject();
+    if (selected && scene_->IsDynamic(selected)) {
+      LOG_F(INFO, "Deleting object '%s'", selected->GetName().c_str());
+      scene_->RemoveDynamicObject(selected);
+      selected_object_ = nullptr;
+    }
+  }
   camera_ctrl_->OnEvent(event);
 }
 
