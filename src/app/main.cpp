@@ -24,7 +24,6 @@
 #include "game/MeshTemplate.h"
 #include "gldevices/GLDevices.h"
 #include "renderer/GeometryUtils.h"
-#include "renderer/Material.h"
 #include "renderer/MaterialDesc.h"
 #include "renderer/Renderer.h"
 
@@ -68,18 +67,17 @@ int main(int argc, char* argv[]) {
   // ---- Demo meshes ----------------------------------------------------------
   const std::string data_dir = core::Config::GetDataFolder().string();
 
-  game::MeshTemplate* obj_tmpl = game::MeshTemplate::GetOrLoad(
-      data_dir + "/meshes/demo.obj", video);
-  game::MeshTemplate* fbx_tmpl = game::MeshTemplate::GetOrLoad(
-      data_dir + "/meshes/demo.fbx", video);
-
   game::GameMaterial* demo_mat = game::GameMaterial::GetOrLoad("demo", video);
+
+  game::MeshTemplate* obj_tmpl = game::MeshTemplate::GetOrLoad(
+      data_dir + "/meshes/demo.obj", video, demo_mat);
+  game::MeshTemplate* fbx_tmpl = game::MeshTemplate::GetOrLoad(
+      data_dir + "/meshes/demo.fbx", video, demo_mat);
 
   std::unique_ptr<game::GameMesh> obj_mesh;
   std::unique_ptr<game::GameMesh> fbx_mesh;
 
   if (obj_tmpl && obj_tmpl->GetMesh()) {
-    if (demo_mat) obj_tmpl->GetMesh()->SetMaterial(demo_mat->GetMaterial());
     obj_mesh = std::make_unique<game::GameMesh>(obj_tmpl);
     obj_mesh->SetWorldTransform(
         core::Mat4f::Translation({-10.f, 3.f, 0.f}) *
@@ -87,7 +85,6 @@ int main(int argc, char* argv[]) {
     game.AddObject(obj_mesh.get());
   }
   if (fbx_tmpl && fbx_tmpl->GetMesh()) {
-    if (demo_mat) fbx_tmpl->GetMesh()->SetMaterial(demo_mat->GetMaterial());
     fbx_mesh = std::make_unique<game::GameMesh>(fbx_tmpl);
     fbx_mesh->SetWorldTransform(
         core::Mat4f::Translation({10.f, 3.f, 0.f}) *
@@ -99,10 +96,12 @@ int main(int argc, char* argv[]) {
   if (fbx_tmpl) fbx_tmpl->Release();
 
   // ---- Floor plane ----------------------------------------------------------
-  auto plane_mat = std::make_unique<renderer::Material>(
+  auto* floor_mat = new game::GameMaterial(
+      "__proc_floor",
       renderer::MaterialDesc().SetDiffuseColor({0.55f, 0.55f, 0.55f}), video);
   auto* plane_tmpl = new game::MeshTemplate(
-      renderer::CreatePlaneMesh(video, 120.f), std::move(plane_mat));
+      "__proc_floor", renderer::CreatePlaneMesh(video, 120.f), floor_mat);
+  floor_mat->Release();  // plane_tmpl holds the ref
   auto floor = std::make_unique<game::GameMesh>(plane_tmpl);
   floor->SetWorldTransform(core::Mat4f::kIdentity);
   game.AddObject(floor.get());

@@ -38,6 +38,9 @@ class GameMesh : public GameObject {
   // Forwards the new world transform to the MeshInstance.
   void OnWorldTransformUpdated() override;
 
+  // Returns the shared template (e.g. so a material editor can call SetMaterial()).
+  [[nodiscard]] MeshTemplate* GetTemplate() const;
+
  private:
   // cppcheck-suppress unusedStructMember
   MeshTemplate* template_;
