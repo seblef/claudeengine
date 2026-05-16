@@ -75,14 +75,14 @@ int main(int argc, char* argv[]) {
   std::unique_ptr<game::GameMesh> obj_mesh;
   std::unique_ptr<game::GameMesh> fbx_mesh;
 
-  if (obj_tmpl && obj_tmpl->GetRenderableMesh()) {
+  if (obj_tmpl && obj_tmpl->GetMesh()) {
     obj_mesh = std::make_unique<game::GameMesh>(obj_tmpl);
     obj_mesh->SetWorldTransform(
         core::Mat4f::Translation({-10.f, 3.f, 0.f}) *
         core::Mat4f::Scale3D({3.f, 3.f, 3.f}));
     game.AddObject(obj_mesh.get());
   }
-  if (fbx_tmpl && fbx_tmpl->GetRenderableMesh()) {
+  if (fbx_tmpl && fbx_tmpl->GetMesh()) {
     fbx_mesh = std::make_unique<game::GameMesh>(fbx_tmpl);
     fbx_mesh->SetWorldTransform(
         core::Mat4f::Translation({10.f, 3.f, 0.f}) *
@@ -94,11 +94,11 @@ int main(int argc, char* argv[]) {
   if (fbx_tmpl) fbx_tmpl->Release();
 
   // ---- Floor plane ----------------------------------------------------------
-  auto* plane_mat  = new renderer::Material(
+  auto plane_mat = std::make_unique<renderer::Material>(
       renderer::MaterialDesc().SetDiffuseColor({0.55f, 0.55f, 0.55f}), video);
-  renderer::RenderableMesh* plane_mesh = renderer::CreatePlaneMesh(video, 120.f, plane_mat);
-  auto* plane_tmpl = new game::MeshTemplate(plane_mesh);
-  auto  floor      = std::make_unique<game::GameMesh>(plane_tmpl);
+  auto* plane_tmpl = new game::MeshTemplate(
+      renderer::CreatePlaneMesh(video, 120.f), std::move(plane_mat));
+  auto floor = std::make_unique<game::GameMesh>(plane_tmpl);
   floor->SetWorldTransform(core::Mat4f::kIdentity);
   game.AddObject(floor.get());
   plane_tmpl->Release();

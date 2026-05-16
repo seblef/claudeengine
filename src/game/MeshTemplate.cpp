@@ -7,31 +7,42 @@
 namespace game {
 
 namespace {
-// Generates a unique registry key for each procedurally built mesh template.
 std::string GenerateProcId() {
   static int counter = 0;
   return "__proc_" + std::to_string(counter++);
 }
 }  // namespace
 
-MeshTemplate::MeshTemplate(renderer::RenderableMesh* mesh)
+MeshTemplate::MeshTemplate(std::unique_ptr<renderer::GeometryData> geo,
+                           std::unique_ptr<renderer::Material> mat)
     : Resource(GenerateProcId()),
-      mesh_(mesh) {
-  initialized_ = true;
+      geometry_(std::move(geo)),
+      material_(std::move(mat)) {
+  if (geometry_ && material_) {
+    mesh_ = std::make_unique<renderer::Mesh>(geometry_.get(), material_.get());
+    initialized_ = true;
+  }
 }
 
 MeshTemplate::MeshTemplate(const std::string& mesh_path,
                            abstract::VideoDevice* video)
     : Resource(mesh_path),
-      mesh_(renderer::MeshLoader::Load(mesh_path, video)) {
-  initialized_ = (mesh_ != nullptr);
-  if (!initialized_) {
+      geometry_(renderer::MeshLoader::LoadGeometry(mesh_path, video)) {
+  if (geometry_) {
+    material_ = std::make_unique<renderer::Material>(video);
+    mesh_ = std::make_unique<renderer::Mesh>(geometry_.get(), material_.get());
+    initialized_ = true;
+  } else {
     LOG_F(ERROR, "MeshTemplate: failed to load mesh '%s'", mesh_path.c_str());
   }
 }
 
-renderer::RenderableMesh* MeshTemplate::GetRenderableMesh() const {
+renderer::Mesh* MeshTemplate::GetMesh() const {
   return mesh_.get();
+}
+
+const core::BBox3& MeshTemplate::GetLocalBBox() const {
+  return geometry_->GetBBox();
 }
 
 // static

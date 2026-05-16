@@ -16,7 +16,6 @@ namespace renderer {
 
 namespace {
 
-// Extracts the lower-cased extension of path, including the leading dot.
 std::string Extension(const std::string& path) {
   const auto dot = path.rfind('.');
   if (dot == std::string::npos) return {};
@@ -26,8 +25,6 @@ std::string Extension(const std::string& path) {
   return ext;
 }
 
-// Converts a LodData to a GeometryData on the GPU.
-// Returns nullptr if the vertex count exceeds the 16-bit index limit.
 std::unique_ptr<GeometryData> MakeGeometry(abstract::VideoDevice* video,
                                            const mesh::LodData& lod) {
   if (lod.vertices.size() > 65535u) {
@@ -46,8 +43,8 @@ std::unique_ptr<GeometryData> MakeGeometry(abstract::VideoDevice* video,
 
 }  // namespace
 
-std::unique_ptr<RenderableMesh> MeshLoader::Load(const std::string& path,
-                                                  abstract::VideoDevice* video) {
+std::unique_ptr<GeometryData> MeshLoader::LoadGeometry(const std::string& path,
+                                                        abstract::VideoDevice* video) {
   const std::string ext = Extension(path);
   mesh::MeshData data;
   bool ok = false;
@@ -65,14 +62,7 @@ std::unique_ptr<RenderableMesh> MeshLoader::Load(const std::string& path,
   }
 
   if (!ok) return nullptr;
-
-  auto geo = MakeGeometry(video, data.lod);
-  if (!geo) return nullptr;
-
-  auto mat = std::make_unique<Material>(video);
-  auto result = std::make_unique<RenderableMesh>();
-  result->AddSubmesh(std::move(geo), std::move(mat));
-  return result;
+  return MakeGeometry(video, data.lod);
 }
 
 }  // namespace renderer

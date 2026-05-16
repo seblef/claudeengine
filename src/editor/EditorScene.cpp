@@ -1,5 +1,7 @@
 #include "editor/EditorScene.h"
 
+#include <memory>
+
 #include "core/Color.h"
 #include "core/Mat4f.h"
 #include "core/Vec3f.h"
@@ -15,10 +17,11 @@ namespace editor {
 
 EditorScene::EditorScene(abstract::VideoDevice* video) {
   // Floor plane — neutral grey diffuse, 120×120 world units.
-  auto* plane_mat = new renderer::Material(
+  auto plane_mat = std::make_unique<renderer::Material>(
       renderer::MaterialDesc().SetDiffuseColor(core::Color(0.5f, 0.5f, 0.5f)), video);
-  materials_["floor_grey"] = plane_mat;
-  auto* plane_tmpl = new game::MeshTemplate(renderer::CreatePlaneMesh(video, 60.f, plane_mat));
+  materials_["floor_grey"] = plane_mat.get();
+  auto* plane_tmpl = new game::MeshTemplate(
+      renderer::CreatePlaneMesh(video, 60.f), std::move(plane_mat));
   floor_ = std::make_unique<game::GameMesh>(plane_tmpl, /*always_visible=*/true);
   floor_->SetName("Floor");
   plane_tmpl->Release();
@@ -26,10 +29,11 @@ EditorScene::EditorScene(abstract::VideoDevice* video) {
   objects_.push_back(floor_.get());
 
   // Unit cube scaled ×2 and placed at (0,1,0) so its bottom face sits on the floor.
-  auto* cube_mat = new renderer::Material(
+  auto cube_mat = std::make_unique<renderer::Material>(
       renderer::MaterialDesc().SetDiffuseColor(core::Color(0.7f, 0.7f, 0.7f)), video);
-  materials_["default"] = cube_mat;
-  auto* cube_tmpl = new game::MeshTemplate(renderer::CreateCubeMesh(video, cube_mat));
+  materials_["default"] = cube_mat.get();
+  auto* cube_tmpl = new game::MeshTemplate(
+      renderer::CreateCubeMesh(video), std::move(cube_mat));
   cube_ = std::make_unique<game::GameMesh>(cube_tmpl);
   cube_->SetName("Cube");
   cube_tmpl->Release();

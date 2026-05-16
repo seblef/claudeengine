@@ -17,8 +17,6 @@ add_library(renderer STATIC
     OmniLight.cpp
     RectangleSpotLight.cpp
     Renderable.cpp
-    RenderableMesh.cpp
-    RenderableMeshInstance.cpp
     Renderer.cpp
     ShadowCubeMap.cpp
     ShadowDebugRenderer.cpp
