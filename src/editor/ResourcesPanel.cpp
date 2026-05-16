@@ -39,6 +39,12 @@ void ResourcesPanel::Render() {
     for (const auto& kv : game::MeshTemplate::GetAll()) {
       const std::string label = std::string(ICON_FA_CUBE) + " " + kv.first;
       ImGui::TreeNodeEx(label.c_str(), kLeafFlags);
+      game::MeshTemplate* tmpl_ptr = kv.second;
+      if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+        ImGui::SetDragDropPayload("MESH_TEMPLATE", &tmpl_ptr, sizeof(game::MeshTemplate*));
+        ImGui::Text("Place: %s", kv.first.c_str());
+        ImGui::EndDragDropSource();
+      }
     }
     ImGui::TreePop();
   }
