@@ -73,6 +73,13 @@ class Material {
   [[nodiscard]] core::Color GetAmbientColor()  const { return ambient_color_; }
   [[nodiscard]] float       GetShininess()     const { return shininess_; }
 
+  // ---- Color property setters ----------------------------------------------
+
+  void SetDiffuseColor(core::Color color)  { diffuse_color_  = color; }
+  void SetEmissiveColor(core::Color color) { emissive_color_ = color; }
+  void SetAmbientColor(core::Color color)  { ambient_color_  = color; }
+  void SetShininess(float shininess)       { shininess_      = shininess; }
+
  private:
   void LoadDefaults(abstract::VideoDevice* video);
   void LoadFromYaml(const YAML::Node& yaml, abstract::VideoDevice* video);
