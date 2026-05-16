@@ -4,6 +4,8 @@
 
 #include "abstract/VideoDevice.h"
 #include "core/Event.h"
+#include "editor/EditorCommand.h"
+#include "editor/EditorCommandHistory.h"
 #include "editor/EditorTool.h"
 
 namespace editor {
@@ -67,6 +69,10 @@ class EditorWindow {
   std::unique_ptr<ObjectsPanel>          objects_panel_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<LogPanel>              log_panel_;
+
+  // Command history for undo/redo. Panels receive a raw pointer to this.
+  // cppcheck-suppress unusedStructMember
+  EditorCommandHistory                   history_;
 
   // Tracks the previous frame's active tool to detect transitions.
   // cppcheck-suppress unusedStructMember
