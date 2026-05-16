@@ -81,6 +81,11 @@ class EditorViewport {
   // selects it, and exits placement mode.
   void PlaceMesh();
 
+  // Immediately places a GameMesh built from tmpl at the y=0 floor-plane hit of
+  // the ray through mouse_pos, then selects it. Used by the drag-and-drop flow.
+  void PlaceMeshAt(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size,
+                   game::MeshTemplate* tmpl);
+
   // Draws the selected object's world bounding box as 12 orange wireframe edges.
   void DrawSelectedBBox(ImDrawList* dl, ImVec2 image_pos, ImVec2 image_size) const;
 

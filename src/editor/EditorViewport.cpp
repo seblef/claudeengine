@@ -326,6 +326,13 @@ void EditorViewport::Render() {
   if (render_target_) {
     // uv0=(0,1) uv1=(1,0): Y-flip because OpenGL FBO origin is bottom-left.
     ImGui::Image(render_target_->GetNativeHandle(), avail, ImVec2(0.f, 1.f), ImVec2(1.f, 0.f));
+    if (scene_ && ImGui::BeginDragDropTarget()) {
+      if (const ImGuiPayload* p = ImGui::AcceptDragDropPayload("MESH_TEMPLATE")) {
+        auto* tmpl = *static_cast<game::MeshTemplate**>(p->Data);
+        PlaceMeshAt(ImGui::GetMousePos(), image_pos, avail, tmpl);
+      }
+      ImGui::EndDragDropTarget();
+    }
   }
 
   // Mesh placement mode: update preview position and place on LMB.
@@ -493,6 +500,37 @@ void EditorViewport::PlaceMesh() {
   SetSelectionActive(true);
 
   if (on_placement_done_) on_placement_done_();
+}
+
+void EditorViewport::PlaceMeshAt(ImVec2 mouse_pos, ImVec2 image_pos,
+                                  ImVec2 image_size, game::MeshTemplate* tmpl) {
+  if (!scene_ || !tmpl) return;
+
+  const float ndc_x = (mouse_pos.x - image_pos.x) / image_size.x * 2.f - 1.f;
+  const float ndc_y = 1.f - (mouse_pos.y - image_pos.y) / image_size.y * 2.f;
+
+  const core::Camera* cam        = camera_->GetCamera();
+  const core::Vec3f   ray_origin = cam->GetPosition();
+  const core::Mat4f   vp_inv     = cam->GetViewProjectionMatrix().Inverse();
+
+  const core::Vec4f clip(ndc_x, ndc_y, -1.f, 1.f);
+  const core::Vec4f world4 = clip * vp_inv;
+  if (std::abs(world4.w) < 1e-6f) return;
+  const core::Vec3f world3(world4.x / world4.w,
+                           world4.y / world4.w,
+                           world4.z / world4.w);
+  const core::Vec3f ray_dir = (world3 - ray_origin).Normalized();
+
+  if (std::abs(ray_dir.y) < 1e-4f) return;  // nearly parallel to floor
+  const float t = -ray_origin.y / ray_dir.y;
+  if (t < 0.f) return;  // behind the camera
+
+  const core::Vec3f hit = ray_origin + ray_dir * t;
+
+  auto mesh             = std::make_unique<game::GameMesh>(tmpl);
+  game::GameObject* obj = scene_->AddDynamicObject(std::move(mesh));
+  obj->SetWorldTransform(core::Mat4f::Translation({hit.x, 0.f, hit.z}));
+  scene_->SetSelectedObject(obj);
 }
 
 void EditorViewport::DrawLightsOverlay(ImDrawList* dl, ImVec2 image_pos,
