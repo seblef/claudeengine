@@ -11,8 +11,7 @@
 #include "editor/EditorCameraController.h"
 #include "editor/EditorTool.h"
 #include "game/GameCamera.h"
-#include "game/GameLight.h"
-#include "game/GameMesh.h"
+#include "game/GameObject.h"
 #include "renderer/Light.h"
 
 #include <imgui.h>
@@ -81,25 +80,25 @@ class EditorViewport {
   // Casts a world-space ray from mouse_pos and selects the nearest hit object.
   void PickObjectAt(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size);
 
-  // Moves the preview object to the y=0 floor-plane intersection of the ray
-  // through mouse_pos. Adds the preview to the scene on the first valid hit.
+  // Enters preview mode: obj becomes the pending preview, height sets its Y
+  // position above the floor-plane hit, cursor is shown while hovering.
+  void BeginPreview(std::unique_ptr<game::GameObject> obj,
+                    float height, ImGuiMouseCursor cursor);
+
+  // Cancels preview: removes the preview object from the scene if present.
+  void CancelPreview();
+
+  // Moves the preview to the y=0 floor-plane hit + preview_height_. Transfers
+  // it into the scene on the first valid hit.
   void UpdatePreviewPosition(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size);
 
-  // Finalises placement: keeps the preview object at its current position,
-  // selects it, and exits placement mode.
-  void PlaceMesh();
+  // Finalises placement: selects the preview object in place and exits placement mode.
+  void PlacePreview();
 
   // Immediately places a GameMesh built from tmpl at the y=0 floor-plane hit of
   // the ray through mouse_pos, then selects it. Used by the drag-and-drop flow.
   void PlaceMeshAt(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size,
                    game::MeshTemplate* tmpl);
-
-  // Moves the light preview to the y=0 floor-plane intersection + y=10 offset.
-  // Adds the preview to the scene on the first valid hit.
-  void UpdateLightPreviewPosition(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size);
-
-  // Finalises light placement: selects the preview light and exits placement mode.
-  void PlaceLight();
 
   // Draws the selected object's world bounding box as 12 orange wireframe edges.
   void DrawSelectedBBox(ImDrawList* dl, ImVec2 image_pos, ImVec2 image_size) const;
@@ -124,28 +123,24 @@ class EditorViewport {
   // cppcheck-suppress unusedStructMember
   ImVec2            panel_size_       = {0.f, 0.f};
   // cppcheck-suppress unusedStructMember
-  bool              selection_active_        = true;
+  bool              selection_active_  = true;
   // cppcheck-suppress unusedStructMember
-  EditorTool        active_tool_             = EditorTool::kSelection;
-  // Non-null while the user is in click-to-place mode for a mesh.
+  EditorTool        active_tool_       = EditorTool::kSelection;
+  // True while any object-creation preview is active.
   // cppcheck-suppress unusedStructMember
-  game::MeshTemplate* pending_mesh_template_ = nullptr;
-  // Preview object built from pending_mesh_template_, held here until the
-  // first valid floor-ray hit, then transferred to the scene via AddDynamic.
+  bool              preview_active_    = false;
+  // Held locally until the first valid floor hit, then transferred to the scene.
   // cppcheck-suppress unusedStructMember
-  std::unique_ptr<game::GameMesh> pending_preview_;
-  // Raw (non-owning) pointer to the preview once it lives in the scene.
+  std::unique_ptr<game::GameObject>   pending_preview_;
+  // Non-owning pointer to the preview once it lives in the scene.
   // cppcheck-suppress unusedStructMember
-  game::GameObject*   preview_object_         = nullptr;
-  // Set while in light placement mode.
+  game::GameObject*                   preview_object_  = nullptr;
+  // Y position of the preview above the floor-plane hit point.
   // cppcheck-suppress unusedStructMember
-  std::optional<renderer::LightType>  pending_light_type_;
-  // Light preview held locally until the first valid floor hit, then transferred to scene.
+  float                               preview_height_  = 0.f;
+  // Cursor shown while hovering the viewport in placement mode.
   // cppcheck-suppress unusedStructMember
-  std::unique_ptr<game::GameLight>    pending_light_preview_;
-  // Non-owning pointer to the light preview once it lives in the scene.
-  // cppcheck-suppress unusedStructMember
-  game::GameObject*                   preview_light_object_   = nullptr;
+  ImGuiMouseCursor                    preview_cursor_  = ImGuiMouseCursor_None;
   // cppcheck-suppress unusedStructMember
   std::function<void()> on_placement_done_;
 };
