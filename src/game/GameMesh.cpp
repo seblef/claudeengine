@@ -5,12 +5,11 @@
 namespace game {
 
 GameMesh::GameMesh(MeshTemplate* tmpl, bool always_visible)
-    : GameObject(GameObjectType::kMesh,
-                 tmpl->GetRenderableMesh()->GetLocalBBox()),
+    : GameObject(GameObjectType::kMesh, tmpl->GetLocalBBox()),
       template_(tmpl),
       always_visible_(always_visible),
-      instance_(std::make_unique<renderer::RenderableMeshInstance>(
-          tmpl->GetRenderableMesh(), core::Mat4f::kIdentity, always_visible)) {
+      instance_(std::make_unique<renderer::MeshInstance>(
+          tmpl->GetMesh(), core::Mat4f::kIdentity, always_visible)) {
   template_->AddRef();
 }
 

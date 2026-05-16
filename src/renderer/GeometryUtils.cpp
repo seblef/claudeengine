@@ -4,8 +4,6 @@
 #include <vector>
 
 #include "core/Vertex3D.h"
-#include "renderer/Material.h"
-#include "renderer/RenderableMesh.h"
 
 namespace renderer {
 
@@ -104,9 +102,8 @@ std::unique_ptr<GeometryData> CreatePyramid(abstract::VideoDevice* video) {
   return std::make_unique<GeometryData>(video, 5, verts, 6, idx);
 }
 
-RenderableMesh* CreatePlaneMesh(abstract::VideoDevice* video,
-                                float half_size,
-                                Material* material) {
+std::unique_ptr<GeometryData> CreatePlaneMesh(abstract::VideoDevice* video,
+                                               float half_size) {
   const float tiles = half_size / 5.0f;
   const core::Vertex3D verts[4] = {
     {{-half_size, 0.f, -half_size}, {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 0.f, 0.f}, {0.f,   0.f  }},
@@ -115,14 +112,10 @@ RenderableMesh* CreatePlaneMesh(abstract::VideoDevice* video,
     {{-half_size, 0.f,  half_size}, {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 0.f, 0.f}, {0.f,   tiles}},
   };
   const uint16_t idx[6] = {0, 2, 1, 0, 3, 2};
-
-  auto geo  = std::make_unique<GeometryData>(video, 4, verts, 2, idx);
-  auto* rm  = new RenderableMesh();
-  rm->AddSubmesh(std::move(geo), std::unique_ptr<Material>(material));
-  return rm;
+  return std::make_unique<GeometryData>(video, 4, verts, 2, idx);
 }
 
-RenderableMesh* CreateCubeMesh(abstract::VideoDevice* video, Material* material) {
+std::unique_ptr<GeometryData> CreateCubeMesh(abstract::VideoDevice* video) {
   // 24 vertices: 4 per face so each face carries its own normal/binormal/tangent.
   // Per-face winding is CCW when viewed from outside:
   //   +Y/-Y use index order (b,b+2,b+1,b,b+3,b+2) — matches CreatePlaneMesh.
@@ -168,10 +161,7 @@ RenderableMesh* CreateCubeMesh(abstract::VideoDevice* video, Material* material)
     16, 17, 18,  16, 18, 19,   // +Z
     20, 21, 22,  20, 22, 23,   // -Z
   };
-  auto geo  = std::make_unique<GeometryData>(video, 24, verts, 12, idx);
-  auto* rm  = new RenderableMesh();
-  rm->AddSubmesh(std::move(geo), std::unique_ptr<Material>(material));
-  return rm;
+  return std::make_unique<GeometryData>(video, 24, verts, 12, idx);
 }
 
 }  // namespace renderer

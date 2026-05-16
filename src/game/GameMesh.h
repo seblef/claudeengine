@@ -4,18 +4,18 @@
 
 #include "game/GameObject.h"
 #include "game/MeshTemplate.h"
-#include "renderer/RenderableMeshInstance.h"
+#include "renderer/MeshInstance.h"
 
 namespace game {
 
 // A game object that renders a mesh from a shared MeshTemplate.
 //
-// The underlying RenderableMeshInstance is created in the constructor and
-// destroyed in the destructor. OnAddedToScene / OnRemovedFromScene register
-// and unregister it with the Renderer without affecting its lifetime.
+// The underlying MeshInstance is created in the constructor and destroyed in
+// the destructor. OnAddedToScene / OnRemovedFromScene register and unregister
+// it with the Renderer without affecting its lifetime.
 //
 // Multiple GameMesh objects may share the same MeshTemplate; the geometry and
-// materials are loaded from disk only once.
+// material are loaded from disk only once.
 class GameMesh : public GameObject {
  public:
   // tmpl must not be null. Calls tmpl->AddRef().
@@ -35,7 +35,7 @@ class GameMesh : public GameObject {
   // Unregisters the instance from the Renderer.
   void OnRemovedFromScene() override;
 
-  // Forwards the new world transform to the RenderableMeshInstance.
+  // Forwards the new world transform to the MeshInstance.
   void OnWorldTransformUpdated() override;
 
  private:
@@ -43,7 +43,8 @@ class GameMesh : public GameObject {
   MeshTemplate* template_;
   // cppcheck-suppress unusedStructMember
   bool          always_visible_;
-  std::unique_ptr<renderer::RenderableMeshInstance> instance_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<renderer::MeshInstance> instance_;
 };
 
 }  // namespace game

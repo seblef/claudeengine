@@ -5,21 +5,24 @@
 #include <string>
 
 #include "abstract/VideoDevice.h"
+#include "core/BBox3.h"
 #include "core/Resource.h"
-#include "renderer/RenderableMesh.h"
+#include "renderer/GeometryData.h"
+#include "renderer/Material.h"
+#include "renderer/Mesh.h"
 
 namespace game {
 
-// Reference-counted resource wrapping a GPU-ready RenderableMesh.
+// Reference-counted resource pairing GPU geometry with a surface material.
 //
 // Keyed by mesh file path so each file is loaded from disk at most once.
-// Materials are loaded automatically from the material_slot names embedded in
-// the mesh file (see renderer::MeshLoader). Always obtain instances via
-// GetOrLoad(), never via direct construction.
+// Material assignment will move to game::GameMaterial (Issue #204); for now
+// each template holds a default (untextured) Material.
+// Always obtain file-backed instances via GetOrLoad(), never via direct construction.
 //
 // Lifecycle:
 //   MeshTemplate* t = MeshTemplate::GetOrLoad(path, video);
-//   // ... use t->GetRenderableMesh() ...
+//   // ... use t->GetMesh() ...
 //   t->Release();   // destroys when ref-count reaches zero
 //
 // A GameMesh calls AddRef() in its constructor and Release() in its destructor,
@@ -30,11 +33,13 @@ class MeshTemplate : public core::Resource<std::string, MeshTemplate> {
   MeshTemplate(const std::string& mesh_path, abstract::VideoDevice* video);
 
   // Constructor for procedurally generated meshes.
-  // Takes ownership of `mesh`; bypasses file loading and the path-keyed registry.
-  explicit MeshTemplate(renderer::RenderableMesh* mesh);
+  // Takes ownership of geo and mat; bypasses file loading and the path-keyed registry.
+  MeshTemplate(std::unique_ptr<renderer::GeometryData> geo,
+               std::unique_ptr<renderer::Material> mat);
 
-  // Returns the loaded mesh, or nullptr if initialisation failed.
-  [[nodiscard]] renderer::RenderableMesh* GetRenderableMesh() const;
+  // Returns the geometry+material pair, or nullptr if initialisation failed.
+  [[nodiscard]] renderer::Mesh*        GetMesh()       const;
+  [[nodiscard]] const core::BBox3&     GetLocalBBox()  const;
 
   // Returns the existing MeshTemplate for mesh_path (AddRef'd), or creates
   // a new one by loading the mesh from disk.
@@ -47,7 +52,11 @@ class MeshTemplate : public core::Resource<std::string, MeshTemplate> {
 
  private:
   // cppcheck-suppress unusedStructMember
-  std::unique_ptr<renderer::RenderableMesh> mesh_;
+  std::unique_ptr<renderer::GeometryData> geometry_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<renderer::Material>     material_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<renderer::Mesh>         mesh_;
 };
 
 }  // namespace game
