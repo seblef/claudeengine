@@ -15,6 +15,16 @@ Introduced `game::GameMaterial`, a ref-counted resource inheriting from `core::R
 
 ## Changes
 
+### `src/app/main.cpp`
+
+Updated the game app entrypoint to load materials via `GameMaterial::GetOrLoad` and apply them to the demo meshes:
+
+- Added `#include "game/GameMaterial.h"`.
+- Calls `GameMaterial::GetOrLoad("demo", video)` after loading mesh templates.
+- Calls `tmpl->GetMesh()->SetMaterial(demo_mat->GetMaterial())` on both `obj_tmpl` and `fbx_tmpl` before constructing the `GameMesh` objects, so the demo scene uses the `data/materials/demo.yaml` material (diffuse texture `demo.png`).
+- Releases `demo_mat` after the main loop (before `GameSystem::Shutdown()`), ensuring the material remains valid for the entire frame lifetime.
+- The floor plane continues to use a raw `renderer::Material` via the procedural `MeshTemplate` constructor; this will be addressed in Issue #205.
+
 ### `src/game/GameMaterial.h` / `GameMaterial.cpp`
 
 New class with three constructors:
