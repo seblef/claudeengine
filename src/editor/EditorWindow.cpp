@@ -75,10 +75,8 @@ void EditorWindow::Render() {
   if (active_tool != prev_tool_ && IsCreationTool(active_tool)) {
     if (active_tool == EditorTool::kCreateMesh) {
       mesh_modal_->Open();
-    } else {
-      LOG_F(INFO, "Creation tool activated: %d (placement NYI)",
-            static_cast<int>(active_tool));
     }
+    // Light creation tools: next LMB click in the viewport places the light.
   }
   prev_tool_ = active_tool;
 

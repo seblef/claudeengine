@@ -18,6 +18,10 @@ namespace game {
 class MeshTemplate;
 }  // namespace game
 
+namespace renderer {
+enum class LightType : int;
+}  // namespace renderer
+
 namespace editor {
 
 class EditorScene;
@@ -85,6 +89,11 @@ class EditorViewport {
   // the ray through mouse_pos, then selects it. Used by the drag-and-drop flow.
   void PlaceMeshAt(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size,
                    game::MeshTemplate* tmpl);
+
+  // Places a new GameLight of the given type at the y=0 floor-plane hit of
+  // the ray through mouse_pos, selects it, and reverts to the selection tool.
+  void PlaceLightAt(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size,
+                    renderer::LightType type);
 
   // Draws the selected object's world bounding box as 12 orange wireframe edges.
   void DrawSelectedBBox(ImDrawList* dl, ImVec2 image_pos, ImVec2 image_size) const;
