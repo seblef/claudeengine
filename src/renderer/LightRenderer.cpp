@@ -122,7 +122,7 @@ void LightRenderer::AddLight(Light* light) {
   instances_.push_back(light);
 }
 
-void LightRenderer::Render() {
+void LightRenderer::Render(bool disable_shadows) {
   // Sort by type so GlobalLights come first and shader switches are minimised.
   std::stable_sort(instances_.begin(), instances_.end(),
                    [](const Light* a, const Light* b) {
@@ -132,11 +132,11 @@ void LightRenderer::Render() {
 
   light_infos_cb_->Bind();
 
-  RenderGlobalLights();
-  RenderLocalLights();
+  RenderGlobalLights(disable_shadows);
+  RenderLocalLights(disable_shadows);
 }
 
-void LightRenderer::RenderGlobalLights() {
+void LightRenderer::RenderGlobalLights(bool disable_shadows) {
   video_->SetDepthTestEnabled(false);
   video_->SetStencilTestEnabled(false);
   video_->SetFaceCulling(abstract::CullFace::kNone);
@@ -157,14 +157,15 @@ void LightRenderer::RenderGlobalLights() {
     LightInfos infos;
     FillInfos(*light, &infos);
     // CSM availability drives cast_shadow for GlobalLight, not the 2D pool.
-    infos.cast_shadow = ShadowRenderer::Instance().HasCSM() ? 1.0f : 0.0f;
+    infos.cast_shadow =
+        (!disable_shadows && ShadowRenderer::Instance().HasCSM()) ? 1.0f : 0.0f;
     light_infos_cb_->Fill(&infos);
     Renderer::Instance().SetRenderableInfos(light->GetVolumeMatrix());
     video_->RenderIndexed(quad_->GetNumIndices());
   }
 }
 
-void LightRenderer::RenderLocalLights() {
+void LightRenderer::RenderLocalLights(bool disable_shadows) {
   // Instances are sorted by type, so shader and geometry only change at type
   // boundaries.  Track the current bindings to avoid redundant state switches.
   const abstract::Shader* current_shader = nullptr;
@@ -196,6 +197,7 @@ void LightRenderer::RenderLocalLights() {
     // Fill per-light constant buffer before both sub-passes.
     LightInfos infos;
     FillInfos(*light, &infos);
+    if (disable_shadows) infos.cast_shadow = 0.0f;
     light_infos_cb_->Fill(&infos);
     Renderer::Instance().SetRenderableInfos(light->GetVolumeMatrix());
 

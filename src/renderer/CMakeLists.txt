@@ -2,6 +2,7 @@ add_library(renderer STATIC
     CircleSpotLight.cpp
     EmissiveFBO.cpp
     GBuffer.cpp
+    PreviewRenderer.cpp
     GeometryData.cpp
     GeometryUtils.cpp
     GlobalLight.cpp

@@ -44,7 +44,9 @@ class LightRenderer : public core::Singleton<LightRenderer> {
 
   // Sorts instances by type and issues all draw calls into the currently
   // bound HDR render target.  Caller must have bound G-buffer samplers.
-  void Render();
+  // When disable_shadows is true, cast_shadow is forced to 0 for every light,
+  // bypassing shadow-map lookups entirely (used by preview renders).
+  void Render(bool disable_shadows = false);
 
   // Clears the instance queue after drawing.
   void EndRender();
@@ -54,8 +56,8 @@ class LightRenderer : public core::Singleton<LightRenderer> {
   [[nodiscard]] const std::vector<Light*>& GetLights() const { return instances_; }
 
  private:
-  void RenderGlobalLights();
-  void RenderLocalLights();
+  void RenderGlobalLights(bool disable_shadows);
+  void RenderLocalLights(bool disable_shadows);
 
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice* video_;
