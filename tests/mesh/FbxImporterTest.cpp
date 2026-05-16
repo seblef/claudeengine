@@ -45,24 +45,19 @@ class FbxImporterCubeTest : public ::testing::Test {
   MeshData mesh_;
 };
 
-TEST_F(FbxImporterCubeTest, OneLod) {
-  ASSERT_EQ(mesh_.submeshes.size(), 1u);
-  EXPECT_EQ(mesh_.submeshes[0].lods.size(), 1u);
-}
-
 TEST_F(FbxImporterCubeTest, VertexCountAfterWeld) {
   // 6 quads × 4 unique vertices per quad = 24 (normals are face-flat,
   // preventing cross-face merging).
-  EXPECT_EQ(mesh_.submeshes[0].lods[0].vertices.size(), 24u);
+  EXPECT_EQ(mesh_.lod.vertices.size(), 24u);
 }
 
 TEST_F(FbxImporterCubeTest, IndexCount) {
   // 6 quads × 2 triangles × 3 vertices = 36 indices.
-  EXPECT_EQ(mesh_.submeshes[0].lods[0].indices.size(), 36u);
+  EXPECT_EQ(mesh_.lod.indices.size(), 36u);
 }
 
 TEST_F(FbxImporterCubeTest, NormalsAreUnitLength) {
-  for (const auto& v : mesh_.submeshes[0].lods[0].vertices) {
+  for (const auto& v : mesh_.lod.vertices) {
     const float len = std::sqrt(v.normal.x * v.normal.x +
                                 v.normal.y * v.normal.y +
                                 v.normal.z * v.normal.z);
@@ -71,7 +66,7 @@ TEST_F(FbxImporterCubeTest, NormalsAreUnitLength) {
 }
 
 TEST_F(FbxImporterCubeTest, AabbContainsOrigin) {
-  const auto& aabb = mesh_.submeshes[0].lods[0].aabb;
+  const auto& aabb = mesh_.lod.aabb;
   EXPECT_LE(aabb.GetMin().x, 0.f);
   EXPECT_LE(aabb.GetMin().y, 0.f);
   EXPECT_LE(aabb.GetMin().z, 0.f);

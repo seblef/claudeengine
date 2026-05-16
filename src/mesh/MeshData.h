@@ -1,15 +1,13 @@
 #pragma once
 
-#include <vector>
-
-#include "mesh/SubmeshData.h"
+#include "mesh/LodData.h"
 
 namespace mesh {
 
-// Top-level mesh asset: a collection of submeshes, each with one or more LODs.
-// All submeshes must carry the same number of LODs.
+// Top-level mesh asset: a single flat geometry (one LOD, no submeshes).
+// Materials are a game-level concept and are not stored here.
 struct MeshData {
-  std::vector<SubmeshData> submeshes;  // cppcheck-suppress unusedStructMember
+  LodData lod;  // cppcheck-suppress unusedStructMember
 };
 
 }  // namespace mesh
