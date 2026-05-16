@@ -67,18 +67,17 @@ int main(int argc, char* argv[]) {
   // ---- Demo meshes ----------------------------------------------------------
   const std::string data_dir = core::Config::GetDataFolder().string();
 
-  game::MeshTemplate* obj_tmpl = game::MeshTemplate::GetOrLoad(
-      data_dir + "/meshes/demo.obj", video);
-  game::MeshTemplate* fbx_tmpl = game::MeshTemplate::GetOrLoad(
-      data_dir + "/meshes/demo.fbx", video);
-
   game::GameMaterial* demo_mat = game::GameMaterial::GetOrLoad("demo", video);
+
+  game::MeshTemplate* obj_tmpl = game::MeshTemplate::GetOrLoad(
+      data_dir + "/meshes/demo.obj", video, demo_mat);
+  game::MeshTemplate* fbx_tmpl = game::MeshTemplate::GetOrLoad(
+      data_dir + "/meshes/demo.fbx", video, demo_mat);
 
   std::unique_ptr<game::GameMesh> obj_mesh;
   std::unique_ptr<game::GameMesh> fbx_mesh;
 
   if (obj_tmpl && obj_tmpl->GetMesh()) {
-    if (demo_mat) obj_tmpl->SetMaterial(demo_mat);
     obj_mesh = std::make_unique<game::GameMesh>(obj_tmpl);
     obj_mesh->SetWorldTransform(
         core::Mat4f::Translation({-10.f, 3.f, 0.f}) *
@@ -86,7 +85,6 @@ int main(int argc, char* argv[]) {
     game.AddObject(obj_mesh.get());
   }
   if (fbx_tmpl && fbx_tmpl->GetMesh()) {
-    if (demo_mat) fbx_tmpl->SetMaterial(demo_mat);
     fbx_mesh = std::make_unique<game::GameMesh>(fbx_tmpl);
     fbx_mesh->SetWorldTransform(
         core::Mat4f::Translation({10.f, 3.f, 0.f}) *

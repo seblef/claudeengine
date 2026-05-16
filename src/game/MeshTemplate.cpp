@@ -8,11 +8,17 @@
 
 namespace game {
 
-MeshTemplate::MeshTemplate(const std::string& mesh_path, abstract::VideoDevice* video)
+MeshTemplate::MeshTemplate(const std::string& mesh_path, abstract::VideoDevice* video,
+                           GameMaterial* mat)
     : Resource(mesh_path),
       geometry_(renderer::MeshLoader::LoadGeometry(mesh_path, video)) {
   if (geometry_) {
-    material_ = new GameMaterial("__mat_" + mesh_path, renderer::MaterialDesc(), video);
+    if (mat) {
+      material_ = mat;
+      material_->AddRef();
+    } else {
+      material_ = new GameMaterial("__mat_" + mesh_path, renderer::MaterialDesc(), video);
+    }
     mesh_ = std::make_unique<renderer::Mesh>(geometry_.get(), material_->GetMaterial());
     initialized_ = true;
   } else {
@@ -76,13 +82,14 @@ std::map<std::string, MeshTemplate*> MeshTemplate::GetAll() {
 
 // static
 MeshTemplate* MeshTemplate::GetOrLoad(const std::string& mesh_path,
-                                      abstract::VideoDevice* video) {
+                                      abstract::VideoDevice* video,
+                                      GameMaterial* mat) {
   MeshTemplate* existing = Get(mesh_path);
   if (existing) {
     existing->AddRef();
     return existing;
   }
-  return new MeshTemplate(mesh_path, video);
+  return new MeshTemplate(mesh_path, video, mat);
 }
 
 }  // namespace game

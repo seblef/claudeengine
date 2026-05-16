@@ -30,8 +30,10 @@ namespace game {
 // of a GameMesh.
 class MeshTemplate : public core::Resource<std::string, MeshTemplate> {
  public:
-  // File-backed: loads geometry from disk, assigns a default GameMaterial.
-  MeshTemplate(const std::string& mesh_path, abstract::VideoDevice* video);
+  // File-backed: loads geometry from disk and assigns mat (AddRef'd).
+  // If mat is null a default (untextured) GameMaterial is created internally.
+  MeshTemplate(const std::string& mesh_path, abstract::VideoDevice* video,
+               GameMaterial* mat = nullptr);
 
   // Procedural: takes explicit id, owned geometry, and an AddRef'd material.
   // Use an id starting with "__proc_" to exclude from GetAll().
@@ -55,10 +57,12 @@ class MeshTemplate : public core::Resource<std::string, MeshTemplate> {
   [[nodiscard]] GameMaterial*           GetMaterial() const;
   [[nodiscard]] const core::BBox3&      GetLocalBBox() const;
 
-  // Returns the existing MeshTemplate for mesh_path (AddRef'd), or creates
-  // a new one by loading the mesh from disk.
+  // Returns the existing MeshTemplate for mesh_path (AddRef'd), or loads a new
+  // one from disk with mat assigned. mat is only used when a new template is
+  // created; on cache hits call SetMaterial() explicitly if needed.
   [[nodiscard]] static MeshTemplate* GetOrLoad(const std::string& mesh_path,
-                                               abstract::VideoDevice* video);
+                                               abstract::VideoDevice* video,
+                                               GameMaterial* mat = nullptr);
 
   // Returns all file-backed templates keyed by their path basename.
   // Procedural templates (ids starting with "__proc_") are excluded.
