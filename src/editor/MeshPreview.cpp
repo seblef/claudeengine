@@ -87,8 +87,8 @@ void MeshPreview::Render(float time) {
     const ImGuiIO& io = ImGui::GetIO();
 
     if (io.MouseDown[ImGuiMouseButton_Left]) {
-      azimuth_deg_   += io.MouseDelta.x * kOrbitSensitivity;
-      elevation_deg_ -= io.MouseDelta.y * kOrbitSensitivity;
+      azimuth_deg_   -= io.MouseDelta.x * kOrbitSensitivity;
+      elevation_deg_ += io.MouseDelta.y * kOrbitSensitivity;
       elevation_deg_  = std::clamp(elevation_deg_, -89.f, 89.f);
     }
 

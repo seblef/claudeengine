@@ -67,7 +67,7 @@ void PreviewRenderer::Render(float time, const core::Camera& camera,
   video_->SetBlendEnabled(true, abstract::BlendFactor::kOne,
                           abstract::BlendFactor::kOne);
   light->Enqueue();
-  LightRenderer::Instance().Render();
+  LightRenderer::Instance().Render(/*disable_shadows=*/true);
   video_->SetBlendEnabled(false);
   emissive_fbo_.UnbindForWriting();
 
