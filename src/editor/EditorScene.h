@@ -1,17 +1,14 @@
 #pragma once
 
-#include <map>
 #include <memory>
-#include <string>
 #include <vector>
 
 #include "abstract/VideoDevice.h"
 #include "game/GameLight.h"
+#include "game/GameMaterial.h"
 #include "game/GameMesh.h"
 #include "game/GameObject.h"
 #include "game/MeshTemplate.h"
-
-namespace renderer { class Material; }
 
 namespace editor {
 
@@ -36,13 +33,10 @@ class EditorScene {
   // Returns all scene objects (floor, cube, light) in creation order.
   [[nodiscard]] const std::vector<game::GameObject*>& GetObjects() const { return objects_; }
 
-  // Returns the name → material registry (non-owning pointers).
-  [[nodiscard]] const std::map<std::string, renderer::Material*>&
-      GetMaterials() const { return materials_; }
-
-  // Registers a named material. Does not transfer ownership.
-  void AddMaterial(const std::string& name, renderer::Material* mat) {
-    materials_[name] = mat;
+  // Registers an imported game material. Stores it for lifetime management;
+  // the material is released on EditorScene destruction.
+  void AddGameMaterial(game::GameMaterial* mat) {
+    game_materials_.push_back(mat);
   }
 
   // Registers an imported mesh template. Stores it for lifetime management;
@@ -59,11 +53,11 @@ class EditorScene {
   std::unique_ptr<game::GameMesh>  cube_;
   std::unique_ptr<game::GameLight> light_;
 
-  std::map<std::string, renderer::Material*> materials_;
-  std::vector<game::GameObject*>             objects_;
-  std::vector<game::MeshTemplate*>           mesh_templates_;
+  std::vector<game::GameObject*>    objects_;
+  std::vector<game::GameMaterial*>  game_materials_;
+  std::vector<game::MeshTemplate*>  mesh_templates_;
   // cppcheck-suppress unusedStructMember
-  game::GameObject*                          selected_ = nullptr;
+  game::GameObject*                selected_ = nullptr;
 };
 
 }  // namespace editor

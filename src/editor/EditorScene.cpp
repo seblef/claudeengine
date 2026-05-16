@@ -20,7 +20,6 @@ EditorScene::EditorScene(abstract::VideoDevice* video) {
   auto* plane_mat = new game::GameMaterial(
       "__proc_editor_floor",
       renderer::MaterialDesc().SetDiffuseColor(core::Color(0.5f, 0.5f, 0.5f)), video);
-  materials_["floor_grey"] = plane_mat->GetMaterial();
   auto* plane_tmpl = new game::MeshTemplate(
       "__proc_editor_floor", renderer::CreatePlaneMesh(video, 60.f), plane_mat);
   plane_mat->Release();  // plane_tmpl holds the ref
@@ -34,7 +33,6 @@ EditorScene::EditorScene(abstract::VideoDevice* video) {
   auto* cube_mat = new game::GameMaterial(
       "__proc_editor_cube",
       renderer::MaterialDesc().SetDiffuseColor(core::Color(0.7f, 0.7f, 0.7f)), video);
-  materials_["default"] = cube_mat->GetMaterial();
   auto* cube_tmpl = new game::MeshTemplate(
       "__proc_editor_cube", renderer::CreateCubeMesh(video), cube_mat);
   cube_mat->Release();  // cube_tmpl holds the ref
@@ -60,6 +58,9 @@ EditorScene::EditorScene(abstract::VideoDevice* video) {
 EditorScene::~EditorScene() {
   for (auto* obj : objects_) {
     game::GameSystem::Instance().RemoveObject(obj);
+  }
+  for (auto* mat : game_materials_) {
+    mat->Release();
   }
   for (auto* tmpl : mesh_templates_) {
     tmpl->Release();
