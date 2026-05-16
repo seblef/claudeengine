@@ -12,6 +12,7 @@ class EditorScene;
 class EditorToolbar;
 class EditorViewport;
 class MaterialEditorWindow;
+class MeshSelectionModal;
 class ResourcesPanel;
 class ObjectsPanel;
 class LogPanel;
@@ -55,6 +56,8 @@ class EditorWindow {
   std::unique_ptr<EditorViewport>        viewport_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<MaterialEditorWindow>  material_editor_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<MeshSelectionModal>    mesh_modal_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<ResourcesPanel>        resources_panel_;
   // cppcheck-suppress unusedStructMember

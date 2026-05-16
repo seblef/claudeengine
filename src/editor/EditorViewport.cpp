@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstring>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <span>
 
@@ -16,8 +17,10 @@
 #include "editor/EditorScene.h"
 #include "editor/EditorTool.h"
 #include "game/GameLight.h"
+#include "game/GameMesh.h"
 #include "game/GameObject.h"
 #include "game/GameObjectType.h"
+#include "game/MeshTemplate.h"
 #include "renderer/CircleSpotLight.h"
 #include "renderer/GlobalLight.h"
 #include "renderer/Light.h"
@@ -272,6 +275,11 @@ void EditorViewport::OnEvent(const core::Event& event) {
   camera_ctrl_->OnEvent(event);
 }
 
+void EditorViewport::SetPendingMeshTemplate(game::MeshTemplate* tmpl) {
+  pending_mesh_template_ = tmpl;
+  SetSelectionActive(tmpl == nullptr);
+}
+
 void EditorViewport::ResizeIfNeeded(int w, int h) {
   if (w == static_cast<int>(panel_size_.x) && h == static_cast<int>(panel_size_.y)) return;
   panel_size_ = {static_cast<float>(w), static_cast<float>(h)};
@@ -306,6 +314,13 @@ void EditorViewport::Render() {
   if (render_target_) {
     // uv0=(0,1) uv1=(1,0): Y-flip because OpenGL FBO origin is bottom-left.
     ImGui::Image(render_target_->GetNativeHandle(), avail, ImVec2(0.f, 1.f), ImVec2(1.f, 0.f));
+  }
+
+  // Mesh placement mode: crosshair cursor + LMB places the pending mesh.
+  if (scene_ && pending_mesh_template_ && ImGui::IsWindowHovered()) {
+    ImGui::SetMouseCursor(ImGuiMouseCursor_None);
+    if (!ImGui::GetIO().KeyAlt && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+      PlaceMesh(ImGui::GetMousePos(), image_pos, avail);
   }
 
   // Object picking: LMB release without Alt (Alt+LMB is camera orbit).
@@ -422,6 +437,43 @@ void EditorViewport::DrawSelectedBBox(ImDrawList* dl, ImVec2 image_pos,
                     camera_->GetCamera()->GetViewProjectionMatrix(),
                     image_pos, image_size,
                     IM_COL32(255, 165, 0, 255), 1.5f);
+}
+
+void EditorViewport::PlaceMesh(ImVec2 mouse_pos, ImVec2 image_pos,
+                                ImVec2 image_size) {
+  const float ndc_x = (mouse_pos.x - image_pos.x) / image_size.x * 2.f - 1.f;
+  const float ndc_y = 1.f - (mouse_pos.y - image_pos.y) / image_size.y * 2.f;
+
+  const core::Camera* cam        = camera_->GetCamera();
+  const core::Vec3f   ray_origin = cam->GetPosition();
+  const core::Mat4f   vp_inv     = cam->GetViewProjectionMatrix().Inverse();
+
+  const core::Vec4f clip(ndc_x, ndc_y, -1.f, 1.f);
+  const core::Vec4f world4 = clip * vp_inv;
+  if (std::abs(world4.w) < 1e-6f) return;
+  const core::Vec3f world3(world4.x / world4.w,
+                           world4.y / world4.w,
+                           world4.z / world4.w);
+  const core::Vec3f ray_dir = (world3 - ray_origin).Normalized();
+
+  // Skip if the ray is nearly parallel to the floor plane (would hit at infinity).
+  if (std::abs(ray_dir.y) < 1e-4f) return;
+
+  const float t = -ray_origin.y / ray_dir.y;
+  if (t < 0.f) return;  // intersection is behind the camera
+
+  const core::Vec3f hit = ray_origin + ray_dir * t;
+
+  auto mesh = std::make_unique<game::GameMesh>(pending_mesh_template_);
+  mesh->SetWorldTransform(core::Mat4f::Translation({hit.x, 0.f, hit.z}));
+
+  game::GameObject* placed = scene_->AddDynamicObject(std::move(mesh));
+  scene_->SetSelectedObject(placed);
+
+  pending_mesh_template_ = nullptr;
+  SetSelectionActive(true);
+
+  if (on_placement_done_) on_placement_done_();
 }
 
 void EditorViewport::DrawLightsOverlay(ImDrawList* dl, ImVec2 image_pos,

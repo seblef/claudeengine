@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 
 #include "abstract/RenderTarget.h"
@@ -14,7 +15,8 @@
 
 namespace game {
 class GameObject;
-}
+class MeshTemplate;
+}  // namespace game
 
 namespace editor {
 
@@ -57,11 +59,23 @@ class EditorViewport {
   // Sets the active tool, controlling which ImGuizmo operation is shown.
   void SetActiveTool(EditorTool tool) { active_tool_ = tool; }
 
+  // Enters mesh placement mode: the next LMB click places a GameMesh built
+  // from tmpl at the y=0 floor-plane hit, then clears the pending template.
+  void SetPendingMeshTemplate(game::MeshTemplate* tmpl);
+
+  // Called after a mesh is placed to restore the selection tool.
+  // Set by EditorWindow so EditorViewport can notify it without a back-pointer.
+  void SetOnPlacementDone(std::function<void()> cb) { on_placement_done_ = std::move(cb); }
+
  private:
   void ResizeIfNeeded(int w, int h);
 
   // Casts a world-space ray from mouse_pos and selects the nearest hit object.
   void PickObjectAt(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size);
+
+  // Places a GameMesh from pending_mesh_template_ at the y=0 floor-plane
+  // intersection of the ray through mouse_pos, then clears the pending template.
+  void PlaceMesh(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size);
 
   // Draws the selected object's world bounding box as 12 orange wireframe edges.
   void DrawSelectedBBox(ImDrawList* dl, ImVec2 image_pos, ImVec2 image_size) const;
@@ -86,9 +100,14 @@ class EditorViewport {
   // cppcheck-suppress unusedStructMember
   ImVec2            panel_size_       = {0.f, 0.f};
   // cppcheck-suppress unusedStructMember
-  bool              selection_active_ = true;
+  bool              selection_active_        = true;
   // cppcheck-suppress unusedStructMember
-  EditorTool        active_tool_      = EditorTool::kSelection;
+  EditorTool        active_tool_             = EditorTool::kSelection;
+  // Non-null while the user is in click-to-place mode for a mesh.
+  // cppcheck-suppress unusedStructMember
+  game::MeshTemplate* pending_mesh_template_ = nullptr;
+  // cppcheck-suppress unusedStructMember
+  std::function<void()> on_placement_done_;
 };
 
 }  // namespace editor
