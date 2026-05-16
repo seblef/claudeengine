@@ -51,10 +51,20 @@ void EditorWindow::Render() {
   // 2. Main menu bar.
   RenderMenuBar();
 
-  // 3. Toolbar (wired in issue #174).
+  // 3. Toolbar.
   toolbar_->Render();
-  viewport_->SetSelectionActive(toolbar_->IsSelectionToolActive());
-  viewport_->SetActiveTool(toolbar_->GetActiveTool());
+  const EditorTool active_tool = toolbar_->GetActiveTool();
+
+  // Disable object picking while any creation tool is active.
+  viewport_->SetSelectionActive(active_tool == EditorTool::kSelection);
+  viewport_->SetActiveTool(active_tool);
+
+  // Detect tool transitions into creation tools.
+  if (active_tool != prev_tool_ && IsCreationTool(active_tool)) {
+    LOG_F(INFO, "Creation tool activated: %d (placement/modal NYI)",
+          static_cast<int>(active_tool));
+  }
+  prev_tool_ = active_tool;
 
   // 4. Viewport panel.
   constexpr ImGuiWindowFlags kViewportFlags =

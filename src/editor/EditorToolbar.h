@@ -6,9 +6,10 @@ namespace editor {
 
 // Horizontal toolbar with mutually exclusive tool-selector buttons.
 //
-// Each frame, Render() draws the five tool buttons and processes keyboard
-// shortcuts (Q/W/E/R/C). EditorWindow reads GetActiveTool() and forwards
-// the result to EditorViewport so the gizmo and selection mode stay in sync.
+// Each frame, Render() draws the transform tool buttons (with Q/W/E/R/C
+// shortcuts), a visual separator, and four creation tool buttons (no shortcuts).
+// EditorWindow reads GetActiveTool() each frame and forwards the result to
+// EditorViewport so the gizmo and selection mode stay in sync.
 class EditorToolbar {
  public:
   EditorToolbar() = default;

@@ -4,6 +4,7 @@
 
 #include "abstract/VideoDevice.h"
 #include "core/Event.h"
+#include "editor/EditorTool.h"
 
 namespace editor {
 
@@ -60,6 +61,10 @@ class EditorWindow {
   std::unique_ptr<ObjectsPanel>          objects_panel_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<LogPanel>              log_panel_;
+
+  // Tracks the previous frame's active tool to detect transitions.
+  // cppcheck-suppress unusedStructMember
+  EditorTool                             prev_tool_      = EditorTool::kSelection;
 };
 
 }  // namespace editor
