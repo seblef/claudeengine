@@ -10,11 +10,11 @@
 #include "editor/EditorCameraController.h"
 #include "editor/EditorTool.h"
 #include "game/GameCamera.h"
+#include "game/GameMesh.h"
 
 #include <imgui.h>
 
 namespace game {
-class GameObject;
 class MeshTemplate;
 }  // namespace game
 
@@ -73,9 +73,13 @@ class EditorViewport {
   // Casts a world-space ray from mouse_pos and selects the nearest hit object.
   void PickObjectAt(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size);
 
-  // Places a GameMesh from pending_mesh_template_ at the y=0 floor-plane
-  // intersection of the ray through mouse_pos, then clears the pending template.
-  void PlaceMesh(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size);
+  // Moves the preview object to the y=0 floor-plane intersection of the ray
+  // through mouse_pos. Adds the preview to the scene on the first valid hit.
+  void UpdatePreviewPosition(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size);
+
+  // Finalises placement: keeps the preview object at its current position,
+  // selects it, and exits placement mode.
+  void PlaceMesh();
 
   // Draws the selected object's world bounding box as 12 orange wireframe edges.
   void DrawSelectedBBox(ImDrawList* dl, ImVec2 image_pos, ImVec2 image_size) const;
@@ -106,6 +110,13 @@ class EditorViewport {
   // Non-null while the user is in click-to-place mode for a mesh.
   // cppcheck-suppress unusedStructMember
   game::MeshTemplate* pending_mesh_template_ = nullptr;
+  // Preview object built from pending_mesh_template_, held here until the
+  // first valid floor-ray hit, then transferred to the scene via AddDynamic.
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<game::GameMesh> pending_preview_;
+  // Raw (non-owning) pointer to the preview once it lives in the scene.
+  // cppcheck-suppress unusedStructMember
+  game::GameObject*   preview_object_         = nullptr;
   // cppcheck-suppress unusedStructMember
   std::function<void()> on_placement_done_;
 };

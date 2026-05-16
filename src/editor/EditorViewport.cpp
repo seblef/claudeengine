@@ -276,8 +276,20 @@ void EditorViewport::OnEvent(const core::Event& event) {
 }
 
 void EditorViewport::SetPendingMeshTemplate(game::MeshTemplate* tmpl) {
-  pending_mesh_template_ = tmpl;
-  SetSelectionActive(tmpl == nullptr);
+  if (tmpl) {
+    pending_preview_       = std::make_unique<game::GameMesh>(tmpl);
+    pending_mesh_template_ = tmpl;
+    SetSelectionActive(false);
+  } else {
+    // Cancellation: discard the preview object if it was already added to the scene.
+    if (preview_object_ && scene_) {
+      scene_->RemoveDynamicObject(preview_object_);
+      preview_object_ = nullptr;
+    }
+    pending_preview_.reset();
+    pending_mesh_template_ = nullptr;
+    SetSelectionActive(true);
+  }
 }
 
 void EditorViewport::ResizeIfNeeded(int w, int h) {
@@ -316,11 +328,12 @@ void EditorViewport::Render() {
     ImGui::Image(render_target_->GetNativeHandle(), avail, ImVec2(0.f, 1.f), ImVec2(1.f, 0.f));
   }
 
-  // Mesh placement mode: crosshair cursor + LMB places the pending mesh.
+  // Mesh placement mode: update preview position and place on LMB.
   if (scene_ && pending_mesh_template_ && ImGui::IsWindowHovered()) {
     ImGui::SetMouseCursor(ImGuiMouseCursor_None);
+    UpdatePreviewPosition(ImGui::GetMousePos(), image_pos, avail);
     if (!ImGui::GetIO().KeyAlt && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
-      PlaceMesh(ImGui::GetMousePos(), image_pos, avail);
+      PlaceMesh();
   }
 
   // Object picking: LMB release without Alt (Alt+LMB is camera orbit).
@@ -439,8 +452,8 @@ void EditorViewport::DrawSelectedBBox(ImDrawList* dl, ImVec2 image_pos,
                     IM_COL32(255, 165, 0, 255), 1.5f);
 }
 
-void EditorViewport::PlaceMesh(ImVec2 mouse_pos, ImVec2 image_pos,
-                                ImVec2 image_size) {
+void EditorViewport::UpdatePreviewPosition(ImVec2 mouse_pos, ImVec2 image_pos,
+                                            ImVec2 image_size) {
   const float ndc_x = (mouse_pos.x - image_pos.x) / image_size.x * 2.f - 1.f;
   const float ndc_y = 1.f - (mouse_pos.y - image_pos.y) / image_size.y * 2.f;
 
@@ -456,20 +469,26 @@ void EditorViewport::PlaceMesh(ImVec2 mouse_pos, ImVec2 image_pos,
                            world4.z / world4.w);
   const core::Vec3f ray_dir = (world3 - ray_origin).Normalized();
 
-  // Skip if the ray is nearly parallel to the floor plane (would hit at infinity).
-  if (std::abs(ray_dir.y) < 1e-4f) return;
-
+  if (std::abs(ray_dir.y) < 1e-4f) return;  // nearly parallel to floor
   const float t = -ray_origin.y / ray_dir.y;
-  if (t < 0.f) return;  // intersection is behind the camera
+  if (t < 0.f) return;  // behind the camera
 
   const core::Vec3f hit = ray_origin + ray_dir * t;
 
-  auto mesh = std::make_unique<game::GameMesh>(pending_mesh_template_);
-  mesh->SetWorldTransform(core::Mat4f::Translation({hit.x, 0.f, hit.z}));
+  // First valid hit: transfer the preview object into the scene.
+  if (pending_preview_) {
+    preview_object_ = scene_->AddDynamicObject(std::move(pending_preview_));
+  }
 
-  game::GameObject* placed = scene_->AddDynamicObject(std::move(mesh));
-  scene_->SetSelectedObject(placed);
+  if (preview_object_)
+    preview_object_->SetWorldTransform(core::Mat4f::Translation({hit.x, 0.f, hit.z}));
+}
 
+void EditorViewport::PlaceMesh() {
+  if (!preview_object_) return;  // no valid floor hit yet
+
+  scene_->SetSelectedObject(preview_object_);
+  preview_object_        = nullptr;
   pending_mesh_template_ = nullptr;
   SetSelectionActive(true);
 

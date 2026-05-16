@@ -68,6 +68,9 @@ class EditorWindow {
   // Tracks the previous frame's active tool to detect transitions.
   // cppcheck-suppress unusedStructMember
   EditorTool                             prev_tool_      = EditorTool::kSelection;
+  // True while waiting for the user to click to place a mesh in the viewport.
+  // cppcheck-suppress unusedStructMember
+  bool                                   placement_active_ = false;
 };
 
 }  // namespace editor

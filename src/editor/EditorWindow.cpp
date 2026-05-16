@@ -34,6 +34,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   viewport_->SetScene(scene_.get());
   viewport_->SetOnPlacementDone([this]() {
     toolbar_->SetActiveTool(EditorTool::kSelection);
+    placement_active_ = false;
   });
   resources_panel_->SetOnMaterialOpen(
       [this](game::GameMaterial* mat) { material_editor_->Open(mat); });
@@ -64,6 +65,12 @@ void EditorWindow::Render() {
   viewport_->SetSelectionActive(active_tool == EditorTool::kSelection);
   viewport_->SetActiveTool(active_tool);
 
+  // Cancel placement if the user switches tool while hovering to place.
+  if (active_tool != prev_tool_ && placement_active_) {
+    viewport_->SetPendingMeshTemplate(nullptr);
+    placement_active_ = false;
+  }
+
   // Detect tool transitions into creation tools.
   if (active_tool != prev_tool_ && IsCreationTool(active_tool)) {
     if (active_tool == EditorTool::kCreateMesh) {
@@ -78,6 +85,7 @@ void EditorWindow::Render() {
   // Mesh selection modal — open when kCreateMesh is activated.
   if (game::MeshTemplate* tmpl = mesh_modal_->Render()) {
     viewport_->SetPendingMeshTemplate(tmpl);
+    placement_active_ = true;
     LOG_F(INFO, "Mesh template selected, click viewport to place");
   }
 
