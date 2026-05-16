@@ -25,7 +25,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       scene_(std::make_unique<EditorScene>(video)),
       toolbar_(std::make_unique<EditorToolbar>()),
       viewport_(std::make_unique<EditorViewport>(video)),
-      material_editor_(std::make_unique<MaterialEditorWindow>()),
+      material_editor_(std::make_unique<MaterialEditorWindow>(video)),
       resources_panel_(std::make_unique<ResourcesPanel>()),
       objects_panel_(std::make_unique<ObjectsPanel>()),
       log_panel_(std::make_unique<LogPanel>()) {
