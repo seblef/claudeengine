@@ -257,6 +257,7 @@ std::optional<ImGuizmo::OPERATION> ToolToImGuizmoOp(EditorTool tool) {
   }
 }
 
+
 }  // namespace
 
 EditorViewport::EditorViewport(abstract::VideoDevice* video)
@@ -275,21 +276,38 @@ void EditorViewport::OnEvent(const core::Event& event) {
   camera_ctrl_->OnEvent(event);
 }
 
-void EditorViewport::SetPendingMeshTemplate(game::MeshTemplate* tmpl) {
-  if (tmpl) {
-    pending_preview_       = std::make_unique<game::GameMesh>(tmpl);
-    pending_mesh_template_ = tmpl;
-    SetSelectionActive(false);
-  } else {
-    // Cancellation: discard the preview object if it was already added to the scene.
-    if (preview_object_ && scene_) {
-      scene_->RemoveDynamicObject(preview_object_);
-      preview_object_ = nullptr;
-    }
-    pending_preview_.reset();
-    pending_mesh_template_ = nullptr;
-    SetSelectionActive(true);
+void EditorViewport::BeginPreview(std::unique_ptr<game::GameObject> obj,
+                                   float height, ImGuiMouseCursor cursor) {
+  pending_preview_ = std::move(obj);
+  preview_height_  = height;
+  preview_cursor_  = cursor;
+  preview_active_  = true;
+  SetSelectionActive(false);
+}
+
+void EditorViewport::CancelPreview() {
+  if (preview_object_ && scene_) {
+    scene_->RemoveDynamicObject(preview_object_);
+    preview_object_ = nullptr;
   }
+  pending_preview_.reset();
+  preview_active_ = false;
+  SetSelectionActive(true);
+}
+
+void EditorViewport::SetPendingMeshTemplate(game::MeshTemplate* tmpl) {
+  if (tmpl)
+    BeginPreview(std::make_unique<game::GameMesh>(tmpl), 0.f, ImGuiMouseCursor_None);
+  else
+    CancelPreview();
+}
+
+void EditorViewport::SetPendingLightType(std::optional<renderer::LightType> type) {
+  if (type.has_value())
+    BeginPreview(std::make_unique<game::GameLight>(*type), 10.f,
+                 ImGuiMouseCursor_ResizeAll);
+  else
+    CancelPreview();
 }
 
 void EditorViewport::ResizeIfNeeded(int w, int h) {
@@ -335,12 +353,12 @@ void EditorViewport::Render() {
     }
   }
 
-  // Mesh placement mode: update preview position and place on LMB.
-  if (scene_ && pending_mesh_template_ && ImGui::IsWindowHovered()) {
-    ImGui::SetMouseCursor(ImGuiMouseCursor_None);
+  // Placement mode: preview follows the cursor; LMB click confirms placement.
+  if (scene_ && preview_active_ && ImGui::IsWindowHovered()) {
+    ImGui::SetMouseCursor(preview_cursor_);
     UpdatePreviewPosition(ImGui::GetMousePos(), image_pos, avail);
     if (!ImGui::GetIO().KeyAlt && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
-      PlaceMesh();
+      PlacePreview();
   }
 
   // Object picking: LMB release without Alt (Alt+LMB is camera orbit).
@@ -482,21 +500,20 @@ void EditorViewport::UpdatePreviewPosition(ImVec2 mouse_pos, ImVec2 image_pos,
 
   const core::Vec3f hit = ray_origin + ray_dir * t;
 
-  // First valid hit: transfer the preview object into the scene.
-  if (pending_preview_) {
+  if (pending_preview_)
     preview_object_ = scene_->AddDynamicObject(std::move(pending_preview_));
-  }
 
   if (preview_object_)
-    preview_object_->SetWorldTransform(core::Mat4f::Translation({hit.x, 0.f, hit.z}));
+    preview_object_->SetWorldTransform(
+        core::Mat4f::Translation({hit.x, preview_height_, hit.z}));
 }
 
-void EditorViewport::PlaceMesh() {
+void EditorViewport::PlacePreview() {
   if (!preview_object_) return;  // no valid floor hit yet
 
   scene_->SetSelectedObject(preview_object_);
-  preview_object_        = nullptr;
-  pending_mesh_template_ = nullptr;
+  preview_object_ = nullptr;
+  preview_active_ = false;
   SetSelectionActive(true);
 
   if (on_placement_done_) on_placement_done_();
@@ -532,6 +549,7 @@ void EditorViewport::PlaceMeshAt(ImVec2 mouse_pos, ImVec2 image_pos,
   obj->SetWorldTransform(core::Mat4f::Translation({hit.x, 0.f, hit.z}));
   scene_->SetSelectedObject(obj);
 }
+
 
 void EditorViewport::DrawLightsOverlay(ImDrawList* dl, ImVec2 image_pos,
                                         ImVec2 image_size) const {

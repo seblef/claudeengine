@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 
 #include "abstract/RenderTarget.h"
 #include "abstract/RenderTargetGroup.h"
@@ -10,7 +11,8 @@
 #include "editor/EditorCameraController.h"
 #include "editor/EditorTool.h"
 #include "game/GameCamera.h"
-#include "game/GameMesh.h"
+#include "game/GameObject.h"
+#include "renderer/Light.h"
 
 #include <imgui.h>
 
@@ -63,6 +65,11 @@ class EditorViewport {
   // from tmpl at the y=0 floor-plane hit, then clears the pending template.
   void SetPendingMeshTemplate(game::MeshTemplate* tmpl);
 
+  // Enters light placement mode: a preview light of the given type follows the
+  // cursor at y=10 until the user clicks (LMB) to confirm placement.
+  // Pass std::nullopt to cancel and remove the preview from the scene.
+  void SetPendingLightType(std::optional<renderer::LightType> type);
+
   // Called after a mesh is placed to restore the selection tool.
   // Set by EditorWindow so EditorViewport can notify it without a back-pointer.
   void SetOnPlacementDone(std::function<void()> cb) { on_placement_done_ = std::move(cb); }
@@ -73,13 +80,20 @@ class EditorViewport {
   // Casts a world-space ray from mouse_pos and selects the nearest hit object.
   void PickObjectAt(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size);
 
-  // Moves the preview object to the y=0 floor-plane intersection of the ray
-  // through mouse_pos. Adds the preview to the scene on the first valid hit.
+  // Enters preview mode: obj becomes the pending preview, height sets its Y
+  // position above the floor-plane hit, cursor is shown while hovering.
+  void BeginPreview(std::unique_ptr<game::GameObject> obj,
+                    float height, ImGuiMouseCursor cursor);
+
+  // Cancels preview: removes the preview object from the scene if present.
+  void CancelPreview();
+
+  // Moves the preview to the y=0 floor-plane hit + preview_height_. Transfers
+  // it into the scene on the first valid hit.
   void UpdatePreviewPosition(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size);
 
-  // Finalises placement: keeps the preview object at its current position,
-  // selects it, and exits placement mode.
-  void PlaceMesh();
+  // Finalises placement: selects the preview object in place and exits placement mode.
+  void PlacePreview();
 
   // Immediately places a GameMesh built from tmpl at the y=0 floor-plane hit of
   // the ray through mouse_pos, then selects it. Used by the drag-and-drop flow.
@@ -109,19 +123,24 @@ class EditorViewport {
   // cppcheck-suppress unusedStructMember
   ImVec2            panel_size_       = {0.f, 0.f};
   // cppcheck-suppress unusedStructMember
-  bool              selection_active_        = true;
+  bool              selection_active_  = true;
   // cppcheck-suppress unusedStructMember
-  EditorTool        active_tool_             = EditorTool::kSelection;
-  // Non-null while the user is in click-to-place mode for a mesh.
+  EditorTool        active_tool_       = EditorTool::kSelection;
+  // True while any object-creation preview is active.
   // cppcheck-suppress unusedStructMember
-  game::MeshTemplate* pending_mesh_template_ = nullptr;
-  // Preview object built from pending_mesh_template_, held here until the
-  // first valid floor-ray hit, then transferred to the scene via AddDynamic.
+  bool              preview_active_    = false;
+  // Held locally until the first valid floor hit, then transferred to the scene.
   // cppcheck-suppress unusedStructMember
-  std::unique_ptr<game::GameMesh> pending_preview_;
-  // Raw (non-owning) pointer to the preview once it lives in the scene.
+  std::unique_ptr<game::GameObject>   pending_preview_;
+  // Non-owning pointer to the preview once it lives in the scene.
   // cppcheck-suppress unusedStructMember
-  game::GameObject*   preview_object_         = nullptr;
+  game::GameObject*                   preview_object_  = nullptr;
+  // Y position of the preview above the floor-plane hit point.
+  // cppcheck-suppress unusedStructMember
+  float                               preview_height_  = 0.f;
+  // Cursor shown while hovering the viewport in placement mode.
+  // cppcheck-suppress unusedStructMember
+  ImGuiMouseCursor                    preview_cursor_  = ImGuiMouseCursor_None;
   // cppcheck-suppress unusedStructMember
   std::function<void()> on_placement_done_;
 };
