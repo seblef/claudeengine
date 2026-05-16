@@ -9,6 +9,19 @@ enum class EditorTool {
   kTranslate,
   kRotate,
   kScale,
+  // Creation tools: no gizmo; EditorViewport selection is disabled while active.
+  kCreateMesh,
+  kCreateOmniLight,
+  kCreateCircleSpot,
+  kCreateRectSpot,
 };
+
+// Returns true for any object-creation tool.
+inline bool IsCreationTool(EditorTool tool) {
+  return tool == EditorTool::kCreateMesh       ||
+         tool == EditorTool::kCreateOmniLight  ||
+         tool == EditorTool::kCreateCircleSpot ||
+         tool == EditorTool::kCreateRectSpot;
+}
 
 }  // namespace editor
