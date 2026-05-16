@@ -7,6 +7,7 @@ add_library(editor STATIC
     EditorViewport.cpp
     EditorWindow.cpp
     LogPanel.cpp
+    MaterialEditorWindow.cpp
     ObjectsPanel.cpp
     ResourcesPanel.cpp
 )

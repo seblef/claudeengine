@@ -10,6 +10,7 @@ namespace editor {
 class EditorScene;
 class EditorToolbar;
 class EditorViewport;
+class MaterialEditorWindow;
 class ResourcesPanel;
 class ObjectsPanel;
 class LogPanel;
@@ -46,17 +47,19 @@ class EditorWindow {
   // scene_ must be declared before viewport_ so it is created first and
   // destroyed after (viewport_ holds a non-owning pointer to it).
   // cppcheck-suppress unusedStructMember
-  std::unique_ptr<EditorScene>    scene_;
+  std::unique_ptr<EditorScene>           scene_;
   // cppcheck-suppress unusedStructMember
-  std::unique_ptr<EditorToolbar>  toolbar_;
+  std::unique_ptr<EditorToolbar>         toolbar_;
   // cppcheck-suppress unusedStructMember
-  std::unique_ptr<EditorViewport> viewport_;
+  std::unique_ptr<EditorViewport>        viewport_;
   // cppcheck-suppress unusedStructMember
-  std::unique_ptr<ResourcesPanel> resources_panel_;
+  std::unique_ptr<MaterialEditorWindow>  material_editor_;
   // cppcheck-suppress unusedStructMember
-  std::unique_ptr<ObjectsPanel>   objects_panel_;
+  std::unique_ptr<ResourcesPanel>        resources_panel_;
   // cppcheck-suppress unusedStructMember
-  std::unique_ptr<LogPanel>       log_panel_;
+  std::unique_ptr<ObjectsPanel>          objects_panel_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<LogPanel>              log_panel_;
 };
 
 }  // namespace editor

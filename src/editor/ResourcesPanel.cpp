@@ -1,12 +1,12 @@
 #include "editor/ResourcesPanel.h"
 
-#include "editor/EditorScene.h"
-#include "game/MeshTemplate.h"
-
 #include <string>
 
 #include <IconsFontAwesome6.h>
 #include <imgui.h>
+
+#include "game/GameMaterial.h"
+#include "game/MeshTemplate.h"
 
 namespace editor {
 
@@ -18,13 +18,17 @@ constexpr ImGuiTreeNodeFlags kLeafFlags =
 
 }  // namespace
 
-void ResourcesPanel::Render(const EditorScene& scene) {
+void ResourcesPanel::Render() {
   // ---- Materials -------------------------------------------------------
   const std::string mat_header = std::string(ICON_FA_PALETTE) + " Materials";
   if (ImGui::TreeNodeEx(mat_header.c_str(), kRootFlags)) {
-    for (const auto& kv : scene.GetMaterials()) {
+    for (const auto& kv : game::GameMaterial::GetRegistry()) {
+      if (kv.first.rfind("__proc_", 0) == 0) continue;
       const std::string label = std::string(ICON_FA_PALETTE) + " " + kv.first;
       ImGui::TreeNodeEx(label.c_str(), kLeafFlags);
+      if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+        if (on_material_open_) on_material_open_(kv.second);
+      }
     }
     ImGui::TreePop();
   }

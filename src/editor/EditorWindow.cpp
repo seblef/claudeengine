@@ -12,10 +12,11 @@
 #include "editor/EditorToolbar.h"
 #include "editor/EditorViewport.h"
 #include "editor/LogPanel.h"
+#include "editor/MaterialEditorWindow.h"
 #include "editor/ObjectsPanel.h"
 #include "editor/ResourcesPanel.h"
+#include "game/GameMaterial.h"
 #include "game/MeshTemplate.h"
-#include "renderer/Material.h"
 
 namespace editor {
 
@@ -24,10 +25,13 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       scene_(std::make_unique<EditorScene>(video)),
       toolbar_(std::make_unique<EditorToolbar>()),
       viewport_(std::make_unique<EditorViewport>(video)),
+      material_editor_(std::make_unique<MaterialEditorWindow>()),
       resources_panel_(std::make_unique<ResourcesPanel>()),
       objects_panel_(std::make_unique<ObjectsPanel>()),
       log_panel_(std::make_unique<LogPanel>()) {
   viewport_->SetScene(scene_.get());
+  resources_panel_->SetOnMaterialOpen(
+      [this](game::GameMaterial* mat) { material_editor_->Open(mat); });
   loguru::add_callback("editor_log", &LogPanel::LogCallback,
                        log_panel_.get(), loguru::Verbosity_INFO);
 }
@@ -64,7 +68,7 @@ void EditorWindow::Render() {
   if (ImGui::Begin("Scene")) {
     if (ImGui::BeginTabBar("##scene_tabs")) {
       if (ImGui::BeginTabItem("Resources")) {
-        resources_panel_->Render(*scene_);
+        resources_panel_->Render();
         ImGui::EndTabItem();
       }
       if (ImGui::BeginTabItem("Objects")) {
@@ -86,7 +90,10 @@ void EditorWindow::Render() {
   }
   ImGui::End();
 
-  // 8. Status bar — pinned to the bottom of the screen.
+  // 8. Material editor — floating window, shown when a material is open.
+  material_editor_->Render();
+
+  // 9. Status bar — pinned to the bottom of the screen.
   const ImGuiViewport* vp = ImGui::GetMainViewport();
   constexpr float kStatusBarHeight = 22.0f;
   ImGui::SetNextWindowPos({vp->WorkPos.x, vp->WorkPos.y + vp->WorkSize.y - kStatusBarHeight});
@@ -129,8 +136,8 @@ void EditorWindow::ImportMaterial() {
   if (result == NFD_OKAY) {
     const std::string name =
         std::filesystem::path(out_path).stem().string();
-    auto* mat = new renderer::Material(out_path, video_);
-    scene_->AddMaterial(name, mat);
+    game::GameMaterial* mat = game::GameMaterial::GetOrLoad(name, video_);
+    scene_->AddGameMaterial(mat);
     LOG_F(INFO, "Imported material '%s' from '%s'", name.c_str(), out_path);
     NFD_FreePathU8(out_path);
   } else if (result == NFD_ERROR) {
