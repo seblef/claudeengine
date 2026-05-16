@@ -48,6 +48,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       resources_panel_(std::make_unique<ResourcesPanel>()),
       objects_panel_(std::make_unique<ObjectsPanel>()),
       log_panel_(std::make_unique<LogPanel>()) {
+  toolbar_->SetCommandHistory(&history_);
   viewport_->SetScene(scene_.get());
   viewport_->SetOnPlacementDone([this]() {
     toolbar_->SetActiveTool(EditorTool::kSelection);
