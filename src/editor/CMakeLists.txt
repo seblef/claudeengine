@@ -16,6 +16,8 @@ add_library(editor STATIC
     ResourcesPanel.cpp
 )
 
+add_subdirectory(commands)
+
 target_include_directories(editor PUBLIC
     "${CMAKE_SOURCE_DIR}/src"
     "${CMAKE_SOURCE_DIR}/external"

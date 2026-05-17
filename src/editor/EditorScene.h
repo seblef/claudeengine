@@ -45,6 +45,12 @@ class EditorScene {
   // No-op if obj is not a dynamic object (e.g. floor or global light).
   void RemoveDynamicObject(game::GameObject* obj);
 
+  // Removes obj from the dynamic pool, unregisters it from GameSystem, and
+  // returns ownership to the caller. Returns nullptr if obj is not dynamic.
+  // Clears the selection if obj was selected.
+  [[nodiscard]] std::unique_ptr<game::GameObject> ReclaimDynamicObject(
+      game::GameObject* obj);
+
   // Returns true if obj was added via AddDynamicObject (i.e. user-deletable).
   [[nodiscard]] bool IsDynamic(const game::GameObject* obj) const;
 
