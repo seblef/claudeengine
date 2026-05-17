@@ -5,12 +5,10 @@
 #include <loguru.hpp>
 #include <yaml-cpp/yaml.h>
 
-#include "core/Color.h"
 #include "core/Config.h"
 #include "core/CoordinateSystem.h"
 #include "core/Mat4f.h"
 #include "core/ProjectionType.h"
-#include "core/Vec3f.h"
 #include "core/YamlUtils.h"
 #include "game/GameCamera.h"
 #include "game/GameLight.h"
@@ -25,50 +23,18 @@ namespace game {
 
 namespace {
 
-core::Mat4f ParseTransform(const YAML::Node& node) {
-  if (!node || !node.IsSequence() || node.size() != 16) {
-    LOG_F(WARNING, "MapLoader: invalid transform, using identity");
-    return core::Mat4f::kIdentity;
-  }
-  float data[16];
-  for (int i = 0; i < 16; ++i)
-    data[i] = node[i].as<float>(0.f);
-  return core::Mat4f(data);
-}
-
-core::Vec3f ParseVec3(const YAML::Node& node, const core::Vec3f& fallback) {
-  if (!node || !node.IsSequence() || node.size() < 3)
-    return fallback;
-  return {node[0].as<float>(fallback.x),
-          node[1].as<float>(fallback.y),
-          node[2].as<float>(fallback.z)};
-}
-
-core::Color ParseColor(const YAML::Node& node, const core::Color& fallback) {
-  if (!node || !node.IsSequence() || node.size() < 3)
-    return fallback;
-  return {node[0].as<float>(fallback.r),
-          node[1].as<float>(fallback.g),
-          node[2].as<float>(fallback.b),
-          1.f};
-}
-
 GameLightDesc ParseGlobalLightDesc(const YAML::Node& node) {
   GameLightDesc desc;
   if (!node) return desc;
 
-  if (node["direction"]) {
-    const core::Vec3f dir = ParseVec3(node["direction"], desc.direction);
-    desc.direction = dir.Normalized();
-  }
+  if (node["direction"])
+    desc.direction = core::ParseVec3(node["direction"], desc.direction).Normalized();
   if (node["color"])
-    desc.color = ParseColor(node["color"], desc.color);
+    desc.color = core::ParseColor(node["color"], desc.color);
   if (node["intensity"])
     desc.intensity = node["intensity"].as<float>(desc.intensity);
-  if (node["ambient_color"]) {
-    const core::Vec3f ac = ParseVec3(node["ambient_color"], desc.ambient_color);
-    desc.ambient_color = ac;
-  }
+  if (node["ambient_color"])
+    desc.ambient_color = core::ParseVec3(node["ambient_color"], desc.ambient_color);
   if (node["cast_shadow"])
     desc.cast_shadow = node["cast_shadow"].as<bool>(desc.cast_shadow);
   if (node["shadow_resolution"])
@@ -80,10 +46,8 @@ GameLightDesc ParseGlobalLightDesc(const YAML::Node& node) {
 
 std::string StripMaterialPath(const std::string& raw) {
   std::string name = raw;
-  // Strip leading "materials/"
   if (name.rfind("materials/", 0) == 0)
     name = name.substr(10);
-  // Strip trailing ".yaml"
   if (name.size() >= 5 && name.substr(name.size() - 5) == ".yaml")
     name.resize(name.size() - 5);
   return name;
@@ -106,7 +70,7 @@ std::unique_ptr<GameObject> ParseMesh(const YAML::Node& node,
   const std::string name      = node["name"].as<std::string>("Mesh");
   const std::string mesh_path = node["mesh"].as<std::string>("");
   const std::string mat_raw   = node["material"].as<std::string>("");
-  const core::Mat4f transform = ParseTransform(node["transform"]);
+  const core::Mat4f transform = core::ParseMat4(node["transform"]);
 
   GameMaterial* mat = nullptr;
   if (!mat_raw.empty()) {
@@ -146,15 +110,15 @@ renderer::LightType ParseLightType(const std::string& s) {
 }
 
 std::unique_ptr<GameObject> ParseLight(const YAML::Node& node) {
-  const std::string name       = node["name"].as<std::string>("Light");
-  const std::string type_str   = node["light_type"].as<std::string>("global");
-  const core::Mat4f transform  = ParseTransform(node["transform"]);
+  const std::string name      = node["name"].as<std::string>("Light");
+  const std::string type_str  = node["light_type"].as<std::string>("global");
+  const core::Mat4f transform = core::ParseMat4(node["transform"]);
 
   const renderer::LightType light_type = ParseLightType(type_str);
 
   GameLightDesc desc;
   if (node["color"])
-    desc.color = ParseColor(node["color"], desc.color);
+    desc.color = core::ParseColor(node["color"], desc.color);
   if (node["intensity"])
     desc.intensity = node["intensity"].as<float>(desc.intensity);
   if (node["radius"])
@@ -174,7 +138,7 @@ std::unique_ptr<GameObject> ParseLight(const YAML::Node& node) {
 
 std::unique_ptr<GameObject> ParseCamera(const YAML::Node& node) {
   const std::string name      = node["name"].as<std::string>("Camera");
-  const core::Mat4f transform = ParseTransform(node["transform"]);
+  const core::Mat4f transform = core::ParseMat4(node["transform"]);
 
   auto camera = std::make_unique<GameCamera>(
       core::ProjectionType::kPerspective,
