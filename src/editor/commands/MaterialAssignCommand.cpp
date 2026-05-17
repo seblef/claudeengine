@@ -9,7 +9,15 @@ namespace editor {
 MaterialAssignCommand::MaterialAssignCommand(game::GameMesh*     mesh,
                                              game::GameMaterial* before,
                                              game::GameMaterial* after)
-    : mesh_(mesh), before_(before), after_(after) {}
+    : mesh_(mesh), before_(before), after_(after) {
+  before_->AddRef();
+  after_->AddRef();
+}
+
+MaterialAssignCommand::~MaterialAssignCommand() {
+  before_->Release();
+  after_->Release();
+}
 
 void MaterialAssignCommand::Execute() {
   mesh_->GetTemplate()->SetMaterial(after_);

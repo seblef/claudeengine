@@ -13,13 +13,15 @@ namespace editor {
 
 // Undoable command that reassigns a material on a GameMesh's template.
 //
-// Both before_ and after_ are expected to outlive this command (they are owned
-// by EditorScene::game_materials_ for the editor session lifetime).
+// The command AddRef's both before_ and after_ on construction and Release's
+// them on destruction, keeping them alive for the lifetime of the command
+// regardless of whether MeshTemplate drops its own reference on Execute/Undo.
 class MaterialAssignCommand : public EditorCommand {
  public:
   MaterialAssignCommand(game::GameMesh*     mesh,
                         game::GameMaterial* before,
                         game::GameMaterial* after);
+  ~MaterialAssignCommand() override;
 
   void Execute() override;
   void Undo()    override;
