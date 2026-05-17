@@ -12,7 +12,9 @@
 #include "abstract/Texture.h"
 #include "core/Color.h"
 #include "core/Config.h"
+#include "editor/EditorCommandHistory.h"
 #include "editor/EditorScene.h"
+#include "editor/commands/MaterialPropertyCommand.h"
 #include "game/GameMaterial.h"
 #include "game/GameMesh.h"
 #include "game/GameObjectType.h"
@@ -169,6 +171,20 @@ void MaterialEditorWindow::RenderPropertiesColumn() {
 void MaterialEditorWindow::RenderRenderingSection() {
   auto* mat = material_->GetMaterial();
 
+  // Captures before_snapshot_ on widget activation; pushes a command when the
+  // widget is deactivated after an edit and the state actually changed.
+  auto track = [&]() {
+    if (!history_) return;
+    if (ImGui::IsItemActivated())
+      before_snapshot_ = CaptureSnapshot(material_);
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+      MaterialSnapshot after = CaptureSnapshot(material_);
+      if (after != before_snapshot_)
+        history_->Push(std::make_unique<MaterialPropertyCommand>(
+            material_, video_, before_snapshot_, after));
+    }
+  };
+
   ImGui::SeparatorText("Textures");
   constexpr ImGuiTableFlags kTexFlags =
       ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoHostExtendX;
@@ -191,23 +207,27 @@ void MaterialEditorWindow::RenderRenderingSection() {
     float c[4] = {dc.r, dc.g, dc.b, dc.a};
     if (ImGui::ColorEdit4("Diffuse color", c))
       mat->SetDiffuseColor({c[0], c[1], c[2], c[3]});
+    track();
   }
   {
     core::Color ec = mat->GetEmissiveColor();
     float c[4] = {ec.r, ec.g, ec.b, ec.a};
     if (ImGui::ColorEdit4("Emissive color", c))
       mat->SetEmissiveColor({c[0], c[1], c[2], c[3]});
+    track();
   }
   {
     core::Color ac = mat->GetAmbientColor();
     float c[4] = {ac.r, ac.g, ac.b, ac.a};
     if (ImGui::ColorEdit4("Ambient color", c))
       mat->SetAmbientColor({c[0], c[1], c[2], c[3]});
+    track();
   }
 
   float shine = mat->GetShininess();
   if (ImGui::SliderFloat("Shininess", &shine, 1.f, 256.f))
     mat->SetShininess(shine);
+  track();
 }
 
 void MaterialEditorWindow::RenderTextureSlot(renderer::TextureSlot slot,
@@ -237,8 +257,15 @@ void MaterialEditorWindow::RenderTextureSlot(renderer::TextureSlot slot,
       abstract::Texture* new_tex =
           video_->CreateTexture(rel.generic_string());
       if (new_tex) {
+        if (history_) before_snapshot_ = CaptureSnapshot(material_);
         mat->SetTexture(slot, new_tex);
         new_tex->Release();
+        if (history_) {
+          MaterialSnapshot after = CaptureSnapshot(material_);
+          if (after != before_snapshot_)
+            history_->Push(std::make_unique<MaterialPropertyCommand>(
+                material_, video_, before_snapshot_, after));
+        }
       }
       NFD_FreePathU8(path);
     } else if (res == NFD_ERROR) {
@@ -252,8 +279,15 @@ void MaterialEditorWindow::RenderTextureSlot(renderer::TextureSlot slot,
     abstract::Texture* def_tex =
         video_->CreateTexture(kDefaultTextures[idx]);
     if (def_tex) {
+      if (history_) before_snapshot_ = CaptureSnapshot(material_);
       mat->SetTexture(slot, def_tex);
       def_tex->Release();
+      if (history_) {
+        MaterialSnapshot after = CaptureSnapshot(material_);
+        if (after != before_snapshot_)
+          history_->Push(std::make_unique<MaterialPropertyCommand>(
+              material_, video_, before_snapshot_, after));
+      }
     }
   }
   ImGui::PopID();

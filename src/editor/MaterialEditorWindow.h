@@ -2,6 +2,7 @@
 
 #include "abstract/VideoDevice.h"
 #include "editor/MeshPreview.h"
+#include "editor/commands/MaterialPropertyCommand.h"
 #include "renderer/TextureSlot.h"
 
 namespace game {
@@ -11,6 +12,7 @@ class MeshTemplate;
 
 namespace editor {
 
+class EditorCommandHistory;
 class EditorScene;
 
 // Floating window for inspecting and editing a game::GameMaterial.
@@ -40,6 +42,9 @@ class MaterialEditorWindow {
   // Renders the window if a material is currently open.
   void Render(const EditorScene& scene);
 
+  // Registers the undo/redo history. Must be called before the first Render().
+  void SetCommandHistory(EditorCommandHistory* history) { history_ = history; }
+
  private:
   enum class PreviewGeometry { kCube, kSphere };
 
@@ -52,12 +57,16 @@ class MaterialEditorWindow {
   void ApplyToSelection(const EditorScene& scene);
 
   // cppcheck-suppress unusedStructMember
-  abstract::VideoDevice* video_;
+  abstract::VideoDevice*  video_;
   // cppcheck-suppress unusedStructMember
-  game::GameMaterial*    material_    = nullptr;
+  EditorCommandHistory*   history_         = nullptr;
   // cppcheck-suppress unusedStructMember
-  bool                   open_        = false;
-  PreviewGeometry        preview_geo_ = PreviewGeometry::kCube;
+  game::GameMaterial*     material_        = nullptr;
+  // cppcheck-suppress unusedStructMember
+  bool                    open_            = false;
+  PreviewGeometry         preview_geo_     = PreviewGeometry::kCube;
+  // cppcheck-suppress unusedStructMember
+  MaterialSnapshot        before_snapshot_ = {};
 
   // Procedural preview geometry templates owned by this window.
   // Release()'d in the destructor after clearing the preview instance.
