@@ -564,10 +564,15 @@ void EditorViewport::PlaceMeshAt(ImVec2 mouse_pos, ImVec2 image_pos,
 
   const core::Vec3f hit = ray_origin + ray_dir * t;
 
-  auto mesh             = std::make_unique<game::GameMesh>(tmpl);
-  game::GameObject* obj = scene_->AddDynamicObject(std::move(mesh));
-  obj->SetWorldTransform(core::Mat4f::Translation({hit.x, 0.f, hit.z}));
-  scene_->SetSelectedObject(obj);
+  auto mesh = std::make_unique<game::GameMesh>(tmpl);
+  mesh->SetWorldTransform(core::Mat4f::Translation({hit.x, 0.f, hit.z}));
+
+  if (history_) {
+    history_->Push(std::make_unique<PlaceObjectCommand>(scene_, std::move(mesh)));
+  } else {
+    game::GameObject* obj = scene_->AddDynamicObject(std::move(mesh));
+    scene_->SetSelectedObject(obj);
+  }
 }
 
 
