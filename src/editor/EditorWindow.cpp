@@ -12,11 +12,13 @@
 #include "editor/EditorToolbar.h"
 #include "editor/EditorViewport.h"
 #include "editor/LogPanel.h"
+#include "editor/MapPropertiesWindow.h"
 #include "editor/MaterialEditorWindow.h"
 #include "editor/MeshSelectionModal.h"
 #include "editor/ObjectsPanel.h"
 #include "editor/PropertiesPanel.h"
 #include "editor/ResourcesPanel.h"
+#include "game/GameLightDesc.h"
 #include "game/GameMaterial.h"
 #include "game/MeshTemplate.h"
 #include "renderer/Light.h"
@@ -40,6 +42,7 @@ std::optional<renderer::LightType> ToolToLightType(EditorTool tool) {
 EditorWindow::EditorWindow(abstract::VideoDevice* video)
     : video_(video),
       scene_(std::make_unique<EditorScene>(video)),
+      map_properties_(std::make_unique<MapPropertiesWindow>(scene_.get())),
       toolbar_(std::make_unique<EditorToolbar>()),
       viewport_(std::make_unique<EditorViewport>(video)),
       material_editor_(std::make_unique<MaterialEditorWindow>(video)),
@@ -150,7 +153,29 @@ void EditorWindow::Render() {
   // 8. Material editor — floating window, shown when a material is open.
   material_editor_->Render(*scene_);
 
-  // 9. Status bar — pinned to the bottom of the screen.
+  // 9. Map properties panel.
+  if (ImGui::Begin("Map Properties"))
+    map_properties_->RenderPanel();
+  ImGui::End();
+
+  // 10. New Map modal — OpenPopup must be called outside any Begin/End pair.
+  if (new_map_pending_) {
+    ImGui::OpenPopup("New Map##modal");
+    new_map_pending_ = false;
+  }
+  if (map_properties_->RenderModal()) {
+    const std::string         new_name  = map_properties_->GetNewMapName();
+    const float               new_size  = map_properties_->GetNewMapSize();
+    const game::GameLightDesc new_light = map_properties_->GetNewMapLightDesc();
+    scene_ = std::make_unique<EditorScene>(video_, new_name, new_size,
+                                           new_light);
+    map_properties_ = std::make_unique<MapPropertiesWindow>(scene_.get());
+    viewport_->SetScene(scene_.get());
+    LOG_F(INFO, "New map '%s' created (size %.1f)", new_name.c_str(),
+          new_size);
+  }
+
+  // 11. Status bar — pinned to the bottom of the screen.
   const ImGuiViewport* vp = ImGui::GetMainViewport();
   constexpr float kStatusBarHeight = 22.0f;
   ImGui::SetNextWindowPos({vp->WorkPos.x, vp->WorkPos.y + vp->WorkSize.y - kStatusBarHeight});
@@ -167,6 +192,10 @@ void EditorWindow::RenderMenuBar() {
   if (!ImGui::BeginMainMenuBar()) return;
 
   if (ImGui::BeginMenu("File")) {
+    if (ImGui::MenuItem("New")) {
+      new_map_pending_ = true;
+    }
+    ImGui::Separator();
     if (ImGui::MenuItem("Quit")) {
       EditorSystem::Instance().Stop();
     }
