@@ -16,6 +16,7 @@
 #include "core/Vec4f.h"
 #include "editor/EditorScene.h"
 #include "editor/EditorTool.h"
+#include "editor/commands/DeleteObjectCommand.h"
 #include "editor/commands/PlaceObjectCommand.h"
 #include "game/GameLight.h"
 #include "game/GameMesh.h"
@@ -282,7 +283,8 @@ void EditorViewport::OnEvent(const core::Event& event) {
     game::GameObject* selected = scene_->GetSelectedObject();
     if (selected && scene_->IsDynamic(selected)) {
       LOG_F(INFO, "Deleting object '%s'", selected->GetName().c_str());
-      scene_->RemoveDynamicObject(selected);
+      history_->Push(
+          std::make_unique<DeleteObjectCommand>(scene_, selected));
       selected_object_ = nullptr;
     }
   }
