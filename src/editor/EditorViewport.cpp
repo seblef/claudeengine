@@ -16,6 +16,7 @@
 #include "core/Vec4f.h"
 #include "editor/EditorScene.h"
 #include "editor/EditorTool.h"
+#include "editor/commands/PlaceObjectCommand.h"
 #include "game/GameLight.h"
 #include "game/GameMesh.h"
 #include "game/GameObject.h"
@@ -523,8 +524,15 @@ void EditorViewport::UpdatePreviewPosition(ImVec2 mouse_pos, ImVec2 image_pos,
 void EditorViewport::PlacePreview() {
   if (!preview_object_) return;  // no valid floor hit yet
 
-  scene_->SetSelectedObject(preview_object_);
-  preview_object_ = nullptr;
+  if (history_) {
+    auto obj = scene_->ReclaimDynamicObject(preview_object_);
+    preview_object_ = nullptr;
+    history_->Push(std::make_unique<PlaceObjectCommand>(scene_, std::move(obj)));
+  } else {
+    scene_->SetSelectedObject(preview_object_);
+    preview_object_ = nullptr;
+  }
+
   preview_active_ = false;
   SetSelectionActive(true);
 

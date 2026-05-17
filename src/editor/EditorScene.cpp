@@ -99,6 +99,23 @@ void EditorScene::RemoveDynamicObject(game::GameObject* obj) {
   dynamic_objects_.erase(it);
 }
 
+std::unique_ptr<game::GameObject> EditorScene::ReclaimDynamicObject(
+    game::GameObject* obj) {
+  auto it = std::find_if(dynamic_objects_.begin(), dynamic_objects_.end(),
+                         [obj](const auto& p) { return p.get() == obj; });
+  if (it == dynamic_objects_.end()) return nullptr;
+
+  if (selected_ == obj) selected_ = nullptr;
+
+  game::GameSystem::Instance().RemoveObject(obj);
+  objects_.erase(std::remove(objects_.begin(), objects_.end(), obj),
+                 objects_.end());
+
+  std::unique_ptr<game::GameObject> reclaimed = std::move(*it);
+  dynamic_objects_.erase(it);
+  return reclaimed;
+}
+
 bool EditorScene::IsDynamic(const game::GameObject* obj) const {
   return std::any_of(dynamic_objects_.begin(), dynamic_objects_.end(),
                      [obj](const auto& p) { return p.get() == obj; });

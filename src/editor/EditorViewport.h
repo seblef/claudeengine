@@ -9,6 +9,7 @@
 #include "abstract/VideoDevice.h"
 #include "core/Event.h"
 #include "editor/EditorCameraController.h"
+#include "editor/EditorCommandHistory.h"
 #include "editor/EditorTool.h"
 #include "game/GameCamera.h"
 #include "game/GameObject.h"
@@ -73,6 +74,9 @@ class EditorViewport {
   // Called after a mesh is placed to restore the selection tool.
   // Set by EditorWindow so EditorViewport can notify it without a back-pointer.
   void SetOnPlacementDone(std::function<void()> cb) { on_placement_done_ = std::move(cb); }
+
+  // Provides the command history used to record placements for undo/redo.
+  void SetCommandHistory(EditorCommandHistory* history) { history_ = history; }
 
  private:
   void ResizeIfNeeded(int w, int h);
@@ -142,7 +146,9 @@ class EditorViewport {
   // cppcheck-suppress unusedStructMember
   ImGuiMouseCursor                    preview_cursor_  = ImGuiMouseCursor_None;
   // cppcheck-suppress unusedStructMember
-  std::function<void()> on_placement_done_;
+  std::function<void()>   on_placement_done_;
+  // cppcheck-suppress unusedStructMember
+  EditorCommandHistory*   history_           = nullptr;  // not owned; set by EditorWindow
 };
 
 }  // namespace editor
