@@ -18,6 +18,7 @@
 #include "editor/EditorTool.h"
 #include "editor/commands/DeleteObjectCommand.h"
 #include "editor/commands/PlaceObjectCommand.h"
+#include "editor/commands/TransformCommand.h"
 #include "game/GameLight.h"
 #include "game/GameMesh.h"
 #include "game/GameObject.h"
@@ -422,10 +423,26 @@ void EditorViewport::Render() {
 
     ImGuizmo::Manipulate(view_im, proj_im, *gizmo_op, ImGuizmo::WORLD, model_im);
 
-    if (ImGuizmo::IsUsing()) {
+    const bool gizmo_using = ImGuizmo::IsUsing();
+
+    if (!gizmo_was_using_ && gizmo_using)
+      gizmo_before_transform_ = selected->GetWorldTransform();
+
+    if (gizmo_using) {
       const core::Mat4f model_t_after(model_im);
       selected->SetWorldTransform(model_t_after.Transpose());
     }
+
+    if (gizmo_was_using_ && !gizmo_using && history_) {
+      const core::Mat4f after = selected->GetWorldTransform();
+      if (after != gizmo_before_transform_)
+        history_->Push(std::make_unique<TransformCommand>(
+            selected, gizmo_before_transform_, after));
+    }
+
+    gizmo_was_using_ = gizmo_using;
+  } else {
+    gizmo_was_using_ = false;
   }
 
   // Use the 9-parameter overload so ComputeContext runs first and sets
