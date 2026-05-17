@@ -19,10 +19,6 @@ void PlaceObjectCommand::Undo() {
   placed_ = nullptr;
 }
 
-void PlaceObjectCommand::Redo() {
-  Execute();
-}
-
 std::string_view PlaceObjectCommand::GetDescription() const {
   return "Place Object";
 }

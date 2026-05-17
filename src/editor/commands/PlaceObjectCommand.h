@@ -25,7 +25,6 @@ class PlaceObjectCommand : public EditorCommand {
 
   void Execute() override;
   void Undo()    override;
-  void Redo()    override;
   std::string_view GetDescription() const override;
 
  private:
