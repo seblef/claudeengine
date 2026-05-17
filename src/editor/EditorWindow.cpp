@@ -52,6 +52,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   viewport_->SetScene(scene_.get());
   viewport_->SetCommandHistory(&history_);
   properties_panel_->SetCommandHistory(&history_);
+  material_editor_->SetCommandHistory(&history_);
   viewport_->SetOnPlacementDone([this]() {
     toolbar_->SetActiveTool(EditorTool::kSelection);
     placement_active_ = false;

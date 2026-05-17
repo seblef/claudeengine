@@ -12,7 +12,9 @@
 #include "abstract/Texture.h"
 #include "core/Color.h"
 #include "core/Config.h"
+#include "editor/EditorCommandHistory.h"
 #include "editor/EditorScene.h"
+#include "editor/commands/MaterialPropertyCommand.h"
 #include "game/GameMaterial.h"
 #include "game/GameMesh.h"
 #include "game/GameObjectType.h"
@@ -79,6 +81,7 @@ MaterialEditorWindow::~MaterialEditorWindow() {
 void MaterialEditorWindow::Open(game::GameMaterial* mat) {
   material_ = mat;
   open_     = (mat != nullptr);
+  editing_  = false;
   if (!mat) return;
 
   cube_tmpl_->SetMaterial(mat);
@@ -169,6 +172,23 @@ void MaterialEditorWindow::RenderPropertiesColumn() {
 void MaterialEditorWindow::RenderRenderingSection() {
   auto* mat = material_->GetMaterial();
 
+  // ColorEdit4 uses BeginGroup/EndGroup internally. EndGroup() only propagates
+  // IsItemDeactivatedAfterEdit() when the deactivated sub-item is re-submitted
+  // that same frame, which never happens when the color picker popup closes.
+  // Instead, track editing state via IsItemEdited():
+  //   - Capture before_snapshot_ on the first frame any widget reports edited.
+  //   - Push a command the first frame that no widget is edited (editing stopped).
+  // frame_start is captured before any SetDiffuseColor/SetShininess calls this
+  // frame, so it correctly represents the state before the first interaction.
+  const MaterialSnapshot frame_start =
+      history_ ? CaptureSnapshot(material_) : MaterialSnapshot{};
+  bool any_edited = false;
+
+  auto track = [&]() {
+    if (history_ && ImGui::IsItemEdited())
+      any_edited = true;
+  };
+
   ImGui::SeparatorText("Textures");
   constexpr ImGuiTableFlags kTexFlags =
       ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoHostExtendX;
@@ -191,23 +211,42 @@ void MaterialEditorWindow::RenderRenderingSection() {
     float c[4] = {dc.r, dc.g, dc.b, dc.a};
     if (ImGui::ColorEdit4("Diffuse color", c))
       mat->SetDiffuseColor({c[0], c[1], c[2], c[3]});
+    track();
   }
   {
     core::Color ec = mat->GetEmissiveColor();
     float c[4] = {ec.r, ec.g, ec.b, ec.a};
     if (ImGui::ColorEdit4("Emissive color", c))
       mat->SetEmissiveColor({c[0], c[1], c[2], c[3]});
+    track();
   }
   {
     core::Color ac = mat->GetAmbientColor();
     float c[4] = {ac.r, ac.g, ac.b, ac.a};
     if (ImGui::ColorEdit4("Ambient color", c))
       mat->SetAmbientColor({c[0], c[1], c[2], c[3]});
+    track();
   }
 
   float shine = mat->GetShininess();
   if (ImGui::SliderFloat("Shininess", &shine, 1.f, 256.f))
     mat->SetShininess(shine);
+  track();
+
+  // State machine: detect edit-start and edit-end across frames.
+  if (history_) {
+    if (any_edited && !editing_) {
+      before_snapshot_ = frame_start;
+      editing_         = true;
+    }
+    if (!any_edited && editing_) {
+      MaterialSnapshot after = CaptureSnapshot(material_);
+      if (after != before_snapshot_)
+        history_->Push(std::make_unique<MaterialPropertyCommand>(
+            material_, video_, before_snapshot_, after));
+      editing_ = false;
+    }
+  }
 }
 
 void MaterialEditorWindow::RenderTextureSlot(renderer::TextureSlot slot,
@@ -237,8 +276,15 @@ void MaterialEditorWindow::RenderTextureSlot(renderer::TextureSlot slot,
       abstract::Texture* new_tex =
           video_->CreateTexture(rel.generic_string());
       if (new_tex) {
+        if (history_) before_snapshot_ = CaptureSnapshot(material_);
         mat->SetTexture(slot, new_tex);
         new_tex->Release();
+        if (history_) {
+          MaterialSnapshot after = CaptureSnapshot(material_);
+          if (after != before_snapshot_)
+            history_->Push(std::make_unique<MaterialPropertyCommand>(
+                material_, video_, before_snapshot_, after));
+        }
       }
       NFD_FreePathU8(path);
     } else if (res == NFD_ERROR) {
@@ -252,8 +298,15 @@ void MaterialEditorWindow::RenderTextureSlot(renderer::TextureSlot slot,
     abstract::Texture* def_tex =
         video_->CreateTexture(kDefaultTextures[idx]);
     if (def_tex) {
+      if (history_) before_snapshot_ = CaptureSnapshot(material_);
       mat->SetTexture(slot, def_tex);
       def_tex->Release();
+      if (history_) {
+        MaterialSnapshot after = CaptureSnapshot(material_);
+        if (after != before_snapshot_)
+          history_->Push(std::make_unique<MaterialPropertyCommand>(
+              material_, video_, before_snapshot_, after));
+      }
     }
   }
   ImGui::PopID();
