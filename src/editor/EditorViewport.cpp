@@ -617,4 +617,12 @@ void EditorViewport::DrawLightsOverlay(ImDrawList* dl, ImVec2 image_pos,
   }
 }
 
+EditorCameraController::CameraState EditorViewport::GetCameraState() const {
+  return camera_ctrl_->GetState();
+}
+
+void EditorViewport::SetCameraState(const EditorCameraController::CameraState& state) {
+  camera_ctrl_->SetState(state);
+}
+
 }  // namespace editor

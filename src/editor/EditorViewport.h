@@ -78,6 +78,10 @@ class EditorViewport {
   // Provides the command history used to record placements for undo/redo.
   void SetCommandHistory(EditorCommandHistory* history) { history_ = history; }
 
+  // Camera state pass-through for map save/restore.
+  [[nodiscard]] EditorCameraController::CameraState GetCameraState() const;
+  void SetCameraState(const EditorCameraController::CameraState& state);
+
  private:
   void ResizeIfNeeded(int w, int h);
 

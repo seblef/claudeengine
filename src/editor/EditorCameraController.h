@@ -21,6 +21,18 @@ namespace editor {
 // Lifecycle: construct → SetCamera() → SetViewportHovered() each frame → Update().
 class EditorCameraController : public game::ICameraController {
  public:
+  // Serialisable snapshot of the orbit camera state.
+  struct CameraState {
+    // cppcheck-suppress unusedStructMember
+    core::Vec3f focus;
+    // cppcheck-suppress unusedStructMember
+    float       azimuth;
+    // cppcheck-suppress unusedStructMember
+    float       elevation;
+    // cppcheck-suppress unusedStructMember
+    float       distance;
+  };
+
   EditorCameraController();
 
   // ICameraController interface.
@@ -48,6 +60,12 @@ class EditorCameraController : public game::ICameraController {
   // while keeping the current focus point. Called by EditorViewport when
   // ImGuizmo::ViewManipulate returns a modified matrix.
   void SetViewMatrix(const core::Mat4f& view);
+
+  // Returns a snapshot of the current orbit state for save/restore.
+  [[nodiscard]] CameraState GetState() const;
+
+  // Teleports the camera to the given state; immediately recomputes the matrix.
+  void SetState(const CameraState& state);
 
  private:
   // cppcheck-suppress unusedStructMember

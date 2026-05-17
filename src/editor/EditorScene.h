@@ -1,10 +1,13 @@
 #pragma once
 
+#include <filesystem>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "abstract/VideoDevice.h"
 #include "game/GameLight.h"
+#include "game/GameLightDesc.h"
 #include "game/GameMaterial.h"
 #include "game/GameMesh.h"
 #include "game/GameObject.h"
@@ -12,22 +15,26 @@
 
 namespace editor {
 
-// Default editor scene: a floor plane, a unit cube, and a global directional light.
+// Editor scene: a floor plane, a unit cube, and a global directional light.
 //
 // All objects are registered with game::GameSystem on construction and
 // unregistered on destruction. The Renderer's visibility and light systems
 // see them automatically.
 //
 // Scene contents:
-//   - Floor: 120×120 (half_size=60) horizontal plane with neutral grey material.
+//   - Floor: map_size × map_size horizontal plane with neutral grey material.
 //   - Cube:  unit cube placed at (0,1,0), added as initial dynamic object (user-deletable).
-//   - Light: global directional light (sun-like), colour (0.9, 0.85, 0.7), intensity 1.2.
+//   - Light: global directional light described by the provided GameLightDesc.
 //
 // Dynamic objects (added via AddDynamicObject) are user-deletable; static objects
 // (floor_, light_) are always present and cannot be removed at runtime.
 class EditorScene {
  public:
   explicit EditorScene(abstract::VideoDevice* video);
+  EditorScene(abstract::VideoDevice* video,
+              const std::string& map_name,
+              float map_size,
+              const game::GameLightDesc& light_desc);
   ~EditorScene();
 
   EditorScene(const EditorScene&)            = delete;
@@ -69,7 +76,29 @@ class EditorScene {
   [[nodiscard]] game::GameObject* GetSelectedObject() const { return selected_; }
   void SetSelectedObject(game::GameObject* obj)             { selected_ = obj; }
 
+  [[nodiscard]] const std::string&           GetMapName()  const;
+  void                                        SetMapName(const std::string& name);
+
+  [[nodiscard]] float                         GetMapSize()  const;
+
+  [[nodiscard]] const std::filesystem::path& GetFilePath() const;
+  void                                        SetFilePath(const std::filesystem::path& p);
+
+  // cppcheck-suppress returnByReference
+  [[nodiscard]] game::GameLightDesc           GetGlobalLightDesc() const;
+  // Updates global_light_desc_ and immediately syncs the live renderer light.
+  void                                        SetGlobalLightDesc(const game::GameLightDesc& desc);
+
  private:
+  // cppcheck-suppress unusedStructMember
+  std::string             map_name_  = "untitled";
+  // cppcheck-suppress unusedStructMember
+  float                   map_size_  = 120.f;
+  // cppcheck-suppress unusedStructMember
+  std::filesystem::path   file_path_;
+  // cppcheck-suppress unusedStructMember
+  game::GameLightDesc     global_light_desc_;
+
   // Static objects — always present, never deletable by the user.
   // dynamic_objects_ is declared first so it is destroyed before these,
   // preventing dangling references during shutdown.
