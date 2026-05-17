@@ -1,12 +1,15 @@
 #include "editor/PropertiesPanel.h"
 
 #include <cmath>
+#include <memory>
 
 #include <imgui.h>
 
 #include "core/Color.h"
 #include "core/Vec3f.h"
+#include "editor/EditorCommandHistory.h"
 #include "editor/EditorUtils.h"
+#include "editor/commands/LightPropertyCommand.h"
 #include "game/GameLight.h"
 #include "game/GameMesh.h"
 #include "game/GameObject.h"
@@ -35,107 +38,6 @@ const char* LightTypeName(renderer::LightType type) {
   return "Unknown";
 }
 
-// Renders Yaw/Pitch DragFloat widgets and applies changes to SetDirection().
-// Returns true when the direction was modified.
-template <typename TLight>
-bool RenderDirectionWidgets(TLight* light) {
-  auto [yaw, pitch] = Vec3fToYawPitch(light->GetDirection());
-  bool changed = false;
-  changed |= ImGui::DragFloat("Yaw (°)",   &yaw,   0.1f, -180.f, 180.f);
-  changed |= ImGui::DragFloat("Pitch (°)", &pitch, 0.1f,  -89.f,  89.f);
-  if (changed)
-    light->SetDirection(YawPitchToVec3f(yaw, pitch));
-  return changed;
-}
-
-// Renders common fields shared by all light types (Color, Intensity, shadows).
-void RenderCommonLightFields(renderer::Light* light) {
-  const core::Color& col = light->GetColor();
-  float c[3] = {col.r, col.g, col.b};
-  if (ImGui::ColorEdit3("Color", c))
-    light->SetColor({c[0], c[1], c[2]});
-
-  float intensity = light->GetIntensity();
-  if (ImGui::DragFloat("Intensity", &intensity, 0.01f, 0.f, 100.f))
-    light->SetIntensity(intensity);
-
-  bool cast_shadow = light->GetCastShadow();
-  if (ImGui::Checkbox("Cast Shadow", &cast_shadow))
-    light->SetCastShadow(cast_shadow);
-
-  // Shadow Resolution combo — options: 256, 512, 1024, 2048.
-  static const int kResolutions[]   = {256, 512, 1024, 2048};
-  static const char* kResLabels[]   = {"256", "512", "1024", "2048"};
-  constexpr int kResCount = 4;
-  const int cur_res = light->GetShadowResolution();
-  int cur_idx = 2;  // default 1024
-  for (int i = 0; i < kResCount; ++i) {
-    if (kResolutions[i] == cur_res) {
-      cur_idx = i;
-      break;
-    }
-  }
-  if (ImGui::Combo("Shadow Resolution", &cur_idx, kResLabels, kResCount))
-    light->SetShadowResolution(kResolutions[cur_idx]);
-
-  float bias = light->GetShadowBias();
-  if (ImGui::DragFloat("Shadow Bias", &bias, 0.0001f, 0.f, 0.1f, "%.4f"))
-    light->SetShadowBias(bias);
-}
-
-void RenderOmniFields(renderer::OmniLight* light) {
-  float radius = light->GetRadius();
-  if (ImGui::DragFloat("Radius", &radius, 0.1f, 0.1f, 500.f))
-    light->SetRadius(radius);
-}
-
-void RenderCircleSpotFields(renderer::CircleSpotLight* light) {
-  float inner_deg = light->GetInnerAngle() * kRad2Deg;
-  float outer_deg = light->GetOuterAngle() * kRad2Deg;
-
-  if (ImGui::DragFloat("Inner Angle (°)", &inner_deg, 0.1f, 0.f, 89.f))
-    light->SetInnerAngle(inner_deg * kDeg2Rad);
-
-  // Outer angle is clamped to stay strictly greater than inner.
-  const float outer_min = inner_deg + 0.1f;
-  if (ImGui::DragFloat("Outer Angle (°)", &outer_deg, 0.1f, outer_min, 89.f)) {
-    if (outer_deg <= inner_deg) outer_deg = inner_deg + 0.1f;
-    light->SetOuterAngle(outer_deg * kDeg2Rad);
-  }
-
-  float range = light->GetRange();
-  if (ImGui::DragFloat("Range", &range, 0.1f, 0.1f, 1000.f))
-    light->SetRange(range);
-
-  RenderDirectionWidgets(light);
-}
-
-void RenderRectSpotFields(renderer::RectangleSpotLight* light) {
-  float h_deg = light->GetHAngle() * kRad2Deg;
-  float v_deg = light->GetVAngle() * kRad2Deg;
-
-  if (ImGui::DragFloat("H Angle (°)", &h_deg, 0.1f, 0.1f, 89.f))
-    light->SetHAngle(h_deg * kDeg2Rad);
-
-  if (ImGui::DragFloat("V Angle (°)", &v_deg, 0.1f, 0.1f, 89.f))
-    light->SetVAngle(v_deg * kDeg2Rad);
-
-  float range = light->GetRange();
-  if (ImGui::DragFloat("Range", &range, 0.1f, 0.1f, 1000.f))
-    light->SetRange(range);
-
-  RenderDirectionWidgets(light);
-}
-
-void RenderGlobalLightFields(renderer::GlobalLight* light) {
-  RenderDirectionWidgets(light);
-
-  const core::Vec3f& amb = light->GetAmbientColor();
-  float a[3] = {amb.x, amb.y, amb.z};
-  if (ImGui::ColorEdit3("Ambient", a))
-    light->SetAmbientColor({a[0], a[1], a[2]});
-}
-
 }  // namespace
 
 void PropertiesPanel::Render(game::GameObject* obj) {
@@ -158,65 +60,188 @@ void PropertiesPanel::Render(game::GameObject* obj) {
   }
 }
 
-void PropertiesPanel::RenderLightProperties(const game::GameLight* game_light) {
+void PropertiesPanel::RenderLightProperties(game::GameLight* game_light) {
   renderer::Light* light = game_light->GetLight();
   const renderer::LightType type = light->GetType();
 
+  // Captures a snapshot and pushes a command if before != after.
+  auto track = [&]() {
+    if (!history_) return;
+    if (ImGui::IsItemActivated())
+      before_snapshot_ = CaptureSnapshot(game_light);
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+      LightSnapshot after = CaptureSnapshot(game_light);
+      if (after != before_snapshot_)
+        history_->Push(std::make_unique<LightPropertyCommand>(
+            game_light, before_snapshot_, after));
+    }
+  };
+
   ImGui::SeparatorText(LightTypeName(type));
 
-  RenderCommonLightFields(light);
+  // ---- Common fields -------------------------------------------------------
+  const core::Color& col = light->GetColor();
+  float c[3] = {col.r, col.g, col.b};
+  if (ImGui::ColorEdit3("Color", c))
+    light->SetColor({c[0], c[1], c[2]});
+  track();
+
+  float intensity = light->GetIntensity();
+  if (ImGui::DragFloat("Intensity", &intensity, 0.01f, 0.f, 100.f))
+    light->SetIntensity(intensity);
+  track();
+
+  bool cast_shadow = light->GetCastShadow();
+  if (ImGui::Checkbox("Cast Shadow", &cast_shadow))
+    light->SetCastShadow(cast_shadow);
+  track();
+
+  static const int   kResolutions[] = {256, 512, 1024, 2048};
+  static const char* kResLabels[]   = {"256", "512", "1024", "2048"};
+  constexpr int kResCount = 4;
+  const int cur_res = light->GetShadowResolution();
+  int cur_idx = 2;
+  for (int i = 0; i < kResCount; ++i) {
+    if (kResolutions[i] == cur_res) {
+      cur_idx = i;
+      break;
+    }
+  }
+  if (ImGui::Combo("Shadow Resolution", &cur_idx, kResLabels, kResCount))
+    light->SetShadowResolution(kResolutions[cur_idx]);
+  track();
+
+  float bias = light->GetShadowBias();
+  if (ImGui::DragFloat("Shadow Bias", &bias, 0.0001f, 0.f, 0.1f, "%.4f"))
+    light->SetShadowBias(bias);
+  track();
 
   ImGui::Spacing();
 
-  // Type-specific sections — irrelevant blocks are greyed out.
-  const bool is_omni     = (type == renderer::LightType::kOmni);
-  const bool is_circle   = (type == renderer::LightType::kCircleSpot);
-  const bool is_rect     = (type == renderer::LightType::kRectSpot);
-  const bool is_global   = (type == renderer::LightType::kGlobal);
+  // ---- OmniLight -----------------------------------------------------------
+  const bool is_omni   = (type == renderer::LightType::kOmni);
+  const bool is_circle = (type == renderer::LightType::kCircleSpot);
+  const bool is_rect   = (type == renderer::LightType::kRectSpot);
+  const bool is_global = (type == renderer::LightType::kGlobal);
 
   ImGui::BeginDisabled(!is_omni);
   if (is_omni) {
-    RenderOmniFields(static_cast<renderer::OmniLight*>(light));
+    auto* omni = static_cast<renderer::OmniLight*>(light);
+    float radius = omni->GetRadius();
+    if (ImGui::DragFloat("Radius", &radius, 0.1f, 0.1f, 500.f))
+      omni->SetRadius(radius);
+    track();
   } else {
     float dummy = 0.f;
     ImGui::DragFloat("Radius", &dummy, 0.1f, 0.1f, 500.f);
   }
   ImGui::EndDisabled();
 
+  // ---- CircleSpotLight -----------------------------------------------------
   ImGui::BeginDisabled(!is_circle);
   if (is_circle) {
-    RenderCircleSpotFields(static_cast<renderer::CircleSpotLight*>(light));
+    auto* spot = static_cast<renderer::CircleSpotLight*>(light);
+
+    float inner_deg = spot->GetInnerAngle() * kRad2Deg;
+    float outer_deg = spot->GetOuterAngle() * kRad2Deg;
+
+    if (ImGui::DragFloat("Inner Angle (°)", &inner_deg, 0.1f, 0.f, 89.f))
+      spot->SetInnerAngle(inner_deg * kDeg2Rad);
+    track();
+
+    const float outer_min = inner_deg + 0.1f;
+    if (ImGui::DragFloat("Outer Angle (°)", &outer_deg, 0.1f, outer_min, 89.f)) {
+      if (outer_deg <= inner_deg) outer_deg = inner_deg + 0.1f;
+      spot->SetOuterAngle(outer_deg * kDeg2Rad);
+    }
+    track();
+
+    float range = spot->GetRange();
+    if (ImGui::DragFloat("Range##circle", &range, 0.1f, 0.1f, 1000.f))
+      spot->SetRange(range);
+    track();
+
+    auto [yaw, pitch] = Vec3fToYawPitch(spot->GetDirection());
+    bool dir_changed = false;
+    dir_changed |= ImGui::DragFloat("Yaw (°)##circle",   &yaw,   0.1f, -180.f, 180.f);
+    track();
+    dir_changed |= ImGui::DragFloat("Pitch (°)##circle", &pitch, 0.1f,  -89.f,  89.f);
+    track();
+    if (dir_changed)
+      spot->SetDirection(YawPitchToVec3f(yaw, pitch));
   } else {
     float dummy = 0.f;
     ImGui::DragFloat("Inner Angle (°)", &dummy, 0.1f, 0.f,  89.f);
     ImGui::DragFloat("Outer Angle (°)", &dummy, 0.1f, 0.1f, 89.f);
     ImGui::DragFloat("Range##circle",   &dummy, 0.1f, 0.1f, 1000.f);
-    ImGui::DragFloat("Yaw (°)##circle", &dummy, 0.1f, -180.f, 180.f);
-    ImGui::DragFloat("Pitch (°)##circle", &dummy, 0.1f, -89.f, 89.f);
+    ImGui::DragFloat("Yaw (°)##circle",   &dummy, 0.1f, -180.f, 180.f);
+    ImGui::DragFloat("Pitch (°)##circle", &dummy, 0.1f,  -89.f,  89.f);
   }
   ImGui::EndDisabled();
 
+  // ---- RectangleSpotLight --------------------------------------------------
   ImGui::BeginDisabled(!is_rect);
   if (is_rect) {
-    RenderRectSpotFields(static_cast<renderer::RectangleSpotLight*>(light));
+    auto* rect = static_cast<renderer::RectangleSpotLight*>(light);
+
+    float h_deg = rect->GetHAngle() * kRad2Deg;
+    float v_deg = rect->GetVAngle() * kRad2Deg;
+
+    if (ImGui::DragFloat("H Angle (°)", &h_deg, 0.1f, 0.1f, 89.f))
+      rect->SetHAngle(h_deg * kDeg2Rad);
+    track();
+
+    if (ImGui::DragFloat("V Angle (°)", &v_deg, 0.1f, 0.1f, 89.f))
+      rect->SetVAngle(v_deg * kDeg2Rad);
+    track();
+
+    float range = rect->GetRange();
+    if (ImGui::DragFloat("Range##rect", &range, 0.1f, 0.1f, 1000.f))
+      rect->SetRange(range);
+    track();
+
+    auto [yaw, pitch] = Vec3fToYawPitch(rect->GetDirection());
+    bool dir_changed = false;
+    dir_changed |= ImGui::DragFloat("Yaw (°)##rect",   &yaw,   0.1f, -180.f, 180.f);
+    track();
+    dir_changed |= ImGui::DragFloat("Pitch (°)##rect", &pitch, 0.1f,  -89.f,  89.f);
+    track();
+    if (dir_changed)
+      rect->SetDirection(YawPitchToVec3f(yaw, pitch));
   } else {
     float dummy = 0.f;
     ImGui::DragFloat("H Angle (°)", &dummy, 0.1f, 0.1f, 89.f);
     ImGui::DragFloat("V Angle (°)", &dummy, 0.1f, 0.1f, 89.f);
-    ImGui::DragFloat("Range##rect",   &dummy, 0.1f, 0.1f, 1000.f);
+    ImGui::DragFloat("Range##rect",     &dummy, 0.1f, 0.1f, 1000.f);
     ImGui::DragFloat("Yaw (°)##rect",   &dummy, 0.1f, -180.f, 180.f);
-    ImGui::DragFloat("Pitch (°)##rect", &dummy, 0.1f, -89.f, 89.f);
+    ImGui::DragFloat("Pitch (°)##rect", &dummy, 0.1f,  -89.f,  89.f);
   }
   ImGui::EndDisabled();
 
+  // ---- GlobalLight ---------------------------------------------------------
   ImGui::BeginDisabled(!is_global);
   if (is_global) {
-    RenderGlobalLightFields(static_cast<renderer::GlobalLight*>(light));
+    auto* global = static_cast<renderer::GlobalLight*>(light);
+
+    auto [yaw, pitch] = Vec3fToYawPitch(global->GetDirection());
+    bool dir_changed = false;
+    dir_changed |= ImGui::DragFloat("Yaw (°)##global",   &yaw,   0.1f, -180.f, 180.f);
+    track();
+    dir_changed |= ImGui::DragFloat("Pitch (°)##global", &pitch, 0.1f,  -89.f,  89.f);
+    track();
+    if (dir_changed)
+      global->SetDirection(YawPitchToVec3f(yaw, pitch));
+
+    const core::Vec3f& amb = global->GetAmbientColor();
+    float a[3] = {amb.x, amb.y, amb.z};
+    if (ImGui::ColorEdit3("Ambient", a))
+      global->SetAmbientColor({a[0], a[1], a[2]});
+    track();
   } else {
     float dummy = 0.f;
     float dummy3[3] = {};
     ImGui::DragFloat("Yaw (°)##global",   &dummy, 0.1f, -180.f, 180.f);
-    ImGui::DragFloat("Pitch (°)##global", &dummy, 0.1f, -89.f, 89.f);
+    ImGui::DragFloat("Pitch (°)##global", &dummy, 0.1f,  -89.f,  89.f);
     ImGui::ColorEdit3("Ambient", dummy3);
   }
   ImGui::EndDisabled();
