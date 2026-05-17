@@ -147,6 +147,18 @@ void EditorCameraController::Update(float /*dt*/) {
       0.f,                  0.f,                     0.f,         1.f));
 }
 
+EditorCameraController::CameraState EditorCameraController::GetState() const {
+  return {focus_, azimuth_, elevation_, distance_};
+}
+
+void EditorCameraController::SetState(const CameraState& state) {
+  focus_     = state.focus;
+  azimuth_   = state.azimuth;
+  elevation_ = state.elevation;
+  distance_  = std::max(kMinDistance, std::min(kMaxDistance, state.distance));
+  Update(0.f);
+}
+
 void EditorCameraController::SetViewMatrix(const core::Mat4f& view) {
   // Extract eye position: eye = -R^T * t  (R is rows 0-2 cols 0-2, t is col 3 rows 0-2).
   const float tx = view(0, 3);
