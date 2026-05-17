@@ -3,6 +3,7 @@ add_library(editor STATIC
     EditorCommandHistory.cpp
     EditorScene.cpp
     EditorSystem.cpp
+    MapSerializer.cpp
     EditorTheme.cpp
     EditorToolbar.cpp
     EditorViewport.cpp
