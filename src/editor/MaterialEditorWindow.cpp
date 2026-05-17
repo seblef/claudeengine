@@ -14,6 +14,7 @@
 #include "core/Config.h"
 #include "editor/EditorCommandHistory.h"
 #include "editor/EditorScene.h"
+#include "editor/commands/MaterialAssignCommand.h"
 #include "editor/commands/MaterialPropertyCommand.h"
 #include "game/GameMaterial.h"
 #include "game/GameMesh.h"
@@ -380,8 +381,14 @@ void MaterialEditorWindow::Save() {
 void MaterialEditorWindow::ApplyToSelection(const EditorScene& scene) {
   game::GameObject* sel = scene.GetSelectedObject();
   if (!sel || sel->GetType() != game::GameObjectType::kMesh) return;
-  const auto* mesh = static_cast<const game::GameMesh*>(sel);
-  mesh->GetTemplate()->SetMaterial(material_);
+  auto* mesh = static_cast<game::GameMesh*>(sel);
+  game::GameMaterial* before = mesh->GetTemplate()->GetMaterial();
+  if (history_) {
+    history_->Push(std::make_unique<MaterialAssignCommand>(
+        mesh, before, material_));
+  } else {
+    mesh->GetTemplate()->SetMaterial(material_);
+  }
   LOG_F(INFO, "Applied material '%s' to '%s'",
         material_->GetId().c_str(), sel->GetName().c_str());
 }
