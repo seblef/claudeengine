@@ -13,6 +13,7 @@ namespace editor {
 class EditorScene;
 class EditorToolbar;
 class EditorViewport;
+class MapPropertiesWindow;
 class MaterialEditorWindow;
 class MeshSelectionModal;
 class PropertiesPanel;
@@ -54,6 +55,8 @@ class EditorWindow {
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<EditorScene>           scene_;
   // cppcheck-suppress unusedStructMember
+  std::unique_ptr<MapPropertiesWindow>   map_properties_;
+  // cppcheck-suppress unusedStructMember
   std::unique_ptr<EditorToolbar>         toolbar_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<EditorViewport>        viewport_;
@@ -76,10 +79,13 @@ class EditorWindow {
 
   // Tracks the previous frame's active tool to detect transitions.
   // cppcheck-suppress unusedStructMember
-  EditorTool                             prev_tool_      = EditorTool::kSelection;
+  EditorTool                             prev_tool_        = EditorTool::kSelection;
   // True while waiting for the user to click to place a mesh in the viewport.
   // cppcheck-suppress unusedStructMember
   bool                                   placement_active_ = false;
+  // True on the frame File > New is clicked; triggers OpenPopup that frame.
+  // cppcheck-suppress unusedStructMember
+  bool                                   new_map_pending_  = false;
 };
 
 }  // namespace editor
