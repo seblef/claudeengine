@@ -81,6 +81,7 @@ MaterialEditorWindow::~MaterialEditorWindow() {
 void MaterialEditorWindow::Open(game::GameMaterial* mat) {
   material_ = mat;
   open_     = (mat != nullptr);
+  editing_  = false;
   if (!mat) return;
 
   cube_tmpl_->SetMaterial(mat);
@@ -171,18 +172,21 @@ void MaterialEditorWindow::RenderPropertiesColumn() {
 void MaterialEditorWindow::RenderRenderingSection() {
   auto* mat = material_->GetMaterial();
 
-  // Captures before_snapshot_ on widget activation; pushes a command when the
-  // widget is deactivated after an edit and the state actually changed.
+  // ColorEdit4 uses BeginGroup/EndGroup internally. EndGroup() only propagates
+  // IsItemDeactivatedAfterEdit() when the deactivated sub-item is re-submitted
+  // that same frame, which never happens when the color picker popup closes.
+  // Instead, track editing state via IsItemEdited():
+  //   - Capture before_snapshot_ on the first frame any widget reports edited.
+  //   - Push a command the first frame that no widget is edited (editing stopped).
+  // frame_start is captured before any SetDiffuseColor/SetShininess calls this
+  // frame, so it correctly represents the state before the first interaction.
+  const MaterialSnapshot frame_start =
+      history_ ? CaptureSnapshot(material_) : MaterialSnapshot{};
+  bool any_edited = false;
+
   auto track = [&]() {
-    if (!history_) return;
-    if (ImGui::IsItemActivated())
-      before_snapshot_ = CaptureSnapshot(material_);
-    if (ImGui::IsItemDeactivatedAfterEdit()) {
-      MaterialSnapshot after = CaptureSnapshot(material_);
-      if (after != before_snapshot_)
-        history_->Push(std::make_unique<MaterialPropertyCommand>(
-            material_, video_, before_snapshot_, after));
-    }
+    if (history_ && ImGui::IsItemEdited())
+      any_edited = true;
   };
 
   ImGui::SeparatorText("Textures");
@@ -228,6 +232,21 @@ void MaterialEditorWindow::RenderRenderingSection() {
   if (ImGui::SliderFloat("Shininess", &shine, 1.f, 256.f))
     mat->SetShininess(shine);
   track();
+
+  // State machine: detect edit-start and edit-end across frames.
+  if (history_) {
+    if (any_edited && !editing_) {
+      before_snapshot_ = frame_start;
+      editing_         = true;
+    }
+    if (!any_edited && editing_) {
+      MaterialSnapshot after = CaptureSnapshot(material_);
+      if (after != before_snapshot_)
+        history_->Push(std::make_unique<MaterialPropertyCommand>(
+            material_, video_, before_snapshot_, after));
+      editing_ = false;
+    }
+  }
 }
 
 void MaterialEditorWindow::RenderTextureSlot(renderer::TextureSlot slot,

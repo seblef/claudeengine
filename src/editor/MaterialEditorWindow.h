@@ -67,6 +67,10 @@ class MaterialEditorWindow {
   PreviewGeometry         preview_geo_     = PreviewGeometry::kCube;
   // cppcheck-suppress unusedStructMember
   MaterialSnapshot        before_snapshot_ = {};
+  // True while any color or shininess widget is actively being edited.
+  // Used to detect when editing stops so the command can be pushed.
+  // cppcheck-suppress unusedStructMember
+  bool                    editing_         = false;
 
   // Procedural preview geometry templates owned by this window.
   // Release()'d in the destructor after clearing the preview instance.
