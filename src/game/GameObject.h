@@ -5,6 +5,7 @@
 #include "core/BBox3.h"
 #include "core/Mat4f.h"
 #include "game/GameObjectType.h"
+#include "game/GameObjectVisitor.h"
 
 namespace game {
 
@@ -40,6 +41,9 @@ class GameObject {
   [[nodiscard]] const core::BBox3& GetLocalBBox()      const;
   [[nodiscard]] const core::BBox3& GetWorldBBox()      const;
   [[nodiscard]] GameObjectType     GetType()            const;
+
+  // Dispatches to the matching visitor overload for this object's concrete type.
+  virtual void Accept(GameObjectVisitor& visitor) = 0;
 
   // Called after the world transform and world bbox have been updated.
   virtual void OnWorldTransformUpdated() = 0;

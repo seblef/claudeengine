@@ -13,5 +13,6 @@ The folder is splitted in subfolders:
 * **shaders/glsl** contains OpenGL plain-text shaders source code
 * **materials** contains material YAML files
 * **textures** contains textures
+* **maps** contains map files with the `.map.yaml` extension, parsed by `game::MapLoader`
 
 It also contains the `config.yaml` configuration file.

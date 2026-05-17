@@ -29,6 +29,8 @@ class GameMesh : public GameObject {
   GameMesh(GameMesh&&)                 = delete;
   GameMesh& operator=(GameMesh&&)      = delete;
 
+  void Accept(GameObjectVisitor& visitor) override { visitor.Visit(*this); }
+
   // Registers the instance with the Renderer.
   void OnAddedToScene() override;
 

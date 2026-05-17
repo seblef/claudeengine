@@ -25,6 +25,8 @@ The `game` module must not be included by `renderer`, `abstract`, or `core`.
 | `GameCamera` | Wraps `core::Camera`; derives position/orientation from world transform |
 | `ICameraController` | Abstract camera controller interface |
 | `FPSCameraController` | FPS-style controller: mouse look, arrow keys for movement, A=up, Z=down |
+| `GameObjectVisitor` | Abstract visitor for all concrete GameObject subclasses; implement `Visit(GameMesh&)`, `Visit(GameLight&)`, `Visit(GameCamera&)` to dispatch per-type logic without casting |
+| `MapLoader` | Static utility; `MapLoader::Load(path, video)` parses a `.map.yaml` file and returns a `MapData` (name, map_size, global_light, objects); objects are NOT added to GameSystem — the caller does that |
 
 ## Key invariants
 
