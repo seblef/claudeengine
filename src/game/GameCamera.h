@@ -23,6 +23,8 @@ class GameCamera : public GameObject {
   GameCamera(core::ProjectionType proj_type,
              core::CoordinateSystem coord_system);
 
+  void Accept(GameObjectVisitor& visitor) override { visitor.Visit(*this); }
+
   // ---- Convenience setters (each calls camera_.UpdateMatrices()) ------------
 
   void SetFOV(float fov_radians);

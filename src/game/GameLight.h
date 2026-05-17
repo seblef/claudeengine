@@ -27,6 +27,8 @@ class GameLight : public GameObject {
 
   ~GameLight() override = default;
 
+  void Accept(GameObjectVisitor& visitor) override { visitor.Visit(*this); }
+
   void OnWorldTransformUpdated() override;
   void OnAddedToScene()          override;
   void OnRemovedFromScene()      override;

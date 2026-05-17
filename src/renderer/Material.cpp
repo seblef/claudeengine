@@ -26,14 +26,6 @@ const std::pair<const char*, TextureSlot> kSlotMap[] = {
     {"environment", TextureSlot::kEnvironment},
 };
 
-core::Color ParseColor(const YAML::Node& node) {
-  const auto v = node.as<std::vector<float>>();
-  if (v.size() >= 4) return {v[0], v[1], v[2], v[3]};
-  if (v.size() >= 3) return {v[0], v[1], v[2]};
-  if (v.size() == 1) return core::Color{v[0]};
-  return {};
-}
-
 }  // namespace
 
 Material::Material(abstract::VideoDevice* video) {
@@ -145,17 +137,17 @@ void Material::LoadFromYaml(const YAML::Node& yaml, abstract::VideoDevice* video
   }
 
   // New format: flat color keys at the node level.
-  if (yaml["diffuse_color"])  diffuse_color_  = ParseColor(yaml["diffuse_color"]);
-  if (yaml["emissive_color"]) emissive_color_ = ParseColor(yaml["emissive_color"]);
-  if (yaml["ambient_color"])  ambient_color_  = ParseColor(yaml["ambient_color"]);
+  if (yaml["diffuse_color"])  diffuse_color_  = core::ParseColor(yaml["diffuse_color"]);
+  if (yaml["emissive_color"]) emissive_color_ = core::ParseColor(yaml["emissive_color"]);
+  if (yaml["ambient_color"])  ambient_color_  = core::ParseColor(yaml["ambient_color"]);
   if (yaml["shininess"])      shininess_      = yaml["shininess"].as<float>();
 
   // Old format: colors: sub-node (backward compatibility for legacy files).
   if (yaml["colors"]) {
     const YAML::Node& c = yaml["colors"];
-    if (c["diffuse"])   diffuse_color_  = ParseColor(c["diffuse"]);
-    if (c["emissive"])  emissive_color_ = ParseColor(c["emissive"]);
-    if (c["ambient"])   ambient_color_  = ParseColor(c["ambient"]);
+    if (c["diffuse"])   diffuse_color_  = core::ParseColor(c["diffuse"]);
+    if (c["emissive"])  emissive_color_ = core::ParseColor(c["emissive"]);
+    if (c["ambient"])   ambient_color_  = core::ParseColor(c["ambient"]);
     if (c["shininess"]) shininess_      = c["shininess"].as<float>();
   }
 

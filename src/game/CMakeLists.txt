@@ -6,6 +6,7 @@ add_library(game STATIC
     GameMaterial.cpp
     GameMesh.cpp
     GameSystem.cpp
+    MapLoader.cpp
     MeshTemplate.cpp
 )
 
