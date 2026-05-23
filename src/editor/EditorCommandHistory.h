@@ -1,6 +1,7 @@
 #pragma once
 
 #include <deque>
+#include <functional>
 #include <memory>
 
 #include "editor/EditorCommand.h"
@@ -19,6 +20,7 @@ class EditorCommandHistory {
   explicit EditorCommandHistory(int max_size = kDefaultMaxSize);
 
   // Executes cmd, appends it to the undo stack, and clears the redo stack.
+  // Fires the on_dirty callback (if set) after each successful push.
   void Push(std::unique_ptr<EditorCommand> cmd);
 
   // Undoes the most recent command and moves it to the redo stack.
@@ -33,6 +35,10 @@ class EditorCommandHistory {
   // Empties both stacks (e.g. on scene reset).
   void Clear();
 
+  // Registers a callback fired after every Push(). Used by EditorWindow to
+  // set the scene dirty flag when commands are executed.
+  void SetOnDirty(std::function<void()> cb) { on_dirty_ = std::move(cb); }
+
  private:
   // cppcheck-suppress unusedStructMember
   int max_size_;
@@ -40,6 +46,8 @@ class EditorCommandHistory {
   std::deque<std::unique_ptr<EditorCommand>> undo_stack_;
   // cppcheck-suppress unusedStructMember
   std::deque<std::unique_ptr<EditorCommand>> redo_stack_;
+  // cppcheck-suppress unusedStructMember
+  std::function<void()> on_dirty_;
 };
 
 }  // namespace editor

@@ -107,6 +107,17 @@ void EditorToolbar::Render() {
     ImGui::SameLine();
   }
 
+  // Save button — greyed out when the scene has no unsaved changes.
+  ImGui::BeginDisabled(!dirty_);
+  if (ImGui::Button(ICON_FA_FLOPPY_DISK) && on_save_)
+    on_save_();
+  ImGui::SetItemTooltip("Save (Ctrl+S)");
+  ImGui::EndDisabled();
+
+  ImGui::SameLine();
+  ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+  ImGui::SameLine();
+
   for (int i = 0; i < kTransformToolCount; ++i)
     RenderToolButton(kTransformTools[i], active_tool_, i);
 
