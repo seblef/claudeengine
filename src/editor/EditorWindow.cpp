@@ -66,6 +66,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   viewport_->SetCommandHistory(&history_);
   properties_panel_->SetCommandHistory(&history_);
   material_editor_->SetCommandHistory(&history_);
+  objects_panel_->SetCommandHistory(&history_);
   history_.SetOnDirty([this]{ scene_dirty_ = true; });
   viewport_->SetOnPlacementDone([this]() {
     toolbar_->SetActiveTool(EditorTool::kSelection);
