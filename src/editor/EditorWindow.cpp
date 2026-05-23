@@ -28,6 +28,7 @@
 #include "game/GameMaterial.h"
 #include "game/MeshTemplate.h"
 #include "renderer/Light.h"
+#include "renderer/MaterialDesc.h"
 
 namespace editor {
 
@@ -72,6 +73,13 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   });
   resources_panel_->SetOnMaterialOpen(
       [this](game::GameMaterial* mat) { material_editor_->Open(mat); });
+  resources_panel_->SetOnImportMaterial([this] { ImportMaterial(); });
+  resources_panel_->SetOnNewMaterial([this](std::string_view name) {
+    auto* mat = new game::GameMaterial(std::string(name),
+                                       renderer::MaterialDesc(), video_);
+    scene_->AddGameMaterial(mat);
+    material_editor_->Open(mat);
+  });
   loguru::add_callback("editor_log", &LogPanel::LogCallback,
                        log_panel_.get(), loguru::Verbosity_INFO);
 

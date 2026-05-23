@@ -1,5 +1,6 @@
 #include "editor/ResourcesPanel.h"
 
+#include <cstring>
 #include <string>
 
 #include <IconsFontAwesome6.h>
@@ -20,8 +21,18 @@ constexpr ImGuiTreeNodeFlags kLeafFlags =
 
 void ResourcesPanel::Render() {
   // ---- Materials -------------------------------------------------------
-  const std::string mat_header = std::string(ICON_FA_PALETTE) + " Materials";
-  if (ImGui::TreeNodeEx(mat_header.c_str(), kRootFlags)) {
+  bool mat_open = ImGui::TreeNodeEx("##mat_header", kRootFlags,
+                                    "%s Materials", ICON_FA_PALETTE);
+  ImGui::SameLine(ImGui::GetWindowWidth() - 50.f);
+  if (ImGui::SmallButton(ICON_FA_PLUS)) {
+    std::strncpy(new_mat_name_buf_, "new_material", sizeof(new_mat_name_buf_));
+    show_new_mat_modal_ = true;
+  }
+  ImGui::SameLine();
+  if (ImGui::SmallButton(ICON_FA_FILE_IMPORT)) {
+    if (on_import_material_) on_import_material_();
+  }
+  if (mat_open) {
     for (const auto& kv : game::GameMaterial::GetRegistry()) {
       if (kv.first.rfind("__proc_", 0) == 0) continue;
       const std::string label = std::string(ICON_FA_PALETTE) + " " + kv.first;
@@ -47,6 +58,23 @@ void ResourcesPanel::Render() {
       }
     }
     ImGui::TreePop();
+  }
+
+  // ---- New Material modal ----------------------------------------------
+  if (show_new_mat_modal_) {
+    ImGui::OpenPopup("New Material##modal");
+    show_new_mat_modal_ = false;
+  }
+  if (ImGui::BeginPopupModal("New Material##modal", nullptr,
+                             ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImGui::InputText("Name", new_mat_name_buf_, sizeof(new_mat_name_buf_));
+    if (ImGui::Button("Create") && std::strlen(new_mat_name_buf_) > 0) {
+      if (on_new_material_) on_new_material_(new_mat_name_buf_);
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+    ImGui::EndPopup();
   }
 }
 
