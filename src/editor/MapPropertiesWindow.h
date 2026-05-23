@@ -26,7 +26,8 @@ class MapPropertiesWindow {
   explicit MapPropertiesWindow(EditorScene* scene);
 
   // Renders the always-open properties panel (call inside an ImGui window).
-  void RenderPanel();
+  // Returns true if any field was edited this frame.
+  bool RenderPanel();
 
   // Renders the "New Map##modal" popup. Returns true exactly once when the
   // user clicks "Create"; the entered values are then readable via the
@@ -40,9 +41,9 @@ class MapPropertiesWindow {
   [[nodiscard]] const game::GameLightDesc&  GetNewMapLightDesc() const;
 
  private:
-  // Renders all light-related fields into desc. When read_only_size is true,
-  // the map-size field is greyed and non-editable.
-  void RenderLightFields(game::GameLightDesc& desc, bool read_only_size);
+  // Renders all light-related fields into desc. Returns true if any field
+  // was edited this frame.
+  static bool RenderLightFields(game::GameLightDesc& desc, bool read_only_size);
 
   // cppcheck-suppress unusedStructMember
   EditorScene* scene_;  // not owned; null when used as a standalone modal

@@ -1,6 +1,8 @@
 #include "editor/EditorWindow.h"
 
 #include <filesystem>
+#include <string>
+#include <utility>
 
 #include <imgui.h>
 #include <loguru.hpp>
@@ -13,6 +15,7 @@
 #include "editor/EditorViewport.h"
 #include "editor/LogPanel.h"
 #include "editor/MapPropertiesWindow.h"
+#include "editor/MapSerializer.h"
 #include "editor/MaterialEditorWindow.h"
 #include "editor/MeshSelectionModal.h"
 #include "editor/ObjectsPanel.h"
@@ -37,6 +40,8 @@ std::optional<renderer::LightType> ToolToLightType(EditorTool tool) {
   }
 }
 
+constexpr const char* kMapFilter = "map.yaml";
+
 }  // namespace
 
 EditorWindow::EditorWindow(abstract::VideoDevice* video)
@@ -52,10 +57,12 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       objects_panel_(std::make_unique<ObjectsPanel>()),
       log_panel_(std::make_unique<LogPanel>()) {
   toolbar_->SetCommandHistory(&history_);
+  toolbar_->SetOnSave([this]{ SaveCurrent(); });
   viewport_->SetScene(scene_.get());
   viewport_->SetCommandHistory(&history_);
   properties_panel_->SetCommandHistory(&history_);
   material_editor_->SetCommandHistory(&history_);
+  history_.SetOnDirty([this]{ scene_dirty_ = true; });
   viewport_->SetOnPlacementDone([this]() {
     toolbar_->SetActiveTool(EditorTool::kSelection);
     placement_active_ = false;
@@ -81,7 +88,8 @@ void EditorWindow::Render() {
   // 2. Main menu bar.
   RenderMenuBar();
 
-  // 3. Toolbar.
+  // 3. Toolbar — update dirty state before rendering.
+  toolbar_->SetDirty(scene_dirty_);
   toolbar_->Render();
   const EditorTool active_tool = toolbar_->GetActiveTool();
 
@@ -153,10 +161,14 @@ void EditorWindow::Render() {
   // 8. Material editor — floating window, shown when a material is open.
   material_editor_->Render(*scene_);
 
-  // 9. Map properties panel.
-  if (ImGui::Begin("Map Properties"))
-    map_properties_->RenderPanel();
-  ImGui::End();
+  // 9. Map properties panel — toggled via the Map menu.
+  if (show_map_props_) {
+    if (ImGui::Begin("Map Properties", &show_map_props_)) {
+      if (map_properties_->RenderPanel())
+        scene_dirty_ = true;
+    }
+    ImGui::End();
+  }
 
   // 10. New Map modal — OpenPopup must be called outside any Begin/End pair.
   if (new_map_pending_) {
@@ -171,11 +183,20 @@ void EditorWindow::Render() {
                                            new_light);
     map_properties_ = std::make_unique<MapPropertiesWindow>(scene_.get());
     viewport_->SetScene(scene_.get());
+    history_.Clear();
+    scene_dirty_ = false;
     LOG_F(INFO, "New map '%s' created (size %.1f)", new_name.c_str(),
           new_size);
   }
 
-  // 11. Status bar — pinned to the bottom of the screen.
+  // 11. Unsaved changes modal — OpenPopup is triggered by CheckDirtyThenRun().
+  if (open_unsaved_changes_modal_) {
+    ImGui::OpenPopup("Unsaved Changes##modal");
+    open_unsaved_changes_modal_ = false;
+  }
+  RenderUnsavedChangesModal();
+
+  // 12. Status bar — pinned to the bottom of the screen.
   const ImGuiViewport* vp = ImGui::GetMainViewport();
   constexpr float kStatusBarHeight = 22.0f;
   ImGui::SetNextWindowPos({vp->WorkPos.x, vp->WorkPos.y + vp->WorkSize.y - kStatusBarHeight});
@@ -184,20 +205,43 @@ void EditorWindow::Render() {
       ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
       ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar;
   ImGui::Begin("##statusbar", nullptr, kStatusBarFlags);
-  ImGui::TextUnformatted("");
+  ImGui::TextUnformatted(scene_dirty_ ? "● Unsaved changes" : "");
   ImGui::End();
 }
 
 void EditorWindow::RenderMenuBar() {
   if (!ImGui::BeginMainMenuBar()) return;
 
+  // Global keyboard shortcuts — processed regardless of menu state.
+  if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_S)) SaveCurrent();
+  if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_N)) {
+    CheckDirtyThenRun([this]{ new_map_pending_ = true; });
+  }
+
   if (ImGui::BeginMenu("File")) {
-    if (ImGui::MenuItem("New")) {
-      new_map_pending_ = true;
+    if (ImGui::MenuItem("New", "Ctrl+N")) {
+      CheckDirtyThenRun([this]{ new_map_pending_ = true; });
+    }
+    if (ImGui::MenuItem("Load...")) {
+      CheckDirtyThenRun([this]{ LoadFromFile(); });
+    }
+    ImGui::Separator();
+    if (ImGui::MenuItem("Save", "Ctrl+S")) {
+      SaveCurrent();
+    }
+    if (ImGui::MenuItem("Save As...")) {
+      SaveAs();
     }
     ImGui::Separator();
     if (ImGui::MenuItem("Quit")) {
       EditorSystem::Instance().Stop();
+    }
+    ImGui::EndMenu();
+  }
+
+  if (ImGui::BeginMenu("Map")) {
+    if (ImGui::MenuItem("Map Properties", nullptr, show_map_props_)) {
+      show_map_props_ = !show_map_props_;
     }
     ImGui::EndMenu();
   }
@@ -213,6 +257,120 @@ void EditorWindow::RenderMenuBar() {
   }
 
   ImGui::EndMainMenuBar();
+}
+
+void EditorWindow::SaveCurrent() {
+  if (scene_->GetFilePath().empty()) {
+    SaveAs();
+    return;
+  }
+  if (!MapSerializer::Save(*scene_, viewport_->GetCameraState(),
+                           scene_->GetFilePath())) {
+    LOG_F(ERROR, "Failed to save map to '%s'",
+          scene_->GetFilePath().string().c_str());
+    return;
+  }
+  scene_dirty_ = false;
+  LOG_F(INFO, "Map saved to '%s'", scene_->GetFilePath().string().c_str());
+}
+
+void EditorWindow::SaveAs() {
+  const std::string default_name = scene_->GetMapName() + ".map.yaml";
+  nfdu8char_t* out_path = nullptr;
+  const nfdu8filteritem_t filter = {"Map", kMapFilter};
+  const nfdresult_t result =
+      NFD_SaveDialogU8(&out_path, &filter, 1, nullptr, default_name.c_str());
+  if (result != NFD_OKAY) {
+    if (result == NFD_ERROR)
+      LOG_F(ERROR, "NFD error opening save dialog");
+    return;
+  }
+
+  std::filesystem::path path(out_path);
+  NFD_FreePathU8(out_path);
+
+  if (path.extension() != ".yaml" ||
+      path.stem().extension() != ".map") {
+    path += ".map.yaml";
+  }
+
+  if (!MapSerializer::Save(*scene_, viewport_->GetCameraState(), path)) {
+    LOG_F(ERROR, "Failed to save map to '%s'", path.string().c_str());
+    return;
+  }
+  scene_->SetFilePath(path);
+  scene_dirty_ = false;
+  LOG_F(INFO, "Map saved to '%s'", path.string().c_str());
+}
+
+void EditorWindow::LoadFromFile() {
+  nfdu8char_t* out_path = nullptr;
+  const nfdu8filteritem_t filter = {"Map", kMapFilter};
+  const nfdresult_t result =
+      NFD_OpenDialogU8(&out_path, &filter, 1, nullptr);
+  if (result != NFD_OKAY) {
+    if (result == NFD_ERROR)
+      LOG_F(ERROR, "NFD error opening load dialog");
+    return;
+  }
+
+  const std::filesystem::path path(out_path);
+  NFD_FreePathU8(out_path);
+
+  auto loaded = MapSerializer::Load(path, video_);
+  if (!loaded) {
+    LOG_F(ERROR, "Failed to load map from '%s'", path.string().c_str());
+    return;
+  }
+
+  scene_         = std::move(loaded->scene);
+  map_properties_ = std::make_unique<MapPropertiesWindow>(scene_.get());
+  viewport_->SetScene(scene_.get());
+  viewport_->SetCameraState(loaded->camera_state);
+  if (scene_->GetSelectedObject())
+    viewport_->SetSelectedObject(scene_->GetSelectedObject());
+  history_.Clear();
+  scene_dirty_ = false;
+  LOG_F(INFO, "Map loaded from '%s'", path.string().c_str());
+}
+
+void EditorWindow::CheckDirtyThenRun(std::function<void()> on_proceed) {
+  if (scene_dirty_) {
+    pending_after_save_ = std::move(on_proceed);
+    open_unsaved_changes_modal_ = true;
+  } else {
+    on_proceed();
+  }
+}
+
+void EditorWindow::RenderUnsavedChangesModal() {
+  if (!ImGui::BeginPopupModal("Unsaved Changes##modal", nullptr,
+                              ImGuiWindowFlags_AlwaysAutoResize)) {
+    return;
+  }
+
+  ImGui::TextUnformatted("You have unsaved changes. What would you like to do?");
+  ImGui::Spacing();
+
+  if (ImGui::Button("Save")) {
+    SaveCurrent();
+    if (pending_after_save_) pending_after_save_();
+    pending_after_save_ = nullptr;
+    ImGui::CloseCurrentPopup();
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Discard")) {
+    if (pending_after_save_) pending_after_save_();
+    pending_after_save_ = nullptr;
+    ImGui::CloseCurrentPopup();
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Cancel")) {
+    pending_after_save_ = nullptr;
+    ImGui::CloseCurrentPopup();
+  }
+
+  ImGui::EndPopup();
 }
 
 void EditorWindow::ImportMaterial() {

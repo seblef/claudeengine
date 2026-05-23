@@ -17,7 +17,8 @@ MapPropertiesWindow::MapPropertiesWindow(EditorScene* scene)
 
 // --- Panel mode -------------------------------------------------------------
 
-void MapPropertiesWindow::RenderPanel() {
+bool MapPropertiesWindow::RenderPanel() {
+  bool changed = false;
   game::GameLightDesc desc = scene_->GetGlobalLightDesc();
 
   // Map name — applied on each keystroke.
@@ -25,8 +26,10 @@ void MapPropertiesWindow::RenderPanel() {
   const std::string& cur_name = scene_->GetMapName();
   std::strncpy(name_buf, cur_name.c_str(), sizeof(name_buf) - 1);
   name_buf[sizeof(name_buf) - 1] = '\0';
-  if (ImGui::InputText("Map name", name_buf, sizeof(name_buf)))
+  if (ImGui::InputText("Map name", name_buf, sizeof(name_buf))) {
     scene_->SetMapName(std::string(name_buf));
+    changed = true;
+  }
 
   // Filename — derived, read-only.
   const std::string filename = cur_name + ".map.yaml";
@@ -39,9 +42,12 @@ void MapPropertiesWindow::RenderPanel() {
                     ImGuiInputTextFlags_ReadOnly);
   ImGui::EndDisabled();
 
-  RenderLightFields(desc, /*read_only_size=*/true);
+  if (RenderLightFields(desc, /*read_only_size=*/true)) {
+    scene_->SetGlobalLightDesc(desc);
+    changed = true;
+  }
 
-  scene_->SetGlobalLightDesc(desc);
+  return changed;
 }
 
 // --- Modal mode -------------------------------------------------------------
@@ -100,9 +106,10 @@ const game::GameLightDesc& MapPropertiesWindow::GetNewMapLightDesc() const {
 
 // --- Private helpers --------------------------------------------------------
 
-void MapPropertiesWindow::RenderLightFields(game::GameLightDesc& desc,
+bool MapPropertiesWindow::RenderLightFields(game::GameLightDesc& desc,
                                             bool read_only_size) {
   (void)read_only_size;  // reserved for future use; currently unused
+  bool changed = false;
 
   ImGui::SeparatorText("Global light");
 
@@ -111,31 +118,38 @@ void MapPropertiesWindow::RenderLightFields(game::GameLightDesc& desc,
   if (ImGui::DragFloat3("Direction", dir, 0.01f)) {
     const core::Vec3f v(dir[0], dir[1], dir[2]);
     desc.direction = v.Normalized();
+    changed = true;
   }
 
   // Color.
   float col[3] = {desc.color.r, desc.color.g, desc.color.b};
-  if (ImGui::ColorEdit3("Color", col))
+  if (ImGui::ColorEdit3("Color", col)) {
     desc.color = core::Color(col[0], col[1], col[2]);
+    changed = true;
+  }
 
   // Ambient color.
   float amb[3] = {desc.ambient_color.x, desc.ambient_color.y,
                   desc.ambient_color.z};
-  if (ImGui::ColorEdit3("Ambient", amb))
+  if (ImGui::ColorEdit3("Ambient", amb)) {
     desc.ambient_color = core::Vec3f(amb[0], amb[1], amb[2]);
+    changed = true;
+  }
 
   // Intensity.
-  ImGui::DragFloat("Intensity", &desc.intensity, 0.01f, 0.f, 10.f);
+  changed |= ImGui::DragFloat("Intensity", &desc.intensity, 0.01f, 0.f, 10.f);
 
   // Cast shadow.
-  ImGui::Checkbox("Cast shadow", &desc.cast_shadow);
+  changed |= ImGui::Checkbox("Cast shadow", &desc.cast_shadow);
 
   // Shadow resolution.
-  ImGui::InputInt("Shadow resolution", &desc.shadow_resolution);
+  changed |= ImGui::InputInt("Shadow resolution", &desc.shadow_resolution);
 
   // Shadow bias.
-  ImGui::DragFloat("Shadow bias", &desc.shadow_bias, 0.0001f, 0.f, 0.1f,
-                   "%.4f");
+  changed |= ImGui::DragFloat("Shadow bias", &desc.shadow_bias, 0.0001f, 0.f,
+                               0.1f, "%.4f");
+
+  return changed;
 }
 
 }  // namespace editor

@@ -13,6 +13,7 @@ void EditorCommandHistory::Push(std::unique_ptr<EditorCommand> cmd) {
   if (static_cast<int>(undo_stack_.size()) > max_size_)
     undo_stack_.pop_front();
   redo_stack_.clear();
+  if (on_dirty_) on_dirty_();
 }
 
 void EditorCommandHistory::Undo() {

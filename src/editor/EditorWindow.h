@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 
 #include "abstract/VideoDevice.h"
@@ -25,10 +26,13 @@ class LogPanel;
 //
 // Each frame, Render() builds the full ImGui docking layout:
 //   - full-screen DockSpace as the root
-//   - main menu bar
-//   - toolbar
+//   - main menu bar (File, Map, Import) with keyboard shortcuts Ctrl+S/Ctrl+N
+//   - toolbar (undo/redo, save, transform and creation tools)
 //   - Viewport, Scene (Resources/Objects tabs), Properties, and Logs dockable panels
 //   - fixed status bar pinned to the bottom of the screen
+//
+// File operations (New, Load, Save, Save As) track a dirty flag so the user is
+// warned about unsaved changes before destructive actions.
 //
 // Lifecycle: owned by EditorSystem; Render() is called between
 // ImGui::NewFrame() and ImGui::Render().
@@ -47,6 +51,23 @@ class EditorWindow {
   void RenderMenuBar();
   void ImportMaterial();
   void ImportMesh();
+
+  // Saves to scene_->GetFilePath(); falls through to SaveAs() when empty.
+  void SaveCurrent();
+
+  // Opens a native save dialog and writes to the chosen path.
+  void SaveAs();
+
+  // Opens a native open dialog and loads a map file.
+  void LoadFromFile();
+
+  // Shows the "Unsaved Changes" modal if dirty, then fires on_proceed.
+  // Stores on_proceed in pending_after_save_ and sets the open flag.
+  void CheckDirtyThenRun(std::function<void()> on_proceed);
+
+  // Renders the "Unsaved Changes##modal" popup every frame.
+  // Fires pending_after_save_ on Save/Discard, clears it on Cancel.
+  void RenderUnsavedChangesModal();
 
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice* video_;
@@ -86,6 +107,19 @@ class EditorWindow {
   // True on the frame File > New is clicked; triggers OpenPopup that frame.
   // cppcheck-suppress unusedStructMember
   bool                                   new_map_pending_  = false;
+
+  // True when scene has unsaved changes; gates File > Save and the toolbar Save button.
+  // cppcheck-suppress unusedStructMember
+  bool                                   scene_dirty_      = false;
+  // True when the Map Properties panel should be shown.
+  // cppcheck-suppress unusedStructMember
+  bool                                   show_map_props_   = false;
+  // Set to true to open the "Unsaved Changes" modal on the next Render() call.
+  // cppcheck-suppress unusedStructMember
+  bool                                   open_unsaved_changes_modal_ = false;
+  // Callback to run after the user resolves the "Unsaved Changes" modal.
+  // cppcheck-suppress unusedStructMember
+  std::function<void()>                  pending_after_save_;
 };
 
 }  // namespace editor
