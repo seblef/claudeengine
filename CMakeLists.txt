@@ -44,6 +44,9 @@ endif()
 # ---------------------------------------------------------------------------
 include(FetchContent)
 set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/external")
+# CMake 4.x dropped support for cmake_minimum_required < 3.5; enforce 3.5 as
+# the floor for all fetched sub-projects (e.g. yaml-cpp 0.8.0 declares 3.4).
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
 FetchContent_Declare(
     loguru
@@ -138,7 +141,17 @@ FetchContent_MakeAvailable(stb)
 
 # Optional TIFF support via system libtiff
 find_package(TIFF QUIET)
-if(TIFF_FOUND)
+if(TIFF_FOUND AND TARGET TIFF::TIFF)
+    # Ubuntu 26.04's libtiff CMake config omits IMPORTED_LOCATION for the Debug
+    # configuration; fall back to the Release location so Debug builds link.
+    get_target_property(_tiff_dbg TIFF::TIFF IMPORTED_LOCATION_DEBUG)
+    if(NOT _tiff_dbg)
+        get_target_property(_tiff_rel TIFF::TIFF IMPORTED_LOCATION_RELEASE)
+        if(NOT _tiff_rel)
+            set(_tiff_rel "${TIFF_LIBRARIES}")
+        endif()
+        set_target_properties(TIFF::TIFF PROPERTIES IMPORTED_LOCATION_DEBUG "${_tiff_rel}")
+    endif()
     message(STATUS "[ClaudeEngine] libtiff found — TIFF texture support enabled")
     add_compile_definitions(HAVE_LIBTIFF)
 endif()
