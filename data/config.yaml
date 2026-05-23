@@ -3,6 +3,9 @@ graphics:
   width: 1024
   height: 768
 
+editor:
+  autosave_interval_seconds: 120
+
 shadows:
   2d_pool:
     slots_per_tier: 8

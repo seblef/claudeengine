@@ -7,8 +7,11 @@
 #include <imgui.h>
 #include <loguru.hpp>
 #include <nfd.h>
+#include <yaml-cpp/yaml.h>
 
+#include "core/Config.h"
 #include "core/Event.h"
+#include "core/YamlUtils.h"
 #include "editor/EditorScene.h"
 #include "editor/EditorSystem.h"
 #include "editor/EditorToolbar.h"
@@ -71,6 +74,13 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       [this](game::GameMaterial* mat) { material_editor_->Open(mat); });
   loguru::add_callback("editor_log", &LogPanel::LogCallback,
                        log_panel_.get(), loguru::Verbosity_INFO);
+
+  const auto config_path = core::Config::GetDataFolder() / "config.yaml";
+  YAML::Node root = core::LoadYamlFile(config_path);
+  if (auto editor = root["editor"]) {
+    if (auto interval = editor["autosave_interval_seconds"])
+      autosave_interval_ = interval.as<float>();
+  }
 }
 
 EditorWindow::~EditorWindow() {
@@ -82,6 +92,8 @@ void EditorWindow::OnEvent(const core::Event& event) {
 }
 
 void EditorWindow::Render() {
+  TickAutosave();
+
   // 1. Full-screen DockSpace — all panels dock into it.
   ImGui::DockSpaceOverViewport();
 
@@ -206,7 +218,35 @@ void EditorWindow::Render() {
       ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar;
   ImGui::Begin("##statusbar", nullptr, kStatusBarFlags);
   ImGui::TextUnformatted(scene_dirty_ ? "● Unsaved changes" : "");
+  if (autosave_msg_timer_ > 0.f) {
+    ImGui::SameLine();
+    ImGui::TextUnformatted(last_autosave_msg_.c_str());
+  }
   ImGui::End();
+}
+
+void EditorWindow::TickAutosave() {
+  const float dt = ImGui::GetIO().DeltaTime;
+  autosave_timer_ += dt;
+
+  if (autosave_msg_timer_ > 0.f) autosave_msg_timer_ -= dt;
+
+  if (!scene_dirty_) return;
+  const std::string& map_name = scene_->GetMapName();
+  if (map_name.empty() || map_name == "untitled") return;
+  if (autosave_timer_ < autosave_interval_) return;
+
+  autosave_timer_ = 0.f;
+  const auto path = core::Config::GetDataFolder()
+                    / "maps"
+                    / (map_name + ".autosave.map.yaml");
+  if (MapSerializer::Save(*scene_, viewport_->GetCameraState(), path)) {
+    LOG_F(INFO, "Autosaved to %s", path.string().c_str());
+    last_autosave_msg_ = "Autosaved";
+    autosave_msg_timer_ = 3.f;
+  } else {
+    LOG_F(WARNING, "Autosave failed: %s", path.string().c_str());
+  }
 }
 
 void EditorWindow::RenderMenuBar() {
