@@ -74,6 +74,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   resources_panel_->SetOnMaterialOpen(
       [this](game::GameMaterial* mat) { material_editor_->Open(mat); });
   resources_panel_->SetOnImportMaterial([this] { ImportMaterial(); });
+  resources_panel_->SetOnImportMesh([this] { ImportMesh(); });
   resources_panel_->SetOnNewMaterial([this](std::string_view name) {
     auto* mat = new game::GameMaterial(std::string(name),
                                        renderer::MaterialDesc(), video_);

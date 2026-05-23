@@ -32,6 +32,11 @@ class ResourcesPanel {
     on_import_material_ = std::move(cb);
   }
 
+  // Sets the callback invoked when the user clicks the "Import Mesh" button.
+  void SetOnImportMesh(std::function<void()> cb) {
+    on_import_mesh_ = std::move(cb);
+  }
+
   // Renders the resources tree inside the current ImGui tab item.
   void Render();
 
@@ -39,6 +44,7 @@ class ResourcesPanel {
   std::function<void(game::GameMaterial*)> on_material_open_;
   std::function<void(std::string_view)>    on_new_material_;
   std::function<void()>                    on_import_material_;
+  std::function<void()>                    on_import_mesh_;
 
   // cppcheck-suppress unusedStructMember
   bool show_new_mat_modal_    = false;
