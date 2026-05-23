@@ -45,8 +45,13 @@ void ResourcesPanel::Render() {
   }
 
   // ---- Mesh templates --------------------------------------------------
-  const std::string mesh_header = std::string(ICON_FA_CUBE) + " Meshes";
-  if (ImGui::TreeNodeEx(mesh_header.c_str(), kRootFlags)) {
+  bool mesh_open = ImGui::TreeNodeEx("##mesh_header", kRootFlags,
+                                     "%s Meshes", ICON_FA_CUBE);
+  ImGui::SameLine(ImGui::GetWindowWidth() - 30.f);
+  if (ImGui::SmallButton(ICON_FA_FILE_IMPORT)) {
+    if (on_import_mesh_) on_import_mesh_();
+  }
+  if (mesh_open) {
     for (const auto& kv : game::MeshTemplate::GetAll()) {
       const std::string label = std::string(ICON_FA_CUBE) + " " + kv.first;
       ImGui::TreeNodeEx(label.c_str(), kLeafFlags);
