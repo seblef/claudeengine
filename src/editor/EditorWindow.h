@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <memory>
+#include <string>
 
 #include "abstract/VideoDevice.h"
 #include "core/Event.h"
@@ -69,6 +70,10 @@ class EditorWindow {
   // Fires pending_after_save_ on Save/Discard, clears it on Cancel.
   void RenderUnsavedChangesModal();
 
+  // Advances the autosave timer; triggers a recovery save when ready.
+  // Called at the top of every Render() frame.
+  void TickAutosave();
+
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice* video_;
   // scene_ must be declared before viewport_ so it is created first and
@@ -120,6 +125,16 @@ class EditorWindow {
   // Callback to run after the user resolves the "Unsaved Changes" modal.
   // cppcheck-suppress unusedStructMember
   std::function<void()>                  pending_after_save_;
+
+  // Autosave state — see TickAutosave().
+  // cppcheck-suppress unusedStructMember
+  float                                  autosave_timer_    = 0.f;
+  // cppcheck-suppress unusedStructMember
+  float                                  autosave_interval_ = 120.f;
+  // cppcheck-suppress unusedStructMember
+  std::string                            last_autosave_msg_;
+  // cppcheck-suppress unusedStructMember
+  float                                  autosave_msg_timer_ = 0.f;
 };
 
 }  // namespace editor
