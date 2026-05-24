@@ -11,6 +11,7 @@
 #include "abstract/TextureFormat.h"
 #include "core/CoordinateSystem.h"
 #include "core/Mat4f.h"
+#include "core/RayUtils.h"
 #include "core/ProjectionType.h"
 #include "core/Vec3f.h"
 #include "core/Vec4f.h"
@@ -485,16 +486,47 @@ void EditorViewport::PickObjectAt(ImVec2 mouse_pos, ImVec2 image_pos,
                            world4.z / world4.w);
   const core::Vec3f ray_dir = (world3 - ray_origin).Normalized();
 
-  // Ray-AABB test against each mesh object; lights are skipped (infinite bbox).
   game::GameObject* hit    = nullptr;
   float             t_best = std::numeric_limits<float>::max();
 
   for (game::GameObject* obj : scene_->GetObjects()) {
-    if (obj->GetType() == game::GameObjectType::kLight) continue;
+    if (obj->GetType() != game::GameObjectType::kMesh) continue;
+
+    // Level 2: bbox pre-filter.
     float t;
-    if (obj->GetWorldBBox().IntersectsRay(ray_origin, ray_dir, t) && t < t_best) {
-      t_best = t;
-      hit    = obj;
+    if (!obj->GetWorldBBox().IntersectsRay(ray_origin, ray_dir, t)) continue;
+
+    const auto* game_mesh = static_cast<const game::GameMesh*>(obj);
+    const auto* tmpl      = game_mesh->GetTemplate();
+    const auto& positions = tmpl->GetCPUPositions();
+
+    if (positions.empty()) {
+      // Procedural mesh: fall back to bbox hit distance.
+      if (t < t_best) {
+        t_best = t;
+        hit = obj;
+      }
+      continue;
+    }
+
+    // Level 3: ray-triangle in model space.
+    // Transforming the ray is cheaper than transforming all vertices.
+    // Note: t values are in model space; for uniform-scale transforms this
+    // equals world-space t. For non-uniform scale the comparison is approximate
+    // but sufficient for editor picking.
+    const core::Mat4f inv_world  = obj->GetWorldTransform().Inverse();
+    const core::Vec3f local_orig = core::TransformPoint(inv_world, ray_origin);
+    const core::Vec3f local_dir  = core::TransformDir(inv_world, ray_dir);
+
+    const auto& indices = tmpl->GetCPUIndices();
+    for (size_t i = 0; i < indices.size(); i += 3) {
+      const float tri_t = core::RayTriangleIntersect(
+          local_orig, local_dir,
+          positions[indices[i]], positions[indices[i + 1]], positions[indices[i + 2]]);
+      if (tri_t >= 0.f && tri_t < t_best) {
+        t_best = tri_t;
+        hit = obj;
+      }
     }
   }
 
