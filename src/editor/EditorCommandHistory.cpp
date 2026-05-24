@@ -14,6 +14,7 @@ void EditorCommandHistory::Push(std::unique_ptr<EditorCommand> cmd) {
     undo_stack_.pop_front();
   redo_stack_.clear();
   if (on_dirty_) on_dirty_();
+  if (on_scene_modified_) on_scene_modified_();
 }
 
 void EditorCommandHistory::Undo() {
@@ -22,6 +23,7 @@ void EditorCommandHistory::Undo() {
   undo_stack_.pop_back();
   cmd->Undo();
   redo_stack_.push_back(std::move(cmd));
+  if (on_scene_modified_) on_scene_modified_();
 }
 
 void EditorCommandHistory::Redo() {
@@ -30,6 +32,7 @@ void EditorCommandHistory::Redo() {
   redo_stack_.pop_back();
   cmd->Redo();
   undo_stack_.push_back(std::move(cmd));
+  if (on_scene_modified_) on_scene_modified_();
 }
 
 bool EditorCommandHistory::CanUndo() const {

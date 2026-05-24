@@ -278,6 +278,16 @@ EditorViewport::EditorViewport(abstract::VideoDevice* video)
   camera_ctrl_->SetCamera(camera_.get());
 }
 
+void EditorViewport::SetCommandHistory(EditorCommandHistory* history) {
+  history_ = history;
+  if (history_) {
+    history_->SetOnSceneModified([this] {
+      if (scene_)
+        picking_acc_.Build(scene_->GetObjects(), scene_->GetBounds());
+    });
+  }
+}
+
 void EditorViewport::SetScene(EditorScene* scene) {
   scene_ = scene;
   if (scene_)

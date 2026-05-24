@@ -78,7 +78,8 @@ class EditorViewport {
   void SetOnPlacementDone(std::function<void()> cb) { on_placement_done_ = std::move(cb); }
 
   // Provides the command history used to record placements for undo/redo.
-  void SetCommandHistory(EditorCommandHistory* history) { history_ = history; }
+  // Registers a scene-modified callback to keep the picking accelerator in sync.
+  void SetCommandHistory(EditorCommandHistory* history);
 
   // Camera state pass-through for map save/restore.
   [[nodiscard]] EditorCameraController::CameraState GetCameraState() const;
