@@ -48,6 +48,9 @@ class PickingAccelerator {
   void InsertObject(game::GameObject* obj);
   void RemoveObject(game::GameObject* obj);
 
+  // Recomputes bounds from objects_, then reinitialises cell_size_/nx_/ny_/nz_/cells_.
+  void RebuildGrid();
+
   // cppcheck-suppress unusedStructMember
   core::BBox3 bounds_;
   // cppcheck-suppress unusedStructMember
@@ -56,6 +59,8 @@ class PickingAccelerator {
   int   nx_ = 0, ny_ = 0, nz_ = 0;
   // cppcheck-suppress unusedStructMember
   std::vector<std::vector<game::GameObject*>> cells_;
+  // cppcheck-suppress unusedStructMember
+  std::vector<game::GameObject*> objects_;
 };
 
 }  // namespace editor

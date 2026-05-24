@@ -4,17 +4,17 @@
 #include <cmath>
 #include <unordered_set>
 
+#include "game/GameLight.h"
 #include "game/GameObjectType.h"
 #include "renderer/GlobalLight.h"
 #include "renderer/Light.h"
-#include "game/GameLight.h"
 
 namespace editor {
 
 namespace {
 
-// Returns true for objects that are eligible for picking acceleration.
-// GlobalLight is excluded because it has no meaningful world position/bbox.
+// Returns true for objects eligible for picking acceleration.
+// GlobalLight is excluded: it has no meaningful world position/bbox.
 bool IsPickable(const game::GameObject* obj) {
   if (obj->GetType() == game::GameObjectType::kLight) {
     const auto* gl = static_cast<const game::GameLight*>(obj);
@@ -58,9 +58,19 @@ void PickingAccelerator::RemoveObject(game::GameObject* obj) {
   }
 }
 
-void PickingAccelerator::Build(const std::vector<game::GameObject*>& objects,
-                                const core::BBox3& scene_bounds) {
-  bounds_ = scene_bounds;
+void PickingAccelerator::RebuildGrid() {
+  // Recompute bounds from the tracked object list.
+  bool has_any = false;
+  for (const game::GameObject* obj : objects_) {
+    if (!IsPickable(obj)) continue;
+    if (!has_any) {
+      bounds_  = obj->GetWorldBBox();
+      has_any  = true;
+    } else {
+      bounds_ << obj->GetWorldBBox();
+    }
+  }
+  if (!has_any) return;
 
   const core::Vec3f size = bounds_.GetSize();
   const float diagonal = size.Length();
@@ -72,23 +82,57 @@ void PickingAccelerator::Build(const std::vector<game::GameObject*>& objects,
 
   cells_.assign(nx_ * ny_ * nz_, {});
 
-  for (game::GameObject* obj : objects)
+  for (game::GameObject* obj : objects_)
+    InsertObject(obj);
+}
+
+void PickingAccelerator::Build(const std::vector<game::GameObject*>& objects,
+                                const core::BBox3& scene_bounds) {
+  objects_ = objects;
+  bounds_  = scene_bounds;
+
+  const core::Vec3f size = bounds_.GetSize();
+  const float diagonal = size.Length();
+  cell_size_ = std::max(diagonal / 32.f, 1.f);
+
+  nx_ = std::max(1, static_cast<int>(std::ceil(size.x / cell_size_)));
+  ny_ = std::max(1, static_cast<int>(std::ceil(size.y / cell_size_)));
+  nz_ = std::max(1, static_cast<int>(std::ceil(size.z / cell_size_)));
+
+  cells_.assign(nx_ * ny_ * nz_, {});
+
+  for (game::GameObject* obj : objects_)
     InsertObject(obj);
 }
 
 void PickingAccelerator::Add(game::GameObject* obj) {
   if (nx_ == 0) return;
-  InsertObject(obj);
+  objects_.push_back(obj);
+
+  // If the object's bbox fits within the current grid, insert incrementally.
+  // Otherwise the grid no longer covers the full scene: rebuild from scratch.
+  if (bounds_.IsCompletelyIn(obj->GetWorldBBox()))
+    InsertObject(obj);
+  else
+    RebuildGrid();
 }
 
 void PickingAccelerator::Remove(game::GameObject* obj) {
   if (nx_ == 0) return;
+  objects_.erase(std::remove(objects_.begin(), objects_.end(), obj), objects_.end());
   RemoveObject(obj);
 }
 
 void PickingAccelerator::UpdateMoved(game::GameObject* obj) {
-  Remove(obj);
-  Add(obj);
+  if (nx_ == 0) return;
+  RemoveObject(obj);
+
+  // If the object's new bbox fits within the current grid, reinsert directly.
+  // Otherwise rebuild so the grid covers the expanded scene.
+  if (bounds_.IsCompletelyIn(obj->GetWorldBBox()))
+    InsertObject(obj);
+  else
+    RebuildGrid();
 }
 
 std::vector<game::GameObject*>
@@ -100,10 +144,10 @@ PickingAccelerator::QueryRay(const core::Vec3f& origin,
   std::unordered_set<game::GameObject*> visited;
 
   // 3D DDA traversal.
-  // Compute the starting voxel from the ray origin (clamped to grid).
   const core::Vec3f& gmn = bounds_.GetMin();
 
-  // Entry point: either ray origin (if inside) or intersection with grid bbox.
+  // Entry point: either the ray origin (if inside the grid) or the first
+  // intersection with the grid bbox.
   float t_start = 0.f;
   if (!bounds_.IntersectsRay(origin, dir, t_start)) return result;
   t_start = std::max(t_start, 0.f);
@@ -123,12 +167,11 @@ PickingAccelerator::QueryRay(const core::Vec3f& origin,
   const int step_y = (dir.y >= 0.f) ? 1 : -1;
   const int step_z = (dir.z >= 0.f) ? 1 : -1;
 
-  // t_max: t value at which the ray crosses the next cell boundary on each axis.
   const float inv_dx = (std::abs(dir.x) > 1e-8f) ? (1.f / dir.x) : 1e30f;
   const float inv_dy = (std::abs(dir.y) > 1e-8f) ? (1.f / dir.y) : 1e30f;
   const float inv_dz = (std::abs(dir.z) > 1e-8f) ? (1.f / dir.z) : 1e30f;
 
-  // World-space position of the next cell boundary.
+  // t value at which the ray crosses the next cell boundary on each axis.
   const float next_bx = gmn.x + static_cast<float>(cx + (step_x > 0 ? 1 : 0)) * cell_size_;
   const float next_by = gmn.y + static_cast<float>(cy + (step_y > 0 ? 1 : 0)) * cell_size_;
   const float next_bz = gmn.z + static_cast<float>(cz + (step_z > 0 ? 1 : 0)) * cell_size_;
@@ -141,7 +184,7 @@ PickingAccelerator::QueryRay(const core::Vec3f& origin,
   const float ty_delta = std::abs(cell_size_ * inv_dy);
   const float tz_delta = std::abs(cell_size_ * inv_dz);
 
-  // Bound traversal to the grid extent — at most nx+ny+nz steps can be needed.
+  // At most nx+ny+nz steps needed to traverse the full grid.
   const int max_steps = nx_ + ny_ + nz_;
 
   for (int step = 0; step < max_steps; ++step) {
