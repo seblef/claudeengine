@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <memory>
 
+#include "core/BBox3.h"
 #include "core/Color.h"
 #include "core/Mat4f.h"
 #include "core/Vec3f.h"
@@ -133,6 +134,32 @@ std::unique_ptr<game::GameObject> EditorScene::ReclaimDynamicObject(
 bool EditorScene::IsDynamic(const game::GameObject* obj) const {
   return std::any_of(dynamic_objects_.begin(), dynamic_objects_.end(),
                      [obj](const auto& p) { return p.get() == obj; });
+}
+
+core::BBox3 EditorScene::GetBounds() const {
+  core::BBox3 result;
+  bool has_any = false;
+  for (const game::GameObject* obj : objects_) {
+    const core::BBox3& bbox = obj->GetWorldBBox();
+    if (!has_any) {
+      result   = bbox;
+      has_any  = true;
+    } else {
+      result << bbox;
+    }
+  }
+  if (!has_any)
+    return core::BBox3({-5.f, -5.f, -5.f}, {5.f, 5.f, 5.f});
+
+  // Ensure minimum diagonal of 10 world units.
+  constexpr float kMinHalf = 5.f;
+  const core::Vec3f center = result.GetCenter();
+  const core::Vec3f half   = result.GetSize() * 0.5f;
+  const core::Vec3f expanded(
+      std::max(half.x, kMinHalf),
+      std::max(half.y, kMinHalf),
+      std::max(half.z, kMinHalf));
+  return core::BBox3(center - expanded, center + expanded);
 }
 
 const std::string& EditorScene::GetMapName() const { return map_name_; }

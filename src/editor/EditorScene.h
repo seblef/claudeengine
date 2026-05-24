@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "abstract/VideoDevice.h"
+#include "core/BBox3.h"
 #include "game/GameLight.h"
 #include "game/GameLightDesc.h"
 #include "game/GameMaterial.h"
@@ -75,6 +76,10 @@ class EditorScene {
 
   [[nodiscard]] game::GameObject* GetSelectedObject() const { return selected_; }
   void SetSelectedObject(game::GameObject* obj)             { selected_ = obj; }
+
+  // Returns the union of all object world bboxes.
+  // Guarantees a minimum diagonal of 10 world units for empty scenes.
+  [[nodiscard]] core::BBox3                   GetBounds()   const;
 
   [[nodiscard]] const std::string&           GetMapName()  const;
   void                                        SetMapName(const std::string& name);
