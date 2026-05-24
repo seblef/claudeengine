@@ -1,12 +1,15 @@
 #pragma once
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "abstract/VideoDevice.h"
 #include "core/BBox3.h"
 #include "core/Resource.h"
+#include "core/Vec3f.h"
 #include "renderer/GeometryData.h"
 #include "renderer/Mesh.h"
 
@@ -57,6 +60,11 @@ class MeshTemplate : public core::Resource<std::string, MeshTemplate> {
   [[nodiscard]] GameMaterial*           GetMaterial() const;
   [[nodiscard]] const core::BBox3&      GetLocalBBox() const;
 
+  // CPU-side positions and indices retained for ray-triangle picking.
+  // Empty for procedural templates (cube/sphere previews); check before use.
+  [[nodiscard]] const std::vector<core::Vec3f>& GetCPUPositions() const;
+  [[nodiscard]] const std::vector<uint32_t>&    GetCPUIndices()   const;
+
   // Returns the existing MeshTemplate for mesh_path (AddRef'd), or loads a new
   // one from disk with mat assigned. mat is only used when a new template is
   // created; on cache hits call SetMaterial() explicitly if needed.
@@ -75,6 +83,10 @@ class MeshTemplate : public core::Resource<std::string, MeshTemplate> {
   GameMaterial*                           material_ = nullptr;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<renderer::Mesh>         mesh_;
+  // cppcheck-suppress unusedStructMember
+  std::vector<core::Vec3f>                cpu_positions_;
+  // cppcheck-suppress unusedStructMember
+  std::vector<uint32_t>                   cpu_indices_;
 };
 
 }  // namespace game

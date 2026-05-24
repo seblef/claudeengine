@@ -43,8 +43,8 @@ std::unique_ptr<GeometryData> MakeGeometry(abstract::VideoDevice* video,
 
 }  // namespace
 
-std::unique_ptr<GeometryData> MeshLoader::LoadGeometry(const std::string& path,
-                                                        abstract::VideoDevice* video) {
+std::optional<MeshLoadResult> MeshLoader::Load(const std::string& path,
+                                                abstract::VideoDevice* video) {
   const std::string ext = Extension(path);
   mesh::MeshData data;
   bool ok = false;
@@ -58,11 +58,28 @@ std::unique_ptr<GeometryData> MeshLoader::LoadGeometry(const std::string& path,
   } else {
     LOG_F(ERROR, "MeshLoader: unsupported extension '%s' for '%s'",
           ext.c_str(), path.c_str());
-    return nullptr;
+    return std::nullopt;
   }
 
-  if (!ok) return nullptr;
-  return MakeGeometry(video, data.lod);
+  if (!ok) return std::nullopt;
+
+  auto geo = MakeGeometry(video, data.lod);
+  if (!geo) return std::nullopt;
+
+  MeshLoadResult result;
+  result.geometry = std::move(geo);
+  result.cpu.indices = data.lod.indices;
+  result.cpu.positions.reserve(data.lod.vertices.size());
+  for (const auto& v : data.lod.vertices)
+    result.cpu.positions.push_back(v.position);
+
+  return result;
+}
+
+std::unique_ptr<GeometryData> MeshLoader::LoadGeometry(const std::string& path,
+                                                        abstract::VideoDevice* video) {
+  auto r = Load(path, video);
+  return r ? std::move(r->geometry) : nullptr;
 }
 
 }  // namespace renderer

@@ -10,9 +10,12 @@ namespace game {
 
 MeshTemplate::MeshTemplate(const std::string& mesh_path, abstract::VideoDevice* video,
                            GameMaterial* mat)
-    : Resource(mesh_path),
-      geometry_(renderer::MeshLoader::LoadGeometry(mesh_path, video)) {
-  if (geometry_) {
+    : Resource(mesh_path) {
+  auto result = renderer::MeshLoader::Load(mesh_path, video);
+  if (result) {
+    geometry_     = std::move(result->geometry);
+    cpu_positions_ = std::move(result->cpu.positions);
+    cpu_indices_   = std::move(result->cpu.indices);
     if (mat) {
       material_ = mat;
       material_->AddRef();
@@ -64,6 +67,14 @@ GameMaterial* MeshTemplate::GetMaterial() const {
 
 const core::BBox3& MeshTemplate::GetLocalBBox() const {
   return geometry_->GetBBox();
+}
+
+const std::vector<core::Vec3f>& MeshTemplate::GetCPUPositions() const {
+  return cpu_positions_;
+}
+
+const std::vector<uint32_t>& MeshTemplate::GetCPUIndices() const {
+  return cpu_indices_;
 }
 
 // static
