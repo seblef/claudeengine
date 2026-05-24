@@ -69,14 +69,16 @@ void ObjectsPanel::RenderGroup(const char* icon, const char* group_name,
         if (!new_name.empty() && new_name != old_name && history)
           history->Push(std::make_unique<RenameObjectCommand>(obj, old_name, new_name));
         renaming_obj = nullptr;
-      } else if (!ImGui::IsItemActive()) {
-        // Commit on focus loss.
+      } else if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+        renaming_obj = nullptr;  // cancel without pushing a command
+      } else if (ImGui::IsItemDeactivated()) {
+        // Commit on focus loss. IsItemDeactivated() is used instead of
+        // !IsItemActive() because InputText is not active on its first frame
+        // (SetKeyboardFocusHere activates it via NavActivateId one frame later).
         const std::string new_name(rename_buf);
         if (!new_name.empty() && new_name != old_name && history)
           history->Push(std::make_unique<RenameObjectCommand>(obj, old_name, new_name));
         renaming_obj = nullptr;
-      } else if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
-        renaming_obj = nullptr;  // cancel without pushing a command
       }
     } else {
       // Normal display mode.
@@ -85,14 +87,14 @@ void ObjectsPanel::RenderGroup(const char* icon, const char* group_name,
 
       const std::string leaf_label = std::string(icon) + " " + obj->GetName();
       ImGui::TreeNodeEx(leaf_label.c_str(), flags);
-      if (ImGui::IsItemClicked())
+      if (ImGui::IsItemClicked()) {
         scene.SetSelectedObject(obj);
-      if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) &&
-          ImGui::IsItemHovered()) {
-        renaming_obj = obj;
-        std::strncpy(rename_buf, obj->GetName().c_str(), rename_buf_size - 1);
-        rename_buf[rename_buf_size - 1] = '\0';
-        rename_focus_needed = true;
+        if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+          renaming_obj = obj;
+          std::strncpy(rename_buf, obj->GetName().c_str(), rename_buf_size - 1);
+          rename_buf[rename_buf_size - 1] = '\0';
+          rename_focus_needed = true;
+        }
       }
     }
 
