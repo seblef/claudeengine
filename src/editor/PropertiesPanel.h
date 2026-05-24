@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include "editor/commands/LightPropertyCommand.h"
 
 namespace game {
@@ -30,12 +32,14 @@ class PropertiesPanel {
 
  private:
   void RenderLightProperties(game::GameLight* light);
-  void RenderMeshProperties(const game::GameMesh* mesh);
+  static void RenderMeshProperties(const game::GameMesh* mesh);
 
   // cppcheck-suppress unusedStructMember
   EditorCommandHistory* history_         = nullptr;
   // cppcheck-suppress unusedStructMember
   LightSnapshot         before_snapshot_ = {};
+  // cppcheck-suppress unusedStructMember
+  std::string           before_name_;
 };
 
 }  // namespace editor

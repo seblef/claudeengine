@@ -1,7 +1,9 @@
 #include "editor/PropertiesPanel.h"
 
 #include <cmath>
+#include <cstring>
 #include <memory>
+#include <string>
 
 #include <imgui.h>
 
@@ -10,6 +12,7 @@
 #include "editor/EditorCommandHistory.h"
 #include "editor/EditorUtils.h"
 #include "editor/commands/LightPropertyCommand.h"
+#include "editor/commands/RenameObjectCommand.h"
 #include "game/GameLight.h"
 #include "game/GameMesh.h"
 #include "game/GameObject.h"
@@ -47,6 +50,20 @@ void PropertiesPanel::Render(game::GameObject* obj) {
     ImGui::PopStyleColor();
     return;
   }
+
+  char name_buf[256];
+  std::strncpy(name_buf, obj->GetName().c_str(), sizeof(name_buf) - 1);
+  name_buf[sizeof(name_buf) - 1] = '\0';
+
+  ImGui::InputText("Name##propname", name_buf, sizeof(name_buf));
+  if (ImGui::IsItemActivated())
+    before_name_ = obj->GetName();
+  if (ImGui::IsItemDeactivatedAfterEdit()) {
+    const std::string new_name(name_buf);
+    if (!new_name.empty() && new_name != before_name_ && history_)
+      history_->Push(std::make_unique<RenameObjectCommand>(obj, before_name_, new_name));
+  }
+  ImGui::Separator();
 
   switch (obj->GetType()) {
     case game::GameObjectType::kLight:
