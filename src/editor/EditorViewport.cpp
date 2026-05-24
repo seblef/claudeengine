@@ -11,6 +11,7 @@
 #include "abstract/TextureFormat.h"
 #include "core/CoordinateSystem.h"
 #include "core/Mat4f.h"
+#include "core/RayUtils.h"
 #include "core/ProjectionType.h"
 #include "core/Vec3f.h"
 #include "core/Vec4f.h"
@@ -248,38 +249,6 @@ void DrawLightWireframe(ImDrawList* dl,
       break;
     }
   }
-}
-
-// Möller-Trumbore ray-triangle intersection.
-// Returns t >= 0 on hit, -1.f on miss.
-float RayTriangleIntersect(const core::Vec3f& orig, const core::Vec3f& dir,
-                           const core::Vec3f& v0,   const core::Vec3f& v1,
-                           const core::Vec3f& v2) {
-  constexpr float kEpsilon = 1e-7f;
-  const core::Vec3f e1 = v1 - v0;
-  const core::Vec3f e2 = v2 - v0;
-  const core::Vec3f h  = dir.Cross(e2);
-  const float a = e1.Dot(h);
-  if (std::abs(a) < kEpsilon) return -1.f;
-  const float f = 1.f / a;
-  const core::Vec3f s = orig - v0;
-  const float u = f * s.Dot(h);
-  if (u < 0.f || u > 1.f) return -1.f;
-  const core::Vec3f q = s.Cross(e1);
-  const float v = f * dir.Dot(q);
-  if (v < 0.f || u + v > 1.f) return -1.f;
-  const float t = f * e2.Dot(q);
-  return t >= 0.f ? t : -1.f;
-}
-
-// Transform a world-space point to model space.
-core::Vec3f TransformPoint(const core::Mat4f& inv_world, const core::Vec3f& p) {
-  return p * inv_world;
-}
-
-// Transform a world-space direction to model space (no translation).
-core::Vec3f TransformDir(const core::Mat4f& inv_world, const core::Vec3f& d) {
-  return core::TransformNoTranslation(d, inv_world);
 }
 
 // Returns the ImGuizmo operation for a tool, or nullopt if no gizmo should
@@ -546,12 +515,12 @@ void EditorViewport::PickObjectAt(ImVec2 mouse_pos, ImVec2 image_pos,
     // equals world-space t. For non-uniform scale the comparison is approximate
     // but sufficient for editor picking.
     const core::Mat4f inv_world  = obj->GetWorldTransform().Inverse();
-    const core::Vec3f local_orig = TransformPoint(inv_world, ray_origin);
-    const core::Vec3f local_dir  = TransformDir(inv_world, ray_dir);
+    const core::Vec3f local_orig = core::TransformPoint(inv_world, ray_origin);
+    const core::Vec3f local_dir  = core::TransformDir(inv_world, ray_dir);
 
     const auto& indices = tmpl->GetCPUIndices();
     for (size_t i = 0; i < indices.size(); i += 3) {
-      const float tri_t = RayTriangleIntersect(
+      const float tri_t = core::RayTriangleIntersect(
           local_orig, local_dir,
           positions[indices[i]], positions[indices[i + 1]], positions[indices[i + 2]]);
       if (tri_t >= 0.f && tri_t < t_best) {
