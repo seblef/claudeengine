@@ -17,6 +17,7 @@
 #include "core/Vec4f.h"
 #include "editor/EditorScene.h"
 #include "editor/EditorTool.h"
+#include "editor/PickingAccelerator.h"
 #include "editor/commands/DeleteObjectCommand.h"
 #include "editor/commands/PlaceObjectCommand.h"
 #include "editor/commands/TransformCommand.h"
@@ -277,6 +278,19 @@ EditorViewport::EditorViewport(abstract::VideoDevice* video)
   camera_ctrl_->SetCamera(camera_.get());
 }
 
+void EditorViewport::SetScene(EditorScene* scene) {
+  scene_ = scene;
+  if (scene_) {
+    scene_->SetOnObjectAdded([this](game::GameObject* obj) {
+      picking_acc_.Add(obj);
+    });
+    scene_->SetOnObjectRemoved([this](game::GameObject* obj) {
+      picking_acc_.Remove(obj);
+    });
+    picking_acc_.Build(scene_->GetObjects(), scene_->GetBounds());
+  }
+}
+
 void EditorViewport::OnEvent(const core::Event& event) {
   if (event.type == core::EventType::kKeyDown &&
       event.key == core::Key::kDelete &&
@@ -434,11 +448,14 @@ void EditorViewport::Render() {
       selected->SetWorldTransform(model_t_after.Transpose());
     }
 
-    if (gizmo_was_using_ && !gizmo_using && history_) {
-      const core::Mat4f after = selected->GetWorldTransform();
-      if (after != gizmo_before_transform_)
-        history_->Push(std::make_unique<TransformCommand>(
-            selected, gizmo_before_transform_, after));
+    if (gizmo_was_using_ && !gizmo_using) {
+      picking_acc_.UpdateMoved(selected);
+      if (history_) {
+        const core::Mat4f after = selected->GetWorldTransform();
+        if (after != gizmo_before_transform_)
+          history_->Push(std::make_unique<TransformCommand>(
+              selected, gizmo_before_transform_, after));
+      }
     }
 
     gizmo_was_using_ = gizmo_using;
@@ -489,7 +506,12 @@ void EditorViewport::PickObjectAt(ImVec2 mouse_pos, ImVec2 image_pos,
   game::GameObject* hit    = nullptr;
   float             t_best = std::numeric_limits<float>::max();
 
-  for (game::GameObject* obj : scene_->GetObjects()) {
+  const std::vector<game::GameObject*>& candidates =
+      picking_acc_.IsBuilt()
+          ? picking_acc_.QueryRay(ray_origin, ray_dir)
+          : scene_->GetObjects();
+
+  for (game::GameObject* obj : candidates) {
     if (obj->GetType() != game::GameObjectType::kMesh) continue;
 
     // Level 2: bbox pre-filter.
@@ -567,9 +589,11 @@ void EditorViewport::UpdatePreviewPosition(ImVec2 mouse_pos, ImVec2 image_pos,
   if (pending_preview_)
     preview_object_ = scene_->AddDynamicObject(std::move(pending_preview_));
 
-  if (preview_object_)
+  if (preview_object_) {
     preview_object_->SetWorldTransform(
         core::Mat4f::Translation({hit.x, preview_height_, hit.z}));
+    picking_acc_.UpdateMoved(preview_object_);
+  }
 }
 
 void EditorViewport::PlacePreview() {

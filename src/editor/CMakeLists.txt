@@ -14,6 +14,7 @@ add_library(editor STATIC
     MeshPreview.cpp
     MeshSelectionModal.cpp
     ObjectsPanel.cpp
+    PickingAccelerator.cpp
     PropertiesPanel.cpp
     ResourcesPanel.cpp
 )

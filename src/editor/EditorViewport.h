@@ -11,6 +11,7 @@
 #include "editor/EditorCameraController.h"
 #include "editor/EditorCommandHistory.h"
 #include "editor/EditorTool.h"
+#include "editor/PickingAccelerator.h"
 #include "game/GameCamera.h"
 #include "game/GameObject.h"
 #include "renderer/Light.h"
@@ -49,7 +50,8 @@ class EditorViewport {
   void OnEvent(const core::Event& event);
 
   // Sets the scene reference (not owned). Call once after scene creation.
-  void SetScene(EditorScene* scene) { scene_ = scene; }
+  // Rebuilds the picking accelerator from all current scene objects.
+  void SetScene(EditorScene* scene);
 
   [[nodiscard]] ImVec2                  GetPanelSize()      const { return panel_size_; }
   [[nodiscard]] const game::GameObject* GetSelectedObject() const { return selected_object_; }
@@ -153,6 +155,9 @@ class EditorViewport {
   std::function<void()>   on_placement_done_;
   // cppcheck-suppress unusedStructMember
   EditorCommandHistory*   history_           = nullptr;  // not owned; set by EditorWindow
+
+  // cppcheck-suppress unusedStructMember
+  PickingAccelerator      picking_acc_;
 
   // Gizmo drag-state tracking for TransformCommand (issue #236).
   // cppcheck-suppress unusedStructMember

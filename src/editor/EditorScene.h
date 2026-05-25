@@ -1,11 +1,13 @@
 #pragma once
 
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "abstract/VideoDevice.h"
+#include "core/BBox3.h"
 #include "game/GameLight.h"
 #include "game/GameLightDesc.h"
 #include "game/GameMaterial.h"
@@ -43,6 +45,15 @@ class EditorScene {
   // Returns all scene objects (static + dynamic) in creation order.
   [[nodiscard]] const std::vector<game::GameObject*>& GetObjects() const { return objects_; }
 
+  // Registers callbacks fired when dynamic objects are added to or removed from
+  // the scene. Covers all paths: direct calls, command execute, undo, and redo.
+  void SetOnObjectAdded(std::function<void(game::GameObject*)> cb) {
+    on_object_added_ = std::move(cb);
+  }
+  void SetOnObjectRemoved(std::function<void(game::GameObject*)> cb) {
+    on_object_removed_ = std::move(cb);
+  }
+
   // Transfers ownership of obj into the dynamic pool, registers it with
   // GameSystem, appends it to GetObjects(), and returns the raw pointer.
   game::GameObject* AddDynamicObject(std::unique_ptr<game::GameObject> obj);
@@ -75,6 +86,10 @@ class EditorScene {
 
   [[nodiscard]] game::GameObject* GetSelectedObject() const { return selected_; }
   void SetSelectedObject(game::GameObject* obj)             { selected_ = obj; }
+
+  // Returns the union of all object world bboxes.
+  // Guarantees a minimum diagonal of 10 world units for empty scenes.
+  [[nodiscard]] core::BBox3                   GetBounds()   const;
 
   [[nodiscard]] const std::string&           GetMapName()  const;
   void                                        SetMapName(const std::string& name);
@@ -114,6 +129,10 @@ class EditorScene {
   std::vector<game::MeshTemplate*>  mesh_templates_;
   // cppcheck-suppress unusedStructMember
   game::GameObject*                selected_ = nullptr;
+  // cppcheck-suppress unusedStructMember
+  std::function<void(game::GameObject*)> on_object_added_;
+  // cppcheck-suppress unusedStructMember
+  std::function<void(game::GameObject*)> on_object_removed_;
 };
 
 }  // namespace editor
