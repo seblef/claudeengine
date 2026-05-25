@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -43,6 +44,15 @@ class EditorScene {
 
   // Returns all scene objects (static + dynamic) in creation order.
   [[nodiscard]] const std::vector<game::GameObject*>& GetObjects() const { return objects_; }
+
+  // Registers callbacks fired when dynamic objects are added to or removed from
+  // the scene. Covers all paths: direct calls, command execute, undo, and redo.
+  void SetOnObjectAdded(std::function<void(game::GameObject*)> cb) {
+    on_object_added_ = std::move(cb);
+  }
+  void SetOnObjectRemoved(std::function<void(game::GameObject*)> cb) {
+    on_object_removed_ = std::move(cb);
+  }
 
   // Transfers ownership of obj into the dynamic pool, registers it with
   // GameSystem, appends it to GetObjects(), and returns the raw pointer.
@@ -119,6 +129,10 @@ class EditorScene {
   std::vector<game::MeshTemplate*>  mesh_templates_;
   // cppcheck-suppress unusedStructMember
   game::GameObject*                selected_ = nullptr;
+  // cppcheck-suppress unusedStructMember
+  std::function<void(game::GameObject*)> on_object_added_;
+  // cppcheck-suppress unusedStructMember
+  std::function<void(game::GameObject*)> on_object_removed_;
 };
 
 }  // namespace editor

@@ -94,6 +94,7 @@ game::GameObject* EditorScene::AddDynamicObject(std::unique_ptr<game::GameObject
   dynamic_objects_.push_back(std::move(obj));
   game::GameSystem::Instance().AddObject(raw);
   objects_.push_back(raw);
+  if (on_object_added_) on_object_added_(raw);
   return raw;
 }
 
@@ -108,6 +109,7 @@ void EditorScene::RemoveDynamicObject(game::GameObject* obj) {
     selected_ = nullptr;
   }
 
+  if (on_object_removed_) on_object_removed_(obj);
   game::GameSystem::Instance().RemoveObject(obj);
 
   objects_.erase(std::remove(objects_.begin(), objects_.end(), obj), objects_.end());
@@ -122,6 +124,7 @@ std::unique_ptr<game::GameObject> EditorScene::ReclaimDynamicObject(
 
   if (selected_ == obj) selected_ = nullptr;
 
+  if (on_object_removed_) on_object_removed_(obj);
   game::GameSystem::Instance().RemoveObject(obj);
   objects_.erase(std::remove(objects_.begin(), objects_.end(), obj),
                  objects_.end());

@@ -39,13 +39,6 @@ class EditorCommandHistory {
   // set the scene dirty flag when commands are executed.
   void SetOnDirty(std::function<void()> cb) { on_dirty_ = std::move(cb); }
 
-  // Registers a callback fired after every Push(), Undo(), and Redo().
-  // Use this to observe any structural change to the scene (objects added or
-  // removed), including undo/redo, which on_dirty_ does not cover.
-  void SetOnSceneModified(std::function<void()> cb) {
-    on_scene_modified_ = std::move(cb);
-  }
-
  private:
   // cppcheck-suppress unusedStructMember
   int max_size_;
@@ -55,8 +48,6 @@ class EditorCommandHistory {
   std::deque<std::unique_ptr<EditorCommand>> redo_stack_;
   // cppcheck-suppress unusedStructMember
   std::function<void()> on_dirty_;
-  // cppcheck-suppress unusedStructMember
-  std::function<void()> on_scene_modified_;
 };
 
 }  // namespace editor
