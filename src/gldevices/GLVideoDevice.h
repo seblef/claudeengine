@@ -133,6 +133,10 @@ class GLVideoDevice : public abstract::VideoDevice {
   [[nodiscard]] std::unique_ptr<abstract::RawTexture> CreateHeightmapTexture(
       int width, int height, const uint16_t* data) override;
 
+  // Creates a GL_RGBA8 texture for terrain normal maps; supports UpdateRegion().
+  [[nodiscard]] std::unique_ptr<abstract::RawTexture> CreateNormalMapTexture(
+      int width, int height, const uint8_t* data) override;
+
  private:
   // cppcheck-suppress unusedStructMember
   GLFWwindow* window_;
