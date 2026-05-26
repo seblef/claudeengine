@@ -6,14 +6,19 @@
 #include "abstract/PrimitiveType.h"
 #include "core/Camera.h"
 #include "terrain/TerrainData.h"
+#include "terrain/TerrainMaterial.h"
 #include "terrain/TerrainPatchInfos.h"
 
 namespace terrain {
 
 namespace {
 constexpr int kPatchInfosSlot    = 6;
-constexpr int kPatchInfosFloat4s = sizeof(TerrainPatchInfos) / 16;  // 48 / 16 = 3
+constexpr int kPatchInfosFloat4s = sizeof(TerrainPatchInfos) / 16;  // 80 / 16 = 5
 constexpr int kHeightmapSlot     = 0;
+constexpr int kSplatmapSlot      = 1;
+constexpr int kAlbedoBaseSlot    = 2;   // slots 2-5 for 4 layer albedos
+constexpr int kNormalBaseSlot    = 6;   // slots 6-9 for 4 layer normals
+constexpr int kMacroTextureSlot  = 10;
 }  // namespace
 
 TerrainRenderer::~TerrainRenderer() {
@@ -41,6 +46,23 @@ void TerrainRenderer::Init(abstract::VideoDevice* video, const TerrainData& data
   LOG_F(INFO, "TerrainRenderer::Init — patch_size=%d lod_count=%d", patch_size, lod_count);
 }
 
+void TerrainRenderer::BindMaterialTextures() const {
+  if (!material_) return;
+
+  material_->GetSplatmap()->Bind(kSplatmapSlot);
+
+  const int layer_count = material_->GetLayerCount();
+  for (int i = 0; i < layer_count; ++i) {
+    if (material_->GetAlbedo(i))
+      material_->GetAlbedo(i)->Bind(kAlbedoBaseSlot + i);
+    if (material_->GetNormal(i))
+      material_->GetNormal(i)->Bind(kNormalBaseSlot + i);
+  }
+
+  if (macro_texture_)
+    macro_texture_->Bind(kMacroTextureSlot);
+}
+
 void TerrainRenderer::Render(const core::Camera& camera) {
   if (!shader_) return;
 
@@ -48,6 +70,7 @@ void TerrainRenderer::Render(const core::Camera& camera) {
   if (patches_.empty()) return;
 
   heightmap_->Bind(kHeightmapSlot);
+  BindMaterialTextures();
   patch_cb_->Bind();
 
   const bool use_tess = tess_enabled_ && shader_->HasTessellation();
@@ -84,14 +107,25 @@ void TerrainRenderer::FillPatchInfos(const TerrainPatch& patch) {
   infos.patch_origin    = {
       static_cast<float>(patch.grid_x) * patch_scale * static_cast<float>(patch_size_),
       static_cast<float>(patch.grid_z) * patch_scale * static_cast<float>(patch_size_)};
-  infos.patch_scale      = patch_scale;
-  infos.lod_level        = patch.lod;
-  infos.morph_factor     = patch.morph;
+  infos.patch_scale        = patch_scale;
+  infos.lod_level          = patch.lod;
+  infos.morph_factor       = patch.morph;
   infos.heightmap_scale    = heightmap_scale_;
   infos.heightmap_offset   = heightmap_offset_;
   infos.inv_terrain_world  = inv_terrain_world_;
   infos.tess_falloff_dist  = tess_falloff_dist_;
   infos.max_tess           = max_tess_;
+  infos.triplanar_threshold = triplanar_threshold_;
+  infos.use_macro_texture  = (macro_texture_ != nullptr) ? 1 : 0;
+
+  if (material_) {
+    const int n = material_->GetLayerCount();
+    infos.tiling = {
+        n > 0 ? material_->GetLayer(0).tiling : 1.f,
+        n > 1 ? material_->GetLayer(1).tiling : 1.f,
+        n > 2 ? material_->GetLayer(2).tiling : 1.f,
+        n > 3 ? material_->GetLayer(3).tiling : 1.f};
+  }
 
   patch_cb_->Fill(&infos);
 }
