@@ -1,6 +1,8 @@
 #include "game/MapLoader.h"
 
+#include <fstream>
 #include <string>
+#include <vector>
 
 #include <loguru.hpp>
 #include <yaml-cpp/yaml.h>
@@ -14,10 +16,13 @@
 #include "game/GameLight.h"
 #include "game/GameMaterial.h"
 #include "game/GameMesh.h"
+#include "game/GameTerrain.h"
 #include "game/MeshTemplate.h"
 #include "renderer/GeometryUtils.h"
 #include "renderer/Light.h"
 #include "renderer/MaterialDesc.h"
+#include "terrain/TerrainData.h"
+#include "terrain/TerrainMaterial.h"
 
 namespace game {
 
@@ -148,6 +153,56 @@ std::unique_ptr<GameObject> ParseCamera(const YAML::Node& node) {
   return camera;
 }
 
+std::unique_ptr<GameObject> ParseTerrain(const YAML::Node& node,
+                                         const std::filesystem::path& map_path,
+                                         abstract::VideoDevice* video) {
+  const std::string hm_file = node["heightmap"].as<std::string>("");
+  const int   width  = node["heightmap_width"].as<int>(0);
+  const int   height = node["heightmap_height"].as<int>(0);
+  const float mpt    = node["meters_per_texel"].as<float>(1.f);
+  const float min_h  = node["min_height"].as<float>(0.f);
+  const float max_h  = node["max_height"].as<float>(100.f);
+
+  if (hm_file.empty() || width <= 0 || height <= 0) {
+    LOG_F(WARNING, "MapLoader: invalid terrain section (missing heightmap or dimensions)");
+    return nullptr;
+  }
+
+  // Read .r16 (raw little-endian uint16_t, row-major) from the map's directory.
+  const std::filesystem::path r16_path = map_path.parent_path() / hm_file;
+  const size_t expected_bytes =
+      static_cast<size_t>(width) * height * sizeof(uint16_t);
+  std::vector<uint16_t> hm_data(static_cast<size_t>(width) * height);
+  {
+    std::ifstream r16(r16_path, std::ios::binary);
+    if (!r16) {
+      LOG_F(ERROR, "MapLoader: cannot open heightmap '%s'",
+            r16_path.string().c_str());
+      return nullptr;
+    }
+    r16.read(reinterpret_cast<char*>(hm_data.data()),
+             static_cast<std::streamsize>(expected_bytes));
+    if (static_cast<size_t>(r16.gcount()) != expected_bytes) {
+      LOG_F(ERROR, "MapLoader: heightmap '%s' truncated (%zu / %zu bytes)",
+            r16_path.string().c_str(),
+            static_cast<size_t>(r16.gcount()), expected_bytes);
+      return nullptr;
+    }
+  }
+
+  auto terrain_data = std::make_unique<terrain::TerrainData>(
+      hm_data.data(), width, height, mpt, min_h, max_h);
+
+  auto terrain_material = std::make_unique<terrain::TerrainMaterial>();
+  if (node["material"])
+    terrain_material->Load(node["material"], video, width, height);
+
+  auto gt = std::make_unique<GameTerrain>(
+      std::move(terrain_data), std::move(terrain_material), video);
+  gt->SetName("terrain");
+  return gt;
+}
+
 }  // namespace
 
 // static
@@ -169,6 +224,16 @@ MapData MapLoader::Load(const std::filesystem::path& path,
 
   if (root["global_light"])
     result.global_light = ParseGlobalLightDesc(root["global_light"]);
+
+  // Terrain is optional; backwards-compatible if the key is absent.
+  if (root["terrain"]) {
+    try {
+      auto gt = ParseTerrain(root["terrain"], path, video);
+      if (gt) result.objects.push_back(std::move(gt));
+    } catch (const std::exception& e) {
+      LOG_F(WARNING, "MapLoader: error parsing terrain: %s", e.what());
+    }
+  }
 
   const YAML::Node& objects = root["objects"];
   if (!objects || !objects.IsSequence())

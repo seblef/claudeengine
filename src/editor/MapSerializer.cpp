@@ -6,6 +6,7 @@
 #include <unordered_set>
 
 #include <loguru.hpp>
+#include <stb_image_write.h>
 #include <yaml-cpp/yaml.h>
 
 #include "abstract/VideoDevice.h"
@@ -15,12 +16,16 @@
 #include "game/GameMaterial.h"
 #include "game/GameMesh.h"
 #include "game/GameObjectType.h"
+#include "game/GameTerrain.h"
 #include "game/MapLoader.h"
 #include "renderer/CircleSpotLight.h"
 #include "renderer/GlobalLight.h"
 #include "renderer/Light.h"
 #include "renderer/OmniLight.h"
 #include "renderer/RectangleSpotLight.h"
+#include "terrain/TerrainData.h"
+#include "terrain/TerrainMaterial.h"
+#include "terrain/TerrainMaterialLayer.h"
 
 namespace editor {
 
@@ -56,8 +61,10 @@ std::string LightTypeToString(renderer::LightType type) {
 // ---- SerializeVisitor -------------------------------------------------------
 
 MapSerializer::SerializeVisitor::SerializeVisitor(
-    YAML::Emitter& out, const std::filesystem::path& data_dir)
-    : out_(out), data_dir_(data_dir) {}
+    YAML::Emitter& out,
+    const std::filesystem::path& map_path,
+    const std::filesystem::path& data_dir)
+    : out_(out), map_path_(map_path), data_dir_(data_dir) {}
 
 void MapSerializer::SerializeVisitor::Visit(game::GameMesh& mesh) {
   const game::MeshTemplate* tmpl = mesh.GetTemplate();
@@ -142,6 +149,81 @@ void MapSerializer::SerializeVisitor::Visit(game::GameCamera& camera) {
   out_ << YAML::EndMap;
 }
 
+void MapSerializer::SerializeVisitor::EmitTerrain(
+    const game::GameTerrain* terrain) {
+  if (!terrain) return;
+
+  const terrain::TerrainData&     td = terrain->GetData();
+  const terrain::TerrainMaterial& tm = terrain->GetMaterial();
+
+  // Derive stem: "foo.map.yaml" -> "foo"
+  const std::string stem =
+      std::filesystem::path(map_path_.stem()).stem().string();
+
+  // Write .r16 heightmap (raw little-endian uint16_t, row-major).
+  const std::filesystem::path r16_path =
+      map_path_.parent_path() / (stem + ".r16");
+  const int    hw    = td.GetTexelWidth();
+  const int    hh    = td.GetTexelHeight();
+  const size_t count = static_cast<size_t>(hw) * hh;
+  {
+    std::ofstream r16(r16_path, std::ios::binary);
+    if (r16) {
+      r16.write(reinterpret_cast<const char*>(td.GetRawData()),
+                static_cast<std::streamsize>(count * sizeof(uint16_t)));
+      LOG_F(INFO, "MapSerializer: wrote heightmap '%s'",
+            r16_path.string().c_str());
+    } else {
+      LOG_F(ERROR, "MapSerializer: cannot write heightmap '%s'",
+            r16_path.string().c_str());
+    }
+  }
+
+  // Write splatmap PNG via stb_image_write.
+  std::string splat_path = tm.GetSplatmapPath();
+  if (splat_path.empty()) splat_path = stem + "_splat.png";
+  const std::filesystem::path splat_out =
+      data_dir_ / "textures" / splat_path;
+  std::filesystem::create_directories(splat_out.parent_path());
+  const int sw = tm.GetSplatWidth();
+  const int sh = tm.GetSplatHeight();
+  if (sw > 0 && sh > 0 && !tm.GetSplatmapPixels().empty()) {
+    if (stbi_write_png(splat_out.string().c_str(), sw, sh, 4,
+                       tm.GetSplatmapPixels().data(), sw * 4) != 0) {
+      LOG_F(INFO, "MapSerializer: wrote splatmap '%s'",
+            splat_out.string().c_str());
+    } else {
+      LOG_F(ERROR, "MapSerializer: failed to write splatmap '%s'",
+            splat_out.string().c_str());
+    }
+  }
+
+  // Emit root-level "terrain:" block.
+  out_ << YAML::Key << "terrain" << YAML::Value << YAML::BeginMap;
+  out_ << YAML::Key << "heightmap"        << YAML::Value << (stem + ".r16");
+  out_ << YAML::Key << "heightmap_width"  << YAML::Value << hw;
+  out_ << YAML::Key << "heightmap_height" << YAML::Value << hh;
+  out_ << YAML::Key << "meters_per_texel" << YAML::Value << td.GetMetersPerTexel();
+  out_ << YAML::Key << "min_height"       << YAML::Value << td.GetMinHeight();
+  out_ << YAML::Key << "max_height"       << YAML::Value << td.GetMaxHeight();
+
+  out_ << YAML::Key << "material" << YAML::Value << YAML::BeginMap;
+  out_ << YAML::Key << "layers" << YAML::Value << YAML::BeginSeq;
+  for (int i = 0; i < tm.GetLayerCount(); ++i) {
+    const terrain::TerrainMaterialLayer& layer = tm.GetLayer(i);
+    out_ << YAML::BeginMap;
+    out_ << YAML::Key << "albedo" << YAML::Value << layer.albedo_path;
+    out_ << YAML::Key << "normal" << YAML::Value << layer.normal_path;
+    out_ << YAML::Key << "tiling" << YAML::Value << layer.tiling;
+    out_ << YAML::EndMap;
+  }
+  out_ << YAML::EndSeq;
+  out_ << YAML::Key << "splatmap" << YAML::Value << splat_path;
+  out_ << YAML::EndMap;
+
+  out_ << YAML::EndMap;
+}
+
 // ---- Save -------------------------------------------------------------------
 
 bool MapSerializer::Save(const EditorScene& scene,
@@ -171,14 +253,24 @@ bool MapSerializer::Save(const EditorScene& scene,
   out << YAML::EndMap;
 
   // Scene objects — only dynamic objects; procedural meshes are skipped by
-  // the visitor.
+  // the visitor. GameTerrain objects are skipped from the sequence and
+  // serialised into a root-level "terrain:" block instead.
   out << YAML::Key << "objects" << YAML::Value << YAML::BeginSeq;
-  SerializeVisitor visitor(out, data_dir);
+  SerializeVisitor visitor(out, path, data_dir);
+  const game::GameTerrain* terrain_obj = nullptr;
   for (game::GameObject* obj : scene.GetObjects()) {
     if (!scene.IsDynamic(obj)) continue;
+    if (obj->GetType() == game::GameObjectType::kTerrain) {
+      terrain_obj = static_cast<const game::GameTerrain*>(obj);
+      continue;
+    }
     obj->Accept(visitor);
   }
   out << YAML::EndSeq;
+
+  // Terrain root block (written after objects so the emitter is back at the
+  // root mapping level).
+  visitor.EmitTerrain(terrain_obj);
 
   // Editor camera + selection state.
   const game::GameObject* sel = scene.GetSelectedObject();

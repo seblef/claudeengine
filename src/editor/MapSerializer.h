@@ -45,18 +45,27 @@ class MapSerializer {
 
  private:
   // Visitor used by Save(): emits one YAML mapping per object type.
+  // GameTerrain is serialised as a root-level "terrain:" block; the visitor
+  // skips it from the objects sequence and stores it for post-loop emission.
   class SerializeVisitor : public game::GameObjectVisitor {
    public:
     SerializeVisitor(YAML::Emitter& out,
+                     const std::filesystem::path& map_path,
                      const std::filesystem::path& data_dir);
 
     void Visit(game::GameMesh& mesh)       override;
     void Visit(game::GameLight& light)     override;
     void Visit(game::GameCamera& camera)   override;
+    // Skipped from the objects sequence — terrain is at root level.
     void Visit(game::GameTerrain& terrain) override {}
+
+    // Emits the "terrain:" root-level block and writes binary side-car files.
+    // Must be called after the YAML objects sequence is closed.
+    void EmitTerrain(const game::GameTerrain* terrain);
 
    private:
     YAML::Emitter&        out_;
+    std::filesystem::path map_path_;
     std::filesystem::path data_dir_;
   };
 };

@@ -81,6 +81,8 @@ class TerrainMaterial {
   [[nodiscard]] abstract::RawTexture*       GetSplatmap()       const { return splatmap_tex_.get(); }
   [[nodiscard]] int                         GetSplatWidth()     const { return splat_width_; }
   [[nodiscard]] int                         GetSplatHeight()    const { return splat_height_; }
+  [[nodiscard]] const std::string&          GetSplatmapPath()   const { return splatmap_path_; }
+  [[nodiscard]] const std::vector<uint8_t>& GetSplatmapPixels() const { return splatmap_pixels_; }
 
  private:
   // Creates (or re-creates) the GPU splatmap texture from the full CPU buffer.
