@@ -2,7 +2,6 @@
 
 #include <memory>
 
-#include "core/Vec3f.h"
 #include "game/GameObject.h"
 #include "game/GameLightDesc.h"
 #include "renderer/Light.h"
@@ -36,11 +35,6 @@ class GameLight : public GameObject {
 
   [[nodiscard]] renderer::Light* GetLight() const;
 
-  // Sets the spot light direction in world space and updates rest_direction_ to
-  // match the current world rotation. Only meaningful for kCircleSpot /
-  // kRectSpot; calling on other types is a no-op.
-  void SetSpotDirection(const core::Vec3f& world_dir);
-
  private:
   // Instantiates the right renderer::Light subclass from type and desc.
   static std::unique_ptr<renderer::Light> CreateRendererLight(
@@ -48,11 +42,6 @@ class GameLight : public GameObject {
 
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<renderer::Light> light_;
-  // Local-space spot direction (direction with identity world rotation applied).
-  // Kept in sync so OnWorldTransformUpdated() can derive the correct world-space
-  // direction after any rotation. Only meaningful for kCircleSpot / kRectSpot.
-  // cppcheck-suppress unusedStructMember
-  core::Vec3f rest_direction_;
 };
 
 }  // namespace game

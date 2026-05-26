@@ -185,7 +185,7 @@ void PropertiesPanel::RenderLightProperties(game::GameLight* game_light) {
     dir_changed |= ImGui::DragFloat("Pitch (°)##circle", &pitch, 0.1f,  -89.f,  89.f);
     track();
     if (dir_changed)
-      game_light->SetSpotDirection(YawPitchToVec3f(yaw, pitch));
+      spot->SetDirection(YawPitchToVec3f(yaw, pitch));
   } else {
     float dummy = 0.f;
     ImGui::DragFloat("Inner Angle (°)", &dummy, 0.1f, 0.f,  89.f);
@@ -224,7 +224,7 @@ void PropertiesPanel::RenderLightProperties(game::GameLight* game_light) {
     dir_changed |= ImGui::DragFloat("Pitch (°)##rect", &pitch, 0.1f,  -89.f,  89.f);
     track();
     if (dir_changed)
-      game_light->SetSpotDirection(YawPitchToVec3f(yaw, pitch));
+      rect->SetDirection(YawPitchToVec3f(yaw, pitch));
   } else {
     float dummy = 0.f;
     ImGui::DragFloat("H Angle (°)", &dummy, 0.1f, 0.1f, 89.f);
