@@ -10,6 +10,7 @@
 #include "editor/EditorCommandHistory.h"
 #include "editor/EditorTool.h"
 #include "editor/TerrainCreationDialog.h"
+#include "editor/TerrainEditorPanel.h"
 
 namespace terrain { class TerrainNormalMap; }
 
@@ -76,6 +77,10 @@ class EditorWindow {
   // Builds TerrainData/TerrainMaterial/TerrainNormalMap from dialog params
   // and adds a GameTerrain to the scene.
   void CreateTerrain();
+
+  // Connects TerrainEditorPanel and viewport sculpt callbacks to the terrain
+  // object currently in scene_, if any. Resets context when no terrain exists.
+  void WireTerrainPanel();
 
   // Advances the autosave timer; triggers a recovery save when ready.
   // Called at the top of every Render() frame.
@@ -149,6 +154,12 @@ class EditorWindow {
   // Normal map produced during terrain creation; lives with the editor window.
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<terrain::TerrainNormalMap> terrain_normal_map_;
+
+  // Sculpt panel — shown via the Terrain menu when a terrain is in the scene.
+  // cppcheck-suppress unusedStructMember
+  TerrainEditorPanel terrain_panel_;
+  // cppcheck-suppress unusedStructMember
+  bool               show_terrain_panel_ = false;
 
   // Debug state.
   // cppcheck-suppress unusedStructMember

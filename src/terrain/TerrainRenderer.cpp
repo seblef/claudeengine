@@ -1,5 +1,8 @@
 #include "terrain/TerrainRenderer.h"
 
+#include <algorithm>
+#include <vector>
+
 #include <loguru.hpp>
 
 #include "abstract/BufferUsage.h"
@@ -165,6 +168,31 @@ void TerrainRenderer::RenderWireframe(abstract::VideoDevice* video,
   video->SetDepthWriteEnabled(true);
   video->SetFaceCulling(abstract::CullFace::kBack);
   video->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
+}
+
+void TerrainRenderer::UpdateHeightmapTile(int texel_x, int texel_z, int w, int h,
+                                          const TerrainData& data) {
+  if (!heightmap_) return;
+
+  const int x0 = std::max(0, texel_x);
+  const int z0 = std::max(0, texel_z);
+  const int x1 = std::min(data.GetTexelWidth(),  texel_x + w);
+  const int z1 = std::min(data.GetTexelHeight(), texel_z + h);
+  const int tw = x1 - x0;
+  const int th = z1 - z0;
+  if (tw <= 0 || th <= 0) return;
+
+  const int full_w = data.GetTexelWidth();
+  const uint16_t* src = data.GetRawData();
+
+  std::vector<uint16_t> tile(static_cast<std::size_t>(tw) * th);
+  for (int z = z0; z < z1; ++z) {
+    std::copy(src + z * full_w + x0,
+              src + z * full_w + x0 + tw,
+              tile.data() + static_cast<std::size_t>(z - z0) * tw);
+  }
+
+  heightmap_->UpdateRegion(x0, z0, tw, th, tile.data());
 }
 
 }  // namespace terrain
