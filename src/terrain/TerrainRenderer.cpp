@@ -35,7 +35,7 @@ void TerrainRenderer::Init(abstract::VideoDevice* video, const TerrainData& data
   patch_mesh_ = std::make_unique<TerrainPatchMesh>(video, patch_size);
   patch_cb_   = video->CreateConstantBuffer(
       kPatchInfosFloat4s, kPatchInfosSlot, abstract::BufferUsage::kDynamic);
-  shader_     = video->CreateShader("terrain_gbuffer");
+  shader_     = video->CreateShader("terrain/terrain");
 
   LOG_F(INFO, "TerrainRenderer::Init — patch_size=%d lod_count=%d", patch_size, lod_count);
 }
