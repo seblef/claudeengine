@@ -8,12 +8,12 @@
 
 namespace gldevices {
 
-// OpenGL R16 (unsigned-normalised) texture created from CPU memory.
-// Used for terrain heightmaps; not registered in the resource registry.
-class GLRawTexture : public abstract::RawTexture {
+// OpenGL RGBA8 texture for terrain normal maps.
+// Supports incremental UpdateRegion() calls for sculpt-brush dirty tiles.
+class GLNormalMapTexture : public abstract::RawTexture {
  public:
-  GLRawTexture(int width, int height, const uint16_t* data);
-  ~GLRawTexture() override;
+  GLNormalMapTexture(int width, int height, const uint8_t* data);
+  ~GLNormalMapTexture() override;
 
   void Bind(int slot) override;
   void UpdateRegion(int x, int y, int w, int h, const void* data) override;

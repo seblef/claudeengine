@@ -1,6 +1,7 @@
 add_library(terrain STATIC
     CDLODQuadTree.cpp
     TerrainData.cpp
+    TerrainNormalMap.cpp
     TerrainPatchMesh.cpp
     TerrainRenderer.cpp
 )

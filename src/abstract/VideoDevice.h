@@ -194,6 +194,13 @@ class VideoDevice {
   [[nodiscard]] virtual std::unique_ptr<RawTexture> CreateHeightmapTexture(
       int width, int height, const uint16_t* data) = 0;
 
+  // Creates an RGBA8 texture from raw CPU data for use as a terrain normal map.
+  // data must point to width * height * 4 bytes (R, G, B, A per texel).
+  // Supports UpdateRegion() for incremental dirty-tile re-uploads.
+  // The caller owns the returned object via unique_ptr.
+  [[nodiscard]] virtual std::unique_ptr<RawTexture> CreateNormalMapTexture(
+      int width, int height, const uint8_t* data) = 0;
+
   // ---- Getters -------------------------------------------------------------
 
   [[nodiscard]] int  GetWidth()   const { return width_; }
