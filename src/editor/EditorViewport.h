@@ -11,6 +11,7 @@
 #include "editor/EditorCameraController.h"
 #include "editor/EditorCommandHistory.h"
 #include "editor/EditorTool.h"
+#include "editor/LightWireframeRenderer.h"
 #include "editor/PickingAccelerator.h"
 #include "game/GameCamera.h"
 #include "game/GameObject.h"
@@ -113,10 +114,6 @@ class EditorViewport {
   // Draws the selected object's world bounding box as 12 orange wireframe edges.
   void DrawSelectedBBox(ImDrawList* dl, ImVec2 image_pos, ImVec2 image_size) const;
 
-  // Draws wireframe overlays for all lights in the scene onto dl.
-  // Selected lights are drawn in orange; others in yellow.
-  void DrawLightsOverlay(ImDrawList* dl, ImVec2 image_pos, ImVec2 image_size) const;
-
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice*                       video_;
 
@@ -125,6 +122,13 @@ class EditorViewport {
 
   std::unique_ptr<abstract::RenderTarget>      render_target_;
   std::unique_ptr<abstract::RenderTargetGroup> render_fbo_;
+  // FBO sharing render_target_ colour with GBuffer depth for depth-tested
+  // wireframe rendering.  Recreated alongside render_fbo_ on every resize.
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<abstract::RenderTargetGroup> wireframe_fbo_;
+
+  // cppcheck-suppress unusedStructMember
+  LightWireframeRenderer                       light_wireframe_;
 
   // cppcheck-suppress unusedStructMember
   EditorScene*      scene_            = nullptr;  // not owned; set by EditorWindow (issue #170)

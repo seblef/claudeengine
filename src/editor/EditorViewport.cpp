@@ -17,6 +17,7 @@
 #include "core/Vec4f.h"
 #include "editor/EditorScene.h"
 #include "editor/EditorTool.h"
+#include "editor/LightWireframeRenderer.h"
 #include "editor/PickingAccelerator.h"
 #include "editor/commands/DeleteObjectCommand.h"
 #include "editor/commands/PlaceObjectCommand.h"
@@ -26,10 +27,7 @@
 #include "game/GameObject.h"
 #include "game/GameObjectType.h"
 #include "game/MeshTemplate.h"
-#include "renderer/CircleSpotLight.h"
 #include "renderer/Light.h"
-#include "renderer/OmniLight.h"
-#include "renderer/RectangleSpotLight.h"
 #include "renderer/Renderer.h"
 
 #include <ImGuizmo.h>
@@ -86,154 +84,6 @@ void DrawBBoxWireframe(ImDrawList* dl, const core::BBox3& bbox,
   }
 }
 
-// Projects a 3D line segment p0→p1 and draws it on dl.
-// Skips segments where either endpoint is behind the camera (clip.w <= 0).
-void DrawLineSegment3D(ImDrawList* dl,
-                       const core::Vec3f& p0, const core::Vec3f& p1,
-                       const core::Mat4f& vp,
-                       ImVec2 image_pos, ImVec2 image_size,
-                       ImU32 color, float thickness) {
-  const core::Vec4f c0 =
-      core::Vec4f(p0.x, p0.y, p0.z, 1.f) * vp;
-  const core::Vec4f c1 =
-      core::Vec4f(p1.x, p1.y, p1.z, 1.f) * vp;
-
-  if (c0.w <= 0.f || c1.w <= 0.f) return;
-
-  const float inv0 = 1.f / c0.w;
-  const float inv1 = 1.f / c1.w;
-
-  ImVec2 s0, s1;
-  s0.x = (c0.x * inv0 + 1.f) * 0.5f * image_size.x + image_pos.x;
-  s0.y = (1.f - c0.y * inv0) * 0.5f * image_size.y + image_pos.y;
-  s1.x = (c1.x * inv1 + 1.f) * 0.5f * image_size.x + image_pos.x;
-  s1.y = (1.f - c1.y * inv1) * 0.5f * image_size.y + image_pos.y;
-
-  dl->AddLine(s0, s1, color, thickness);
-}
-
-// Approximates a circle as a 32-segment polyline and draws it on dl.
-// center: world-space center; ax/ay: two orthogonal world-space axis vectors
-// spanning the circle plane; radius: circle radius.
-void DrawCircle3D(ImDrawList* dl,
-                  const core::Vec3f& center,
-                  const core::Vec3f& ax, const core::Vec3f& ay,
-                  float radius,
-                  const core::Mat4f& vp,
-                  ImVec2 image_pos, ImVec2 image_size,
-                  ImU32 color, float thickness) {
-  constexpr int kSegments = 32;
-  for (int i = 0; i < kSegments; ++i) {
-    const float a0 = static_cast<float>(i)     / kSegments * 2.f * 3.14159265f;
-    const float a1 = static_cast<float>(i + 1) / kSegments * 2.f * 3.14159265f;
-    const core::Vec3f p0 = center + ax * (std::cos(a0) * radius)
-                                  + ay * (std::sin(a0) * radius);
-    const core::Vec3f p1 = center + ax * (std::cos(a1) * radius)
-                                  + ay * (std::sin(a1) * radius);
-    DrawLineSegment3D(dl, p0, p1, vp, image_pos, image_size, color, thickness);
-  }
-}
-
-// Draws a wireframe representation of a light onto dl.
-// world_pos: light position; light: the renderer light; vp: camera VP matrix.
-// is_selected: true ↔ use orange highlight colour, else yellow.
-void DrawLightWireframe(ImDrawList* dl,
-                        const core::Vec3f& world_pos,
-                        const renderer::Light& light,
-                        const core::Mat4f& vp,
-                        ImVec2 image_pos, ImVec2 image_size,
-                        bool is_selected) {
-  constexpr ImU32 kColorUnselected = 0xFFFFCC00u;  // yellow, ABGR
-  constexpr ImU32 kColorSelected   = 0xFF0088FFu;  // orange, ABGR
-  constexpr float kThickness       = 1.5f;
-
-  const ImU32 color = is_selected ? kColorSelected : kColorUnselected;
-
-  switch (light.GetType()) {
-    case renderer::LightType::kOmni: {
-      const auto& omni = static_cast<const renderer::OmniLight&>(light);
-      const float r    = omni.GetRadius();
-      DrawCircle3D(dl, world_pos,
-                   core::Vec3f::kAxisX, core::Vec3f::kAxisY, r,
-                   vp, image_pos, image_size, color, kThickness);
-      DrawCircle3D(dl, world_pos,
-                   core::Vec3f::kAxisX, core::Vec3f::kAxisZ, r,
-                   vp, image_pos, image_size, color, kThickness);
-      DrawCircle3D(dl, world_pos,
-                   core::Vec3f::kAxisY, core::Vec3f::kAxisZ, r,
-                   vp, image_pos, image_size, color, kThickness);
-      break;
-    }
-
-    case renderer::LightType::kCircleSpot: {
-      const auto& spot = static_cast<const renderer::CircleSpotLight&>(light);
-      const float range = spot.GetRange();
-      const core::Vec3f& dir = spot.GetDirection();
-
-      // Build two orthogonal axes in the base plane.
-      const core::Vec3f up =
-          (std::abs(dir.y) < 0.99f) ? core::Vec3f::kAxisY : core::Vec3f::kAxisX;
-      const core::Vec3f right = dir.Cross(up).Normalized();
-      const core::Vec3f fwd   = dir.Cross(right);
-
-      const float base_r = std::tan(spot.GetOuterAngle()) * range;
-      const core::Vec3f base_center = world_pos + dir * range;
-
-      // 4 lines from apex to rim at 0°/90°/180°/270°.
-      DrawLineSegment3D(dl, world_pos, base_center + right * base_r,
-                        vp, image_pos, image_size, color, kThickness);
-      DrawLineSegment3D(dl, world_pos, base_center - right * base_r,
-                        vp, image_pos, image_size, color, kThickness);
-      DrawLineSegment3D(dl, world_pos, base_center + fwd * base_r,
-                        vp, image_pos, image_size, color, kThickness);
-      DrawLineSegment3D(dl, world_pos, base_center - fwd * base_r,
-                        vp, image_pos, image_size, color, kThickness);
-
-      // Base circle.
-      DrawCircle3D(dl, base_center, right, fwd, base_r,
-                   vp, image_pos, image_size, color, kThickness);
-      break;
-    }
-
-    case renderer::LightType::kRectSpot: {
-      const auto& spot = static_cast<const renderer::RectangleSpotLight&>(light);
-      const float range = spot.GetRange();
-      const core::Vec3f& dir = spot.GetDirection();
-
-      const core::Vec3f up =
-          (std::abs(dir.y) < 0.99f) ? core::Vec3f::kAxisY : core::Vec3f::kAxisX;
-      const core::Vec3f right = dir.Cross(up).Normalized();
-      const core::Vec3f fwd   = dir.Cross(right);
-
-      const float half_w = std::tan(spot.GetHAngle()) * range;
-      const float half_h = std::tan(spot.GetVAngle()) * range;
-      const core::Vec3f base_center = world_pos + dir * range;
-
-      // 4 corners of the base rectangle.
-      const core::Vec3f c0 = base_center + right * half_w + fwd * half_h;
-      const core::Vec3f c1 = base_center - right * half_w + fwd * half_h;
-      const core::Vec3f c2 = base_center - right * half_w - fwd * half_h;
-      const core::Vec3f c3 = base_center + right * half_w - fwd * half_h;
-
-      // 4 lines from apex to corners.
-      DrawLineSegment3D(dl, world_pos, c0, vp, image_pos, image_size, color, kThickness);
-      DrawLineSegment3D(dl, world_pos, c1, vp, image_pos, image_size, color, kThickness);
-      DrawLineSegment3D(dl, world_pos, c2, vp, image_pos, image_size, color, kThickness);
-      DrawLineSegment3D(dl, world_pos, c3, vp, image_pos, image_size, color, kThickness);
-
-      // Base rectangle perimeter.
-      DrawLineSegment3D(dl, c0, c1, vp, image_pos, image_size, color, kThickness);
-      DrawLineSegment3D(dl, c1, c2, vp, image_pos, image_size, color, kThickness);
-      DrawLineSegment3D(dl, c2, c3, vp, image_pos, image_size, color, kThickness);
-      DrawLineSegment3D(dl, c3, c0, vp, image_pos, image_size, color, kThickness);
-      break;
-    }
-
-    case renderer::LightType::kGlobal:
-      break;
-  }
-}
-
 // Returns the ImGuizmo operation for a tool, or nullopt if no gizmo should
 // be shown (kSelection and kCamera do not render a transform gizmo).
 std::optional<ImGuizmo::OPERATION> ToolToImGuizmoOp(EditorTool tool) {
@@ -245,125 +95,6 @@ std::optional<ImGuizmo::OPERATION> ToolToImGuizmoOp(EditorTool tool) {
   }
 }
 
-// Minimum 2D distance (pixels) from screen_pt to segment [s0, s1].
-float ScreenDistToSegment(ImVec2 screen_pt, ImVec2 s0, ImVec2 s1) {
-  const float dx = s1.x - s0.x;
-  const float dy = s1.y - s0.y;
-  const float len2 = dx * dx + dy * dy;
-  float t = 0.f;
-  if (len2 > 1e-6f) {
-    t = ((screen_pt.x - s0.x) * dx + (screen_pt.y - s0.y) * dy) / len2;
-    t = std::max(0.f, std::min(1.f, t));
-  }
-  const float px = s0.x + t * dx - screen_pt.x;
-  const float py = s0.y + t * dy - screen_pt.y;
-  return std::sqrt(px * px + py * py);
-}
-
-// Projects a world-space point to screen coordinates via the VP matrix.
-// Returns {pos, valid=false} if the point is behind the camera (clip.w <= 0).
-struct ScreenPt { ImVec2 pos; bool valid; };
-
-ScreenPt ProjectToScreen(const core::Vec3f& world, const core::Mat4f& vp,
-                          ImVec2 image_pos, ImVec2 image_size) {
-  const core::Vec4f clip =
-      core::Vec4f(world.x, world.y, world.z, 1.f) * vp;
-  if (clip.w <= 0.f) return {{}, false};
-  const float inv_w = 1.f / clip.w;
-  return {
-    {
-      (clip.x * inv_w + 1.f) * 0.5f * image_size.x + image_pos.x,
-      (1.f - clip.y * inv_w) * 0.5f * image_size.y + image_pos.y,
-    },
-    true,
-  };
-}
-
-// Returns the minimum screen-space distance (pixels) from cursor to the
-// light's wireframe. Mirrors DrawLightWireframe geometry.
-// Returns FLT_MAX for kGlobal or if all wireframe points are behind the camera.
-float LightPickDistPx(const core::Vec3f& world_pos,
-                      const renderer::Light& light,
-                      const core::Mat4f& vp,
-                      ImVec2 image_pos, ImVec2 image_size,
-                      ImVec2 cursor) {
-  constexpr int kSegments = 32;
-  float best = std::numeric_limits<float>::max();
-
-  auto seg_dist = [&](const core::Vec3f& p0, const core::Vec3f& p1) {
-    const ScreenPt s0 = ProjectToScreen(p0, vp, image_pos, image_size);
-    const ScreenPt s1 = ProjectToScreen(p1, vp, image_pos, image_size);
-    if (!s0.valid || !s1.valid) return;
-    best = std::min(best, ScreenDistToSegment(cursor, s0.pos, s1.pos));
-  };
-
-  auto circle_dist = [&](const core::Vec3f& center,
-                         const core::Vec3f& ax, const core::Vec3f& ay,
-                         float radius) {
-    for (int i = 0; i < kSegments; ++i) {
-      const float a0 = static_cast<float>(i)     / kSegments * 2.f * 3.14159265f;
-      const float a1 = static_cast<float>(i + 1) / kSegments * 2.f * 3.14159265f;
-      seg_dist(center + ax * (std::cos(a0) * radius) + ay * (std::sin(a0) * radius),
-               center + ax * (std::cos(a1) * radius) + ay * (std::sin(a1) * radius));
-    }
-  };
-
-  switch (light.GetType()) {
-    case renderer::LightType::kOmni: {
-      const float r = static_cast<const renderer::OmniLight&>(light).GetRadius();
-      circle_dist(world_pos, core::Vec3f::kAxisX, core::Vec3f::kAxisY, r);
-      circle_dist(world_pos, core::Vec3f::kAxisX, core::Vec3f::kAxisZ, r);
-      circle_dist(world_pos, core::Vec3f::kAxisY, core::Vec3f::kAxisZ, r);
-      break;
-    }
-    case renderer::LightType::kCircleSpot: {
-      const auto& spot  = static_cast<const renderer::CircleSpotLight&>(light);
-      const float range = spot.GetRange();
-      const core::Vec3f& dir = spot.GetDirection();
-      const core::Vec3f up =
-          (std::abs(dir.y) < 0.99f) ? core::Vec3f::kAxisY : core::Vec3f::kAxisX;
-      const core::Vec3f right = dir.Cross(up).Normalized();
-      const core::Vec3f fwd   = dir.Cross(right);
-      const float base_r      = std::tan(spot.GetOuterAngle()) * range;
-      const core::Vec3f base_center = world_pos + dir * range;
-      seg_dist(world_pos, base_center + right * base_r);
-      seg_dist(world_pos, base_center - right * base_r);
-      seg_dist(world_pos, base_center + fwd   * base_r);
-      seg_dist(world_pos, base_center - fwd   * base_r);
-      circle_dist(base_center, right, fwd, base_r);
-      break;
-    }
-    case renderer::LightType::kRectSpot: {
-      const auto& spot  = static_cast<const renderer::RectangleSpotLight&>(light);
-      const float range = spot.GetRange();
-      const core::Vec3f& dir = spot.GetDirection();
-      const core::Vec3f up =
-          (std::abs(dir.y) < 0.99f) ? core::Vec3f::kAxisY : core::Vec3f::kAxisX;
-      const core::Vec3f right = dir.Cross(up).Normalized();
-      const core::Vec3f fwd   = dir.Cross(right);
-      const float half_w = std::tan(spot.GetHAngle()) * range;
-      const float half_h = std::tan(spot.GetVAngle()) * range;
-      const core::Vec3f base_center = world_pos + dir * range;
-      const core::Vec3f c0 = base_center + right * half_w + fwd * half_h;
-      const core::Vec3f c1 = base_center - right * half_w + fwd * half_h;
-      const core::Vec3f c2 = base_center - right * half_w - fwd * half_h;
-      const core::Vec3f c3 = base_center + right * half_w - fwd * half_h;
-      seg_dist(world_pos, c0);
-      seg_dist(world_pos, c1);
-      seg_dist(world_pos, c2);
-      seg_dist(world_pos, c3);
-      seg_dist(c0, c1);
-      seg_dist(c1, c2);
-      seg_dist(c2, c3);
-      seg_dist(c3, c0);
-      break;
-    }
-    case renderer::LightType::kGlobal:
-      break;
-  }
-  return best;
-}
-
 
 }  // namespace
 
@@ -372,7 +103,8 @@ EditorViewport::EditorViewport(abstract::VideoDevice* video)
       camera_(std::make_unique<game::GameCamera>(
           core::ProjectionType::kPerspective,
           core::CoordinateSystem::kRightHanded)),
-      camera_ctrl_(std::make_unique<EditorCameraController>()) {
+      camera_ctrl_(std::make_unique<EditorCameraController>()),
+      light_wireframe_(video) {
   camera_->SetFOV(0.785398f);  // 45 degrees
   camera_->SetMinDepth(0.1f);
   camera_->SetMaxDepth(1000.f);
@@ -451,6 +183,11 @@ void EditorViewport::ResizeIfNeeded(int w, int h) {
   abstract::RenderTarget* color_ptr = render_target_.get();
   render_fbo_ = video_->CreateRenderTargetGroup(
       std::span<abstract::RenderTarget*>(&color_ptr, 1), nullptr);
+  // Share the GBuffer depth so light wireframes are occluded by opaque geometry.
+  abstract::RenderTarget* depth_ptr =
+      renderer::Renderer::Instance().GetGBuffer()->GetDepthRT();
+  wireframe_fbo_ = video_->CreateRenderTargetGroup(
+      std::span<abstract::RenderTarget*>(&color_ptr, 1), depth_ptr);
 }
 
 void EditorViewport::Render() {
@@ -507,9 +244,11 @@ void EditorViewport::Render() {
     DrawSelectedBBox(ImGui::GetWindowDrawList(), image_pos, avail);
   }
 
-  // Light wireframe overlays.
-  if (scene_) {
-    DrawLightsOverlay(ImGui::GetWindowDrawList(), image_pos, avail);
+  // Light wireframes rendered into the scene FBO with depth testing so lights
+  // behind opaque geometry are correctly occluded.
+  if (scene_ && wireframe_fbo_) {
+    light_wireframe_.Render(scene_->GetObjects(), scene_->GetSelectedObject(),
+                            wireframe_fbo_.get());
   }
 
   // XYZ axis overlay — bottom-right corner of the viewport panel.
@@ -655,36 +394,19 @@ void EditorViewport::PickObjectAt(ImVec2 mouse_pos, ImVec2 image_pos,
     }
   }
 
-  // Light pass: screen-space proximity picking.
-  constexpr float kLightPickThresholdPx = 8.f;
-  float best_light_dist_px = kLightPickThresholdPx;
-  game::GameObject* best_light = nullptr;
-
+  // Light pass: world-space ray-bbox intersection, same depth ordering as meshes.
   for (game::GameObject* obj : candidates) {
     if (obj->GetType() != game::GameObjectType::kLight) continue;
     const auto* gl    = static_cast<const game::GameLight*>(obj);
     const auto* light = gl->GetLight();
     if (!light || light->GetType() == renderer::LightType::kGlobal) continue;
 
-    const core::Mat4f& wt = obj->GetWorldTransform();
-    const core::Vec3f  pos(wt(0, 3), wt(1, 3), wt(2, 3));
-
-    const float dist_px = LightPickDistPx(pos, *light, vp, image_pos, image_size,
-                                          mouse_pos);
-    if (dist_px < best_light_dist_px) {
-      best_light_dist_px = dist_px;
-      best_light = obj;
+    float t;
+    if (!obj->GetWorldBBox().IntersectsRay(ray_origin, ray_dir, t)) continue;
+    if (t < t_best) {
+      t_best = t;
+      hit    = obj;
     }
-  }
-
-  // Prefer whichever is closer to the camera: mesh hit (by ray depth t_best)
-  // vs light hit (by distance from ray origin to light world position).
-  if (best_light) {
-    const core::Mat4f& wt = best_light->GetWorldTransform();
-    const core::Vec3f  light_pos(wt(0, 3), wt(1, 3), wt(2, 3));
-    const float light_depth = (light_pos - ray_origin).Length();
-    if (t_best == std::numeric_limits<float>::max() || light_depth < t_best)
-      hit = best_light;
   }
 
   scene_->SetSelectedObject(hit);
@@ -786,28 +508,6 @@ void EditorViewport::PlaceMeshAt(ImVec2 mouse_pos, ImVec2 image_pos,
 }
 
 
-void EditorViewport::DrawLightsOverlay(ImDrawList* dl, ImVec2 image_pos,
-                                        ImVec2 image_size) const {
-  const core::Mat4f vp = camera_->GetCamera()->GetViewProjectionMatrix();
-  const game::GameObject* selected = scene_->GetSelectedObject();
-
-  for (const game::GameObject* obj : scene_->GetObjects()) {
-    if (obj->GetType() != game::GameObjectType::kLight) continue;
-
-    const auto* game_light = static_cast<const game::GameLight*>(obj);
-    const renderer::Light* light = game_light->GetLight();
-    if (!light) continue;
-    if (light->GetType() == renderer::LightType::kGlobal) continue;
-
-    // Extract world position from the world transform (translation is in col 3).
-    const core::Mat4f& wt = obj->GetWorldTransform();
-    const core::Vec3f world_pos(wt(0, 3), wt(1, 3), wt(2, 3));
-
-    const bool is_selected = (obj == selected);
-    DrawLightWireframe(dl, world_pos, *light, vp, image_pos, image_size,
-                       is_selected);
-  }
-}
 
 EditorCameraController::CameraState EditorViewport::GetCameraState() const {
   return camera_ctrl_->GetState();
