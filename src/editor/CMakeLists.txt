@@ -19,6 +19,7 @@ add_library(editor STATIC
     PickingAccelerator.cpp
     PropertiesPanel.cpp
     ResourcesPanel.cpp
+    TerrainCreationDialog.cpp
 )
 
 add_subdirectory(commands)

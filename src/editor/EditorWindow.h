@@ -9,6 +9,9 @@
 #include "editor/EditorCommand.h"
 #include "editor/EditorCommandHistory.h"
 #include "editor/EditorTool.h"
+#include "editor/TerrainCreationDialog.h"
+
+namespace terrain { class TerrainNormalMap; }
 
 namespace editor {
 
@@ -69,6 +72,10 @@ class EditorWindow {
   // Renders the "Unsaved Changes##modal" popup every frame.
   // Fires pending_after_save_ on Save/Discard, clears it on Cancel.
   void RenderUnsavedChangesModal();
+
+  // Builds TerrainData/TerrainMaterial/TerrainNormalMap from dialog params
+  // and adds a GameTerrain to the scene.
+  void CreateTerrain();
 
   // Advances the autosave timer; triggers a recovery save when ready.
   // Called at the top of every Render() frame.
@@ -135,6 +142,13 @@ class EditorWindow {
   std::string                            last_autosave_msg_;
   // cppcheck-suppress unusedStructMember
   float                                  autosave_msg_timer_ = 0.f;
+
+  // Terrain creation dialog — opened from the Add menu.
+  // cppcheck-suppress unusedStructMember
+  TerrainCreationDialog                  terrain_dialog_;
+  // Normal map produced during terrain creation; lives with the editor window.
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<terrain::TerrainNormalMap> terrain_normal_map_;
 };
 
 }  // namespace editor
