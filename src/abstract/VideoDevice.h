@@ -151,6 +151,11 @@ class VideoDevice {
   // Note: glClear(GL_DEPTH_BUFFER_BIT) also respects this mask.
   virtual void SetDepthWriteEnabled(bool enabled) = 0;
 
+  // Switches between filled (false) and wireframe (true) polygon rasterisation.
+  // In wireframe mode all filled primitives are drawn as their edge outlines.
+  // Restore to false after use to avoid affecting subsequent draw calls.
+  virtual void SetWireframeEnabled(bool enabled) = 0;
+
   // Sets the rendering viewport to the given rectangle.
   // Use before rendering into a shadow map (non-screen-sized target).
   // BeginFrame() resets the viewport to the full screen dimensions.

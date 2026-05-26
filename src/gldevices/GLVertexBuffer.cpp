@@ -6,6 +6,7 @@
 #include "core/Vertex2D.h"
 #include "core/Vertex3D.h"
 #include "core/VertexBase.h"
+#include "core/VertexTerrain.h"
 #include "core/VertexType.h"
 
 #include <cstddef>
@@ -66,6 +67,14 @@ void ConfigureAttributes(core::VertexType vertex_type) {
       glEnableVertexAttribArray(4);
       glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, stride,
           reinterpret_cast<const void*>(offsetof(core::Vertex3D, uv)));
+      break;
+    }
+    case core::VertexType::kTerrain: {
+      const GLsizei stride = static_cast<GLsizei>(sizeof(core::VertexTerrain));
+      // location 0: xz position (vec2)
+      glEnableVertexAttribArray(0);
+      glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, stride,
+          reinterpret_cast<const void*>(offsetof(core::VertexTerrain, xz)));
       break;
     }
     default:

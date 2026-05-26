@@ -101,6 +101,9 @@ class GLVideoDevice : public abstract::VideoDevice {
   // Controls glDepthMask (depth buffer write enable).
   void SetDepthWriteEnabled(bool enabled) override;
 
+  // Switches between GL_FILL (false) and GL_LINE (true) via glPolygonMode.
+  void SetWireframeEnabled(bool enabled) override;
+
   // Sets the GL viewport via glViewport.
   void SetViewport(int x, int y, int width, int height) override;
 

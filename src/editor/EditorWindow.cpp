@@ -1,14 +1,18 @@
 #include "editor/EditorWindow.h"
 
+#include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <imgui.h>
 #include <loguru.hpp>
 #include <nfd.h>
 #include <yaml-cpp/yaml.h>
 
+#include "abstract/VideoDevice.h"
 #include "core/Config.h"
 #include "core/Event.h"
 #include "core/YamlUtils.h"
@@ -26,9 +30,13 @@
 #include "editor/ResourcesPanel.h"
 #include "game/GameLightDesc.h"
 #include "game/GameMaterial.h"
+#include "game/GameTerrain.h"
 #include "game/MeshTemplate.h"
 #include "renderer/Light.h"
 #include "renderer/MaterialDesc.h"
+#include "terrain/TerrainData.h"
+#include "terrain/TerrainMaterial.h"
+#include "terrain/TerrainNormalMap.h"
 
 namespace editor {
 
@@ -206,19 +214,24 @@ void EditorWindow::Render() {
     map_properties_ = std::make_unique<MapPropertiesWindow>(scene_.get());
     viewport_->SetScene(scene_.get());
     history_.Clear();
+    terrain_normal_map_.reset();
     scene_dirty_ = false;
     LOG_F(INFO, "New map '%s' created (size %.1f)", new_name.c_str(),
           new_size);
   }
 
-  // 11. Unsaved changes modal — OpenPopup is triggered by CheckDirtyThenRun().
+  // 11. Terrain creation dialog.
+  if (terrain_dialog_.Render())
+    CreateTerrain();
+
+  // 12. Unsaved changes modal — OpenPopup is triggered by CheckDirtyThenRun().
   if (open_unsaved_changes_modal_) {
     ImGui::OpenPopup("Unsaved Changes##modal");
     open_unsaved_changes_modal_ = false;
   }
   RenderUnsavedChangesModal();
 
-  // 12. Status bar — pinned to the bottom of the screen.
+  // 13. Status bar — pinned to the bottom of the screen.
   const ImGuiViewport* vp = ImGui::GetMainViewport();
   constexpr float kStatusBarHeight = 22.0f;
   ImGui::SetNextWindowPos({vp->WorkPos.x, vp->WorkPos.y + vp->WorkSize.y - kStatusBarHeight});
@@ -296,12 +309,35 @@ void EditorWindow::RenderMenuBar() {
     ImGui::EndMenu();
   }
 
+  if (ImGui::BeginMenu("Add")) {
+    const auto& objs = scene_->GetObjects();
+    const bool has_terrain = std::any_of(objs.begin(), objs.end(),
+        [](const game::GameObject* o) {
+          return o->GetType() == game::GameObjectType::kTerrain;
+        });
+    ImGui::BeginDisabled(has_terrain);
+    if (ImGui::MenuItem("Terrain", nullptr, false, !has_terrain))
+      terrain_dialog_.Open();
+    ImGui::EndDisabled();
+    if (has_terrain)
+      ImGui::SetItemTooltip("A terrain already exists in this scene");
+    ImGui::EndMenu();
+  }
+
   if (ImGui::BeginMenu("Import")) {
     if (ImGui::MenuItem("Material")) {
       ImportMaterial();
     }
     if (ImGui::MenuItem("Mesh")) {
       ImportMesh();
+    }
+    ImGui::EndMenu();
+  }
+
+  if (ImGui::BeginMenu("Debug")) {
+    if (ImGui::MenuItem("Terrain Wireframe", nullptr, terrain_wireframe_debug_)) {
+      terrain_wireframe_debug_ = !terrain_wireframe_debug_;
+      viewport_->SetTerrainWireframeDebugEnabled(terrain_wireframe_debug_);
     }
     ImGui::EndMenu();
   }
@@ -380,6 +416,7 @@ void EditorWindow::LoadFromFile() {
   if (scene_->GetSelectedObject())
     viewport_->SetSelectedObject(scene_->GetSelectedObject());
   history_.Clear();
+  terrain_normal_map_.reset();
   scene_dirty_ = false;
   LOG_F(INFO, "Map loaded from '%s'", path.string().c_str());
 }
@@ -456,6 +493,50 @@ void EditorWindow::ImportMesh() {
   } else if (result == NFD_ERROR) {
     LOG_F(ERROR, "NFD error opening mesh dialog");
   }
+}
+
+void EditorWindow::CreateTerrain() {
+  const TerrainCreationDialog::Params& p = terrain_dialog_.GetParams();
+
+  const float safe_res = std::max(0.001f, p.resolution);
+  const int   width    = std::max(2, static_cast<int>(
+                             std::round(p.size_x / safe_res)));
+  const int   height   = std::max(2, static_cast<int>(
+                             std::round(p.size_z / safe_res)));
+
+  // 1. Allocate TerrainData — all samples at min_height (uint16 = 0).
+  std::vector<uint16_t> heights(static_cast<std::size_t>(width) * height, 0u);
+  auto data = std::make_unique<terrain::TerrainData>(
+      heights.data(), width, height, safe_res, p.min_height, p.max_height);
+
+  // 2. Allocate TerrainMaterial with a single default layer.
+  YAML::Node mat_node;
+  YAML::Node layer0;
+  layer0["albedo"] = std::string("default/diffuse.png");
+  layer0["normal"] = std::string("default/normal.png");
+  layer0["tiling"] = 8.f;
+  mat_node["layers"].push_back(layer0);
+  auto material = std::make_unique<terrain::TerrainMaterial>();
+  material->Load(mat_node, video_, width, height);
+
+  // 3. Compute initial normal map.
+  terrain_normal_map_ = std::make_unique<terrain::TerrainNormalMap>();
+  terrain_normal_map_->Build(*data);
+
+  // 4. Construct GameTerrain and add it to the scene.
+  //    OnAddedToScene() calls TerrainRenderer::Init() (heightmap GPU upload)
+  //    and SetMaterial() (splatmap binding).
+  auto terrain_obj = std::make_unique<game::GameTerrain>(
+      std::move(data), std::move(material), video_);
+  terrain_obj->SetName("terrain");
+  scene_->AddDynamicObject(std::move(terrain_obj));
+
+  // 5. Upload the normal map GPU texture.
+  terrain_normal_map_->Upload(video_);
+
+  scene_dirty_ = true;
+  LOG_F(INFO, "Terrain created: %dx%d texels, %.2f m/texel, "
+        "Y=[%.1f, %.1f]", width, height, safe_res, p.min_height, p.max_height);
 }
 
 }  // namespace editor

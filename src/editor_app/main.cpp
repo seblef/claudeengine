@@ -9,6 +9,7 @@
 #include "game/GameSystem.h"
 #include "gldevices/GLDevices.h"
 #include "renderer/Renderer.h"
+#include "terrain/TerrainRenderer.h"
 
 #include <loguru.hpp>
 
@@ -30,6 +31,10 @@ int main(int argc, char* argv[]) {
   new renderer::Renderer(video);
   renderer::Renderer::Instance().InitVisibilitySystems(200.f);
 
+  new terrain::TerrainRenderer();
+  renderer::Renderer::Instance().SetTerrainRenderer(
+      &terrain::TerrainRenderer::Instance());
+
   new game::GameSystem(&devices);
 
   new editor::EditorSystem(&devices);
@@ -37,6 +42,7 @@ int main(int argc, char* argv[]) {
 
   editor::EditorSystem::Shutdown();
   game::GameSystem::Shutdown();
+  terrain::TerrainRenderer::Shutdown();
   renderer::Renderer::Shutdown();
   core::EventManager::Shutdown();
 

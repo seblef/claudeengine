@@ -85,6 +85,11 @@ class EditorViewport {
   [[nodiscard]] EditorCameraController::CameraState GetCameraState() const;
   void SetCameraState(const EditorCameraController::CameraState& state);
 
+  // Enables or disables the terrain wireframe debug overlay.
+  void SetTerrainWireframeDebugEnabled(bool enabled) {
+    terrain_wireframe_debug_ = enabled;
+  }
+
  private:
   void ResizeIfNeeded(int w, int h);
 
@@ -162,6 +167,9 @@ class EditorViewport {
 
   // cppcheck-suppress unusedStructMember
   PickingAccelerator      picking_acc_;
+
+  // cppcheck-suppress unusedStructMember
+  bool terrain_wireframe_debug_ = false;
 
   // Gizmo drag-state tracking for TransformCommand (issue #236).
   // cppcheck-suppress unusedStructMember

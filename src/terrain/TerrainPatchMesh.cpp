@@ -36,15 +36,15 @@ TerrainPatchMesh::TerrainPatchMesh(abstract::VideoDevice* device, int patch_size
       const uint16_t v01 = static_cast<uint16_t>((j + 1) * verts_per_side + i);
       const uint16_t v11 = static_cast<uint16_t>((j + 1) * verts_per_side + (i + 1));
 
-      // Triangle 1: v00 → v10 → v11
+      // Triangle 1: v00 → v11 → v10 (CCW from above, Y-up)
       indices.push_back(v00);
+      indices.push_back(v11);
       indices.push_back(v10);
-      indices.push_back(v11);
 
-      // Triangle 2: v00 → v11 → v01
+      // Triangle 2: v00 → v01 → v11
       indices.push_back(v00);
-      indices.push_back(v11);
       indices.push_back(v01);
+      indices.push_back(v11);
     }
   }
 

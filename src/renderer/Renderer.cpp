@@ -235,6 +235,12 @@ void Renderer::ResizeTargets(int w, int h) {
   emissive_fbo_.Resize(video_, w, h, gbuffer_.GetDepthRT());
 }
 
+void Renderer::RenderTerrainWireframe(const core::Camera& camera,
+                                       abstract::RenderTargetGroup* fbo) {
+  if (terrain_renderer_ && terrain_renderer_->IsReady())
+    terrain_renderer_->RenderWireframe(video_, camera, fbo);
+}
+
 void Renderer::FillSceneInfos() {
   const core::Vec2f sc = camera_->GetScreenCenter();  // (half_w, half_h)
 
