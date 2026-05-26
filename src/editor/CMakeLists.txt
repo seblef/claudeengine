@@ -1,4 +1,5 @@
 add_library(editor STATIC
+    stb_image_write_impl.cpp
     EditorCameraController.cpp
     EditorCommandHistory.cpp
     EditorScene.cpp
@@ -25,6 +26,7 @@ add_subdirectory(commands)
 target_include_directories(editor PUBLIC
     "${CMAKE_SOURCE_DIR}/src"
     "${CMAKE_SOURCE_DIR}/external"
+    PRIVATE ${stb_SOURCE_DIR}
 )
 
 target_link_libraries(editor PUBLIC game renderer gldevices core imgui imguizmo nfd)
