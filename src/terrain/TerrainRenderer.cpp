@@ -71,7 +71,6 @@ void TerrainRenderer::Render(const core::Camera& camera) {
   if (!shader_) return;
 
   quadtree_.Select(camera, triangle_budget_, patches_);
-  LOG_F(INFO, "Num patches: %zu", patches_.size());
   if (patches_.empty()) return;
 
   heightmap_->Bind(kHeightmapSlot);
@@ -82,7 +81,6 @@ void TerrainRenderer::Render(const core::Camera& camera) {
 
   // Tessellated pass: low-LOD patches rendered as GL_PATCHES.
   if (use_tess) {
-    LOG_F(INFO, "Rendeing with tesselation: %d", patch_mesh_->GetTessIndexCount());
     shader_->ActivateTess();
     video_->SetPrimitiveType(abstract::PrimitiveType::kPatch4);
     for (const TerrainPatch& patch : patches_) {
@@ -96,7 +94,6 @@ void TerrainRenderer::Render(const core::Camera& camera) {
   // Standard pass: high-LOD patches rendered as triangles.
   shader_->Activate();
   video_->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
-  LOG_F(INFO, "Rendeing without tesselation: %d", patch_mesh_->GetIndexCount());
   for (const TerrainPatch& patch : patches_) {
     if (use_tess && patch.lod <= max_tess_lod_) continue;
     FillPatchInfos(patch);

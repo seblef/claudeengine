@@ -61,8 +61,8 @@ const float kMacroScale = 0.05;
 
 // Decodes a tangent-space normal from a normalmap texel (RG stored as XY,
 // Z reconstructed to point outward in tangent space).
-vec3 DecodeNormal(vec4 sample) {
-    vec2 n  = sample.rg * 2.0 - 1.0;
+vec3 DecodeNormal(vec4 sp) {
+    vec2 n  = sp.rg * 2.0 - 1.0;
     float z = sqrt(max(0.0, 1.0 - dot(n, n)));
     return vec3(n, z);
 }
