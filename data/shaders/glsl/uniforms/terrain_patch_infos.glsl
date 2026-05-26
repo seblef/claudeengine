@@ -6,10 +6,12 @@
 //   [ 16] morph_factor       float ( 4 B — CDLOD blend [0,1] toward next coarser LOD)
 //   [ 20] heightmap_scale    float ( 4 B — max_height - min_height)
 //   [ 24] heightmap_offset   float ( 4 B — min_height)
-//   [ 28] pad0_              float ( 4 B)
+//   [ 28] tpi_pad0_          float ( 4 B)
 //   [ 32] inv_terrain_world  vec2  ( 8 B — 1/world_width, 1/world_height for UV)
-//   [ 40] pad1_              float ( 4 B)
-//   [ 44] pad2_              float ( 4 B)
+//   [ 40] tpi_pad1_          float ( 4 B)
+//   [ 44] tpi_pad2_          float ( 4 B)
+// Note: padding names are prefixed with tpi_ to avoid clashing with SceneInfosBlock's
+// pad0_/pad1_/pad2_ — nameless UBO members share the global GLSL namespace.
 layout(std140, binding = 6) uniform TerrainPatchInfosBlock {
     vec2  patch_origin;
     float patch_scale;
@@ -17,8 +19,8 @@ layout(std140, binding = 6) uniform TerrainPatchInfosBlock {
     float morph_factor;
     float heightmap_scale;
     float heightmap_offset;
-    float pad0_;
+    float tpi_pad0_;
     vec2  inv_terrain_world;
-    float pad1_;
-    float pad2_;
+    float tpi_pad1_;
+    float tpi_pad2_;
 };

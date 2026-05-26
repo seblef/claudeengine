@@ -16,10 +16,10 @@ namespace terrain {
 //   [ 16] morph_factor       float ( 4 B — CDLOD blend [0,1] toward next coarser LOD)
 //   [ 20] heightmap_scale    float ( 4 B — max_height - min_height)
 //   [ 24] heightmap_offset   float ( 4 B — min_height)
-//   [ 28] pad0_              float ( 4 B)
+//   [ 28] tpi_pad0_          float ( 4 B) — GLSL name avoids clash with SceneInfosBlock
 //   [ 32] inv_terrain_world  vec2  ( 8 B — 1/world_width, 1/world_height for UV)
-//   [ 40] pad1_              float ( 4 B)
-//   [ 44] pad2_              float ( 4 B)
+//   [ 40] tpi_pad1_          float ( 4 B)
+//   [ 44] tpi_pad2_          float ( 4 B)
 //   [ 48] end                3 float4s total
 struct TerrainPatchInfos {
   core::Vec2f patch_origin;       // world XZ of the patch's (0,0) corner
