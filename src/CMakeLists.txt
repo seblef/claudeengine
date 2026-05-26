@@ -1,6 +1,7 @@
 add_subdirectory(core)
 add_subdirectory(abstract)
 add_subdirectory(mesh)
+add_subdirectory(terrain)
 add_subdirectory(gldevices)
 add_subdirectory(renderer)
 add_subdirectory(game)
