@@ -14,6 +14,7 @@
 #include "terrain/TerrainPatch.h"
 #include "terrain/TerrainPatchMesh.h"
 
+namespace abstract { class RenderTargetGroup; }
 namespace core { class Camera; }
 
 namespace terrain {
@@ -97,12 +98,26 @@ class TerrainRenderer : public core::Singleton<TerrainRenderer> {
   // currently bound G-buffer. Must be called inside the geometry pass.
   void Render(const core::Camera& camera);
 
+  // Renders terrain patch edges as a flat-colour wireframe overlay into fbo.
+  //
+  // Intended as a debug aid. Draws all visible patches with glPolygonMode
+  // GL_LINE using a simple white shader; depth testing is disabled so the
+  // overlay is always visible. fbo must remain valid for the duration of
+  // the call.
+  //
+  // Must be called after Init() and after Render() so that the scene UBO
+  // (slot 2) is already bound.
+  void RenderWireframe(abstract::VideoDevice* video,
+                       const core::Camera& camera,
+                       abstract::RenderTargetGroup* fbo);
+
  private:
   void BindMaterialTextures() const;
   void FillPatchInfos(const TerrainPatch& patch);
 
   abstract::VideoDevice*                    video_         = nullptr;
   abstract::Shader*                         shader_        = nullptr;
+  abstract::Shader*                         wireframe_shader_ = nullptr;
   std::unique_ptr<abstract::RawTexture>     heightmap_;
   std::unique_ptr<abstract::ConstantBuffer> patch_cb_;
   // cppcheck-suppress unusedStructMember

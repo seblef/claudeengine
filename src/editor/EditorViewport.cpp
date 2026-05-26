@@ -373,6 +373,12 @@ void EditorViewport::Render() {
                             wireframe_fbo_.get());
   }
 
+  // Terrain wireframe debug overlay — flat white edges over the composited scene.
+  if (terrain_wireframe_debug_ && wireframe_fbo_) {
+    renderer::Renderer::Instance().RenderTerrainWireframe(
+        *camera_->GetCamera(), wireframe_fbo_.get());
+  }
+
   // XYZ axis overlay — bottom-right corner of the viewport panel.
   const ImVec2 vp_pos  = ImGui::GetWindowPos();
   const ImVec2 vp_size = {static_cast<float>(w), static_cast<float>(h)};

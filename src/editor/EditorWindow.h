@@ -149,6 +149,10 @@ class EditorWindow {
   // Normal map produced during terrain creation; lives with the editor window.
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<terrain::TerrainNormalMap> terrain_normal_map_;
+
+  // Debug state.
+  // cppcheck-suppress unusedStructMember
+  bool terrain_wireframe_debug_ = false;
 };
 
 }  // namespace editor

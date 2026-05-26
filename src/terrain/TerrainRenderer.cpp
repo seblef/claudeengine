@@ -3,7 +3,9 @@
 #include <loguru.hpp>
 
 #include "abstract/BufferUsage.h"
+#include "abstract/CullFace.h"
 #include "abstract/PrimitiveType.h"
+#include "abstract/RenderTargetGroup.h"
 #include "core/Camera.h"
 #include "terrain/TerrainData.h"
 #include "terrain/TerrainMaterial.h"
@@ -22,7 +24,8 @@ constexpr int kMacroTextureSlot  = 10;
 }  // namespace
 
 TerrainRenderer::~TerrainRenderer() {
-  if (shader_) shader_->Release();
+  if (shader_)           shader_->Release();
+  if (wireframe_shader_) wireframe_shader_->Release();
 }
 
 void TerrainRenderer::Init(abstract::VideoDevice* video, const TerrainData& data,
@@ -41,7 +44,8 @@ void TerrainRenderer::Init(abstract::VideoDevice* video, const TerrainData& data
   patch_mesh_ = std::make_unique<TerrainPatchMesh>(video, patch_size);
   patch_cb_   = video->CreateConstantBuffer(
       kPatchInfosFloat4s, kPatchInfosSlot, abstract::BufferUsage::kDynamic);
-  shader_     = video->CreateShader("terrain/terrain");
+  shader_           = video->CreateShader("terrain/terrain");
+  wireframe_shader_ = video->CreateShader("terrain/terrain_wireframe");
 
   LOG_F(INFO, "TerrainRenderer::Init — patch_size=%d lod_count=%d", patch_size, lod_count);
 }
@@ -128,6 +132,39 @@ void TerrainRenderer::FillPatchInfos(const TerrainPatch& patch) {
   }
 
   patch_cb_->Fill(&infos);
+}
+
+void TerrainRenderer::RenderWireframe(abstract::VideoDevice* video,
+                                       const core::Camera& camera,
+                                       abstract::RenderTargetGroup* fbo) {
+  if (!wireframe_shader_) return;
+
+  quadtree_.Select(camera, triangle_budget_, patches_);
+  if (patches_.empty()) return;
+
+  fbo->BindForWriting();
+  video->SetDepthTestEnabled(false);
+  video->SetDepthWriteEnabled(false);
+  video->SetFaceCulling(abstract::CullFace::kBack);
+  video->SetWireframeEnabled(true);
+  video->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
+
+  wireframe_shader_->Activate();
+  heightmap_->Bind(kHeightmapSlot);
+  patch_cb_->Bind();
+
+  for (const TerrainPatch& patch : patches_) {
+    FillPatchInfos(patch);
+    patch_mesh_->Bind();
+    video->RenderIndexed(patch_mesh_->GetIndexCount());
+  }
+
+  video->SetWireframeEnabled(false);
+  fbo->UnbindForWriting();
+
+  video->SetDepthWriteEnabled(true);
+  video->SetFaceCulling(abstract::CullFace::kBack);
+  video->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
 }
 
 }  // namespace terrain

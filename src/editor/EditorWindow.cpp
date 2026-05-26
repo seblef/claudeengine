@@ -334,6 +334,14 @@ void EditorWindow::RenderMenuBar() {
     ImGui::EndMenu();
   }
 
+  if (ImGui::BeginMenu("Debug")) {
+    if (ImGui::MenuItem("Terrain Wireframe", nullptr, terrain_wireframe_debug_)) {
+      terrain_wireframe_debug_ = !terrain_wireframe_debug_;
+      viewport_->SetTerrainWireframeDebugEnabled(terrain_wireframe_debug_);
+    }
+    ImGui::EndMenu();
+  }
+
   ImGui::EndMainMenuBar();
 }
 

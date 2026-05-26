@@ -261,6 +261,10 @@ void GLVideoDevice::SetDepthWriteEnabled(bool enabled) {
   glDepthMask(enabled ? GL_TRUE : GL_FALSE);
 }
 
+void GLVideoDevice::SetWireframeEnabled(bool enabled) {
+  glPolygonMode(GL_FRONT_AND_BACK, enabled ? GL_LINE : GL_FILL);
+}
+
 void GLVideoDevice::SetViewport(int x, int y, int width, int height) {
   glViewport(x, y, width, height);
 }

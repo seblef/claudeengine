@@ -121,6 +121,12 @@ class Renderer : public core::Singleton<Renderer> {
     terrain_renderer_ = terrain;
   }
 
+  // Renders terrain patch edges as a flat-colour wireframe overlay into fbo.
+  // No-op when no terrain has been registered or Init() has not been called.
+  // Must be called after Update() so the scene UBO at slot 2 is bound.
+  void RenderTerrainWireframe(const core::Camera& camera,
+                               abstract::RenderTargetGroup* fbo);
+
   // Selects which G-buffer attachment to visualize. kNone restores the full pipeline.
   void SetDebugMode(DebugMode mode) { debug_mode_ = mode; }
 
