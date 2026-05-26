@@ -6,6 +6,7 @@
 #include "abstract/ConstantBuffer.h"
 #include "abstract/RawTexture.h"
 #include "abstract/Shader.h"
+#include "abstract/Texture.h"
 #include "abstract/VideoDevice.h"
 #include "core/Singleton.h"
 #include "core/Vec2f.h"
@@ -18,15 +19,25 @@ namespace core { class Camera; }
 namespace terrain {
 
 class TerrainData;
+class TerrainMaterial;
 
 // Singleton G-buffer pass renderer for terrain.
 //
 // Owns the GPU resources for one terrain: heightmap texture, CDLOD quadtree,
 // shared patch mesh, and per-patch constant buffer (slot 6).
 //
+// Texture slot assignment:
+//   0 — heightmap       (VS / TESE)
+//   1 — splatmap        (PS)
+//   2–5 — layer albedos (PS, layers 0–3)
+//   6–9 — layer normals (PS, layers 0–3)
+//  10 — macro texture   (PS, optional)
+//
 // Usage:
 //   new TerrainRenderer();
 //   TerrainRenderer::Instance().Init(video, data);
+//   TerrainRenderer::Instance().SetMaterial(&material);   // optional
+//   TerrainRenderer::Instance().SetMacroTexture(tex);     // optional
 //   // each frame, inside the geometry pass:
 //   TerrainRenderer::Instance().Render(camera);
 //   TerrainRenderer::Shutdown();
@@ -67,6 +78,18 @@ class TerrainRenderer : public core::Singleton<TerrainRenderer> {
   // Sets the highest LOD level that receives tessellation (0 = finest).
   void SetMaxTessLod(int max_lod) { max_tess_lod_ = max_lod; }
 
+  // Attaches a terrain material for splatmap-based layer blending.
+  // The renderer does not take ownership; caller must ensure the material
+  // outlives the renderer. Pass nullptr to detach.
+  void SetMaterial(const TerrainMaterial* material) { material_ = material; }
+
+  // Attaches an optional macro texture bound to slot 10 during rendering.
+  // The renderer does not take ownership. Pass nullptr to detach.
+  void SetMacroTexture(abstract::Texture* tex) { macro_texture_ = tex; }
+
+  // Sets the |world_normal.y| threshold below which triplanar mapping activates.
+  void SetTriplanarThreshold(float threshold) { triplanar_threshold_ = threshold; }
+
   // Returns true if Init() has been called successfully.
   [[nodiscard]] bool IsReady() const { return shader_ != nullptr; }
 
@@ -75,6 +98,7 @@ class TerrainRenderer : public core::Singleton<TerrainRenderer> {
   void Render(const core::Camera& camera);
 
  private:
+  void BindMaterialTextures() const;
   void FillPatchInfos(const TerrainPatch& patch);
 
   abstract::VideoDevice*                    video_         = nullptr;
@@ -87,12 +111,16 @@ class TerrainRenderer : public core::Singleton<TerrainRenderer> {
   // cppcheck-suppress unusedStructMember
   std::vector<TerrainPatch>                 patches_;
 
-  int         triangle_budget_    = 500'000;
-  int         patch_size_         = 64;
-  float       meters_per_texel_   = 1.f;
-  float       heightmap_scale_    = 1.f;
-  float       heightmap_offset_   = 0.f;
-  core::Vec2f inv_terrain_world_  = {};
+  const TerrainMaterial*  material_            = nullptr;
+  abstract::Texture*      macro_texture_       = nullptr;
+
+  int         triangle_budget_       = 500'000;
+  int         patch_size_            = 64;
+  float       meters_per_texel_      = 1.f;
+  float       heightmap_scale_       = 1.f;
+  float       heightmap_offset_      = 0.f;
+  core::Vec2f inv_terrain_world_     = {};
+  float       triplanar_threshold_   = 0.5f;
 
   bool        tess_enabled_       = true;
   float       tess_falloff_dist_  = 500.f;
