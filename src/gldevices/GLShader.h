@@ -19,12 +19,18 @@ class GLShader : public abstract::Shader {
   // Binds this program for subsequent draw calls.
   void Activate() override;
 
+  // Binds the tessellation variant (VS+TESC+TESE+FS) if it was compiled.
+  void ActivateTess() override;
+
+  [[nodiscard]] bool HasTessellation() const override { return tess_program_id_ != 0; }
+
   void SetUniformInt(const std::string& name, int value) override;
   void SetUniformFloat(const std::string& name, float value) override;
   void SetUniform2f(const std::string& name, float x, float y) override;
 
  private:
-  GLuint program_id_ = 0;
+  GLuint program_id_      = 0;
+  GLuint tess_program_id_ = 0;
 
   // Compiles a single shader stage from source. Returns the shader object ID
   // on success or 0 on compile failure (errors are logged).

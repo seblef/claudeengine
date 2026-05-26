@@ -54,6 +54,10 @@ void GLVideoDevice::SetPrimitiveType(abstract::PrimitiveType type) {
     case abstract::PrimitiveType::kTriangleList:  primitive_type_ = GL_TRIANGLES;      break;
     case abstract::PrimitiveType::kTriangleStrip: primitive_type_ = GL_TRIANGLE_STRIP; break;
     case abstract::PrimitiveType::kTriangleFan:   primitive_type_ = GL_TRIANGLE_FAN;   break;
+    case abstract::PrimitiveType::kPatch4:
+      primitive_type_ = GL_PATCHES;
+      glPatchParameteri(GL_PATCH_VERTICES, 4);
+      break;
   }
 }
 

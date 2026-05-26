@@ -12,6 +12,7 @@ enum class PrimitiveType : uint8_t {
   kTriangleList,   // Each triplet of vertices forms an independent triangle
   kTriangleStrip,  // Vertices form a connected strip of triangles
   kTriangleFan,    // Vertices fan around the first vertex
+  kPatch4,         // 4-vertex quad patch for hardware tessellation (GL_PATCHES)
 };
 
 }  // namespace abstract
