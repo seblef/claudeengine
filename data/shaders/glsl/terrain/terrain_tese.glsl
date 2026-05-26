@@ -21,7 +21,7 @@
 
 #version 460 core
 
-layout(quads, fractional_even_spacing, ccw) in;
+layout(quads, fractional_even_spacing, cw) in;
 
 #include <uniforms/scene_infos.glsl>
 #include <uniforms/terrain_patch_infos.glsl>
