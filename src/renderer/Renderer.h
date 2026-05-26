@@ -18,6 +18,7 @@
 #include "renderer/OctreeVisibilitySystem.h"
 #include "renderer/ShadowDebugRenderer.h"
 #include "renderer/ShadowRenderer.h"
+#include "terrain/TerrainRenderer.h"
 
 namespace renderer {
 
@@ -114,6 +115,12 @@ class Renderer : public core::Singleton<Renderer> {
   // runs at viewport-panel resolution rather than window resolution.
   void ResizeTargets(int w, int h);
 
+  // Registers a TerrainRenderer to be called in the geometry pass.
+  // Pass nullptr to detach the current terrain. The caller retains ownership.
+  void SetTerrainRenderer(terrain::TerrainRenderer* terrain) {
+    terrain_renderer_ = terrain;
+  }
+
   // Selects which G-buffer attachment to visualize. kNone restores the full pipeline.
   void SetDebugMode(DebugMode mode) { debug_mode_ = mode; }
 
@@ -159,6 +166,9 @@ class Renderer : public core::Singleton<Renderer> {
   DebugMode debug_mode_ = DebugMode::kNone;
 
   std::unique_ptr<ShadowDebugRenderer> shadow_debug_renderer_;
+
+  // Optional terrain renderer called in the geometry pass. Not owned by Renderer.
+  terrain::TerrainRenderer* terrain_renderer_ = nullptr;
 
   // Composite pass resources — gamma-correct the HDR RT to the default framebuffer.
   // cppcheck-suppress unusedStructMember

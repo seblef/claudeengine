@@ -10,6 +10,7 @@
 #include "gldevices/GLRenderTargetCube.h"
 #include "gldevices/GLRenderTargetGroup.h"
 #include "gldevices/GLShader.h"
+#include "gldevices/GLRawTexture.h"
 #include "gldevices/GLTexture.h"
 #include "gldevices/GLVertexBuffer.h"
 
@@ -135,6 +136,11 @@ abstract::Texture* GLVideoDevice::CreateTexture(
     return nullptr;
   }
   return tex;
+}
+
+std::unique_ptr<abstract::RawTexture> GLVideoDevice::CreateHeightmapTexture(
+    int width, int height, const uint16_t* data) {
+  return std::make_unique<GLRawTexture>(width, height, data);
 }
 
 void GLVideoDevice::SetColorWriteEnabled(bool enabled) {

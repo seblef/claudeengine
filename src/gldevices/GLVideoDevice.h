@@ -129,6 +129,10 @@ class GLVideoDevice : public abstract::VideoDevice {
       const std::string& name,
       abstract::BufferUsage usage = abstract::BufferUsage::kImmutable) override;
 
+  // Creates a GL_R16 (unsigned-normalised) texture from raw CPU uint16 data.
+  [[nodiscard]] std::unique_ptr<abstract::RawTexture> CreateHeightmapTexture(
+      int width, int height, const uint16_t* data) override;
+
  private:
   // cppcheck-suppress unusedStructMember
   GLFWwindow* window_;

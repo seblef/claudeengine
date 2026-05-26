@@ -27,8 +27,11 @@ class TerrainData {
 
   // ---- Dimension accessors -------------------------------------------------
 
-  int   GetTexelWidth()  const { return width_; }
-  int   GetTexelHeight() const { return height_; }
+  int   GetTexelWidth()    const { return width_; }
+  int   GetTexelHeight()   const { return height_; }
+  float GetMetersPerTexel() const { return meters_per_texel_; }
+  float GetMinHeight()     const { return min_height_; }
+  float GetMaxHeight()     const { return max_height_; }
 
   // World-space extents in metres.
   float GetWorldWidth()  const { return static_cast<float>(width_)  * meters_per_texel_; }
@@ -60,9 +63,7 @@ class TerrainData {
   int   width_;
   int   height_;
   float meters_per_texel_;
-  // cppcheck-suppress unusedStructMember
   float min_height_;
-  // cppcheck-suppress unusedStructMember
   float max_height_;
 };
 
