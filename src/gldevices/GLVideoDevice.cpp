@@ -3,6 +3,12 @@
 
 #include "gldevices/GLVideoDevice.h"
 
+#include <filesystem>
+#include <vector>
+
+#include <loguru.hpp>
+#include <stb_image.h>
+
 #include "gldevices/GLConstantBuffer.h"
 #include "gldevices/GLGeometryBuffer.h"
 #include "gldevices/GLIndexBuffer.h"
@@ -281,6 +287,25 @@ GLVideoDevice::CreateRenderTargetGroup(
 std::unique_ptr<abstract::RenderTargetCube> GLVideoDevice::CreateRenderTargetCube(
     int size, abstract::TextureFormat /*format*/) {
   return std::make_unique<GLRenderTargetCube>(size);
+}
+
+bool GLVideoDevice::LoadRGBA8File(const std::filesystem::path& path,
+                                   int* out_width, int* out_height,
+                                   std::vector<uint8_t>& out_pixels) {
+  if (!std::filesystem::exists(path)) return false;
+  int w = 0, h = 0, channels = 0;
+  stbi_set_flip_vertically_on_load(0);
+  uint8_t* data = stbi_load(path.string().c_str(), &w, &h, &channels, 4);
+  if (!data) {
+    LOG_F(ERROR, "GLVideoDevice::LoadRGBA8File: failed to load '%s'",
+          path.string().c_str());
+    return false;
+  }
+  *out_width  = w;
+  *out_height = h;
+  out_pixels.assign(data, data + static_cast<std::size_t>(w) * h * 4);
+  stbi_image_free(data);
+  return true;
 }
 
 }  // namespace gldevices
