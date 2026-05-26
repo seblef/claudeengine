@@ -88,14 +88,42 @@ std::unique_ptr<renderer::Light> GameLight::CreateRendererLight(
 
 GameLight::GameLight(renderer::LightType type, const GameLightDesc& desc)
     : GameObject(GameObjectType::kLight, ComputeLocalBBox(type, desc)),
-      light_(CreateRendererLight(type, desc)) {
+      light_(CreateRendererLight(type, desc)),
+      rest_direction_(desc.direction) {
   light_->SetCastShadow(desc.cast_shadow);
   light_->SetShadowResolution(desc.shadow_resolution);
   light_->SetShadowBias(desc.shadow_bias);
 }
 
 void GameLight::OnWorldTransformUpdated() {
-  light_->SetWorldMatrix(GetWorldTransform());
+  const core::Mat4f& wt = GetWorldTransform();
+  light_->SetWorldMatrix(wt);
+  const renderer::LightType t = light_->GetType();
+  if (t == renderer::LightType::kCircleSpot) {
+    const core::Vec3f d = TransformNoTranslation(rest_direction_, wt).Normalized();
+    static_cast<renderer::CircleSpotLight*>(light_.get())->SetDirection(d);
+  } else if (t == renderer::LightType::kRectSpot) {
+    const core::Vec3f d = TransformNoTranslation(rest_direction_, wt).Normalized();
+    static_cast<renderer::RectangleSpotLight*>(light_.get())->SetDirection(d);
+  }
+}
+
+void GameLight::SetSpotDirection(const core::Vec3f& world_dir) {
+  const renderer::LightType t = light_->GetType();
+  if (t != renderer::LightType::kCircleSpot && t != renderer::LightType::kRectSpot)
+    return;
+  // Compute rest_direction_ = R^T * world_dir so that future rotations derive
+  // the correct world-space direction.
+  const core::Mat4f& wt = GetWorldTransform();
+  rest_direction_ = core::Vec3f(
+      wt(0,0)*world_dir.x + wt(1,0)*world_dir.y + wt(2,0)*world_dir.z,
+      wt(0,1)*world_dir.x + wt(1,1)*world_dir.y + wt(2,1)*world_dir.z,
+      wt(0,2)*world_dir.x + wt(1,2)*world_dir.y + wt(2,2)*world_dir.z
+  ).Normalized();
+  if (t == renderer::LightType::kCircleSpot)
+    static_cast<renderer::CircleSpotLight*>(light_.get())->SetDirection(world_dir);
+  else
+    static_cast<renderer::RectangleSpotLight*>(light_.get())->SetDirection(world_dir);
 }
 
 void GameLight::OnAddedToScene() {

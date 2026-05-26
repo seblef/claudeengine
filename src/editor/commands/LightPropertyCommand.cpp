@@ -87,7 +87,7 @@ void ApplySnapshot(game::GameLight* game_light, const LightSnapshot& s) {
       spot->SetInnerAngle(s.inner_angle);
       spot->SetOuterAngle(s.outer_angle);
       spot->SetRange(s.range);
-      spot->SetDirection(s.direction);
+      game_light->SetSpotDirection(s.direction);
       break;
     }
     case renderer::LightType::kRectSpot: {
@@ -95,7 +95,7 @@ void ApplySnapshot(game::GameLight* game_light, const LightSnapshot& s) {
       rect->SetHAngle(s.h_angle);
       rect->SetVAngle(s.v_angle);
       rect->SetRange(s.range);
-      rect->SetDirection(s.direction);
+      game_light->SetSpotDirection(s.direction);
       break;
     }
     case renderer::LightType::kGlobal: {
