@@ -3,7 +3,6 @@
 #include <cmath>
 
 #include "core/BBox3.h"
-#include "core/Mat4f.h"
 #include "core/Vec3f.h"
 #include "renderer/CircleSpotLight.h"
 #include "renderer/GlobalLight.h"

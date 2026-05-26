@@ -3,6 +3,7 @@ add_library(editor STATIC
     EditorCommandHistory.cpp
     EditorScene.cpp
     EditorSystem.cpp
+    LightWireframeRenderer.cpp
     MapPropertiesWindow.cpp
     MapSerializer.cpp
     EditorTheme.cpp
