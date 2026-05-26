@@ -138,6 +138,8 @@ void Renderer::Update(float time, const core::Camera* camera,
   video_->ClearRenderTargets(core::Color::kBlack);
   MeshRenderer::Instance().PrepareRender();
   MeshRenderer::Instance().Render();
+  if (terrain_renderer_ && terrain_renderer_->IsReady() && camera_)
+    terrain_renderer_->Render(*camera_);
   gbuffer_.UnbindForWriting();
 
   // Debug bypass — blit a chosen G-buffer RT to the default framebuffer and skip

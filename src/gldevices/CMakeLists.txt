@@ -3,6 +3,7 @@ add_library(gldevices STATIC
     GLDevices.cpp
     GLGeometryBuffer.cpp
     GLIndexBuffer.cpp
+    GLRawTexture.cpp
     GLRenderTarget.cpp
     GLRenderTargetCube.cpp
     GLRenderTargetGroup.cpp

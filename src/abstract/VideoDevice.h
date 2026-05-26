@@ -1,11 +1,13 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <span>
 #include <string>
 
 #include "abstract/BlendFactor.h"
 #include "abstract/BufferUsage.h"
+#include "abstract/RawTexture.h"
 #include "abstract/CompareFunc.h"
 #include "abstract/ConstantBuffer.h"
 #include "abstract/CullFace.h"
@@ -184,6 +186,13 @@ class VideoDevice {
   [[nodiscard]] virtual Texture* CreateTexture(
       const std::string& name,
       BufferUsage usage = BufferUsage::kImmutable) = 0;
+
+  // Creates a 16-bit unsigned-normalised single-channel (R16) texture from
+  // raw CPU data. width * height uint16_t values; samples map to [0, 1] in
+  // shaders. Intended for heightmaps uploaded at terrain init time.
+  // The caller owns the returned object via unique_ptr.
+  [[nodiscard]] virtual std::unique_ptr<RawTexture> CreateHeightmapTexture(
+      int width, int height, const uint16_t* data) = 0;
 
   // ---- Getters -------------------------------------------------------------
 

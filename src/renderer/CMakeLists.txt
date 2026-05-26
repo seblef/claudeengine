@@ -28,4 +28,4 @@ add_library(renderer STATIC
 
 target_include_directories(renderer PUBLIC "${CMAKE_SOURCE_DIR}/src")
 
-target_link_libraries(renderer PUBLIC abstract PRIVATE mesh)
+target_link_libraries(renderer PUBLIC abstract PRIVATE mesh terrain)
