@@ -19,6 +19,7 @@ height/normal queries, LOD management, and eventual GPU resource creation.
 | `TerrainData` | `TerrainData.h/.cpp` | CPU heightmap storage; height and normal queries |
 | `TerrainPatch` | `TerrainPatch.h` | Plain data struct: LOD level, grid position, morph factor |
 | `CDLODQuadTree` | `CDLODQuadTree.h/.cpp` | CDLOD quadtree: Build from terrain + Select visible patches |
+| `TerrainPatchMesh` | `TerrainPatchMesh.h/.cpp` | Shared flat NxN grid VBO/IBO reused by all patches at all LOD levels |
 
 ## Conventions
 
