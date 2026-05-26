@@ -52,6 +52,21 @@ class TerrainRenderer : public core::Singleton<TerrainRenderer> {
   // Updates the maximum triangle budget forwarded to CDLODQuadTree::Select().
   void SetTriangleBudget(int budget) { triangle_budget_ = budget; }
 
+  // Enables or disables hardware tessellation for close-in LOD levels.
+  // Tessellation is applied to patches whose LOD ≤ max_tess_lod (default: 2).
+  // Has no effect if the terrain shader does not have tessellation stages.
+  void SetTessellationEnabled(bool enabled) { tess_enabled_ = enabled; }
+
+  // Sets the camera distance at which the tessellation factor falls to 1.0.
+  // Patches closer than this distance are subdivided up to max_tess_ times.
+  void SetTessellationFalloffDistance(float dist) { tess_falloff_dist_ = dist; }
+
+  // Sets the maximum tessellation factor applied at camera distance = 0.
+  void SetMaxTessFactor(float max_tess) { max_tess_ = max_tess; }
+
+  // Sets the highest LOD level that receives tessellation (0 = finest).
+  void SetMaxTessLod(int max_lod) { max_tess_lod_ = max_lod; }
+
   // Returns true if Init() has been called successfully.
   [[nodiscard]] bool IsReady() const { return shader_ != nullptr; }
 
@@ -78,6 +93,11 @@ class TerrainRenderer : public core::Singleton<TerrainRenderer> {
   float       heightmap_scale_    = 1.f;
   float       heightmap_offset_   = 0.f;
   core::Vec2f inv_terrain_world_  = {};
+
+  bool        tess_enabled_       = true;
+  float       tess_falloff_dist_  = 500.f;
+  float       max_tess_           = 8.f;
+  int         max_tess_lod_       = 2;
 };
 
 }  // namespace terrain

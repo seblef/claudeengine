@@ -30,16 +30,24 @@ class TerrainPatchMesh {
 
   ~TerrainPatchMesh() = default;
 
-  // Binds the VBO and IBO ready for a draw call.
+  // Binds the VBO and triangle IBO for a standard draw call.
   void Bind();
 
-  // Total index count for one full-patch draw call.
+  // Binds the VBO and quad-patch IBO for a tessellated draw call (GL_PATCHES/4).
+  void BindTess();
+
+  // Total index count for a standard (triangle) draw call.
   [[nodiscard]] int GetIndexCount() const { return index_count_; }
+
+  // Total index count for a tessellated (quad-patch) draw call.
+  [[nodiscard]] int GetTessIndexCount() const { return tess_index_count_; }
 
  private:
   std::unique_ptr<abstract::VertexBuffer> vbo_;
   std::unique_ptr<abstract::IndexBuffer>  ibo_;
+  std::unique_ptr<abstract::IndexBuffer>  tess_ibo_;
   int                                     index_count_;
+  int                                     tess_index_count_;
 };
 
 }  // namespace terrain

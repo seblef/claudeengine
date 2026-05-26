@@ -16,6 +16,13 @@ class Shader : public core::Resource<std::string, Shader> {
   // Binds this shader program for subsequent draw calls.
   virtual void Activate() = 0;
 
+  // Returns true if this shader also has tessellation-control / evaluation stages.
+  [[nodiscard]] virtual bool HasTessellation() const { return false; }
+
+  // Binds the tessellation variant of this shader program.
+  // Falls back to Activate() if HasTessellation() is false.
+  virtual void ActivateTess() { Activate(); }
+
   // Sets an integer uniform by name. Must be called after Activate().
   virtual void SetUniformInt(const std::string& name, int value) = 0;
 

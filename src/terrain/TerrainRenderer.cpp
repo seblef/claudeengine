@@ -3,6 +3,7 @@
 #include <loguru.hpp>
 
 #include "abstract/BufferUsage.h"
+#include "abstract/PrimitiveType.h"
 #include "core/Camera.h"
 #include "terrain/TerrainData.h"
 #include "terrain/TerrainPatchInfos.h"
@@ -46,11 +47,28 @@ void TerrainRenderer::Render(const core::Camera& camera) {
   quadtree_.Select(camera, triangle_budget_, patches_);
   if (patches_.empty()) return;
 
-  shader_->Activate();
   heightmap_->Bind(kHeightmapSlot);
   patch_cb_->Bind();
 
+  const bool use_tess = tess_enabled_ && shader_->HasTessellation();
+
+  // Tessellated pass: low-LOD patches rendered as GL_PATCHES.
+  if (use_tess) {
+    shader_->ActivateTess();
+    video_->SetPrimitiveType(abstract::PrimitiveType::kPatch4);
+    for (const TerrainPatch& patch : patches_) {
+      if (patch.lod > max_tess_lod_) continue;
+      FillPatchInfos(patch);
+      patch_mesh_->BindTess();
+      video_->RenderIndexed(patch_mesh_->GetTessIndexCount());
+    }
+  }
+
+  // Standard pass: high-LOD patches rendered as triangles.
+  shader_->Activate();
+  video_->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
   for (const TerrainPatch& patch : patches_) {
+    if (use_tess && patch.lod <= max_tess_lod_) continue;
     FillPatchInfos(patch);
     patch_mesh_->Bind();
     video_->RenderIndexed(patch_mesh_->GetIndexCount());
@@ -69,9 +87,11 @@ void TerrainRenderer::FillPatchInfos(const TerrainPatch& patch) {
   infos.patch_scale      = patch_scale;
   infos.lod_level        = patch.lod;
   infos.morph_factor     = patch.morph;
-  infos.heightmap_scale  = heightmap_scale_;
-  infos.heightmap_offset = heightmap_offset_;
-  infos.inv_terrain_world = inv_terrain_world_;
+  infos.heightmap_scale    = heightmap_scale_;
+  infos.heightmap_offset   = heightmap_offset_;
+  infos.inv_terrain_world  = inv_terrain_world_;
+  infos.tess_falloff_dist  = tess_falloff_dist_;
+  infos.max_tess           = max_tess_;
 
   patch_cb_->Fill(&infos);
 }

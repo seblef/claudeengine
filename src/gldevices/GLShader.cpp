@@ -61,6 +61,25 @@ std::string ResolveIncludes(const std::string& source,
 }
 }  // namespace
 
+namespace {
+GLuint LinkProgram(const std::string& label,
+                   std::initializer_list<GLuint> stages) {
+  const GLuint prog = glCreateProgram();
+  for (GLuint s : stages) glAttachShader(prog, s);
+  glLinkProgram(prog);
+  GLint ok = 0;
+  glGetProgramiv(prog, GL_LINK_STATUS, &ok);
+  if (!ok) {
+    char log[512];
+    glGetProgramInfoLog(prog, sizeof(log), nullptr, log);
+    LOG_F(ERROR, "GLShader '%s': link error: %s", label.c_str(), log);
+    glDeleteProgram(prog);
+    return 0;
+  }
+  return prog;
+}
+}  // namespace
+
 GLShader::GLShader(const std::string& name) : abstract::Shader(name) {
   const std::filesystem::path dir =
       core::Config::GetDataFolder() / "shaders" / "glsl";
@@ -86,35 +105,50 @@ GLShader::GLShader(const std::string& name) : abstract::Shader(name) {
     return;
   }
 
-  program_id_ = glCreateProgram();
-  glAttachShader(program_id_, vert);
-  glAttachShader(program_id_, frag);
-  glLinkProgram(program_id_);
-
+  program_id_ = LinkProgram(name, {vert, frag});
   glDeleteShader(vert);
   glDeleteShader(frag);
 
-  GLint ok = 0;
-  glGetProgramiv(program_id_, GL_LINK_STATUS, &ok);
-  if (!ok) {
-    char log[512];
-    glGetProgramInfoLog(program_id_, sizeof(log), nullptr, log);
-    LOG_F(ERROR, "GLShader '%s': link error: %s", name.c_str(), log);
-    glDeleteProgram(program_id_);
-    program_id_ = 0;
-    return;
-  }
-
+  if (!program_id_) return;
   initialized_ = true;
   LOG_F(INFO, "GLShader '%s': compiled and linked successfully", name.c_str());
+
+  // Optionally load tessellation stages if <name>_tesc.glsl / _tese.glsl exist.
+  std::unordered_set<std::string> tesc_inc, tese_inc;
+  const std::string tesc_src =
+      ResolveIncludes(ReadFile(dir / (name + "_tesc.glsl")), dir, tesc_inc);
+  const std::string tese_src =
+      ResolveIncludes(ReadFile(dir / (name + "_tese.glsl")), dir, tese_inc);
+
+  if (tesc_src.empty() || tese_src.empty()) return;
+
+  const GLuint vert2 = CompileStage(GL_VERTEX_SHADER,          vert_src, name + "_vs.glsl");
+  const GLuint tesc  = CompileStage(GL_TESS_CONTROL_SHADER,    tesc_src, name + "_tesc.glsl");
+  const GLuint tese  = CompileStage(GL_TESS_EVALUATION_SHADER, tese_src, name + "_tese.glsl");
+  const GLuint frag2 = CompileStage(GL_FRAGMENT_SHADER,        frag_src, name + "_ps.glsl");
+
+  if (vert2 && tesc && tese && frag2) {
+    tess_program_id_ = LinkProgram(name + "(tess)", {vert2, tesc, tese, frag2});
+    if (tess_program_id_)
+      LOG_F(INFO, "GLShader '%s': tessellation variant linked successfully", name.c_str());
+  }
+  glDeleteShader(vert2);
+  glDeleteShader(tesc);
+  glDeleteShader(tese);
+  glDeleteShader(frag2);
 }
 
 GLShader::~GLShader() {
-  if (program_id_) glDeleteProgram(program_id_);
+  if (program_id_)      glDeleteProgram(program_id_);
+  if (tess_program_id_) glDeleteProgram(tess_program_id_);
 }
 
 void GLShader::Activate() {
   glUseProgram(program_id_);
+}
+
+void GLShader::ActivateTess() {
+  glUseProgram(tess_program_id_);
 }
 
 void GLShader::SetUniformInt(const std::string& name, int value) {
