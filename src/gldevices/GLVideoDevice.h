@@ -1,8 +1,10 @@
 #pragma once
 
+#include <filesystem>
 #include <memory>
 #include <span>
 #include <string>
+#include <vector>
 
 #include <GL/gl.h>
 
@@ -136,6 +138,13 @@ class GLVideoDevice : public abstract::VideoDevice {
   // Creates a GL_RGBA8 texture for terrain normal maps; supports UpdateRegion().
   [[nodiscard]] std::unique_ptr<abstract::RawTexture> CreateNormalMapTexture(
       int width, int height, const uint8_t* data) override;
+
+  // Loads an RGBA8 PNG from an absolute path into a CPU pixel buffer.
+  // Uses stb_image; returns false without logging if the file does not exist.
+  [[nodiscard]] bool LoadRGBA8File(
+      const std::filesystem::path& path,
+      int* out_width, int* out_height,
+      std::vector<uint8_t>& out_pixels) override;
 
  private:
   // cppcheck-suppress unusedStructMember

@@ -22,6 +22,8 @@ height/normal queries, LOD management, and eventual GPU resource creation.
 | `TerrainPatchMesh`   | `TerrainPatchMesh.h/.cpp`   | Shared flat NxN grid VBO/IBO reused by all patches at all LOD levels |
 | `TerrainPatchInfos`  | `TerrainPatchInfos.h`       | Per-patch constant buffer struct (slot 6) — 48 bytes / 3 float4s     |
 | `TerrainRenderer`    | `TerrainRenderer.h/.cpp`    | Singleton G-buffer renderer: heightmap upload, quadtree, draw loop   |
+| `TerrainMaterialLayer` | `TerrainMaterialLayer.h`  | Plain struct: albedo/normal paths + UV tiling factor (header-only)   |
+| `TerrainMaterial`    | `TerrainMaterial.h/.cpp`    | 4-layer splatmap: CPU RGBA8 buffer + GPU RawTexture, YAML Load/Save  |
 
 ## Conventions
 

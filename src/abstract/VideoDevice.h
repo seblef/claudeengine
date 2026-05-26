@@ -1,9 +1,11 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <span>
 #include <string>
+#include <vector>
 
 #include "abstract/BlendFactor.h"
 #include "abstract/BufferUsage.h"
@@ -200,6 +202,15 @@ class VideoDevice {
   // The caller owns the returned object via unique_ptr.
   [[nodiscard]] virtual std::unique_ptr<RawTexture> CreateNormalMapTexture(
       int width, int height, const uint8_t* data) = 0;
+
+  // Loads an RGBA8 PNG image from the given absolute path into a CPU pixel buffer.
+  // Returns true and fills *out_width, *out_height, and out_pixels on success.
+  // Returns false without logging when the file does not exist.
+  // Logs an error and returns false if the file exists but cannot be decoded.
+  [[nodiscard]] virtual bool LoadRGBA8File(
+      const std::filesystem::path& path,
+      int* out_width, int* out_height,
+      std::vector<uint8_t>& out_pixels) = 0;
 
   // ---- Getters -------------------------------------------------------------
 
