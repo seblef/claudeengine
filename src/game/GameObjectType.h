@@ -7,6 +7,7 @@ enum class GameObjectType {
   kMesh,
   kLight,
   kCamera,
+  kTerrain,
 };
 
 }  // namespace game

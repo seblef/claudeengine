@@ -12,6 +12,7 @@
 #include "game/GameLight.h"
 #include "game/GameMesh.h"
 #include "game/GameObjectVisitor.h"
+#include "game/GameTerrain.h"
 
 namespace abstract { class VideoDevice; }
 
@@ -49,9 +50,10 @@ class MapSerializer {
     SerializeVisitor(YAML::Emitter& out,
                      const std::filesystem::path& data_dir);
 
-    void Visit(game::GameMesh& mesh)     override;
-    void Visit(game::GameLight& light)   override;
-    void Visit(game::GameCamera& camera) override;
+    void Visit(game::GameMesh& mesh)       override;
+    void Visit(game::GameLight& light)     override;
+    void Visit(game::GameCamera& camera)   override;
+    void Visit(game::GameTerrain& terrain) override {}
 
    private:
     YAML::Emitter&        out_;
