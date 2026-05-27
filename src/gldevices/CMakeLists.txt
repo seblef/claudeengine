@@ -9,6 +9,7 @@ add_library(gldevices STATIC
     GLRenderTargetCube.cpp
     GLRenderTargetGroup.cpp
     GLShader.cpp
+    GLShaderStorageBuffer.cpp
     GLTexture.cpp
     GLVideoDevice.cpp
     GLVertexBuffer.cpp

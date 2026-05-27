@@ -23,6 +23,7 @@
 #include "renderer/Light.h"
 #include "renderer/OmniLight.h"
 #include "renderer/RectangleSpotLight.h"
+#include "terrain/FoliageLayer.h"
 #include "terrain/TerrainData.h"
 #include "terrain/TerrainMaterial.h"
 #include "terrain/TerrainMaterialLayer.h"
@@ -220,6 +221,48 @@ void MapSerializer::SerializeVisitor::EmitTerrain(
   out_ << YAML::EndSeq;
   out_ << YAML::Key << "splatmap" << YAML::Value << splat_path;
   out_ << YAML::EndMap;
+
+  // Emit foliage_layers sequence.
+  if (terrain->GetFoliageLayerCount() > 0) {
+    out_ << YAML::Key << "foliage_layers" << YAML::Value << YAML::BeginSeq;
+    for (int fi = 0; fi < terrain->GetFoliageLayerCount(); ++fi) {
+      const terrain::FoliageLayer* flayer = terrain->GetFoliageLayer(fi);
+      const terrain::FoliageLayerDesc& fdesc = flayer->GetDesc();
+
+      // Write density map as raw .r8 file (single channel uint8, row-major).
+      const std::string dm_name = stem + "_foliage" + std::to_string(fi) + ".r8";
+      const std::filesystem::path dm_out = map_path_.parent_path() / dm_name;
+      {
+        std::ofstream dm_file(dm_out, std::ios::binary);
+        if (dm_file) {
+          const auto& dm = flayer->GetDensityMap();
+          dm_file.write(reinterpret_cast<const char*>(dm.data()),
+                        static_cast<std::streamsize>(dm.size()));
+          LOG_F(INFO, "MapSerializer: wrote foliage density '%s'",
+                dm_out.string().c_str());
+        } else {
+          LOG_F(ERROR, "MapSerializer: cannot write foliage density '%s'",
+                dm_out.string().c_str());
+        }
+      }
+
+      out_ << YAML::BeginMap;
+      out_ << YAML::Key << "name"               << YAML::Value << fdesc.name;
+      out_ << YAML::Key << "mesh"               << YAML::Value << fdesc.mesh_path;
+      out_ << YAML::Key << "texture"            << YAML::Value << fdesc.texture_path;
+      out_ << YAML::Key << "density_map"        << YAML::Value << dm_name;
+      out_ << YAML::Key << "density_width"      << YAML::Value << flayer->GetMapWidth();
+      out_ << YAML::Key << "density_height"     << YAML::Value << flayer->GetMapHeight();
+      out_ << YAML::Key << "spacing_min"        << YAML::Value << fdesc.spacing_min;
+      out_ << YAML::Key << "spacing_max"        << YAML::Value << fdesc.spacing_max;
+      out_ << YAML::Key << "scale_min"          << YAML::Value << fdesc.scale_min;
+      out_ << YAML::Key << "scale_max"          << YAML::Value << fdesc.scale_max;
+      out_ << YAML::Key << "cull_distance"      << YAML::Value << fdesc.cull_distance;
+      out_ << YAML::Key << "billboard_distance" << YAML::Value << fdesc.billboard_distance;
+      out_ << YAML::EndMap;
+    }
+    out_ << YAML::EndSeq;
+  }
 
   out_ << YAML::EndMap;
 }

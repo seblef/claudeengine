@@ -21,6 +21,7 @@
 #include "renderer/GeometryUtils.h"
 #include "renderer/Light.h"
 #include "renderer/MaterialDesc.h"
+#include "terrain/FoliageLayer.h"
 #include "terrain/TerrainData.h"
 #include "terrain/TerrainMaterial.h"
 
@@ -200,6 +201,51 @@ std::unique_ptr<GameObject> ParseTerrain(const YAML::Node& node,
   auto gt = std::make_unique<GameTerrain>(
       std::move(terrain_data), std::move(terrain_material), video);
   gt->SetName("terrain");
+
+  // Parse optional foliage_layers sequence.
+  if (node["foliage_layers"]) {
+    for (const YAML::Node& fn : node["foliage_layers"]) {
+      const std::string dm_file = fn["density_map"].as<std::string>("");
+      const int dm_w = fn["density_width"].as<int>(0);
+      const int dm_h = fn["density_height"].as<int>(0);
+
+      terrain::FoliageLayerDesc desc;
+      desc.name               = fn["name"].as<std::string>("");
+      desc.mesh_path          = fn["mesh"].as<std::string>("");
+      desc.texture_path       = fn["texture"].as<std::string>("");
+      desc.spacing_min        = fn["spacing_min"].as<float>(0.5f);
+      desc.spacing_max        = fn["spacing_max"].as<float>(1.5f);
+      desc.scale_min          = fn["scale_min"].as<float>(0.8f);
+      desc.scale_max          = fn["scale_max"].as<float>(1.2f);
+      desc.cull_distance      = fn["cull_distance"].as<float>(80.f);
+      desc.billboard_distance = fn["billboard_distance"].as<float>(40.f);
+
+      auto flayer = std::make_unique<terrain::FoliageLayer>(
+          dm_w > 0 ? dm_w : width,
+          dm_h > 0 ? dm_h : height,
+          std::move(desc));
+
+      // Load density map from raw .r8 file.
+      if (!dm_file.empty() && dm_w > 0 && dm_h > 0) {
+        const std::filesystem::path dm_path = map_path.parent_path() / dm_file;
+        std::ifstream dm_stream(dm_path, std::ios::binary);
+        if (dm_stream) {
+          auto& dm = flayer->GetDensityMap();
+          dm_stream.read(reinterpret_cast<char*>(dm.data()),
+                         static_cast<std::streamsize>(dm.size()));
+          flayer->MarkDirty();
+          LOG_F(INFO, "MapLoader: loaded foliage density '%s' (%dx%d)",
+                dm_file.c_str(), dm_w, dm_h);
+        } else {
+          LOG_F(WARNING, "MapLoader: cannot open foliage density '%s'",
+                dm_file.c_str());
+        }
+      }
+
+      gt->AddFoliageLayer(std::move(flayer));
+    }
+  }
+
   return gt;
 }
 

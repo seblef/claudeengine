@@ -1,5 +1,6 @@
 add_library(terrain STATIC
     CDLODQuadTree.cpp
+    FoliageLayer.cpp
     TerrainData.cpp
     TerrainMaterial.cpp
     TerrainNormalMap.cpp

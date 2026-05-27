@@ -1,6 +1,7 @@
 add_library(renderer STATIC
     CircleSpotLight.cpp
     EmissiveFBO.cpp
+    FoliageRenderer.cpp
     GBuffer.cpp
     PreviewRenderer.cpp
     GeometryData.cpp

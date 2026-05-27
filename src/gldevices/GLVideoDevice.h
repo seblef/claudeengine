@@ -45,6 +45,10 @@ class GLVideoDevice : public abstract::VideoDevice {
   void RenderIndexed(int num_indices, int first_index = 0,
                      int vertex_offset = 0) override;
 
+  // Issues glDrawElementsInstancedBaseVertex for GPU-instanced geometry.
+  void RenderIndexedInstanced(int num_indices, int num_instances,
+                              int first_index = 0, int vertex_offset = 0) override;
+
   // Creates a GLVertexBuffer with the given layout and fills it if data is non-null.
   [[nodiscard]] std::unique_ptr<abstract::VertexBuffer> CreateVertexBuffer(
       core::VertexType vertex_type, int num_vertices, abstract::BufferUsage usage,
@@ -68,6 +72,11 @@ class GLVideoDevice : public abstract::VideoDevice {
       int size, int slot,
       abstract::BufferUsage usage = abstract::BufferUsage::kDynamic,
       const void* data = nullptr) override;
+
+  // Creates a GLShaderStorageBuffer of the given byte capacity at binding_point.
+  [[nodiscard]] std::unique_ptr<abstract::ShaderStorageBuffer> CreateShaderStorageBuffer(
+      int capacity_bytes, int binding_point,
+      abstract::BufferUsage usage = abstract::BufferUsage::kDynamic) override;
 
   // Enables or disables GL_DEPTH_TEST.
   void SetDepthTestEnabled(bool enabled) override;

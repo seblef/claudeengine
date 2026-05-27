@@ -5,6 +5,7 @@
 #include <vector>
 
 namespace abstract { class VideoDevice; }
+namespace game { class GameTerrain; }
 namespace terrain {
 class TerrainData;
 class TerrainMaterial;
@@ -51,11 +52,13 @@ class TerrainEditorPanel {
 
   // Provides the editing context. Call when a terrain is added/loaded;
   // pass nullptr data to reset. history must outlive this panel.
+  // terrain_obj is used by the Foliage tab to manage foliage layers.
   void SetContext(terrain::TerrainData* data,
                   terrain::TerrainMaterial* material,
                   terrain::TerrainNormalMap* normal_map,
                   abstract::VideoDevice* video,
-                  EditorCommandHistory* history);
+                  EditorCommandHistory* history,
+                  game::GameTerrain* terrain_obj = nullptr);
 
   // Notifies the panel that the brush is at world (wx, wz) this frame.
   // first_touch must be true on the first frame of a new drag stroke.
@@ -72,7 +75,8 @@ class TerrainEditorPanel {
  private:
   enum class Tool    { kRaise, kLower, kSmooth, kFlatten };
   enum class Falloff { kLinear, kSmooth };
-  enum class ActiveTab { kSculpt, kPaint, kMaterial, kProperties, kImportExport };
+  enum class FoliageBrushMode { kPaint, kErase };
+  enum class ActiveTab { kSculpt, kPaint, kMaterial, kProperties, kImportExport, kFoliage };
   enum class IoState  { kIdle, kConfirmResize };
 
   // Returns the falloff weight for normalised distance t in [0, 1].
@@ -112,11 +116,16 @@ class TerrainEditorPanel {
   void RenderMaterialTab();
   void RenderPropertiesTab();
   void RenderImportExportTab();
+  void RenderFoliageTab();
 
   // Opens an NFD texture file dialog starting in data/textures/ and returns
   // the relative path (relative to data/textures/) on success, or an empty
   // string if the user cancelled or the selected file is outside that root.
   [[nodiscard]] static std::string BrowseTexture();
+
+  // Opens an NFD mesh file dialog starting in data/ and returns the path
+  // relative to data/ on success, or empty on cancel / out-of-root.
+  [[nodiscard]] static std::string BrowseMesh();
 
   // ---- Import / Export helpers ----------------------------------------------
 
@@ -169,12 +178,22 @@ class TerrainEditorPanel {
   std::string io_status_msg_;
   bool        io_status_ok_ = true;
 
+  // ---- Foliage tab parameters -----------------------------------------------
+  FoliageBrushMode foliage_brush_mode_    = FoliageBrushMode::kPaint;
+  int              foliage_active_layer_  = 0;
+  float            foliage_radius_        = 5.f;
+  float            foliage_strength_      = 0.5f;
+  // cppcheck-suppress unusedStructMember
+  bool             foliage_stroke_active_ = false;
+
   // ---- Context --------------------------------------------------------------
-  terrain::TerrainData*      data_       = nullptr;
-  terrain::TerrainMaterial*  material_   = nullptr;
-  terrain::TerrainNormalMap* normal_map_ = nullptr;
-  abstract::VideoDevice*     video_      = nullptr;
-  EditorCommandHistory*      history_    = nullptr;
+  terrain::TerrainData*      data_         = nullptr;
+  terrain::TerrainMaterial*  material_     = nullptr;
+  terrain::TerrainNormalMap* normal_map_   = nullptr;
+  abstract::VideoDevice*     video_        = nullptr;
+  EditorCommandHistory*      history_      = nullptr;
+  // cppcheck-suppress unusedStructMember
+  game::GameTerrain*         terrain_obj_  = nullptr;
 
   // ---- Sculpt stroke state --------------------------------------------------
   bool     stroke_active_    = false;
