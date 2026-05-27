@@ -100,6 +100,14 @@ class TerrainRenderer : public core::Singleton<TerrainRenderer> {
   void UpdateHeightmapTile(int texel_x, int texel_z, int w, int h,
                            const TerrainData& data);
 
+  // Updates the height-range constants forwarded to the shader each frame.
+  // Call after TerrainData::SetMinHeight() / SetMaxHeight(); does not require
+  // re-uploading the heightmap GPU texture.
+  void SetHeightRange(float min_h, float max_h) {
+    heightmap_scale_  = max_h - min_h;
+    heightmap_offset_ = min_h;
+  }
+
   // Selects visible patches from the quadtree and renders them into the
   // currently bound G-buffer. Must be called inside the geometry pass.
   void Render(const core::Camera& camera);

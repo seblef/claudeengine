@@ -581,16 +581,17 @@ void EditorWindow::CreateTerrain() {
 void EditorWindow::WireTerrainPanel() {
   game::GameTerrain* gt = FindTerrain(*scene_);
   if (!gt) {
-    terrain_panel_.SetContext(nullptr, nullptr, nullptr, nullptr);
+    terrain_panel_.SetContext(nullptr, nullptr, nullptr, nullptr, nullptr);
     viewport_->SetTerrainData(nullptr);
     viewport_->SetSculptActive(false);
     return;
   }
 
-  // GameTerrain owns a const TerrainData. The editor may mutate it during
-  // sculpting — const_cast is safe because the object itself is non-const.
-  auto* data = const_cast<terrain::TerrainData*>(&gt->GetData());
-  terrain_panel_.SetContext(data, terrain_normal_map_.get(), video_, &history_);
+  // GameTerrain owns const data. The editor mutates them during sculpt/paint —
+  // const_cast is safe because the objects are non-const.
+  auto* data     = const_cast<terrain::TerrainData*>(&gt->GetData());
+  auto* material = const_cast<terrain::TerrainMaterial*>(&gt->GetMaterial());
+  terrain_panel_.SetContext(data, material, terrain_normal_map_.get(), video_, &history_);
   viewport_->SetTerrainData(data);
   viewport_->SetOnSculptBrush([this](float wx, float wz, bool first, float dt) {
     terrain_panel_.OnBrushAt(wx, wz, first, dt);
