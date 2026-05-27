@@ -79,6 +79,12 @@ void TerrainData::SetSample(int tx, int tz, uint16_t value) {
   data_[static_cast<std::size_t>(tz) * width_ + tx] = value;
 }
 
+void TerrainData::ReplaceHeightmap(const uint16_t* data, int width, int height) {
+  width_  = width;
+  height_ = height;
+  data_.assign(data, data + static_cast<std::size_t>(width) * height);
+}
+
 uint16_t TerrainData::HeightToSample(float h) const {
   const float range = max_height_ - min_height_;
   if (range <= 0.f) return 0u;

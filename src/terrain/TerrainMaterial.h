@@ -89,6 +89,10 @@ class TerrainMaterial {
   // Updates the UV tiling factor for layer i (0-based, must be < layer_count_).
   void SetLayerTiling(int i, float tiling);
 
+  // Reinitialises the splatmap to the default (all weight on layer 0) with the
+  // given dimensions. Call after a heightmap import that changed terrain size.
+  void ResetSplatmap(abstract::VideoDevice* video, int width, int height);
+
   // ---- Accessors -----------------------------------------------------------
 
   [[nodiscard]] int                         GetLayerCount()     const { return layer_count_; }

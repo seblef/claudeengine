@@ -35,6 +35,7 @@ void TerrainRenderer::Init(abstract::VideoDevice* video, const TerrainData& data
                            int patch_size, int lod_count) {
   video_      = video;
   patch_size_ = patch_size;
+  lod_count_  = lod_count;
 
   meters_per_texel_  = data.GetMetersPerTexel();
   heightmap_scale_   = data.GetMaxHeight() - data.GetMinHeight();
@@ -193,6 +194,19 @@ void TerrainRenderer::UpdateHeightmapTile(int texel_x, int texel_z, int w, int h
   }
 
   heightmap_->UpdateRegion(x0, z0, tw, th, tile.data());
+}
+
+void TerrainRenderer::Rebuild(const TerrainData& data) {
+  if (!video_) return;
+  meters_per_texel_  = data.GetMetersPerTexel();
+  heightmap_scale_   = data.GetMaxHeight() - data.GetMinHeight();
+  heightmap_offset_  = data.GetMinHeight();
+  inv_terrain_world_ = {1.f / data.GetWorldWidth(), 1.f / data.GetWorldHeight()};
+  heightmap_ = video_->CreateHeightmapTexture(
+      data.GetTexelWidth(), data.GetTexelHeight(), data.GetRawData());
+  quadtree_.Build(data, patch_size_, lod_count_);
+  LOG_F(INFO, "TerrainRenderer::Rebuild — %dx%d",
+        data.GetTexelWidth(), data.GetTexelHeight());
 }
 
 }  // namespace terrain

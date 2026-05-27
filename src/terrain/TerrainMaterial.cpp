@@ -202,4 +202,15 @@ void TerrainMaterial::SetLayerTiling(int i, float tiling) {
   layers_[i].tiling = tiling;
 }
 
+void TerrainMaterial::ResetSplatmap(abstract::VideoDevice* video,
+                                    int width, int height) {
+  splat_width_  = width;
+  splat_height_ = height;
+  splatmap_pixels_.assign(static_cast<std::size_t>(width) * height * 4, 0u);
+  for (std::size_t p = 0; p < static_cast<std::size_t>(width) * height; ++p)
+    splatmap_pixels_[p * 4] = 255u;
+  UploadFullSplatmap(video);
+  LOG_F(INFO, "TerrainMaterial::ResetSplatmap — %dx%d (layer 0)", width, height);
+}
+
 }  // namespace terrain

@@ -100,6 +100,12 @@ class TerrainRenderer : public core::Singleton<TerrainRenderer> {
   void UpdateHeightmapTile(int texel_x, int texel_z, int w, int h,
                            const TerrainData& data);
 
+  // Re-creates the heightmap GPU texture and rebuilds the CDLOD quadtree using
+  // the patch_size and lod_count stored from the last Init() call. Use this
+  // after a heightmap import that may have changed terrain dimensions.
+  // No-op when Init() has not been called.
+  void Rebuild(const TerrainData& data);
+
   // Updates the height-range constants forwarded to the shader each frame.
   // Call after TerrainData::SetMinHeight() / SetMaxHeight(); does not require
   // re-uploading the heightmap GPU texture.
@@ -145,6 +151,7 @@ class TerrainRenderer : public core::Singleton<TerrainRenderer> {
 
   int         triangle_budget_       = 500'000;
   int         patch_size_            = 64;
+  int         lod_count_             = 6;
   float       meters_per_texel_      = 1.f;
   float       heightmap_scale_       = 1.f;
   float       heightmap_offset_      = 0.f;

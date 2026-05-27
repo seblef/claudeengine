@@ -74,6 +74,11 @@ class TerrainData {
   // [0, 65535].
   [[nodiscard]] uint16_t HeightToSample(float h) const;
 
+  // Replaces the full heightmap buffer. Width and height may differ from the
+  // current dimensions; callers must then rebuild the normal map, re-upload
+  // the GPU heightmap and rebuild the CDLOD quadtree.
+  void ReplaceHeightmap(const uint16_t* data, int width, int height);
+
  private:
   // Converts a raw uint16 sample to a world-space height value.
   float SampleToHeight(uint16_t sample) const;

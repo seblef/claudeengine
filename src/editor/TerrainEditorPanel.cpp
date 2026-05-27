@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <cstdio>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -11,6 +12,8 @@
 #include <imgui.h>
 #include <loguru.hpp>
 #include <nfd.h>
+#include <stb_image.h>
+#include <stb_image_write.h>
 
 #include "abstract/VideoDevice.h"
 #include "core/Config.h"
@@ -82,6 +85,11 @@ void TerrainEditorPanel::Render() {
     if (ImGui::BeginTabItem("Properties")) {
       active_tab_ = ActiveTab::kProperties;
       RenderPropertiesTab();
+      ImGui::EndTabItem();
+    }
+    if (ImGui::BeginTabItem("Import / Export")) {
+      active_tab_ = ActiveTab::kImportExport;
+      RenderImportExportTab();
       ImGui::EndTabItem();
     }
     ImGui::EndTabBar();
@@ -724,6 +732,272 @@ void TerrainEditorPanel::RenderPropertiesTab() {
   ImGui::LabelText("World size (m)",
                    "%.1f × %.1f",
                    data_->GetWorldWidth(), data_->GetWorldHeight());
+}
+
+// ---- Import / Export tab ----------------------------------------------------
+
+void TerrainEditorPanel::RenderImportExportTab() {
+  if (!data_) return;
+
+  // ---- Resize-confirmation modal -------------------------------------------
+  if (io_state_ == IoState::kConfirmResize) {
+    ImGui::OpenPopup("Resize Terrain?##io");
+  }
+  if (ImGui::BeginPopupModal("Resize Terrain?##io", nullptr,
+                             ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImGui::TextWrapped(
+        "The imported heightmap is %d\xc3\x97%d but the terrain is %d\xc3\x97%d.\n"
+        "Resizing will rebuild the CDLOD quadtree and reset the splatmap to default.\n"
+        "Continue?",
+        io_pending_w_, io_pending_h_,
+        data_->GetTexelWidth(), data_->GetTexelHeight());
+    ImGui::Spacing();
+    if (ImGui::Button("Yes, resize", {120.f, 0.f})) {
+      ApplyImportedHeightmap(std::move(io_pending_data_),
+                             io_pending_w_, io_pending_h_, true);
+      io_state_ = IoState::kIdle;
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel", {120.f, 0.f})) {
+      io_pending_data_.clear();
+      io_state_ = IoState::kIdle;
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
+  }
+
+  // ---- Status message -------------------------------------------------------
+  if (!io_status_msg_.empty()) {
+    if (io_status_ok_)
+      ImGui::TextColored({0.4f, 0.9f, 0.4f, 1.f}, "%s", io_status_msg_.c_str());
+    else
+      ImGui::TextColored({0.9f, 0.3f, 0.3f, 1.f}, "%s", io_status_msg_.c_str());
+    ImGui::Spacing();
+  }
+
+  // ---- Import section -------------------------------------------------------
+  ImGui::SeparatorText("Import");
+  ImGui::TextWrapped(
+      "PNG: maps brightness [0\xe2\x80\x93""255] to height [min, max] (configurable).\n"
+      "HDR: float values are world-space metres (EXR requires RGBE encoding).");
+  ImGui::Spacing();
+
+  ImGui::DragFloat("Min Height##import", &import_min_h_, 0.5f,
+                   -10000.f, import_max_h_ - 0.1f, "%.1f m");
+  ImGui::DragFloat("Max Height##import", &import_max_h_, 0.5f,
+                   import_min_h_ + 0.1f, 10000.f, "%.1f m");
+  import_max_h_ = std::max(import_max_h_, import_min_h_ + 0.1f);
+
+  ImGui::Spacing();
+
+  if (ImGui::Button("Import PNG...", {-1.f, 0.f})) {
+    nfdu8char_t* out_path = nullptr;
+    const nfdu8filteritem_t filter = {"PNG Heightmap", "png"};
+    const nfdresult_t res =
+        NFD_OpenDialogU8(&out_path, &filter, 1, nullptr);
+    if (res == NFD_OKAY) {
+      const std::string path(out_path);
+      NFD_FreePathU8(out_path);
+      LoadAndApplyPNG(path);
+    } else if (res == NFD_ERROR) {
+      LOG_F(ERROR, "TerrainEditorPanel: NFD error on PNG import");
+    }
+  }
+
+  if (ImGui::Button("Import HDR / EXR...", {-1.f, 0.f})) {
+    nfdu8char_t* out_path = nullptr;
+    const nfdu8filteritem_t filter = {"HDR / EXR Heightmap", "hdr,exr"};
+    const nfdresult_t res =
+        NFD_OpenDialogU8(&out_path, &filter, 1, nullptr);
+    if (res == NFD_OKAY) {
+      const std::string path(out_path);
+      NFD_FreePathU8(out_path);
+      LoadAndApplyHDR(path);
+    } else if (res == NFD_ERROR) {
+      LOG_F(ERROR, "TerrainEditorPanel: NFD error on HDR import");
+    }
+  }
+
+  // ---- Export section -------------------------------------------------------
+  ImGui::Spacing();
+  ImGui::SeparatorText("Export");
+  ImGui::TextWrapped(
+      "PNG: 8-bit grayscale, maps [min, max] height to [0\xe2\x80\x93""255].\n"
+      "R16: raw uint16 binary (row-major, same format as map serialisation).");
+  ImGui::Spacing();
+
+  if (ImGui::Button("Export PNG...", {-1.f, 0.f})) {
+    nfdu8char_t* out_path = nullptr;
+    const nfdu8filteritem_t filter = {"PNG Heightmap", "png"};
+    const nfdresult_t res =
+        NFD_SaveDialogU8(&out_path, &filter, 1, nullptr, "heightmap.png");
+    if (res == NFD_OKAY) {
+      const std::string path(out_path);
+      NFD_FreePathU8(out_path);
+      DoExportPNG(path);
+    } else if (res == NFD_ERROR) {
+      LOG_F(ERROR, "TerrainEditorPanel: NFD error on PNG export");
+    }
+  }
+
+  if (ImGui::Button("Export R16...", {-1.f, 0.f})) {
+    nfdu8char_t* out_path = nullptr;
+    const nfdu8filteritem_t filter = {"Raw 16-bit Heightmap", "r16"};
+    const nfdresult_t res =
+        NFD_SaveDialogU8(&out_path, &filter, 1, nullptr, "heightmap.r16");
+    if (res == NFD_OKAY) {
+      const std::string path(out_path);
+      NFD_FreePathU8(out_path);
+      DoExportR16(path);
+    } else if (res == NFD_ERROR) {
+      LOG_F(ERROR, "TerrainEditorPanel: NFD error on R16 export");
+    }
+  }
+}
+
+bool TerrainEditorPanel::LoadAndApplyPNG(const std::string& path) {
+  io_status_msg_.clear();
+  int w = 0, h = 0, channels = 0;
+  uint8_t* pixels = stbi_load(path.c_str(), &w, &h, &channels, 1);
+  if (!pixels) {
+    io_status_msg_ = std::string("PNG load failed: ") + stbi_failure_reason();
+    io_status_ok_  = false;
+    LOG_F(ERROR, "TerrainEditorPanel: PNG load failed '%s': %s",
+          path.c_str(), stbi_failure_reason());
+    return false;
+  }
+
+  const std::size_t n = static_cast<std::size_t>(w) * h;
+  std::vector<uint16_t> samples(n);
+  const float range = import_max_h_ - import_min_h_;
+  for (std::size_t i = 0; i < n; ++i) {
+    const float world_h = import_min_h_ + (pixels[i] / 255.f) * range;
+    samples[i] = data_->HeightToSample(world_h);
+  }
+  stbi_image_free(pixels);
+
+  const bool needs_resize =
+      (w != data_->GetTexelWidth() || h != data_->GetTexelHeight());
+  if (needs_resize) {
+    io_pending_data_ = std::move(samples);
+    io_pending_w_    = w;
+    io_pending_h_    = h;
+    io_state_        = IoState::kConfirmResize;
+    return true;
+  }
+
+  ApplyImportedHeightmap(samples, w, h, false);
+  return true;
+}
+
+bool TerrainEditorPanel::LoadAndApplyHDR(const std::string& path) {
+  io_status_msg_.clear();
+  int w = 0, h = 0, channels = 0;
+  float* pixels = stbi_loadf(path.c_str(), &w, &h, &channels, 1);
+  if (!pixels) {
+    io_status_msg_ = std::string("HDR/EXR load failed: ") + stbi_failure_reason();
+    io_status_ok_  = false;
+    LOG_F(ERROR, "TerrainEditorPanel: HDR/EXR load failed '%s': %s",
+          path.c_str(), stbi_failure_reason());
+    return false;
+  }
+
+  const std::size_t n = static_cast<std::size_t>(w) * h;
+  std::vector<uint16_t> samples(n);
+  for (std::size_t i = 0; i < n; ++i) {
+    const float world_h = std::clamp(pixels[i],
+                                     data_->GetMinHeight(),
+                                     data_->GetMaxHeight());
+    samples[i] = data_->HeightToSample(world_h);
+  }
+  stbi_image_free(pixels);
+
+  const bool needs_resize =
+      (w != data_->GetTexelWidth() || h != data_->GetTexelHeight());
+  if (needs_resize) {
+    io_pending_data_ = std::move(samples);
+    io_pending_w_    = w;
+    io_pending_h_    = h;
+    io_state_        = IoState::kConfirmResize;
+    return true;
+  }
+
+  ApplyImportedHeightmap(samples, w, h, false);
+  return true;
+}
+
+void TerrainEditorPanel::ApplyImportedHeightmap(const std::vector<uint16_t>& data,
+                                                int w, int h,
+                                                bool needs_resize) {
+  data_->ReplaceHeightmap(data.data(), w, h);
+
+  normal_map_->Build(*data_);
+  normal_map_->Upload(video_);
+
+  if (needs_resize) {
+    if (terrain::TerrainRenderer::IsInstanced())
+      terrain::TerrainRenderer::Instance().Rebuild(*data_);
+    if (material_)
+      material_->ResetSplatmap(video_, w, h);
+    LOG_F(INFO, "TerrainEditorPanel: heightmap imported and terrain resized to %dx%d",
+          w, h);
+  } else {
+    if (terrain::TerrainRenderer::IsInstanced())
+      terrain::TerrainRenderer::Instance().UpdateHeightmapTile(
+          0, 0, w, h, *data_);
+    LOG_F(INFO, "TerrainEditorPanel: heightmap imported %dx%d", w, h);
+  }
+
+  history_->Clear();
+  io_status_msg_ = "Import successful.";
+  io_status_ok_  = true;
+}
+
+void TerrainEditorPanel::DoExportPNG(const std::string& path) {
+  io_status_msg_.clear();
+  const int w = data_->GetTexelWidth();
+  const int h = data_->GetTexelHeight();
+  const std::size_t n = static_cast<std::size_t>(w) * h;
+
+  std::vector<uint8_t> pixels(n);
+  for (std::size_t i = 0; i < n; ++i)
+    pixels[i] = static_cast<uint8_t>(
+        (data_->GetRawData()[i] / 65535.f) * 255.f + 0.5f);
+
+  const int ok = stbi_write_png(path.c_str(), w, h, 1, pixels.data(), w);
+  if (!ok) {
+    io_status_msg_ = "PNG export failed (check write permissions).";
+    io_status_ok_  = false;
+    LOG_F(ERROR, "TerrainEditorPanel: PNG export failed '%s'", path.c_str());
+    return;
+  }
+
+  io_status_msg_ = "Export successful.";
+  io_status_ok_  = true;
+  LOG_F(INFO, "TerrainEditorPanel: heightmap exported to '%s'", path.c_str());
+}
+
+void TerrainEditorPanel::DoExportR16(const std::string& path) {
+  io_status_msg_.clear();
+  const int w = data_->GetTexelWidth();
+  const int h = data_->GetTexelHeight();
+
+  std::FILE* f = std::fopen(path.c_str(), "wb");
+  if (!f) {
+    io_status_msg_ = "R16 export failed: cannot open file for writing.";
+    io_status_ok_  = false;
+    LOG_F(ERROR, "TerrainEditorPanel: R16 export failed '%s'", path.c_str());
+    return;
+  }
+
+  std::fwrite(data_->GetRawData(), sizeof(uint16_t),
+              static_cast<std::size_t>(w) * h, f);
+  std::fclose(f);
+
+  io_status_msg_ = "Export successful.";
+  io_status_ok_  = true;
+  LOG_F(INFO, "TerrainEditorPanel: R16 heightmap exported to '%s'", path.c_str());
 }
 
 }  // namespace editor
