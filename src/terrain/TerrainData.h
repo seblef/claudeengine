@@ -52,6 +52,19 @@ class TerrainData {
   // Returns a pointer to the raw 16-bit heightmap buffer (row-major).
   const uint16_t* GetRawData() const { return data_.data(); }
 
+  // ---- Sculpt accessors ---------------------------------------------------
+
+  // Returns the raw uint16_t sample at texel (tx, tz), clamped to valid range.
+  [[nodiscard]] uint16_t GetSample(int tx, int tz) const;
+
+  // Sets the raw uint16_t sample at texel (tx, tz).
+  // Caller must ensure tx in [0, width_-1] and tz in [0, height_-1].
+  void SetSample(int tx, int tz, uint16_t value);
+
+  // Converts a world-space height to the nearest uint16_t sample, clamped to
+  // [0, 65535].
+  [[nodiscard]] uint16_t HeightToSample(float h) const;
+
  private:
   // Converts a raw uint16 sample to a world-space height value.
   float SampleToHeight(uint16_t sample) const;

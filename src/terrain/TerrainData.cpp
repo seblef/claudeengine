@@ -69,4 +69,22 @@ core::Vec3f TerrainData::GetNormal(float x, float z) const {
   return n.Normalized();
 }
 
+uint16_t TerrainData::GetSample(int tx, int tz) const {
+  tx = std::clamp(tx, 0, width_  - 1);
+  tz = std::clamp(tz, 0, height_ - 1);
+  return data_[static_cast<std::size_t>(tz) * width_ + tx];
+}
+
+void TerrainData::SetSample(int tx, int tz, uint16_t value) {
+  data_[static_cast<std::size_t>(tz) * width_ + tx] = value;
+}
+
+uint16_t TerrainData::HeightToSample(float h) const {
+  const float range = max_height_ - min_height_;
+  if (range <= 0.f) return 0u;
+  const float t = (h - min_height_) / range;
+  const float clamped = t < 0.f ? 0.f : (t > 1.f ? 1.f : t);
+  return static_cast<uint16_t>(std::lround(clamped * 65535.f));
+}
+
 }  // namespace terrain

@@ -24,12 +24,13 @@ namespace editor {
 // see them automatically.
 //
 // Scene contents:
-//   - Floor: map_size × map_size horizontal plane with neutral grey material.
-//   - Cube:  unit cube placed at (0,1,0), added as initial dynamic object (user-deletable).
-//   - Light: global directional light described by the provided GameLightDesc.
+//   - Floor: map_size × map_size horizontal plane with neutral grey material
+//            (dynamic — user-deletable like any other mesh).
+//   - Cube:  unit cube placed at (0,1,0), added as initial dynamic object.
+//   - Light: global directional light described by the provided GameLightDesc
+//            (static — managed via SetGlobalLightDesc()).
 //
-// Dynamic objects (added via AddDynamicObject) are user-deletable; static objects
-// (floor_, light_) are always present and cannot be removed at runtime.
+// Dynamic objects (added via AddDynamicObject) are user-deletable.
 class EditorScene {
  public:
   explicit EditorScene(abstract::VideoDevice* video);
@@ -114,13 +115,10 @@ class EditorScene {
   // cppcheck-suppress unusedStructMember
   game::GameLightDesc     global_light_desc_;
 
-  // Static objects — always present, never deletable by the user.
-  // dynamic_objects_ is declared first so it is destroyed before these,
-  // preventing dangling references during shutdown.
   // cppcheck-suppress unusedStructMember
   std::vector<std::unique_ptr<game::GameObject>> dynamic_objects_;
 
-  std::unique_ptr<game::GameMesh>  floor_;
+  // Global directional light — static, managed via SetGlobalLightDesc().
   std::unique_ptr<game::GameLight> light_;
 
   // Flat view of all objects (static raw ptrs + dynamic raw ptrs), kept in sync.

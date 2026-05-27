@@ -7,9 +7,11 @@
 #include <memory>
 #include <optional>
 #include <span>
+#include <utility>
 
 #include "abstract/TextureFormat.h"
 #include "core/CoordinateSystem.h"
+#include "terrain/TerrainData.h"
 #include "core/Mat4f.h"
 #include "core/RayUtils.h"
 #include "core/ProjectionType.h"
@@ -352,9 +354,28 @@ void EditorViewport::Render() {
       PlacePreview();
   }
 
+  // Sculpt brush: LMB drag when sculpt mode is active.
+  // Overrides object picking for the duration of the stroke.
+  if (sculpt_active_ && scene_ && ImGui::IsWindowHovered()) {
+    const bool key_alt   = ImGui::GetIO().KeyAlt;
+    const bool lmb_down  = ImGui::IsMouseDown(ImGuiMouseButton_Left) && !key_alt;
+
+    if (lmb_down) {
+      const auto hit = ComputeTerrainHit(ImGui::GetMousePos(), image_pos, avail);
+      if (hit && on_sculpt_brush_) {
+        const bool first = !sculpt_stroke_active_;
+        sculpt_stroke_active_ = true;
+        on_sculpt_brush_(hit->x, hit->z, first, ImGui::GetIO().DeltaTime);
+      }
+    } else if (sculpt_stroke_active_) {
+      sculpt_stroke_active_ = false;
+      if (on_sculpt_end_) on_sculpt_end_();
+    }
+  }
+
   // Object picking: LMB release without Alt (Alt+LMB is camera orbit).
   // Also skipped when a gizmo is being dragged or hovered.
-  if (scene_ && selection_active_ &&
+  if (scene_ && selection_active_ && !sculpt_active_ &&
       ImGui::IsWindowHovered() && !ImGuizmo::IsViewManipulateHovered() &&
       !ImGuizmo::IsOver() &&
       !ImGui::GetIO().KeyAlt && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
@@ -657,6 +678,60 @@ void EditorViewport::PlaceMeshAt(ImVec2 mouse_pos, ImVec2 image_pos,
 }
 
 
+
+std::optional<core::Vec3f> EditorViewport::ComputeTerrainHit(
+    ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size) const {
+  const float ndc_x = (mouse_pos.x - image_pos.x) / image_size.x * 2.f - 1.f;
+  const float ndc_y = 1.f - (mouse_pos.y - image_pos.y) / image_size.y * 2.f;
+
+  const core::Camera* cam        = camera_->GetCamera();
+  const core::Vec3f   ray_origin = cam->GetPosition();
+  const core::Mat4f   vp_inv     = cam->GetViewProjectionMatrix().Inverse();
+
+  const core::Vec4f clip(ndc_x, ndc_y, -1.f, 1.f);
+  const core::Vec4f world4 = clip * vp_inv;
+  if (std::abs(world4.w) < 1e-6f) return std::nullopt;
+  const core::Vec3f world3(world4.x / world4.w,
+                           world4.y / world4.w,
+                           world4.z / world4.w);
+  const core::Vec3f ray_dir = (world3 - ray_origin).Normalized();
+
+  // When no terrain data is available, fall back to the y=0 horizontal plane.
+  if (!terrain_data_) {
+    if (std::abs(ray_dir.y) < 1e-4f) return std::nullopt;
+    const float t = -ray_origin.y / ray_dir.y;
+    if (t < 0.f) return std::nullopt;
+    return ray_origin + ray_dir * t;
+  }
+
+  // Ray-march against the heightmap with binary-search refinement.
+  constexpr int   kSteps    = 64;
+  constexpr float kMaxDist  = 2000.f;
+  const float     step      = kMaxDist / kSteps;
+
+  float prev_t = 0.f;
+  for (int i = 0; i < kSteps; ++i) {
+    const float  t = static_cast<float>(i + 1) * step;
+    const core::Vec3f p = ray_origin + ray_dir * t;
+    const float terrain_h = terrain_data_->GetHeight(p.x, p.z);
+    if (p.y <= terrain_h) {
+      // Binary search between prev_t and t.
+      float lo = prev_t;
+      float hi = t;
+      for (int j = 0; j < 8; ++j) {
+        const float mid   = (lo + hi) * 0.5f;
+        const core::Vec3f mp   = ray_origin + ray_dir * mid;
+        if (mp.y <= terrain_data_->GetHeight(mp.x, mp.z))
+          hi = mid;
+        else
+          lo = mid;
+      }
+      return ray_origin + ray_dir * ((lo + hi) * 0.5f);
+    }
+    prev_t = t;
+  }
+  return std::nullopt;
+}
 
 EditorCameraController::CameraState EditorViewport::GetCameraState() const {
   return camera_ctrl_->GetState();

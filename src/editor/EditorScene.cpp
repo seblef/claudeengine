@@ -37,17 +37,18 @@ EditorScene::EditorScene(abstract::VideoDevice* video,
                          const game::GameLightDesc& light_desc)
     : map_name_(map_name), map_size_(map_size), global_light_desc_(light_desc) {
   // Floor plane — neutral grey diffuse, map_size × map_size world units.
+  // Added as a dynamic (user-deletable) object so it can be selected, moved,
+  // or removed when a terrain is present.
   auto* plane_mat = new game::GameMaterial(
       "__proc_editor_floor",
       renderer::MaterialDesc().SetDiffuseColor(core::Color(0.5f, 0.5f, 0.5f)), video);
   auto* plane_tmpl = new game::MeshTemplate(
       "__proc_editor_floor", renderer::CreatePlaneMesh(video, map_size_ / 2.f), plane_mat);
   plane_mat->Release();  // plane_tmpl holds the ref
-  floor_ = std::make_unique<game::GameMesh>(plane_tmpl, /*always_visible=*/true);
-  floor_->SetName("Floor");
+  auto floor = std::make_unique<game::GameMesh>(plane_tmpl);
+  floor->SetName("Floor");
   plane_tmpl->Release();
-  game::GameSystem::Instance().AddObject(floor_.get());
-  objects_.push_back(floor_.get());
+  AddDynamicObject(std::move(floor));
 
   // Global directional light.
   light_ = std::make_unique<game::GameLight>(renderer::LightType::kGlobal, light_desc);
@@ -72,14 +73,9 @@ EditorScene::EditorScene(abstract::VideoDevice* video,
 }
 
 EditorScene::~EditorScene() {
-  // Unregister dynamic objects first (dynamic_objects_ is declared before the
-  // static unique_ptrs, so it is destroyed last — but we unregister explicitly
-  // here to keep symmetry with AddDynamicObject).
-  for (auto& obj : dynamic_objects_) {
+  for (auto& obj : dynamic_objects_)
     game::GameSystem::Instance().RemoveObject(obj.get());
-  }
   game::GameSystem::Instance().RemoveObject(light_.get());
-  game::GameSystem::Instance().RemoveObject(floor_.get());
 
   for (auto* mat : game_materials_) {
     mat->Release();

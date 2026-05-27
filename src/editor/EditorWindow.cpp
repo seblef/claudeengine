@@ -30,6 +30,7 @@
 #include "editor/ResourcesPanel.h"
 #include "game/GameLightDesc.h"
 #include "game/GameMaterial.h"
+#include "game/GameObjectType.h"
 #include "game/GameTerrain.h"
 #include "game/MeshTemplate.h"
 #include "renderer/Light.h"
@@ -215,6 +216,7 @@ void EditorWindow::Render() {
     viewport_->SetScene(scene_.get());
     history_.Clear();
     terrain_normal_map_.reset();
+    WireTerrainPanel();
     scene_dirty_ = false;
     LOG_F(INFO, "New map '%s' created (size %.1f)", new_name.c_str(),
           new_size);
@@ -223,6 +225,18 @@ void EditorWindow::Render() {
   // 11. Terrain creation dialog.
   if (terrain_dialog_.Render())
     CreateTerrain();
+
+  // 11b. Terrain editor panel — dockable, shown via Terrain menu.
+  if (show_terrain_panel_) {
+    if (ImGui::Begin("Terrain", &show_terrain_panel_)) {
+      terrain_panel_.Render();
+    }
+    ImGui::End();
+    // Sculpt active only while the panel is open and context is set.
+    viewport_->SetSculptActive(terrain_panel_.IsActive());
+  } else {
+    viewport_->SetSculptActive(false);
+  }
 
   // 12. Unsaved changes modal — OpenPopup is triggered by CheckDirtyThenRun().
   if (open_unsaved_changes_modal_) {
@@ -309,18 +323,28 @@ void EditorWindow::RenderMenuBar() {
     ImGui::EndMenu();
   }
 
-  if (ImGui::BeginMenu("Add")) {
-    const auto& objs = scene_->GetObjects();
-    const bool has_terrain = std::any_of(objs.begin(), objs.end(),
-        [](const game::GameObject* o) {
-          return o->GetType() == game::GameObjectType::kTerrain;
-        });
-    ImGui::BeginDisabled(has_terrain);
-    if (ImGui::MenuItem("Terrain", nullptr, false, !has_terrain))
-      terrain_dialog_.Open();
-    ImGui::EndDisabled();
-    if (has_terrain)
+  if (ImGui::BeginMenu("Terrain")) {
+    const bool has_terrain = terrain_panel_.IsActive();
+
+    if (!has_terrain) {
+      if (ImGui::MenuItem("Add Terrain"))
+        terrain_dialog_.Open();
+    } else {
+      ImGui::BeginDisabled();
+      ImGui::MenuItem("Add Terrain");
+      ImGui::EndDisabled();
       ImGui::SetItemTooltip("A terrain already exists in this scene");
+    }
+
+    ImGui::Separator();
+
+    ImGui::BeginDisabled(!has_terrain);
+    if (ImGui::MenuItem("Sculpt", nullptr, show_terrain_panel_, has_terrain))
+      show_terrain_panel_ = !show_terrain_panel_;
+    ImGui::EndDisabled();
+    if (!has_terrain)
+      ImGui::SetItemTooltip("Add a terrain first");
+
     ImGui::EndMenu();
   }
 
@@ -417,6 +441,7 @@ void EditorWindow::LoadFromFile() {
     viewport_->SetSelectedObject(scene_->GetSelectedObject());
   history_.Clear();
   terrain_normal_map_.reset();
+  WireTerrainPanel();
   scene_dirty_ = false;
   LOG_F(INFO, "Map loaded from '%s'", path.string().c_str());
 }
@@ -495,6 +520,17 @@ void EditorWindow::ImportMesh() {
   }
 }
 
+namespace {
+// Returns the first GameTerrain object in the scene, or nullptr.
+game::GameTerrain* FindTerrain(const EditorScene& scene) {
+  const auto& objs = scene.GetObjects();
+  const auto it = std::find_if(objs.begin(), objs.end(), [](const game::GameObject* o) {
+    return o->GetType() == game::GameObjectType::kTerrain;
+  });
+  return it != objs.end() ? static_cast<game::GameTerrain*>(*it) : nullptr;
+}
+}  // namespace
+
 void EditorWindow::CreateTerrain() {
   const TerrainCreationDialog::Params& p = terrain_dialog_.GetParams();
 
@@ -534,9 +570,34 @@ void EditorWindow::CreateTerrain() {
   // 5. Upload the normal map GPU texture.
   terrain_normal_map_->Upload(video_);
 
+  // 6. Wire the terrain sculpt panel.
+  WireTerrainPanel();
+
   scene_dirty_ = true;
   LOG_F(INFO, "Terrain created: %dx%d texels, %.2f m/texel, "
         "Y=[%.1f, %.1f]", width, height, safe_res, p.min_height, p.max_height);
+}
+
+void EditorWindow::WireTerrainPanel() {
+  game::GameTerrain* gt = FindTerrain(*scene_);
+  if (!gt) {
+    terrain_panel_.SetContext(nullptr, nullptr, nullptr, nullptr);
+    viewport_->SetTerrainData(nullptr);
+    viewport_->SetSculptActive(false);
+    return;
+  }
+
+  // GameTerrain owns a const TerrainData. The editor may mutate it during
+  // sculpting — const_cast is safe because the object itself is non-const.
+  auto* data = const_cast<terrain::TerrainData*>(&gt->GetData());
+  terrain_panel_.SetContext(data, terrain_normal_map_.get(), video_, &history_);
+  viewport_->SetTerrainData(data);
+  viewport_->SetOnSculptBrush([this](float wx, float wz, bool first, float dt) {
+    terrain_panel_.OnBrushAt(wx, wz, first, dt);
+  });
+  viewport_->SetOnSculptEnd([this]() {
+    terrain_panel_.OnBrushEnd();
+  });
 }
 
 }  // namespace editor

@@ -8,6 +8,7 @@
 #include "abstract/RenderTargetGroup.h"
 #include "abstract/VideoDevice.h"
 #include "core/Event.h"
+#include "core/Vec3f.h"
 #include "editor/EditorCameraController.h"
 #include "editor/EditorCommandHistory.h"
 #include "editor/EditorTool.h"
@@ -22,6 +23,8 @@
 namespace game {
 class MeshTemplate;
 }  // namespace game
+
+namespace terrain { class TerrainData; }
 
 namespace editor {
 
@@ -90,11 +93,35 @@ class EditorViewport {
     terrain_wireframe_debug_ = enabled;
   }
 
+  // Provides terrain data used to ray-cast the sculpt brush hit point.
+  // Pass nullptr when no terrain is in the scene.
+  void SetTerrainData(const terrain::TerrainData* data) { terrain_data_ = data; }
+
+  // Enables or disables terrain sculpt mode. When active, LMB drag fires the
+  // sculpt callbacks instead of performing object selection.
+  void SetSculptActive(bool active) { sculpt_active_ = active; }
+
+  // Callback fired each frame while LMB is held in sculpt mode, with the
+  // terrain world XZ hit (wx, wz), a first_touch flag, and the frame delta dt.
+  void SetOnSculptBrush(std::function<void(float, float, bool, float)> cb) {
+    on_sculpt_brush_ = std::move(cb);
+  }
+
+  // Callback fired when the sculpt drag stroke ends (LMB released).
+  void SetOnSculptEnd(std::function<void()> cb) {
+    on_sculpt_end_ = std::move(cb);
+  }
+
  private:
   void ResizeIfNeeded(int w, int h);
 
   // Casts a world-space ray from mouse_pos and selects the nearest hit object.
   void PickObjectAt(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size);
+
+  // Returns the world-space terrain hit point for a ray through mouse_pos, or
+  // std::nullopt if the ray misses the terrain bounds.
+  [[nodiscard]] std::optional<core::Vec3f>
+  ComputeTerrainHit(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size) const;
 
   // Enters preview mode: obj becomes the pending preview, height sets its Y
   // position above the floor-plane hit, cursor is shown while hovering.
@@ -170,6 +197,18 @@ class EditorViewport {
 
   // cppcheck-suppress unusedStructMember
   bool terrain_wireframe_debug_ = false;
+
+  // Sculpt brush state.
+  // cppcheck-suppress unusedStructMember
+  const terrain::TerrainData* terrain_data_        = nullptr;
+  // cppcheck-suppress unusedStructMember
+  bool                        sculpt_active_        = false;
+  // cppcheck-suppress unusedStructMember
+  bool                        sculpt_stroke_active_ = false;
+  // cppcheck-suppress unusedStructMember
+  std::function<void(float, float, bool, float)> on_sculpt_brush_;
+  // cppcheck-suppress unusedStructMember
+  std::function<void()>                          on_sculpt_end_;
 
   // Gizmo drag-state tracking for TransformCommand (issue #236).
   // cppcheck-suppress unusedStructMember

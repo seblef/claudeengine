@@ -94,6 +94,12 @@ class TerrainRenderer : public core::Singleton<TerrainRenderer> {
   // Returns true if Init() has been called successfully.
   [[nodiscard]] bool IsReady() const { return shader_ != nullptr; }
 
+  // Re-uploads a rectangular tile of the heightmap texture after a sculpt edit.
+  // (texel_x, texel_z) is the top-left corner; w×h is the size in texels.
+  // No-op when Init() has not been called.
+  void UpdateHeightmapTile(int texel_x, int texel_z, int w, int h,
+                           const TerrainData& data);
+
   // Selects visible patches from the quadtree and renders them into the
   // currently bound G-buffer. Must be called inside the geometry pass.
   void Render(const core::Camera& camera);
