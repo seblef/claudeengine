@@ -14,14 +14,16 @@ enum class EditorTool {
   kCreateOmniLight,
   kCreateCircleSpot,
   kCreateRectSpot,
+  kCreatePlayerStart,
 };
 
 // Returns true for any object-creation tool.
 inline bool IsCreationTool(EditorTool tool) {
-  return tool == EditorTool::kCreateMesh       ||
-         tool == EditorTool::kCreateOmniLight  ||
-         tool == EditorTool::kCreateCircleSpot ||
-         tool == EditorTool::kCreateRectSpot;
+  return tool == EditorTool::kCreateMesh        ||
+         tool == EditorTool::kCreateOmniLight   ||
+         tool == EditorTool::kCreateCircleSpot  ||
+         tool == EditorTool::kCreateRectSpot    ||
+         tool == EditorTool::kCreatePlayerStart;
 }
 
 }  // namespace editor

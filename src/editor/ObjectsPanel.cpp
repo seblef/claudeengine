@@ -109,13 +109,16 @@ void ObjectsPanel::RenderGroup(const char* icon, const char* group_name,
 
 void ObjectsPanel::Render(EditorScene& scene) {
   const std::vector<game::GameObject*>& objects = scene.GetObjects();
-  RenderGroup(ICON_FA_CUBE,      "Meshes",  game::GameObjectType::kMesh,
+  RenderGroup(ICON_FA_CUBE,      "Meshes",        game::GameObjectType::kMesh,
               objects, scene, renaming_obj_, rename_buf_, sizeof(rename_buf_),
               rename_focus_needed_, history_);
-  RenderGroup(ICON_FA_LIGHTBULB, "Lights",  game::GameObjectType::kLight,
+  RenderGroup(ICON_FA_LIGHTBULB, "Lights",        game::GameObjectType::kLight,
               objects, scene, renaming_obj_, rename_buf_, sizeof(rename_buf_),
               rename_focus_needed_, history_);
-  RenderGroup(ICON_FA_CAMERA,    "Cameras", game::GameObjectType::kCamera,
+  RenderGroup(ICON_FA_CAMERA,    "Cameras",       game::GameObjectType::kCamera,
+              objects, scene, renaming_obj_, rename_buf_, sizeof(rename_buf_),
+              rename_focus_needed_, history_);
+  RenderGroup(ICON_FA_FLAG,      "Player Starts", game::GameObjectType::kPlayerStart,
               objects, scene, renaming_obj_, rename_buf_, sizeof(rename_buf_),
               rename_focus_needed_, history_);
 }

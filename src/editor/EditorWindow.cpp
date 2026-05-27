@@ -143,6 +143,10 @@ void EditorWindow::Render() {
       viewport_->SetPendingLightType(light_type);
       placement_active_ = true;
       LOG_F(INFO, "Light creation tool activated, click viewport to place");
+    } else if (active_tool == EditorTool::kCreatePlayerStart) {
+      viewport_->SetPendingPlayerStart();
+      placement_active_ = true;
+      LOG_F(INFO, "Player start creation tool activated, click viewport to place");
     }
   }
   prev_tool_ = active_tool;

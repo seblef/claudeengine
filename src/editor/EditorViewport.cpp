@@ -28,6 +28,7 @@
 #include "game/GameMesh.h"
 #include "game/GameObject.h"
 #include "game/GameObjectType.h"
+#include "game/GamePlayerStart.h"
 #include "game/MeshTemplate.h"
 #include "renderer/CircleSpotLight.h"
 #include "renderer/Light.h"
@@ -228,7 +229,8 @@ EditorViewport::EditorViewport(abstract::VideoDevice* video)
           core::ProjectionType::kPerspective,
           core::CoordinateSystem::kRightHanded)),
       camera_ctrl_(std::make_unique<EditorCameraController>()),
-      light_wireframe_(video) {
+      light_wireframe_(video),
+      player_start_gizmo_(video) {
   camera_->SetFOV(0.785398f);  // 45 degrees
   camera_->SetMinDepth(0.1f);
   camera_->SetMaxDepth(1000.f);
@@ -296,6 +298,11 @@ void EditorViewport::SetPendingLightType(std::optional<renderer::LightType> type
                  ImGuiMouseCursor_ResizeAll);
   else
     CancelPreview();
+}
+
+void EditorViewport::SetPendingPlayerStart() {
+  BeginPreview(std::make_unique<game::GamePlayerStart>(), 0.f,
+               ImGuiMouseCursor_ResizeAll);
 }
 
 void EditorViewport::ResizeIfNeeded(int w, int h) {
@@ -392,6 +399,12 @@ void EditorViewport::Render() {
   if (scene_ && wireframe_fbo_) {
     light_wireframe_.Render(scene_->GetObjects(), scene_->GetSelectedObject(),
                             wireframe_fbo_.get());
+  }
+
+  // Player-start flag gizmos rendered without depth testing (always visible).
+  if (scene_ && render_fbo_) {
+    player_start_gizmo_.Render(scene_->GetObjects(), scene_->GetSelectedObject(),
+                               render_fbo_.get());
   }
 
   // Terrain wireframe debug overlay — flat white edges over the composited scene.
@@ -578,6 +591,33 @@ void EditorViewport::PickObjectAt(ImVec2 mouse_pos, ImVec2 image_pos,
     if (t_best == std::numeric_limits<float>::max() || light_depth < t_best)
       hit = best_light;
   }
+
+  // Player-start pass: screen-space proximity picking against the base position.
+  // Since the gizmo is not depth-tested, player starts are always selectable.
+  constexpr float kPlayerStartPickThresholdPx = 12.f;
+  float best_ps_dist_px = kPlayerStartPickThresholdPx;
+  game::GameObject* best_ps = nullptr;
+
+  for (game::GameObject* obj : candidates) {
+    if (obj->GetType() != game::GameObjectType::kPlayerStart) continue;
+
+    const core::Mat4f& wt  = obj->GetWorldTransform();
+    const core::Vec3f  pos(wt(0, 3), wt(1, 3), wt(2, 3));
+
+    const ScreenPt sp = ProjectToScreen(pos, vp, image_pos, image_size);
+    if (!sp.valid) continue;
+
+    const float dx = sp.pos.x - mouse_pos.x;
+    const float dy = sp.pos.y - mouse_pos.y;
+    const float dist_px = std::sqrt(dx * dx + dy * dy);
+    if (dist_px < best_ps_dist_px) {
+      best_ps_dist_px = dist_px;
+      best_ps = obj;
+    }
+  }
+
+  if (best_ps)
+    hit = best_ps;
 
   scene_->SetSelectedObject(hit);
 }
