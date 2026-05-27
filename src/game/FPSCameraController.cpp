@@ -34,6 +34,7 @@ void FPSCameraController::OnEvent(const core::Event& event) {
       if (event.key == core::Key::kRight) k_right_   = true;
       if (event.key == core::Key::kA)     k_up_      = true;
       if (event.key == core::Key::kZ)     k_down_    = true;
+      if (event.key == core::Key::kSpace) k_jump_    = true;
       break;
     case core::EventType::kKeyUp:
       if (event.key == core::Key::kUp)    k_forward_ = false;
@@ -42,6 +43,7 @@ void FPSCameraController::OnEvent(const core::Event& event) {
       if (event.key == core::Key::kRight) k_right_   = false;
       if (event.key == core::Key::kA)     k_up_      = false;
       if (event.key == core::Key::kZ)     k_down_    = false;
+      if (event.key == core::Key::kSpace) k_jump_    = false;
       break;
     case core::EventType::kMouseMoved:
       if (prev_mouse_x_ >= 0.f) {
@@ -72,13 +74,28 @@ void FPSCameraController::Update(float dt) {
   if (k_back_)    position_ -= look                * spd;
   if (k_right_)   position_ += right               * spd;
   if (k_left_)    position_ -= right               * spd;
-  if (k_up_)      position_ += core::Vec3f::kAxisY * spd;
-  if (k_down_)    position_ -= core::Vec3f::kAxisY * spd;
+  if (!terrain_) {
+    if (k_up_)   position_ += core::Vec3f::kAxisY * spd;
+    if (k_down_) position_ -= core::Vec3f::kAxisY * spd;
+  }
+
+  if (k_jump_ && grounded_) {
+    vel_y_    = kJumpSpeed;
+    grounded_ = false;
+  }
+
+  position_.y += vel_y_ * dt;
+  vel_y_      -= kGravity * dt;
 
   if (terrain_) {
-    const float ground = terrain_->GetHeight(position_.x, position_.z);
-    if (position_.y < ground + kPlayerHeight)
-      position_.y = ground + kPlayerHeight;
+    const float ground = terrain_->GetHeight(position_.x, position_.z) + kPlayerHeight;
+    if (position_.y <= ground) {
+      position_.y = ground;
+      vel_y_      = 0.f;
+      grounded_   = true;
+    }
+  } else {
+    grounded_ = true;
   }
 
   // Build world transform: columns are right, world-up, -look, position.
