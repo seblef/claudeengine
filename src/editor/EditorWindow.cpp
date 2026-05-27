@@ -324,29 +324,27 @@ void EditorWindow::RenderMenuBar() {
   }
 
   if (ImGui::BeginMenu("Terrain")) {
-    ImGui::BeginDisabled(!terrain_panel_.IsActive());
-    if (ImGui::MenuItem("Sculpt", nullptr, show_terrain_panel_,
-                        terrain_panel_.IsActive())) {
-      show_terrain_panel_ = !show_terrain_panel_;
-    }
-    ImGui::EndDisabled();
-    if (!terrain_panel_.IsActive())
-      ImGui::SetItemTooltip("Add a terrain first");
-    ImGui::EndMenu();
-  }
+    const bool has_terrain = terrain_panel_.IsActive();
 
-  if (ImGui::BeginMenu("Add")) {
-    const auto& objs = scene_->GetObjects();
-    const bool has_terrain = std::any_of(objs.begin(), objs.end(),
-        [](const game::GameObject* o) {
-          return o->GetType() == game::GameObjectType::kTerrain;
-        });
-    ImGui::BeginDisabled(has_terrain);
-    if (ImGui::MenuItem("Terrain", nullptr, false, !has_terrain))
-      terrain_dialog_.Open();
-    ImGui::EndDisabled();
-    if (has_terrain)
+    if (!has_terrain) {
+      if (ImGui::MenuItem("Add Terrain"))
+        terrain_dialog_.Open();
+    } else {
+      ImGui::BeginDisabled();
+      ImGui::MenuItem("Add Terrain");
+      ImGui::EndDisabled();
       ImGui::SetItemTooltip("A terrain already exists in this scene");
+    }
+
+    ImGui::Separator();
+
+    ImGui::BeginDisabled(!has_terrain);
+    if (ImGui::MenuItem("Sculpt", nullptr, show_terrain_panel_, has_terrain))
+      show_terrain_panel_ = !show_terrain_panel_;
+    ImGui::EndDisabled();
+    if (!has_terrain)
+      ImGui::SetItemTooltip("Add a terrain first");
+
     ImGui::EndMenu();
   }
 
@@ -588,6 +586,9 @@ void EditorWindow::WireTerrainPanel() {
     viewport_->SetSculptActive(false);
     return;
   }
+
+  // The floor plane serves as a stand-in ground until a real terrain exists.
+  if (scene_->HasFloor()) scene_->RemoveFloor();
 
   // GameTerrain owns a const TerrainData. The editor may mutate it during
   // sculpting — const_cast is safe because the object itself is non-const.

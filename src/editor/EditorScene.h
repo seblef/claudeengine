@@ -72,6 +72,13 @@ class EditorScene {
   // Returns true if obj was added via AddDynamicObject (i.e. user-deletable).
   [[nodiscard]] bool IsDynamic(const game::GameObject* obj) const;
 
+  // Unregisters and destroys the editor floor plane. No-op if already removed.
+  // Call when a terrain is added so the floor no longer occludes the heightmap.
+  void RemoveFloor();
+
+  // Returns true while the floor plane is still present in the scene.
+  [[nodiscard]] bool HasFloor() const { return floor_ != nullptr; }
+
   // Registers an imported game material. Stores it for lifetime management;
   // the material is released on EditorScene destruction.
   void AddGameMaterial(game::GameMaterial* mat) {

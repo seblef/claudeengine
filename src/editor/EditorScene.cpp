@@ -79,7 +79,7 @@ EditorScene::~EditorScene() {
     game::GameSystem::Instance().RemoveObject(obj.get());
   }
   game::GameSystem::Instance().RemoveObject(light_.get());
-  game::GameSystem::Instance().RemoveObject(floor_.get());
+  if (floor_) game::GameSystem::Instance().RemoveObject(floor_.get());
 
   for (auto* mat : game_materials_) {
     mat->Release();
@@ -132,6 +132,14 @@ std::unique_ptr<game::GameObject> EditorScene::ReclaimDynamicObject(
   std::unique_ptr<game::GameObject> reclaimed = std::move(*it);
   dynamic_objects_.erase(it);
   return reclaimed;
+}
+
+void EditorScene::RemoveFloor() {
+  if (!floor_) return;
+  game::GameSystem::Instance().RemoveObject(floor_.get());
+  objects_.erase(std::remove(objects_.begin(), objects_.end(), floor_.get()),
+                 objects_.end());
+  floor_.reset();
 }
 
 bool EditorScene::IsDynamic(const game::GameObject* obj) const {

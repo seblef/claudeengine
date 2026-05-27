@@ -52,10 +52,10 @@ void TerrainEditorPanel::Render() {
     if (tool_ == t) ImGui::PopStyleColor();
     ImGui::SameLine();
   };
-  tool_button("Raise",   Tool::kRaise);
-  tool_button("Lower",   Tool::kLower);
-  tool_button("Smooth",  Tool::kSmooth);
-  tool_button("Flatten", Tool::kFlatten);
+  tool_button("Raise##tool",   Tool::kRaise);
+  tool_button("Lower##tool",   Tool::kLower);
+  tool_button("Smooth##tool",  Tool::kSmooth);
+  tool_button("Flatten##tool", Tool::kFlatten);
   ImGui::NewLine();
 
   ImGui::SliderFloat("Radius (m)",  &radius_,   0.5f,  200.f, "%.1f");
@@ -64,10 +64,10 @@ void TerrainEditorPanel::Render() {
   // Falloff selector.
   ImGui::TextUnformatted("Falloff");
   ImGui::SameLine();
-  if (ImGui::RadioButton("Linear", falloff_ == Falloff::kLinear))
+  if (ImGui::RadioButton("Linear##falloff", falloff_ == Falloff::kLinear))
     falloff_ = Falloff::kLinear;
   ImGui::SameLine();
-  if (ImGui::RadioButton("Smooth", falloff_ == Falloff::kSmooth))
+  if (ImGui::RadioButton("Smooth##falloff", falloff_ == Falloff::kSmooth))
     falloff_ = Falloff::kSmooth;
 
   ImGui::Spacing();
