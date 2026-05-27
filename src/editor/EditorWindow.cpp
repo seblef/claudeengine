@@ -591,7 +591,7 @@ void EditorWindow::WireTerrainPanel() {
   // const_cast is safe because the objects are non-const.
   auto* data     = const_cast<terrain::TerrainData*>(&gt->GetData());
   auto* material = const_cast<terrain::TerrainMaterial*>(&gt->GetMaterial());
-  terrain_panel_.SetContext(data, material, terrain_normal_map_.get(), video_, &history_);
+  terrain_panel_.SetContext(data, material, terrain_normal_map_.get(), video_, &history_, gt);
   viewport_->SetTerrainData(data);
   viewport_->SetOnSculptBrush([this](float wx, float wz, bool first, float dt) {
     terrain_panel_.OnBrushAt(wx, wz, first, dt);
