@@ -13,6 +13,8 @@ class TerrainData;
 // Per-layer settings stored in the map file.
 struct FoliageLayerDesc {
   // cppcheck-suppress unusedStructMember
+  std::string name;
+  // cppcheck-suppress unusedStructMember
   std::string mesh_path;
   // cppcheck-suppress unusedStructMember
   std::string texture_path;         // relative to data/textures/

@@ -1038,6 +1038,33 @@ void TerrainEditorPanel::DoExportR16(const std::string& path) {
 
 // ---- Foliage tab ------------------------------------------------------------
 
+std::string TerrainEditorPanel::BrowseMesh() {
+  const std::filesystem::path data_root = core::Config::GetDataFolder();
+  const std::string root_str = data_root.string();
+
+  nfdu8char_t* out_path = nullptr;
+  const nfdu8filteritem_t filter = {"Mesh files", "obj,fbx,emesh"};
+  const nfdresult_t result =
+      NFD_OpenDialogU8(&out_path, &filter, 1, root_str.c_str());
+  if (result != NFD_OKAY) {
+    if (result == NFD_ERROR)
+      LOG_F(ERROR, "TerrainEditorPanel::BrowseMesh — NFD error");
+    return {};
+  }
+
+  const std::filesystem::path abs(out_path);
+  NFD_FreePathU8(out_path);
+
+  std::error_code ec;
+  const auto rel = std::filesystem::relative(abs, data_root, ec);
+  if (ec || rel.string().substr(0, 2) == "..") {
+    LOG_F(WARNING, "TerrainEditorPanel::BrowseMesh — file outside data/: %s",
+          abs.string().c_str());
+    return {};
+  }
+  return rel.string();
+}
+
 void TerrainEditorPanel::RenderFoliageTab() {
   if (!terrain_obj_) {
     ImGui::TextDisabled("No terrain context.");
@@ -1054,8 +1081,8 @@ void TerrainEditorPanel::RenderFoliageTab() {
 
     ImGui::PushID(i);
     const bool selected = (foliage_active_layer_ == i);
-    if (ImGui::Selectable(desc.mesh_path.empty() ? "(unnamed)" : desc.mesh_path.c_str(),
-                          selected))
+    const char* label = desc.name.empty() ? "(unnamed)" : desc.name.c_str();
+    if (ImGui::Selectable(label, selected))
       foliage_active_layer_ = i;
     ImGui::PopID();
   }
@@ -1064,6 +1091,7 @@ void TerrainEditorPanel::RenderFoliageTab() {
   if (ImGui::Button("Add layer")) {
     if (layer_count < 8 && data_) {
       terrain::FoliageLayerDesc desc;
+      desc.name = "Layer " + std::to_string(terrain_obj_->GetFoliageLayerCount());
       auto layer = std::make_unique<terrain::FoliageLayer>(
           data_->GetTexelWidth(), data_->GetTexelHeight(), desc);
       terrain_obj_->AddFoliageLayer(std::move(layer));
@@ -1084,15 +1112,37 @@ void TerrainEditorPanel::RenderFoliageTab() {
 
   ImGui::SeparatorText("Layer settings");
 
-  char mesh_buf[512];
-  std::snprintf(mesh_buf, sizeof(mesh_buf), "%s", desc.mesh_path.c_str());
-  if (ImGui::InputText("Mesh path", mesh_buf, sizeof(mesh_buf)))
-    desc.mesh_path = mesh_buf;
+  // Editable layer name.
+  char name_buf[256];
+  std::snprintf(name_buf, sizeof(name_buf), "%s", desc.name.c_str());
+  if (ImGui::InputText("Name", name_buf, sizeof(name_buf)))
+    desc.name = name_buf;
 
-  char tex_buf[512];
-  std::snprintf(tex_buf, sizeof(tex_buf), "%s", desc.texture_path.c_str());
-  if (ImGui::InputText("Texture path", tex_buf, sizeof(tex_buf)))
-    desc.texture_path = tex_buf;
+  // Mesh — display current filename, button opens a file dialog.
+  {
+    const std::string mesh_label =
+        desc.mesh_path.empty() ? "(none)" :
+        std::filesystem::path(desc.mesh_path).filename().string();
+    ImGui::Text("Mesh: %s", mesh_label.c_str());
+    ImGui::SameLine();
+    if (ImGui::Button("Browse##mesh")) {
+      const std::string picked = BrowseMesh();
+      if (!picked.empty()) desc.mesh_path = picked;
+    }
+  }
+
+  // Texture — display current filename, button opens a file dialog.
+  {
+    const std::string tex_label =
+        desc.texture_path.empty() ? "(none)" :
+        std::filesystem::path(desc.texture_path).filename().string();
+    ImGui::Text("Texture: %s", tex_label.c_str());
+    ImGui::SameLine();
+    if (ImGui::Button("Browse##tex")) {
+      const std::string picked = BrowseTexture();
+      if (!picked.empty()) desc.texture_path = picked;
+    }
+  }
 
   ImGui::DragFloat("Spacing min", &desc.spacing_min, 0.05f, 0.05f, 10.f);
   ImGui::DragFloat("Spacing max", &desc.spacing_max, 0.05f, 0.05f, 10.f);

@@ -210,6 +210,7 @@ std::unique_ptr<GameObject> ParseTerrain(const YAML::Node& node,
       const int dm_h = fn["density_height"].as<int>(0);
 
       terrain::FoliageLayerDesc desc;
+      desc.name               = fn["name"].as<std::string>("");
       desc.mesh_path          = fn["mesh"].as<std::string>("");
       desc.texture_path       = fn["texture"].as<std::string>("");
       desc.spacing_min        = fn["spacing_min"].as<float>(0.5f);

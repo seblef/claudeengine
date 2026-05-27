@@ -123,6 +123,10 @@ class TerrainEditorPanel {
   // string if the user cancelled or the selected file is outside that root.
   [[nodiscard]] static std::string BrowseTexture();
 
+  // Opens an NFD mesh file dialog starting in data/ and returns the path
+  // relative to data/ on success, or empty on cancel / out-of-root.
+  [[nodiscard]] static std::string BrowseMesh();
+
   // ---- Import / Export helpers ----------------------------------------------
 
   // Loads a PNG heightmap and either applies it immediately (same dimensions)

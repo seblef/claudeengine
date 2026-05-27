@@ -247,6 +247,7 @@ void MapSerializer::SerializeVisitor::EmitTerrain(
       }
 
       out_ << YAML::BeginMap;
+      out_ << YAML::Key << "name"               << YAML::Value << fdesc.name;
       out_ << YAML::Key << "mesh"               << YAML::Value << fdesc.mesh_path;
       out_ << YAML::Key << "texture"            << YAML::Value << fdesc.texture_path;
       out_ << YAML::Key << "density_map"        << YAML::Value << dm_name;
