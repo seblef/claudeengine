@@ -1,9 +1,11 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 #include "core/BBox3.h"
 #include "game/GameObject.h"
+#include "terrain/FoliageLayer.h"
 
 namespace abstract { class VideoDevice; }
 namespace terrain {
@@ -22,8 +24,9 @@ namespace game {
 // rendering is handled exclusively by TerrainRenderer.
 class GameTerrain : public GameObject {
  public:
-  // Takes ownership of data and material. video must outlive this object and
-  // is stored to initialise TerrainRenderer when the object enters the scene.
+  // Takes ownership of data, material, and foliage layers.
+  // video must outlive this object; it is used to initialise TerrainRenderer
+  // and FoliageRenderer when the object enters the scene.
   GameTerrain(std::unique_ptr<terrain::TerrainData> data,
               std::unique_ptr<terrain::TerrainMaterial> material,
               abstract::VideoDevice* video);
@@ -49,11 +52,19 @@ class GameTerrain : public GameObject {
   [[nodiscard]] const terrain::TerrainData&     GetData()     const;
   [[nodiscard]] const terrain::TerrainMaterial& GetMaterial() const;
 
+  // Foliage layer ownership and access.
+  void AddFoliageLayer(std::unique_ptr<terrain::FoliageLayer> layer);
+  void RemoveFoliageLayer(int index);
+  [[nodiscard]] int                        GetFoliageLayerCount() const;
+  [[nodiscard]] terrain::FoliageLayer*     GetFoliageLayer(int index) const;
+
  private:
-  std::unique_ptr<terrain::TerrainData>     data_;
-  std::unique_ptr<terrain::TerrainMaterial> material_;
+  std::unique_ptr<terrain::TerrainData>                data_;
+  std::unique_ptr<terrain::TerrainMaterial>            material_;
   // cppcheck-suppress unusedStructMember
-  abstract::VideoDevice*                    video_;
+  std::vector<std::unique_ptr<terrain::FoliageLayer>>  foliage_layers_;
+  // cppcheck-suppress unusedStructMember
+  abstract::VideoDevice*                               video_;
 };
 
 }  // namespace game

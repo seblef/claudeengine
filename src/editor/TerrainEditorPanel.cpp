@@ -20,6 +20,10 @@
 #include "editor/EditorCommandHistory.h"
 #include "editor/commands/PaintBrushCommand.h"
 #include "editor/commands/SculptBrushCommand.h"
+#include "game/GameTerrain.h"
+#include "renderer/FoliageRenderer.h"
+#include "renderer/Renderer.h"
+#include "terrain/FoliageLayer.h"
 #include "terrain/TerrainData.h"
 #include "terrain/TerrainMaterial.h"
 #include "terrain/TerrainNormalMap.h"
@@ -45,12 +49,14 @@ void TerrainEditorPanel::SetContext(terrain::TerrainData* data,
                                     terrain::TerrainMaterial* material,
                                     terrain::TerrainNormalMap* normal_map,
                                     abstract::VideoDevice* video,
-                                    EditorCommandHistory* history) {
-  data_       = data;
-  material_   = material;
-  normal_map_ = normal_map;
-  video_      = video;
-  history_    = history;
+                                    EditorCommandHistory* history,
+                                    game::GameTerrain* terrain_obj) {
+  data_         = data;
+  material_     = material;
+  normal_map_   = normal_map;
+  video_        = video;
+  history_      = history;
+  terrain_obj_  = terrain_obj;
   stroke_active_       = false;
   paint_stroke_active_ = false;
 
@@ -90,6 +96,11 @@ void TerrainEditorPanel::Render() {
     if (ImGui::BeginTabItem("Import / Export")) {
       active_tab_ = ActiveTab::kImportExport;
       RenderImportExportTab();
+      ImGui::EndTabItem();
+    }
+    if (ImGui::BeginTabItem("Foliage")) {
+      active_tab_ = ActiveTab::kFoliage;
+      RenderFoliageTab();
       ImGui::EndTabItem();
     }
     ImGui::EndTabBar();
@@ -190,12 +201,37 @@ void TerrainEditorPanel::OnBrushAt(float wx, float wz, bool first_touch,
     OnPaintAt(wx, wz, first_touch);
     return;
   }
+  if (active_tab_ == ActiveTab::kFoliage) {
+    if (!terrain_obj_ || !data_) return;
+    terrain::FoliageLayer* layer =
+        terrain_obj_->GetFoliageLayer(foliage_active_layer_);
+    if (!layer) return;
+    if (foliage_brush_mode_ == FoliageBrushMode::kPaint)
+      layer->PaintBrush(wx, wz, foliage_radius_, foliage_strength_ * dt * 5.f, *data_);
+    else
+      layer->EraseBrush(wx, wz, foliage_radius_, foliage_strength_ * dt * 5.f, *data_);
+    foliage_stroke_active_ = true;
+    return;
+  }
   OnSculptAt(wx, wz, first_touch, dt);
 }
 
 void TerrainEditorPanel::OnBrushEnd() {
   if (active_tab_ == ActiveTab::kPaint) {
     OnPaintEnd();
+    return;
+  }
+  if (active_tab_ == ActiveTab::kFoliage) {
+    if (foliage_stroke_active_ && terrain_obj_ && data_) {
+      terrain::FoliageLayer* layer =
+          terrain_obj_->GetFoliageLayer(foliage_active_layer_);
+      if (layer) {
+        layer->RebuildInstances(*data_);
+        if (renderer::FoliageRenderer::Instance().IsReady())
+          renderer::FoliageRenderer::Instance().RebuildDirtyLayers();
+      }
+    }
+    foliage_stroke_active_ = false;
     return;
   }
   OnSculptEnd();
@@ -998,6 +1034,104 @@ void TerrainEditorPanel::DoExportR16(const std::string& path) {
   io_status_msg_ = "Export successful.";
   io_status_ok_  = true;
   LOG_F(INFO, "TerrainEditorPanel: R16 heightmap exported to '%s'", path.c_str());
+}
+
+// ---- Foliage tab ------------------------------------------------------------
+
+void TerrainEditorPanel::RenderFoliageTab() {
+  if (!terrain_obj_) {
+    ImGui::TextDisabled("No terrain context.");
+    return;
+  }
+
+  const int layer_count = terrain_obj_->GetFoliageLayerCount();
+
+  // ---- Layer list -----------------------------------------------------------
+  ImGui::SeparatorText("Layers");
+  for (int i = 0; i < layer_count; ++i) {
+    terrain::FoliageLayer* layer = terrain_obj_->GetFoliageLayer(i);
+    const terrain::FoliageLayerDesc& desc = layer->GetDesc();
+
+    ImGui::PushID(i);
+    const bool selected = (foliage_active_layer_ == i);
+    if (ImGui::Selectable(desc.mesh_path.empty() ? "(unnamed)" : desc.mesh_path.c_str(),
+                          selected))
+      foliage_active_layer_ = i;
+    ImGui::PopID();
+  }
+
+  // ---- Add / Remove layer ---------------------------------------------------
+  if (ImGui::Button("Add layer")) {
+    if (layer_count < 8 && data_) {
+      terrain::FoliageLayerDesc desc;
+      auto layer = std::make_unique<terrain::FoliageLayer>(
+          data_->GetTexelWidth(), data_->GetTexelHeight(), desc);
+      terrain_obj_->AddFoliageLayer(std::move(layer));
+      foliage_active_layer_ = terrain_obj_->GetFoliageLayerCount() - 1;
+    }
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Remove layer") && layer_count > 0) {
+    terrain_obj_->RemoveFoliageLayer(foliage_active_layer_);
+    foliage_active_layer_ = std::max(0, foliage_active_layer_ - 1);
+  }
+
+  // ---- Active layer settings ------------------------------------------------
+  if (layer_count == 0 || foliage_active_layer_ >= layer_count) return;
+
+  terrain::FoliageLayer*     active = terrain_obj_->GetFoliageLayer(foliage_active_layer_);
+  terrain::FoliageLayerDesc& desc   = active->GetDesc();
+
+  ImGui::SeparatorText("Layer settings");
+
+  char mesh_buf[512];
+  std::snprintf(mesh_buf, sizeof(mesh_buf), "%s", desc.mesh_path.c_str());
+  if (ImGui::InputText("Mesh path", mesh_buf, sizeof(mesh_buf)))
+    desc.mesh_path = mesh_buf;
+
+  char tex_buf[512];
+  std::snprintf(tex_buf, sizeof(tex_buf), "%s", desc.texture_path.c_str());
+  if (ImGui::InputText("Texture path", tex_buf, sizeof(tex_buf)))
+    desc.texture_path = tex_buf;
+
+  ImGui::DragFloat("Spacing min", &desc.spacing_min, 0.05f, 0.05f, 10.f);
+  ImGui::DragFloat("Spacing max", &desc.spacing_max, 0.05f, 0.05f, 10.f);
+  ImGui::DragFloat("Scale min",   &desc.scale_min,   0.01f, 0.01f, 10.f);
+  ImGui::DragFloat("Scale max",   &desc.scale_max,   0.01f, 0.01f, 10.f);
+  ImGui::DragFloat("Cull dist",        &desc.cull_distance,      1.f, 10.f, 500.f);
+  ImGui::DragFloat("Billboard dist",   &desc.billboard_distance,  1.f, 5.f,  200.f);
+
+  // ---- Density brush --------------------------------------------------------
+  ImGui::SeparatorText("Density brush");
+
+  ImGui::RadioButton("Paint", reinterpret_cast<int*>(&foliage_brush_mode_),
+                     static_cast<int>(FoliageBrushMode::kPaint));
+  ImGui::SameLine();
+  ImGui::RadioButton("Erase", reinterpret_cast<int*>(&foliage_brush_mode_),
+                     static_cast<int>(FoliageBrushMode::kErase));
+
+  ImGui::SliderFloat("Radius",   &foliage_radius_,   0.5f, 50.f);
+  ImGui::SliderFloat("Strength", &foliage_strength_,  0.f,  1.f);
+
+  // ---- Rebuild --------------------------------------------------------------
+  ImGui::SeparatorText("Rebuild");
+  if (ImGui::Button("Rebuild instances")) {
+    if (data_) {
+      active->RebuildInstances(*data_);
+      if (renderer::FoliageRenderer::Instance().IsReady())
+        renderer::FoliageRenderer::Instance().RebuildDirtyLayers();
+    }
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Build all")) {
+    if (data_ && video_) {
+      std::vector<terrain::FoliageLayer*> ptrs;
+      for (int i = 0; i < terrain_obj_->GetFoliageLayerCount(); ++i)
+        ptrs.push_back(terrain_obj_->GetFoliageLayer(i));
+      renderer::FoliageRenderer::Instance().Build(video_, *data_, ptrs);
+      renderer::Renderer::Instance().SetFoliageEnabled(true);
+    }
+  }
 }
 
 }  // namespace editor

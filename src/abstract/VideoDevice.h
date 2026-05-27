@@ -10,6 +10,7 @@
 #include "abstract/BlendFactor.h"
 #include "abstract/BufferUsage.h"
 #include "abstract/RawTexture.h"
+#include "abstract/ShaderStorageBuffer.h"
 #include "abstract/CompareFunc.h"
 #include "abstract/ConstantBuffer.h"
 #include "abstract/CullFace.h"
@@ -74,6 +75,13 @@ class VideoDevice {
   virtual void RenderIndexed(int num_indices, int first_index = 0,
                               int vertex_offset = 0) = 0;
 
+  // Draws num_indices indexed primitives num_instances times. Uses the
+  // currently bound vertex/index buffers; per-instance data is expected to
+  // arrive via a bound ShaderStorageBuffer (gl_InstanceID in shaders).
+  virtual void RenderIndexedInstanced(int num_indices, int num_instances,
+                                      int first_index   = 0,
+                                      int vertex_offset = 0) = 0;
+
   // ---- Resource factories --------------------------------------------------
 
   // Creates a vertex buffer with the given layout, capacity and access hint.
@@ -106,6 +114,13 @@ class VideoDevice {
   [[nodiscard]] virtual std::unique_ptr<ConstantBuffer> CreateConstantBuffer(
       int size, int slot, BufferUsage usage = BufferUsage::kDynamic,
       const void* data = nullptr) = 0;
+
+  // Creates a Shader Storage Buffer Object with the given byte capacity.
+  // The SSBO is bound at binding_point in shaders (layout(std430, binding=N)).
+  // The caller owns the returned object exclusively (unique_ptr).
+  [[nodiscard]] virtual std::unique_ptr<ShaderStorageBuffer> CreateShaderStorageBuffer(
+      int capacity_bytes, int binding_point,
+      BufferUsage usage = BufferUsage::kDynamic) = 0;
 
   // Enables or disables depth testing for subsequent draw calls.
   virtual void SetDepthTestEnabled(bool enabled) = 0;

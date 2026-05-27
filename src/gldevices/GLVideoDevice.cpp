@@ -10,6 +10,7 @@
 #include <stb_image.h>
 
 #include "gldevices/GLConstantBuffer.h"
+#include "gldevices/GLShaderStorageBuffer.h"
 #include "gldevices/GLGeometryBuffer.h"
 #include "gldevices/GLIndexBuffer.h"
 #include "gldevices/GLRenderTarget.h"
@@ -84,6 +85,15 @@ void GLVideoDevice::RenderIndexed(int num_indices, int first_index, int vertex_o
       vertex_offset);
 }
 
+void GLVideoDevice::RenderIndexedInstanced(int num_indices, int num_instances,
+                                           int first_index, int vertex_offset) {
+  const uintptr_t index_size = (current_index_type_ == GL_UNSIGNED_SHORT) ? 2 : 4;
+  glDrawElementsInstancedBaseVertex(
+      primitive_type_, num_indices, current_index_type_,
+      reinterpret_cast<const void*>(first_index * index_size),
+      num_instances, vertex_offset);
+}
+
 std::unique_ptr<abstract::VertexBuffer> GLVideoDevice::CreateVertexBuffer(
     core::VertexType vertex_type, int num_vertices,
     abstract::BufferUsage usage, const void* data, int offset) {
@@ -118,6 +128,11 @@ std::unique_ptr<abstract::ConstantBuffer> GLVideoDevice::CreateConstantBuffer(
   auto cb = std::make_unique<GLConstantBuffer>(size, slot, usage);
   if (data) cb->Fill(data);
   return cb;
+}
+
+std::unique_ptr<abstract::ShaderStorageBuffer> GLVideoDevice::CreateShaderStorageBuffer(
+    int capacity_bytes, int binding_point, abstract::BufferUsage usage) {
+  return std::make_unique<GLShaderStorageBuffer>(capacity_bytes, binding_point, usage);
 }
 
 abstract::Shader* GLVideoDevice::CreateShader(const std::string& name) {

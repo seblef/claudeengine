@@ -140,6 +140,8 @@ void Renderer::Update(float time, const core::Camera* camera,
   MeshRenderer::Instance().Render();
   if (terrain_renderer_ && terrain_renderer_->IsReady() && camera_)
     terrain_renderer_->Render(*camera_);
+  if (foliage_enabled_ && FoliageRenderer::Instance().IsReady() && camera_)
+    FoliageRenderer::Instance().Render(*camera_);
   gbuffer_.UnbindForWriting();
 
   // Debug bypass — blit a chosen G-buffer RT to the default framebuffer and skip
@@ -189,6 +191,8 @@ void Renderer::Update(float time, const core::Camera* camera,
   video_->SetBlendEnabled(true, abstract::BlendFactor::kOne, abstract::BlendFactor::kOne);
   MeshRenderer::Instance().RenderEmissive();
   MeshRenderer::Instance().EndRender();
+  if (foliage_enabled_ && FoliageRenderer::Instance().IsReady() && camera_)
+    FoliageRenderer::Instance().RenderBillboards(*camera_);
   video_->SetBlendEnabled(false);
   video_->SetDepthFunc(abstract::CompareFunc::kLess);
   video_->SetDepthWriteEnabled(true);

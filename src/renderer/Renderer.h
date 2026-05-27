@@ -12,6 +12,7 @@
 #include "core/Mat4f.h"
 #include "core/Singleton.h"
 #include "renderer/EmissiveFBO.h"
+#include "renderer/FoliageRenderer.h"
 #include "renderer/GBuffer.h"
 #include "renderer/GeometryData.h"
 #include "renderer/NoCullingVisibilitySystem.h"
@@ -121,6 +122,12 @@ class Renderer : public core::Singleton<Renderer> {
     terrain_renderer_ = terrain;
   }
 
+  // Enables foliage rendering. When set, FoliageRenderer::Render() is called
+  // in the geometry pass and FoliageRenderer::RenderBillboards() in the emissive
+  // pass. Pass false to disable. The FoliageRenderer singleton must be built
+  // before enabling; see FoliageRenderer::Build().
+  void SetFoliageEnabled(bool enabled) { foliage_enabled_ = enabled; }
+
   // Renders terrain patch edges as a flat-colour wireframe overlay into fbo.
   // No-op when no terrain has been registered or Init() has not been called.
   // Must be called after Update() so the scene UBO at slot 2 is bound.
@@ -175,6 +182,8 @@ class Renderer : public core::Singleton<Renderer> {
 
   // Optional terrain renderer called in the geometry pass. Not owned by Renderer.
   terrain::TerrainRenderer* terrain_renderer_ = nullptr;
+
+  bool foliage_enabled_ = false;
 
   // Composite pass resources — gamma-correct the HDR RT to the default framebuffer.
   // cppcheck-suppress unusedStructMember
