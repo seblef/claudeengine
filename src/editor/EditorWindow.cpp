@@ -587,9 +587,6 @@ void EditorWindow::WireTerrainPanel() {
     return;
   }
 
-  // The floor plane serves as a stand-in ground until a real terrain exists.
-  if (scene_->HasFloor()) scene_->RemoveFloor();
-
   // GameTerrain owns a const TerrainData. The editor may mutate it during
   // sculpting — const_cast is safe because the object itself is non-const.
   auto* data = const_cast<terrain::TerrainData*>(&gt->GetData());
