@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace abstract { class VideoDevice; }
@@ -70,7 +71,7 @@ class TerrainEditorPanel {
  private:
   enum class Tool    { kRaise, kLower, kSmooth, kFlatten };
   enum class Falloff { kLinear, kSmooth };
-  enum class ActiveTab { kSculpt, kPaint };
+  enum class ActiveTab { kSculpt, kPaint, kMaterial, kProperties };
 
   // Returns the falloff weight for normalised distance t in [0, 1].
   [[nodiscard]] float ComputeFalloff(float t) const;
@@ -106,6 +107,13 @@ class TerrainEditorPanel {
   // ---- Tab render -----------------------------------------------------------
   void RenderSculptTab();
   void RenderPaintTab();
+  void RenderMaterialTab();
+  void RenderPropertiesTab();
+
+  // Opens an NFD texture file dialog starting in data/textures/ and returns
+  // the relative path (relative to data/textures/) on success, or an empty
+  // string if the user cancelled or the selected file is outside that root.
+  [[nodiscard]] static std::string BrowseTexture();
 
   // ---- Shared brush parameters ----------------------------------------------
   Falloff falloff_  = Falloff::kSmooth;

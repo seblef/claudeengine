@@ -72,6 +72,23 @@ class TerrainMaterial {
   // w / h — width and height of the region in texels
   void UploadSplatTile(abstract::VideoDevice* video, int x, int z, int w, int h);
 
+  // ---- Layer editing -------------------------------------------------------
+
+  // Appends a new layer with empty texture paths and tiling = 1.0.
+  // Returns false (no-op) when already at kMaxTerrainLayers capacity.
+  bool AddLayer();
+
+  // Replaces the albedo texture for layer i (0-based, must be < layer_count_).
+  // Pass an empty string to clear the albedo. Releases the previous texture.
+  void SetLayerAlbedo(int i, const std::string& path, abstract::VideoDevice* video);
+
+  // Replaces the normal texture for layer i (0-based, must be < layer_count_).
+  // Pass an empty string to clear the normal map. Releases the previous texture.
+  void SetLayerNormal(int i, const std::string& path, abstract::VideoDevice* video);
+
+  // Updates the UV tiling factor for layer i (0-based, must be < layer_count_).
+  void SetLayerTiling(int i, float tiling);
+
   // ---- Accessors -----------------------------------------------------------
 
   [[nodiscard]] int                         GetLayerCount()     const { return layer_count_; }

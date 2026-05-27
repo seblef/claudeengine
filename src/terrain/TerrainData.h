@@ -52,6 +52,15 @@ class TerrainData {
   // Returns a pointer to the raw 16-bit heightmap buffer (row-major).
   const uint16_t* GetRawData() const { return data_.data(); }
 
+  // ---- Height range setters -----------------------------------------------
+
+  // Updates the world-space height interpretation without modifying the raw
+  // uint16_t samples. The renderer must be notified separately via
+  // TerrainRenderer::SetHeightRange(); the normal map must be rebuilt via
+  // TerrainNormalMap::Build().
+  void SetMinHeight(float h) { min_height_ = h; }
+  void SetMaxHeight(float h) { max_height_ = h; }
+
   // ---- Sculpt accessors ---------------------------------------------------
 
   // Returns the raw uint16_t sample at texel (tx, tz), clamped to valid range.

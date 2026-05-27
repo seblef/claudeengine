@@ -3,13 +3,17 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <filesystem>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <imgui.h>
 #include <loguru.hpp>
+#include <nfd.h>
 
 #include "abstract/VideoDevice.h"
+#include "core/Config.h"
 #include "editor/EditorCommandHistory.h"
 #include "editor/commands/PaintBrushCommand.h"
 #include "editor/commands/SculptBrushCommand.h"
@@ -68,6 +72,16 @@ void TerrainEditorPanel::Render() {
     if (ImGui::BeginTabItem("Paint")) {
       active_tab_ = ActiveTab::kPaint;
       RenderPaintTab();
+      ImGui::EndTabItem();
+    }
+    if (ImGui::BeginTabItem("Material")) {
+      active_tab_ = ActiveTab::kMaterial;
+      RenderMaterialTab();
+      ImGui::EndTabItem();
+    }
+    if (ImGui::BeginTabItem("Properties")) {
+      active_tab_ = ActiveTab::kProperties;
+      RenderPropertiesTab();
       ImGui::EndTabItem();
     }
     ImGui::EndTabBar();
@@ -570,6 +584,146 @@ void TerrainEditorPanel::OnPaintEnd() {
   paint_stroke_active_ = false;
   LOG_F(9, "TerrainEditorPanel::OnPaintEnd — paint region [%d,%d)+[%d,%d]",
         paint_x0_, paint_z0_, pw, ph);
+}
+
+// ---- Material tab -----------------------------------------------------------
+
+std::string TerrainEditorPanel::BrowseTexture() {
+  const std::filesystem::path textures_root =
+      core::Config::GetDataFolder() / "textures";
+  const std::string root_str = textures_root.string();
+
+  nfdu8char_t* out_path = nullptr;
+  const nfdu8filteritem_t filter = {"Images", "png,jpg,jpeg,tga,bmp"};
+  const nfdresult_t result = NFD_OpenDialogU8(&out_path, &filter, 1,
+                                               root_str.c_str());
+  if (result != NFD_OKAY) {
+    if (result == NFD_ERROR)
+      LOG_F(ERROR, "TerrainEditorPanel::BrowseTexture — NFD error");
+    return {};
+  }
+
+  const std::filesystem::path abs(out_path);
+  NFD_FreePathU8(out_path);
+
+  std::error_code ec;
+  const auto rel = std::filesystem::relative(abs, textures_root, ec);
+  if (ec || rel.string().substr(0, 2) == "..") {
+    LOG_F(WARNING, "TerrainEditorPanel::BrowseTexture — file outside "
+          "data/textures/: %s", abs.string().c_str());
+    return {};
+  }
+  return rel.string();
+}
+
+void TerrainEditorPanel::RenderMaterialTab() {
+  if (!material_) {
+    ImGui::TextDisabled("No terrain material.");
+    return;
+  }
+
+  const int layer_count = material_->GetLayerCount();
+
+  for (int i = 0; i < layer_count; ++i) {
+    ImGui::PushID(i);
+    char header[32];
+    snprintf(header, sizeof(header), "Layer %d", i);
+    if (ImGui::CollapsingHeader(header, ImGuiTreeNodeFlags_DefaultOpen)) {
+      const terrain::TerrainMaterialLayer& layer = material_->GetLayer(i);
+
+      // Albedo row.
+      ImGui::TextUnformatted("Albedo");
+      ImGui::SameLine();
+      ImGui::SetNextItemWidth(-80.f);
+      char albedo_buf[512];
+      snprintf(albedo_buf, sizeof(albedo_buf), "%s",
+               layer.albedo_path.c_str());
+      ImGui::InputText("##albedo", albedo_buf, sizeof(albedo_buf),
+                       ImGuiInputTextFlags_ReadOnly);
+      ImGui::SameLine();
+      if (ImGui::Button("Browse##albedo")) {
+        const std::string path = BrowseTexture();
+        if (!path.empty())
+          material_->SetLayerAlbedo(i, path, video_);
+      }
+
+      // Normal row.
+      ImGui::TextUnformatted("Normal");
+      ImGui::SameLine();
+      ImGui::SetNextItemWidth(-80.f);
+      char normal_buf[512];
+      snprintf(normal_buf, sizeof(normal_buf), "%s",
+               layer.normal_path.c_str());
+      ImGui::InputText("##normal", normal_buf, sizeof(normal_buf),
+                       ImGuiInputTextFlags_ReadOnly);
+      ImGui::SameLine();
+      if (ImGui::Button("Browse##normal")) {
+        const std::string path = BrowseTexture();
+        if (!path.empty())
+          material_->SetLayerNormal(i, path, video_);
+      }
+
+      // Tiling row.
+      float tiling = layer.tiling;
+      if (ImGui::DragFloat("Tiling", &tiling, 0.1f, 0.01f, 256.f, "%.2f"))
+        material_->SetLayerTiling(i, tiling);
+    }
+    ImGui::PopID();
+  }
+
+  ImGui::Spacing();
+  if (layer_count < terrain::kMaxTerrainLayers) {
+    if (ImGui::Button("+ Add Layer"))
+      material_->AddLayer();
+  } else {
+    ImGui::TextDisabled("Maximum of %d layers reached.", terrain::kMaxTerrainLayers);
+  }
+}
+
+// ---- Properties tab ---------------------------------------------------------
+
+void TerrainEditorPanel::RenderPropertiesTab() {
+  if (!data_) return;
+
+  ImGui::SeparatorText("Height Range");
+  ImGui::TextWrapped("Changing the height range reinterprets the existing "
+                     "heightmap and rebuilds the normal map.");
+  ImGui::Spacing();
+
+  float min_h = data_->GetMinHeight();
+  float max_h = data_->GetMaxHeight();
+
+  const bool min_changed = ImGui::DragFloat("Min Height (m)", &min_h,
+                                             0.5f, -10000.f, max_h - 0.1f, "%.1f");
+  const bool min_deact   = ImGui::IsItemDeactivatedAfterEdit();
+
+  const bool max_changed = ImGui::DragFloat("Max Height (m)", &max_h,
+                                             0.5f, min_h + 0.1f, 10000.f, "%.1f");
+  const bool max_deact   = ImGui::IsItemDeactivatedAfterEdit();
+
+  if (min_changed || max_changed) {
+    max_h = std::max(max_h, min_h + 0.1f);
+    data_->SetMinHeight(min_h);
+    data_->SetMaxHeight(max_h);
+    if (terrain::TerrainRenderer::IsInstanced())
+      terrain::TerrainRenderer::Instance().SetHeightRange(min_h, max_h);
+  }
+
+  if ((min_deact || max_deact) && normal_map_ && video_) {
+    normal_map_->Build(*data_);
+    normal_map_->Upload(video_);
+    LOG_F(INFO, "TerrainEditorPanel: height range changed [%.1f, %.1f] — "
+          "normal map rebuilt", min_h, max_h);
+  }
+
+  ImGui::Spacing();
+  ImGui::SeparatorText("Info");
+  ImGui::LabelText("Width (texels)",  "%d", data_->GetTexelWidth());
+  ImGui::LabelText("Height (texels)", "%d", data_->GetTexelHeight());
+  ImGui::LabelText("Resolution (m/texel)", "%.3f", data_->GetMetersPerTexel());
+  ImGui::LabelText("World size (m)",
+                   "%.1f × %.1f",
+                   data_->GetWorldWidth(), data_->GetWorldHeight());
 }
 
 }  // namespace editor

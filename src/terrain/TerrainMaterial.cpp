@@ -156,4 +156,50 @@ void TerrainMaterial::UploadFullSplatmap(abstract::VideoDevice* video) {
       splat_width_, splat_height_, splatmap_pixels_.data());
 }
 
+bool TerrainMaterial::AddLayer() {
+  if (layer_count_ >= kMaxTerrainLayers) return false;
+  const int i = layer_count_++;
+  layers_[i] = {"", "", 1.f};
+  albedo_[i]  = nullptr;
+  normal_[i]  = nullptr;
+  return true;
+}
+
+void TerrainMaterial::SetLayerAlbedo(int i, const std::string& path,
+                                     abstract::VideoDevice* video) {
+  assert(i >= 0 && i < layer_count_);
+  if (albedo_[i]) {
+    albedo_[i]->Release();
+    albedo_[i] = nullptr;
+  }
+  layers_[i].albedo_path = path;
+  if (!path.empty()) {
+    albedo_[i] = video->CreateTexture(path);
+    if (!albedo_[i])
+      LOG_F(WARNING, "TerrainMaterial: layer %d albedo '%s' not found",
+            i, path.c_str());
+  }
+}
+
+void TerrainMaterial::SetLayerNormal(int i, const std::string& path,
+                                     abstract::VideoDevice* video) {
+  assert(i >= 0 && i < layer_count_);
+  if (normal_[i]) {
+    normal_[i]->Release();
+    normal_[i] = nullptr;
+  }
+  layers_[i].normal_path = path;
+  if (!path.empty()) {
+    normal_[i] = video->CreateTexture(path);
+    if (!normal_[i])
+      LOG_F(WARNING, "TerrainMaterial: layer %d normal '%s' not found",
+            i, path.c_str());
+  }
+}
+
+void TerrainMaterial::SetLayerTiling(int i, float tiling) {
+  assert(i >= 0 && i < layer_count_);
+  layers_[i].tiling = tiling;
+}
+
 }  // namespace terrain
