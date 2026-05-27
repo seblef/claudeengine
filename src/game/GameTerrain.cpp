@@ -23,22 +23,25 @@ void GameTerrain::OnAddedToScene() {
   terrain::TerrainRenderer::Instance().Init(video_, *data_);
   terrain::TerrainRenderer::Instance().SetMaterial(material_.get());
 
-  if (!foliage_layers_.empty()) {
-    std::vector<terrain::FoliageLayer*> ptrs;
-    ptrs.reserve(foliage_layers_.size());
-    std::transform(foliage_layers_.begin(), foliage_layers_.end(),
-                   std::back_inserter(ptrs),
-                   [](const std::unique_ptr<terrain::FoliageLayer>& l) {
-                     return l.get();
-                   });
-    renderer::FoliageRenderer::Instance().Build(video_, *data_, ptrs);
+  // Always create the FoliageRenderer singleton so the editor can add layers
+  // and trigger builds interactively without needing a scene reload.
+  std::vector<terrain::FoliageLayer*> ptrs;
+  ptrs.reserve(foliage_layers_.size());
+  std::transform(foliage_layers_.begin(), foliage_layers_.end(),
+                 std::back_inserter(ptrs),
+                 [](const std::unique_ptr<terrain::FoliageLayer>& l) {
+                   return l.get();
+                 });
+  new renderer::FoliageRenderer();
+  renderer::FoliageRenderer::Instance().Build(video_, *data_, ptrs);
+  if (!ptrs.empty())
     renderer::Renderer::Instance().SetFoliageEnabled(true);
-  }
 }
 
 void GameTerrain::OnRemovedFromScene() {
   terrain::TerrainRenderer::Instance().SetMaterial(nullptr);
-  renderer::FoliageRenderer::Instance().Reset();
+  if (renderer::FoliageRenderer::IsInstanced())
+    renderer::FoliageRenderer::Shutdown();
   renderer::Renderer::Instance().SetFoliageEnabled(false);
 }
 

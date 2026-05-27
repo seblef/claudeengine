@@ -227,7 +227,8 @@ void TerrainEditorPanel::OnBrushEnd() {
           terrain_obj_->GetFoliageLayer(foliage_active_layer_);
       if (layer) {
         layer->RebuildInstances(*data_);
-        if (renderer::FoliageRenderer::Instance().IsReady())
+        if (renderer::FoliageRenderer::IsInstanced() &&
+            renderer::FoliageRenderer::Instance().IsReady())
           renderer::FoliageRenderer::Instance().RebuildDirtyLayers();
       }
     }
@@ -1168,7 +1169,8 @@ void TerrainEditorPanel::RenderFoliageTab() {
   if (ImGui::Button("Rebuild instances")) {
     if (data_) {
       active->RebuildInstances(*data_);
-      if (renderer::FoliageRenderer::Instance().IsReady())
+      if (renderer::FoliageRenderer::IsInstanced() &&
+          renderer::FoliageRenderer::Instance().IsReady())
         renderer::FoliageRenderer::Instance().RebuildDirtyLayers();
     }
   }
