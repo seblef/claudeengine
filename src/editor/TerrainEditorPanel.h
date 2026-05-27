@@ -11,6 +11,7 @@ class TerrainMaterial;
 class TerrainNormalMap;
 }  // namespace terrain
 
+
 namespace editor {
 
 class EditorCommandHistory;
@@ -71,7 +72,8 @@ class TerrainEditorPanel {
  private:
   enum class Tool    { kRaise, kLower, kSmooth, kFlatten };
   enum class Falloff { kLinear, kSmooth };
-  enum class ActiveTab { kSculpt, kPaint, kMaterial, kProperties };
+  enum class ActiveTab { kSculpt, kPaint, kMaterial, kProperties, kImportExport };
+  enum class IoState  { kIdle, kConfirmResize };
 
   // Returns the falloff weight for normalised distance t in [0, 1].
   [[nodiscard]] float ComputeFalloff(float t) const;
@@ -109,11 +111,35 @@ class TerrainEditorPanel {
   void RenderPaintTab();
   void RenderMaterialTab();
   void RenderPropertiesTab();
+  void RenderImportExportTab();
 
   // Opens an NFD texture file dialog starting in data/textures/ and returns
   // the relative path (relative to data/textures/) on success, or an empty
   // string if the user cancelled or the selected file is outside that root.
   [[nodiscard]] static std::string BrowseTexture();
+
+  // ---- Import / Export helpers ----------------------------------------------
+
+  // Loads a PNG heightmap and either applies it immediately (same dimensions)
+  // or sets the pending-resize state (different dimensions).
+  // Returns false and sets io_status_msg_ on load error.
+  bool LoadAndApplyPNG(const std::string& path);
+
+  // Loads an HDR/EXR heightmap (via stbi_loadf) and either applies it or sets
+  // the pending-resize state. EXR requires RGBE encoding (true OpenEXR is not
+  // supported by stb_image). Returns false and sets io_status_msg_ on error.
+  bool LoadAndApplyHDR(const std::string& path);
+
+  // Applies an already-decoded heightmap to the terrain. If needs_resize is
+  // true the terrain is resized and the splatmap reset.
+  void ApplyImportedHeightmap(const std::vector<uint16_t>& data, int w, int h,
+                              bool needs_resize);
+
+  // Writes the current heightmap as an 8-bit grayscale PNG.
+  void DoExportPNG(const std::string& path);
+
+  // Writes the current heightmap as a raw R16 (uint16_t) binary file.
+  void DoExportR16(const std::string& path);
 
   // ---- Shared brush parameters ----------------------------------------------
   Falloff falloff_  = Falloff::kSmooth;
@@ -129,6 +155,19 @@ class TerrainEditorPanel {
 
   // ---- Active tab -----------------------------------------------------------
   ActiveTab active_tab_ = ActiveTab::kSculpt;
+
+  // ---- Import / Export state ------------------------------------------------
+  float  import_min_h_  = 0.f;
+  float  import_max_h_  = 100.f;
+
+  IoState io_state_     = IoState::kIdle;
+  int     io_pending_w_ = 0;
+  int     io_pending_h_ = 0;
+  // cppcheck-suppress unusedStructMember
+  std::vector<uint16_t> io_pending_data_;
+  // cppcheck-suppress unusedStructMember
+  std::string io_status_msg_;
+  bool        io_status_ok_ = true;
 
   // ---- Context --------------------------------------------------------------
   terrain::TerrainData*      data_       = nullptr;

@@ -1,4 +1,5 @@
 add_library(editor STATIC
+    stb_image_impl.cpp
     stb_image_write_impl.cpp
     EditorCameraController.cpp
     EditorCommandHistory.cpp
