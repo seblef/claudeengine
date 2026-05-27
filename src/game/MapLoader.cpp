@@ -16,6 +16,7 @@
 #include "game/GameLight.h"
 #include "game/GameMaterial.h"
 #include "game/GameMesh.h"
+#include "game/GamePlayerStart.h"
 #include "game/GameTerrain.h"
 #include "game/MeshTemplate.h"
 #include "renderer/GeometryUtils.h"
@@ -152,6 +153,16 @@ std::unique_ptr<GameObject> ParseCamera(const YAML::Node& node) {
   camera->SetName(name);
   camera->SetWorldTransform(transform);
   return camera;
+}
+
+std::unique_ptr<GameObject> ParsePlayerStart(const YAML::Node& node) {
+  const std::string name      = node["name"].as<std::string>("PlayerStart");
+  const core::Mat4f transform = core::ParseMat4(node["transform"]);
+
+  auto ps = std::make_unique<GamePlayerStart>();
+  ps->SetName(name);
+  ps->SetWorldTransform(transform);
+  return ps;
 }
 
 std::unique_ptr<GameObject> ParseTerrain(const YAML::Node& node,
@@ -295,6 +306,8 @@ MapData MapLoader::Load(const std::filesystem::path& path,
         result.objects.push_back(ParseLight(obj));
       } else if (type == "camera") {
         result.objects.push_back(ParseCamera(obj));
+      } else if (type == "player_start") {
+        result.objects.push_back(ParsePlayerStart(obj));
       } else {
         LOG_F(WARNING, "MapLoader: unknown object type '%s', skipping",
               type.c_str());
