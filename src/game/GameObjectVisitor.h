@@ -6,6 +6,7 @@ class GameMesh;
 class GameLight;
 class GameCamera;
 class GameTerrain;
+class GamePlayerStart;
 
 // Abstract visitor for all concrete GameObject subclasses.
 //
@@ -15,10 +16,11 @@ class GameObjectVisitor {
  public:
   virtual ~GameObjectVisitor() = default;
 
-  virtual void Visit(GameMesh& mesh)       = 0;
-  virtual void Visit(GameLight& light)     = 0;
-  virtual void Visit(GameCamera& camera)   = 0;
-  virtual void Visit(GameTerrain& terrain) = 0;
+  virtual void Visit(GameMesh& mesh)               = 0;
+  virtual void Visit(GameLight& light)             = 0;
+  virtual void Visit(GameCamera& camera)           = 0;
+  virtual void Visit(GameTerrain& terrain)         = 0;
+  virtual void Visit(GamePlayerStart& player_start) = 0;
 };
 
 }  // namespace game

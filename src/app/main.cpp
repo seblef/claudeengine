@@ -20,6 +20,7 @@
 #include "game/GameLightDesc.h"
 #include "game/GameMaterial.h"
 #include "game/GameMesh.h"
+#include "game/GamePlayerStart.h"
 #include "game/GameSystem.h"
 #include "game/MapLoader.h"
 #include "game/MeshTemplate.h"
@@ -78,7 +79,8 @@ int main(int argc, char* argv[]) {
   std::unique_ptr<game::GameLight> map_global_light;
   // cppcheck-suppress variableScope ; must outlive the main loop
   std::vector<std::unique_ptr<game::GameObject>> map_objects;
-  game::GameCamera* map_camera = nullptr;
+  game::GameCamera*      map_camera       = nullptr;
+  game::GamePlayerStart* map_player_start = nullptr;
 
   // Demo-scene objects (only constructed when no map is loaded).
   game::GameMaterial* demo_mat = nullptr;
@@ -120,13 +122,25 @@ int main(int argc, char* argv[]) {
           renderer::LightType::kGlobal, map_data.global_light);
       game.AddObject(map_global_light.get());
 
-      // Add all map objects; locate the first camera.
+      // Add all map objects; locate the first camera and first player start.
       map_objects = std::move(map_data.objects);
+      int player_start_count = 0;
       for (auto& obj : map_objects) {
         if (!map_camera)
           map_camera = dynamic_cast<game::GameCamera*>(obj.get());
+        if (obj->GetType() == game::GameObjectType::kPlayerStart) {
+          ++player_start_count;
+          if (!map_player_start)
+            map_player_start =
+                static_cast<game::GamePlayerStart*>(obj.get());
+        }
         game.AddObject(obj.get());
       }
+      if (player_start_count > 1)
+        LOG_F(WARNING, "Map has %d player starts; using the first one",
+              player_start_count);
+      if (!map_player_start)
+        LOG_F(WARNING, "Map has no player start; camera stays at default position");
     }
   }
 
@@ -138,9 +152,15 @@ int main(int argc, char* argv[]) {
   } else {
     camera.SetMaxDepth(200.f);
     camera.SetScreenCenter({gfx.GetWidth() * 0.5f, gfx.GetHeight() * 0.5f});
-    controller.SetPosition({0.f, 5.f, 30.f});
     game.SetCamera(&camera);
     game.SetCameraController(&controller);
+
+    if (map_player_start) {
+      const core::Mat4f& t = map_player_start->GetWorldTransform();
+      controller.SetPosition({t(0, 3), t(1, 3), t(2, 3)});
+    } else {
+      controller.SetPosition({0.f, 5.f, 30.f});
+    }
   }
 
   // ---- Demo scene (when no map was loaded) ---------------------------------

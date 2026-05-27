@@ -5,6 +5,7 @@ add_library(game STATIC
     GameLight.cpp
     GameMaterial.cpp
     GameMesh.cpp
+    GamePlayerStart.cpp
     GameSystem.cpp
     GameTerrain.cpp
     MapLoader.cpp

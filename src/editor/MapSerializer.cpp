@@ -16,6 +16,7 @@
 #include "game/GameMaterial.h"
 #include "game/GameMesh.h"
 #include "game/GameObjectType.h"
+#include "game/GamePlayerStart.h"
 #include "game/GameTerrain.h"
 #include "game/MapLoader.h"
 #include "renderer/CircleSpotLight.h"
@@ -147,6 +148,16 @@ void MapSerializer::SerializeVisitor::Visit(game::GameCamera& camera) {
   out_ << YAML::Key << "type"      << YAML::Value << "camera";
   out_ << YAML::Key << "transform" << YAML::Value;
   EmitTransform(out_, camera.GetWorldTransform());
+  out_ << YAML::EndMap;
+}
+
+void MapSerializer::SerializeVisitor::Visit(
+    game::GamePlayerStart& player_start) {
+  out_ << YAML::BeginMap;
+  out_ << YAML::Key << "name"      << YAML::Value << player_start.GetName();
+  out_ << YAML::Key << "type"      << YAML::Value << "player_start";
+  out_ << YAML::Key << "transform" << YAML::Value;
+  EmitTransform(out_, player_start.GetWorldTransform());
   out_ << YAML::EndMap;
 }
 

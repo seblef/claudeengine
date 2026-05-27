@@ -12,6 +12,7 @@
 #include "game/GameLight.h"
 #include "game/GameMesh.h"
 #include "game/GameObjectVisitor.h"
+#include "game/GamePlayerStart.h"
 #include "game/GameTerrain.h"
 
 namespace abstract { class VideoDevice; }
@@ -53,11 +54,12 @@ class MapSerializer {
                      const std::filesystem::path& map_path,
                      const std::filesystem::path& data_dir);
 
-    void Visit(game::GameMesh& mesh)       override;
-    void Visit(game::GameLight& light)     override;
-    void Visit(game::GameCamera& camera)   override;
+    void Visit(game::GameMesh& mesh)                    override;
+    void Visit(game::GameLight& light)                  override;
+    void Visit(game::GameCamera& camera)                override;
+    void Visit(game::GamePlayerStart& player_start)     override;
     // Skipped from the objects sequence — terrain is at root level.
-    void Visit(game::GameTerrain& terrain) override {}
+    void Visit(game::GameTerrain& terrain)              override {}
 
     // Emits the "terrain:" root-level block and writes binary side-car files.
     // Must be called after the YAML objects sequence is closed.
