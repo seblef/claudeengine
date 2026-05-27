@@ -28,10 +28,11 @@ constexpr int kTransformToolCount =
 
 // Creation tools — toolbar-only, no keyboard shortcuts.
 constexpr ToolEntry kCreationTools[] = {
-  {EditorTool::kCreateMesh,       ICON_FA_CUBE,        "Create Mesh",               ImGuiKey_None},
-  {EditorTool::kCreateOmniLight,  ICON_FA_LIGHTBULB,   "Create Omni Light",         ImGuiKey_None},
-  {EditorTool::kCreateCircleSpot, ICON_FA_CIRCLE_DOT,  "Create Circle Spot Light",  ImGuiKey_None},
-  {EditorTool::kCreateRectSpot,   ICON_FA_SQUARE,      "Create Rect Spot Light",    ImGuiKey_None},
+  {EditorTool::kCreateMesh,        ICON_FA_CUBE,        "Create Mesh",               ImGuiKey_None},
+  {EditorTool::kCreateOmniLight,   ICON_FA_LIGHTBULB,   "Create Omni Light",         ImGuiKey_None},
+  {EditorTool::kCreateCircleSpot,  ICON_FA_CIRCLE_DOT,  "Create Circle Spot Light",  ImGuiKey_None},
+  {EditorTool::kCreateRectSpot,    ICON_FA_SQUARE,      "Create Rect Spot Light",    ImGuiKey_None},
+  {EditorTool::kCreatePlayerStart, ICON_FA_FLAG,        "Create Player Start",       ImGuiKey_None},
 };
 constexpr int kCreationToolCount =
     static_cast<int>(sizeof(kCreationTools) / sizeof(kCreationTools[0]));

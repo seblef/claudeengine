@@ -6,6 +6,7 @@ add_library(editor STATIC
     EditorScene.cpp
     EditorSystem.cpp
     LightWireframeRenderer.cpp
+    PlayerStartGizmoRenderer.cpp
     MapPropertiesWindow.cpp
     MapSerializer.cpp
     EditorTheme.cpp

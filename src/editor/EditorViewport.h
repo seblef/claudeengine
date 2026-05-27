@@ -13,6 +13,7 @@
 #include "editor/EditorCommandHistory.h"
 #include "editor/EditorTool.h"
 #include "editor/LightWireframeRenderer.h"
+#include "editor/PlayerStartGizmoRenderer.h"
 #include "editor/PickingAccelerator.h"
 #include "game/GameCamera.h"
 #include "game/GameObject.h"
@@ -76,6 +77,10 @@ class EditorViewport {
   // cursor at y=10 until the user clicks (LMB) to confirm placement.
   // Pass std::nullopt to cancel and remove the preview from the scene.
   void SetPendingLightType(std::optional<renderer::LightType> type);
+
+  // Enters player-start placement mode: a GamePlayerStart preview follows the
+  // cursor until the user clicks (LMB) to confirm placement.
+  void SetPendingPlayerStart();
 
   // Called after a mesh is placed to restore the selection tool.
   // Set by EditorWindow so EditorViewport can notify it without a back-pointer.
@@ -161,6 +166,8 @@ class EditorViewport {
 
   // cppcheck-suppress unusedStructMember
   LightWireframeRenderer                       light_wireframe_;
+  // cppcheck-suppress unusedStructMember
+  PlayerStartGizmoRenderer                     player_start_gizmo_;
 
   // cppcheck-suppress unusedStructMember
   EditorScene*      scene_            = nullptr;  // not owned; set by EditorWindow (issue #170)
