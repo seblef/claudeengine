@@ -22,6 +22,7 @@
 #include "game/GameMesh.h"
 #include "game/GamePlayerStart.h"
 #include "game/GameSystem.h"
+#include "game/GameTerrain.h"
 #include "game/MapLoader.h"
 #include "game/MeshTemplate.h"
 #include "gldevices/GLDevices.h"
@@ -81,6 +82,7 @@ int main(int argc, char* argv[]) {
   std::vector<std::unique_ptr<game::GameObject>> map_objects;
   game::GameCamera*      map_camera       = nullptr;
   game::GamePlayerStart* map_player_start = nullptr;
+  game::GameTerrain*     map_terrain      = nullptr;
 
   // Demo-scene objects (only constructed when no map is loaded).
   game::GameMaterial* demo_mat = nullptr;
@@ -134,6 +136,8 @@ int main(int argc, char* argv[]) {
             map_player_start =
                 static_cast<game::GamePlayerStart*>(obj.get());
         }
+        if (!map_terrain && obj->GetType() == game::GameObjectType::kTerrain)
+          map_terrain = static_cast<game::GameTerrain*>(obj.get());
         game.AddObject(obj.get());
       }
       if (player_start_count > 1)
@@ -154,6 +158,7 @@ int main(int argc, char* argv[]) {
     camera.SetScreenCenter({gfx.GetWidth() * 0.5f, gfx.GetHeight() * 0.5f});
     game.SetCamera(&camera);
     game.SetCameraController(&controller);
+    controller.SetTerrain(map_terrain ? &map_terrain->GetData() : nullptr);
 
     if (map_player_start) {
       const core::Mat4f& t = map_player_start->GetWorldTransform();
