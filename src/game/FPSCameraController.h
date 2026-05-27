@@ -3,6 +3,8 @@
 #include "core/Vec3f.h"
 #include "game/ICameraController.h"
 
+namespace terrain { class TerrainData; }
+
 namespace game {
 
 // FPS-style camera controller: mouse look with keyboard movement.
@@ -24,7 +26,12 @@ class FPSCameraController : public ICameraController {
   // Sets the initial world-space position. Call before the first Update().
   void SetPosition(core::Vec3f pos);
 
+  // Binds a terrain for automatic height clamping. Pass nullptr for free-fly.
+  void SetTerrain(const terrain::TerrainData* terrain);
+
  private:
+  // cppcheck-suppress unusedStructMember
+  static constexpr float kPlayerHeight = 1.8f;  // eye height above ground (m)
   // cppcheck-suppress unusedStructMember
   static constexpr float kMoveSpeed        = 10.f;    // units/s
   // cppcheck-suppress unusedStructMember
@@ -59,6 +66,9 @@ class FPSCameraController : public ICameraController {
   bool k_up_      = false;
   // cppcheck-suppress unusedStructMember
   bool k_down_    = false;
+
+  // cppcheck-suppress unusedStructMember
+  const terrain::TerrainData* terrain_ = nullptr;
 };
 
 }  // namespace game

@@ -7,6 +7,7 @@
 #include "core/Key.h"
 #include "core/Mat4f.h"
 #include "game/GameCamera.h"
+#include "terrain/TerrainData.h"
 
 namespace game {
 
@@ -18,6 +19,10 @@ void FPSCameraController::SetPosition(core::Vec3f pos) {
 
 void FPSCameraController::SetCamera(GameCamera* camera) {
   camera_ = camera;
+}
+
+void FPSCameraController::SetTerrain(const terrain::TerrainData* terrain) {
+  terrain_ = terrain;
 }
 
 void FPSCameraController::OnEvent(const core::Event& event) {
@@ -69,6 +74,12 @@ void FPSCameraController::Update(float dt) {
   if (k_left_)    position_ -= right               * spd;
   if (k_up_)      position_ += core::Vec3f::kAxisY * spd;
   if (k_down_)    position_ -= core::Vec3f::kAxisY * spd;
+
+  if (terrain_) {
+    const float ground = terrain_->GetHeight(position_.x, position_.z);
+    if (position_.y < ground + kPlayerHeight)
+      position_.y = ground + kPlayerHeight;
+  }
 
   // Build world transform: columns are right, world-up, -look, position.
   const core::Mat4f transform(
