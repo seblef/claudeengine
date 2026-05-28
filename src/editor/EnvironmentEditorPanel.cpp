@@ -69,11 +69,14 @@ void EnvironmentEditorPanel::SetContext(EditorScene* scene,
 // ---- Tick -------------------------------------------------------------------
 
 void EnvironmentEditorPanel::Tick(float dt) {
-  if (!world_time_ || time_paused_) return;
-  world_time_->Advance(dt);
-  const float tod = world_time_->GetTimeOfDay();
-  renderer::Renderer::Instance().SetSkyWorldTime(tod);
-  renderer::Renderer::Instance().SetWaterSkyWorldTime(tod);
+  if (time_paused_) return;
+  if (world_time_) {
+    world_time_->Advance(dt);
+    const float tod = world_time_->GetTimeOfDay();
+    renderer::Renderer::Instance().SetSkyWorldTime(tod);
+    renderer::Renderer::Instance().SetWaterSkyWorldTime(tod);
+  }
+  if (wind_system_) wind_system_->Update(dt);
 }
 
 // ---- Subsystem lifecycle ----------------------------------------------------
