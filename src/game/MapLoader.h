@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "environment/EnvironmentDesc.h"
 #include "game/GameLightDesc.h"
 #include "game/GameObject.h"
 
@@ -23,6 +24,8 @@ struct MapData {
   float       map_size    = 120.f;   // full floor side length; half_size = map_size / 2
   // cppcheck-suppress unusedStructMember
   GameLightDesc global_light;
+  // cppcheck-suppress unusedStructMember
+  environment::EnvironmentDesc environment_desc;
   // cppcheck-suppress unusedStructMember
   std::vector<std::unique_ptr<GameObject>> objects;
 };

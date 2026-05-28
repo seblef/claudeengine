@@ -30,6 +30,34 @@ namespace game {
 
 namespace {
 
+environment::EnvironmentDesc ParseEnvironmentDesc(const YAML::Node& node) {
+  environment::EnvironmentDesc desc;
+  if (!node) return desc;
+
+  if (node["sky_enabled"])
+    desc.sky_enabled = node["sky_enabled"].as<bool>(desc.sky_enabled);
+  if (node["water_enabled"])
+    desc.water_enabled = node["water_enabled"].as<bool>(desc.water_enabled);
+  if (node["cloud_enabled"])
+    desc.cloud_enabled = node["cloud_enabled"].as<bool>(desc.cloud_enabled);
+  if (node["wind_enabled"])
+    desc.wind_enabled = node["wind_enabled"].as<bool>(desc.wind_enabled);
+  if (node["trees_enabled"])
+    desc.trees_enabled = node["trees_enabled"].as<bool>(desc.trees_enabled);
+  if (node["water_level"])
+    desc.water_level = node["water_level"].as<float>(desc.water_level);
+  if (node["time_scale"])
+    desc.time_scale = node["time_scale"].as<float>(desc.time_scale);
+  if (node["cloud_density"])
+    desc.cloud_density = node["cloud_density"].as<float>(desc.cloud_density);
+  if (node["wind_strength"])
+    desc.wind_strength = node["wind_strength"].as<float>(desc.wind_strength);
+  if (node["wind_direction"])
+    desc.wind_direction = core::ParseVec3(node["wind_direction"],
+                                          desc.wind_direction);
+  return desc;
+}
+
 GameLightDesc ParseGlobalLightDesc(const YAML::Node& node) {
   GameLightDesc desc;
   if (!node) return desc;
@@ -279,6 +307,8 @@ MapData MapLoader::Load(const std::filesystem::path& path,
   result.name     = root["name"].as<std::string>("");
   result.map_size = root["map_size"].as<float>(120.f);
 
+  if (root["environment"])
+    result.environment_desc = ParseEnvironmentDesc(root["environment"]);
   if (root["global_light"])
     result.global_light = ParseGlobalLightDesc(root["global_light"]);
 
