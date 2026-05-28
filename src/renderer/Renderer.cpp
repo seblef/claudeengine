@@ -1,5 +1,8 @@
 #include "renderer/Renderer.h"
 
+#include <algorithm>
+#include <cmath>
+
 #include "abstract/BlendFactor.h"
 #include "abstract/BufferUsage.h"
 #include "abstract/CompareFunc.h"
@@ -7,6 +10,7 @@
 #include "core/Color.h"
 #include "core/ViewFrustum.h"
 #include "environment/SkyRenderer.h"
+#include "environment/WaterRenderer.h"
 #include "environment/WindInfos.h"
 #include "environment/WindSystem.h"
 #include "renderer/CSMInfos.h"
@@ -151,6 +155,10 @@ void Renderer::Update(float time, const core::Camera* camera,
     terrain_renderer_->Render(*camera_);
   if (foliage_enabled_ && FoliageRenderer::Instance().IsReady() && camera_)
     FoliageRenderer::Instance().Render(*camera_);
+  if (water_renderer_ && water_renderer_->IsReady() && camera_) {
+    UpdateWaterRenderer();
+    water_renderer_->Render(*camera_);
+  }
   gbuffer_.UnbindForWriting();
 
   // Debug bypass — blit a chosen G-buffer RT to the default framebuffer and skip
@@ -293,6 +301,31 @@ void Renderer::FillSceneInfos() {
   si.z_far_          = camera_->GetMaxDepth();
 
   scene_infos_cb_->Fill(&si);
+}
+
+void Renderer::UpdateWaterRenderer() {
+  // Derive sun direction from world time — mirrors SkyRenderer::ComputeSunDirection().
+  constexpr float kPi           = 3.14159265f;
+  constexpr float kSunriseHour  = 6.f;
+  constexpr float kMaxElevation = 45.f * (kPi / 180.f);
+  const float t        = water_sky_world_time_;
+  const float azimuth  = ((t - kSunriseHour) / 24.f) * 2.f * kPi;
+  const float elev     = std::sin(((t - kSunriseHour) / 12.f) * kPi) * kMaxElevation;
+  const float cos_el   = std::cos(elev);
+  const core::Vec3f sun_dir(
+      -std::cos(azimuth) * cos_el,
+       std::sin(elev),
+      -std::sin(azimuth) * cos_el);
+
+  // Simple sky zenith colour interpolation: night (dark blue) → day (bright blue).
+  // Matches the qualitative output of the Preetham sky at the zenith.
+  const float day_factor = std::clamp(sun_dir.y, 0.f, 1.f);
+  const float r = 0.05f + day_factor * 0.35f;
+  const float g = 0.10f + day_factor * 0.55f;
+  const float b = 0.25f + day_factor * 0.65f;
+
+  water_renderer_->SetSunDirection(sun_dir.Normalized());
+  water_renderer_->SetSkyZenithColor(r, g, b);
 }
 
 }  // namespace renderer
