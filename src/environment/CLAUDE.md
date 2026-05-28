@@ -10,10 +10,11 @@ and `core`/`abstract` (utilities).
 
 ```
 game → environment → core, abstract
+renderer → environment (renderer/Renderer.cpp includes environment/SkyRenderer.h)
 ```
 
-The `environment` module must not be included by `core`, `abstract`, or
-`renderer`.
+The `environment` module must not depend on `renderer`; the dependency is
+one-way (`renderer` calls into `environment`, not the other way around).
 
 ## Module structure
 
@@ -21,6 +22,8 @@ The `environment` module must not be included by `core`, `abstract`, or
 |---|---|
 | `EnvironmentDesc` | Header-only data struct; loaded from a map YAML section and passed to subsystem constructors |
 | `WorldTime` | Tracks in-game time of day, advances with a configurable time scale, exposes sun/moon directions |
+| `SkyInfos` | Header-only constant buffer struct for the sky shader (slot 8) |
+| `SkyRenderer` | Singleton GPU renderer: Preetham sky, sun/moon disc, star noise |
 
 ## Key invariants
 

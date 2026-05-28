@@ -1,4 +1,5 @@
 add_library(environment STATIC
+    SkyRenderer.cpp
     WorldTime.cpp
 )
 
