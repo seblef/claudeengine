@@ -7,6 +7,8 @@
 #include "core/Color.h"
 #include "core/ViewFrustum.h"
 #include "environment/SkyRenderer.h"
+#include "environment/WindInfos.h"
+#include "environment/WindSystem.h"
 #include "renderer/CSMInfos.h"
 #include "renderer/GeometryUtils.h"
 #include "renderer/LightRenderer.h"
@@ -26,6 +28,8 @@ constexpr int kMaterialInfosSlot      = 3;
 constexpr int kMaterialInfosFloat4s   = sizeof(MaterialInfos) / 16;     // 64 / 16 = 4
 constexpr int kCSMInfosSlot           = 5;
 constexpr int kCSMInfosFloat4s        = sizeof(CSMInfos) / 16;          // 272 / 16 = 17
+constexpr int kWindInfosSlot          = 7;
+constexpr int kWindInfosFloat4s       = sizeof(environment::WindInfos) / 16;  // 16 / 16 = 1
 }  // namespace
 
 Renderer::Renderer(abstract::VideoDevice* video)
@@ -41,6 +45,8 @@ Renderer::Renderer(abstract::VideoDevice* video)
       kMaterialInfosFloat4s, kMaterialInfosSlot, abstract::BufferUsage::kDynamic);
   csm_infos_cb_ = video_->CreateConstantBuffer(
       kCSMInfosFloat4s, kCSMInfosSlot, abstract::BufferUsage::kDynamic);
+  wind_infos_cb_ = video_->CreateConstantBuffer(
+      kWindInfosFloat4s, kWindInfosSlot, abstract::BufferUsage::kDynamic);
 
   render_w_ = video_->GetWidth();
   render_h_ = video_->GetHeight();
@@ -111,7 +117,9 @@ void Renderer::Update(float time, const core::Camera* camera,
   scene_infos_cb_->Bind();
   material_infos_cb_->Bind();
   csm_infos_cb_->Bind();
+  wind_infos_cb_->Bind();
   if (camera_) FillSceneInfos();
+  FillWindInfos();
 
   if (camera_) {
     const core::ViewFrustum frustum(camera_->GetViewProjectionMatrix());
@@ -255,6 +263,17 @@ void Renderer::RenderTerrainWireframe(const core::Camera& camera,
                                        abstract::RenderTargetGroup* fbo) {
   if (terrain_renderer_ && terrain_renderer_->IsReady())
     terrain_renderer_->RenderWireframe(video_, camera, fbo);
+}
+
+void Renderer::FillWindInfos() {
+  environment::WindInfos wi;
+  if (wind_system_) {
+    const core::Vec3f vec = wind_system_->GetWindVector();
+    wi.wind_xz       = {vec.x, vec.z};
+    wi.wind_strength = wind_system_->GetWindStrength();
+    wi.wind_time     = wind_system_->GetWindTime();
+  }
+  wind_infos_cb_->Fill(&wi);
 }
 
 void Renderer::FillSceneInfos() {
