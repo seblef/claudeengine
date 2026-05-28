@@ -52,9 +52,10 @@ environment::EnvironmentDesc ParseEnvironmentDesc(const YAML::Node& node) {
     desc.cloud_density = node["cloud_density"].as<float>(desc.cloud_density);
   if (node["wind_strength"])
     desc.wind_strength = node["wind_strength"].as<float>(desc.wind_strength);
-  if (node["wind_direction"])
+  if (node["wind_direction"]) {
     desc.wind_direction = core::ParseVec3(node["wind_direction"],
-                                          desc.wind_direction);
+                                          desc.wind_direction).Normalized();
+  }
   return desc;
 }
 

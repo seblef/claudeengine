@@ -8,6 +8,7 @@
 
 #include "abstract/VideoDevice.h"
 #include "core/BBox3.h"
+#include "environment/EnvironmentDesc.h"
 #include "game/GameLight.h"
 #include "game/GameLightDesc.h"
 #include "game/GameMaterial.h"
@@ -105,6 +106,13 @@ class EditorScene {
   // Updates global_light_desc_ and immediately syncs the live renderer light.
   void                                        SetGlobalLightDesc(const game::GameLightDesc& desc);
 
+  [[nodiscard]] const environment::EnvironmentDesc& GetEnvironmentDesc() const {
+    return environment_desc_;
+  }
+  void SetEnvironmentDesc(const environment::EnvironmentDesc& desc) {
+    environment_desc_ = desc;
+  }
+
  private:
   // cppcheck-suppress unusedStructMember
   std::string             map_name_  = "untitled";
@@ -113,7 +121,9 @@ class EditorScene {
   // cppcheck-suppress unusedStructMember
   std::filesystem::path   file_path_;
   // cppcheck-suppress unusedStructMember
-  game::GameLightDesc     global_light_desc_;
+  game::GameLightDesc              global_light_desc_;
+  // cppcheck-suppress unusedStructMember
+  environment::EnvironmentDesc     environment_desc_;
 
   // cppcheck-suppress unusedStructMember
   std::vector<std::unique_ptr<game::GameObject>> dynamic_objects_;
