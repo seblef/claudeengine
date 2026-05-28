@@ -13,6 +13,7 @@
 #include "core/Singleton.h"
 #include "renderer/EmissiveFBO.h"
 #include "renderer/FoliageRenderer.h"
+#include "renderer/TreeRenderer.h"
 #include "renderer/GBuffer.h"
 #include "renderer/GeometryData.h"
 #include "renderer/NoCullingVisibilitySystem.h"
@@ -169,6 +170,12 @@ class Renderer : public core::Singleton<Renderer> {
   // before enabling; see FoliageRenderer::Build().
   void SetFoliageEnabled(bool enabled) { foliage_enabled_ = enabled; }
 
+  // Enables tree rendering. When set, TreeRenderer::Render() is called in the
+  // geometry pass and TreeRenderer::RenderBillboards() in the emissive pass.
+  // Pass false to disable. The TreeRenderer singleton must be built before
+  // enabling; see TreeRenderer::Build().
+  void SetTreeEnabled(bool enabled) { tree_enabled_ = enabled; }
+
   // Renders terrain patch edges as a flat-colour wireframe overlay into fbo.
   // No-op when no terrain has been registered or Init() has not been called.
   // Must be called after Update() so the scene UBO at slot 2 is bound.
@@ -248,6 +255,7 @@ class Renderer : public core::Singleton<Renderer> {
   float                       water_sky_world_time_ = 12.f;  // hours, 0–24
 
   bool foliage_enabled_ = false;
+  bool tree_enabled_    = false;
 
   // Composite pass resources — gamma-correct the HDR RT to the default framebuffer.
   // cppcheck-suppress unusedStructMember
