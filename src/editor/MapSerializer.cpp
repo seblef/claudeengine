@@ -77,6 +77,8 @@ void EmitEnvironment(YAML::Emitter& out,
     out << YAML::Key << "trees_enabled" << YAML::Value << env.trees_enabled;
   if (env.time_scale    != def.time_scale)
     out << YAML::Key << "time_scale"    << YAML::Value << env.time_scale;
+  if (env.turbidity     != def.turbidity)
+    out << YAML::Key << "turbidity"     << YAML::Value << env.turbidity;
   out << YAML::EndMap;
 }
 

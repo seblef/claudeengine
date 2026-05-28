@@ -5,6 +5,7 @@ add_library(editor STATIC
     EditorCommandHistory.cpp
     EditorScene.cpp
     EditorSystem.cpp
+    EnvironmentEditorPanel.cpp
     LightWireframeRenderer.cpp
     PlayerStartGizmoRenderer.cpp
     MapPropertiesWindow.cpp

@@ -154,9 +154,11 @@ void Renderer::Update(float time, const core::Camera* camera,
   MeshRenderer::Instance().Render();
   if (terrain_renderer_ && terrain_renderer_->IsReady() && camera_)
     terrain_renderer_->Render(*camera_);
-  if (foliage_enabled_ && FoliageRenderer::Instance().IsReady() && camera_)
+  if (foliage_enabled_ && FoliageRenderer::IsInstanced() &&
+      FoliageRenderer::Instance().IsReady() && camera_)
     FoliageRenderer::Instance().Render(*camera_);
-  if (tree_enabled_ && TreeRenderer::Instance().IsReady() && camera_)
+  if (tree_enabled_ && TreeRenderer::IsInstanced() &&
+      TreeRenderer::Instance().IsReady() && camera_)
     TreeRenderer::Instance().Render(*camera_);
   if (water_renderer_ && water_renderer_->IsReady() && camera_) {
     UpdateWaterRenderer();
@@ -234,9 +236,11 @@ void Renderer::Update(float time, const core::Camera* camera,
   video_->SetBlendEnabled(true, abstract::BlendFactor::kOne, abstract::BlendFactor::kOne);
   MeshRenderer::Instance().RenderEmissive();
   MeshRenderer::Instance().EndRender();
-  if (foliage_enabled_ && FoliageRenderer::Instance().IsReady() && camera_)
+  if (foliage_enabled_ && FoliageRenderer::IsInstanced() &&
+      FoliageRenderer::Instance().IsReady() && camera_)
     FoliageRenderer::Instance().RenderBillboards(*camera_);
-  if (tree_enabled_ && TreeRenderer::Instance().IsReady() && camera_)
+  if (tree_enabled_ && TreeRenderer::IsInstanced() &&
+      TreeRenderer::Instance().IsReady() && camera_)
     TreeRenderer::Instance().RenderBillboards(*camera_);
   video_->SetBlendEnabled(false);
   video_->SetDepthFunc(abstract::CompareFunc::kLess);

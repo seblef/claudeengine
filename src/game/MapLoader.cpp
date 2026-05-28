@@ -56,6 +56,8 @@ environment::EnvironmentDesc ParseEnvironmentDesc(const YAML::Node& node) {
     desc.wind_direction = core::ParseVec3(node["wind_direction"],
                                           desc.wind_direction).Normalized();
   }
+  if (node["turbidity"])
+    desc.turbidity = node["turbidity"].as<float>(desc.turbidity);
   return desc;
 }
 

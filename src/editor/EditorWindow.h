@@ -9,6 +9,7 @@
 #include "editor/EditorCommand.h"
 #include "editor/EditorCommandHistory.h"
 #include "editor/EditorTool.h"
+#include "editor/EnvironmentEditorPanel.h"
 #include "editor/TerrainCreationDialog.h"
 #include "editor/TerrainEditorPanel.h"
 
@@ -160,6 +161,12 @@ class EditorWindow {
   TerrainEditorPanel terrain_panel_;
   // cppcheck-suppress unusedStructMember
   bool               show_terrain_panel_ = false;
+
+  // Environment editor panel — shown via the Map menu.
+  // cppcheck-suppress unusedStructMember
+  EnvironmentEditorPanel environment_panel_;
+  // cppcheck-suppress unusedStructMember
+  bool                   show_environment_panel_ = false;
 
   // Debug state.
   // cppcheck-suppress unusedStructMember

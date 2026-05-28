@@ -35,6 +35,12 @@ void WorldTime::SetTimeScale(float s) {
     time_scale_ = s;
 }
 
+void WorldTime::SetTimeOfDay(float hours) {
+    world_time_ = hours * 3600.f;
+    if (world_time_ < 0.f)         world_time_ = 0.f;
+    if (world_time_ >= kSecondsPerDay) world_time_ = kSecondsPerDay - 1.f;
+}
+
 float WorldTime::GetTimeOfDay() const {
     return ToHours(world_time_);
 }
