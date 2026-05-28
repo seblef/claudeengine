@@ -5,15 +5,17 @@
 // analytical normal is computed from the wave height derivatives.
 //
 // Wave model (per wave i):
-//   height_i = A_i * sin(dot(dir_i, xz) * freq_i + wind_time * speed_i)
+//   height_i = A_i * sin(dot(dir_i, xz) * freq_i + time * speed_i)
 //   dH/dx_i  = A_i * freq_i * cos(...) * dir_i.x
 //   dH/dz_i  = A_i * freq_i * cos(...) * dir_i.y
 //   N = normalize(vec3(-sum(dH/dx), 1.0, -sum(dH/dz)))
 //
+// Wave phase is driven by scene_infos.time (always advancing) so waves
+// animate regardless of whether the wind system is active.
 // Amplitudes scale with wind_strength so a calm wind produces flat water.
 //
-// UBO binding 2: scene_infos (view_proj)
-// UBO binding 7: wind_infos  (wind_xz, wind_strength, wind_time)
+// UBO binding 2: scene_infos (view_proj, time)
+// UBO binding 7: wind_infos  (wind_xz, wind_strength)
 // UBO binding 9: water_infos (water_params.a = water_level)
 
 #version 460 core
@@ -73,7 +75,9 @@ void main() {
 
     for (int i = 0; i < N_WAVES; ++i) {
         float amp   = base_amp * amps[i];
-        float phase = dot(dirs[i], xz) * freqs[i] + wind_time * speeds[i];
+        // Use scene time (always advancing) so waves move regardless of
+        // whether the wind system is running.
+        float phase = dot(dirs[i], xz) * freqs[i] + time * speeds[i];
         float s     = sin(phase);
         float c     = cos(phase);
 
