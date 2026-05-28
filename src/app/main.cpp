@@ -14,7 +14,10 @@
 #include "core/Mat4f.h"
 #include "core/ProjectionType.h"
 #include "core/Vec3f.h"
+#include "environment/CloudRenderer.h"
 #include "environment/SkyRenderer.h"
+#include "environment/WaterRenderer.h"
+#include "environment/WindSystem.h"
 #include "environment/WorldTime.h"
 #include "game/EnvironmentLighting.h"
 #include "game/FPSCameraController.h"
@@ -83,6 +86,7 @@ int main(int argc, char* argv[]) {
   std::unique_ptr<game::GameMesh>           map_floor;
   std::unique_ptr<game::GameLight>          map_global_light;
   std::unique_ptr<environment::WorldTime>   map_world_time;
+  std::unique_ptr<environment::WindSystem>  map_wind_system;
   // cppcheck-suppress variableScope ; must outlive the main loop
   std::vector<std::unique_ptr<game::GameObject>> map_objects;
   game::GameCamera*      map_camera       = nullptr;
@@ -129,15 +133,37 @@ int main(int argc, char* argv[]) {
           renderer::LightType::kGlobal, map_data.global_light);
       game.AddObject(map_global_light.get());
 
-      // Sky + dynamic lighting when the environment section enables it.
-      if (map_data.environment_desc.sky_enabled) {
-        map_world_time = std::make_unique<environment::WorldTime>(
-            map_data.environment_desc.time_scale);
+      const environment::EnvironmentDesc& env = map_data.environment_desc;
+
+      if (env.sky_enabled) {
+        map_world_time = std::make_unique<environment::WorldTime>(env.time_scale);
         new environment::SkyRenderer();
         environment::SkyRenderer::Instance().Build(video);
         renderer::Renderer::Instance().SetSkyRenderer(
             &environment::SkyRenderer::Instance());
       }
+
+      if (env.water_enabled) {
+        new environment::WaterRenderer();
+        environment::WaterRenderer::Instance().Build(video, env.water_level);
+        renderer::Renderer::Instance().SetWaterRenderer(
+            &environment::WaterRenderer::Instance());
+      }
+
+      if (env.cloud_enabled) {
+        new environment::CloudRenderer();
+        environment::CloudRenderer::Instance().Build(video);
+        renderer::Renderer::Instance().SetCloudRenderer(
+            &environment::CloudRenderer::Instance());
+        renderer::Renderer::Instance().SetCloudDensity(env.cloud_density);
+      }
+
+      if (env.wind_enabled) {
+        map_wind_system = std::make_unique<environment::WindSystem>(env);
+        renderer::Renderer::Instance().SetWindSystem(map_wind_system.get());
+      }
+
+      renderer::Renderer::Instance().SetTreeEnabled(env.trees_enabled);
 
       // Add all map objects; locate the first camera and first player start.
       map_objects = std::move(map_data.objects);
@@ -286,16 +312,27 @@ int main(int argc, char* argv[]) {
   // ---- Main loop ------------------------------------------------------------
   float prev_elapsed = 0.f;
   while (game.IsRunning()) {
-    if (map_world_time && map_global_light) {
-      const float elapsed   = game.GetElapsedTime();
-      const float frame_dt  = elapsed - prev_elapsed;
+    if (map_world_time || map_wind_system) {
+      const float elapsed  = game.GetElapsedTime();
+      const float frame_dt = elapsed - prev_elapsed;
       prev_elapsed = elapsed;
-      map_world_time->Advance(frame_dt);
-      renderer::Renderer::Instance().SetSkyWorldTime(
-          map_world_time->GetTimeOfDay());
-      auto* gl = static_cast<renderer::GlobalLight*>(
-          map_global_light->GetLight());
-      game::UpdateGlobalLight(*gl, *map_world_time);
+
+      if (map_world_time) {
+        map_world_time->Advance(frame_dt);
+        renderer::Renderer::Instance().SetSkyWorldTime(
+            map_world_time->GetTimeOfDay());
+        renderer::Renderer::Instance().SetWaterSkyWorldTime(
+            map_world_time->GetTimeOfDay());
+        if (map_global_light) {
+          auto* gl = static_cast<renderer::GlobalLight*>(
+              map_global_light->GetLight());
+          game::UpdateGlobalLight(*gl, *map_world_time);
+        }
+      }
+
+      if (map_wind_system) {
+        map_wind_system->Update(frame_dt);
+      }
     }
     video->BeginFrame();
     video->ClearRenderTargets(core::Color::kBlack);
@@ -308,6 +345,14 @@ int main(int argc, char* argv[]) {
   if (environment::SkyRenderer::IsInstanced()) {
     environment::SkyRenderer::Instance().Reset();
     environment::SkyRenderer::Shutdown();
+  }
+  if (environment::WaterRenderer::IsInstanced()) {
+    environment::WaterRenderer::Instance().Reset();
+    environment::WaterRenderer::Shutdown();
+  }
+  if (environment::CloudRenderer::IsInstanced()) {
+    environment::CloudRenderer::Instance().Reset();
+    environment::CloudRenderer::Shutdown();
   }
 
   game::GameSystem::Shutdown();

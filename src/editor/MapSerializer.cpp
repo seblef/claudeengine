@@ -11,6 +11,7 @@
 
 #include "abstract/VideoDevice.h"
 #include "core/Config.h"
+#include "environment/EnvironmentDesc.h"
 #include "game/GameCamera.h"
 #include "game/GameLight.h"
 #include "game/GameMaterial.h"
@@ -46,6 +47,37 @@ void EmitTransform(YAML::Emitter& out, const core::Mat4f& m) {
   const float* data = m.Data();
   for (int i = 0; i < 16; ++i) out << data[i];
   out << YAML::EndSeq;
+}
+
+void EmitEnvironment(YAML::Emitter& out,
+                     const environment::EnvironmentDesc& env) {
+  const environment::EnvironmentDesc def;
+  out << YAML::Key << "environment" << YAML::Value << YAML::BeginMap;
+  if (env.sky_enabled   != def.sky_enabled)
+    out << YAML::Key << "sky_enabled"   << YAML::Value << env.sky_enabled;
+  if (env.water_enabled != def.water_enabled)
+    out << YAML::Key << "water_enabled" << YAML::Value << env.water_enabled;
+  if (env.water_level   != def.water_level)
+    out << YAML::Key << "water_level"   << YAML::Value << env.water_level;
+  if (env.cloud_enabled != def.cloud_enabled)
+    out << YAML::Key << "cloud_enabled" << YAML::Value << env.cloud_enabled;
+  if (env.cloud_density != def.cloud_density)
+    out << YAML::Key << "cloud_density" << YAML::Value << env.cloud_density;
+  if (env.wind_enabled  != def.wind_enabled)
+    out << YAML::Key << "wind_enabled"  << YAML::Value << env.wind_enabled;
+  if (env.wind_direction.x != def.wind_direction.x ||
+      env.wind_direction.y != def.wind_direction.y ||
+      env.wind_direction.z != def.wind_direction.z) {
+    out << YAML::Key << "wind_direction" << YAML::Value;
+    EmitVec3(out, env.wind_direction);
+  }
+  if (env.wind_strength != def.wind_strength)
+    out << YAML::Key << "wind_strength"  << YAML::Value << env.wind_strength;
+  if (env.trees_enabled != def.trees_enabled)
+    out << YAML::Key << "trees_enabled" << YAML::Value << env.trees_enabled;
+  if (env.time_scale    != def.time_scale)
+    out << YAML::Key << "time_scale"    << YAML::Value << env.time_scale;
+  out << YAML::EndMap;
 }
 
 std::string LightTypeToString(renderer::LightType type) {
@@ -306,6 +338,8 @@ bool MapSerializer::Save(const EditorScene& scene,
   out << YAML::Key << "shadow_bias"       << YAML::Value << ld.shadow_bias;
   out << YAML::EndMap;
 
+  EmitEnvironment(out, scene.GetEnvironmentDesc());
+
   // Scene objects — only dynamic objects; procedural meshes are skipped by
   // the visitor. GameTerrain objects are skipped from the sequence and
   // serialised into a root-level "terrain:" block instead.
@@ -368,6 +402,7 @@ std::optional<MapLoadResult> MapSerializer::Load(
   MapLoadResult result;
   result.scene = std::make_unique<EditorScene>(
       video, map_data.name, map_data.map_size, map_data.global_light);
+  result.scene->SetEnvironmentDesc(map_data.environment_desc);
 
   // Transfer objects and their resource ownership to the scene.
   std::unordered_set<std::string> added_templates;
