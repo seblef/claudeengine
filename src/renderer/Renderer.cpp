@@ -9,6 +9,7 @@
 #include "core/BBox3.h"
 #include "core/Color.h"
 #include "core/ViewFrustum.h"
+#include "environment/CloudRenderer.h"
 #include "environment/SkyRenderer.h"
 #include "environment/WaterRenderer.h"
 #include "environment/WindInfos.h"
@@ -203,6 +204,18 @@ void Renderer::Update(float time, const core::Camera* camera,
   if (sky_renderer_ && sky_renderer_->IsReady() && camera_) {
     emissive_fbo_.BindForWriting();
     sky_renderer_->Render(*camera_, sky_world_time_);
+    emissive_fbo_.UnbindForWriting();
+    video_->SetDepthTestEnabled(false);
+    video_->SetDepthWriteEnabled(true);
+  }
+
+  // 3b. Cloud pass — alpha-blend procedural clouds over the sky into the HDR RT.
+  //     Runs after the sky so clouds are composited on top of the Preetham sky.
+  //     Depth state is left in the same LEQUAL/write-off configuration as the
+  //     sky pass — only background pixels are painted.
+  if (cloud_renderer_ && cloud_renderer_->IsReady() && camera_) {
+    emissive_fbo_.BindForWriting();
+    cloud_renderer_->Render(sky_world_time_, cloud_density_);
     emissive_fbo_.UnbindForWriting();
     video_->SetDepthTestEnabled(false);
     video_->SetDepthWriteEnabled(true);

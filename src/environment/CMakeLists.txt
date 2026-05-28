@@ -1,4 +1,5 @@
 add_library(environment STATIC
+    CloudRenderer.cpp
     SkyRenderer.cpp
     WaterRenderer.cpp
     WindSystem.cpp
