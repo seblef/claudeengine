@@ -21,7 +21,8 @@
 #include "renderer/ShadowRenderer.h"
 #include "terrain/TerrainRenderer.h"
 
-namespace environment { class SkyRenderer; }
+namespace environment { class SkyRenderer;  }
+namespace environment { class WindSystem;   }
 
 namespace renderer {
 
@@ -43,6 +44,7 @@ enum class DebugMode : int {
 //   Slot 2 (SceneInfos): per-frame camera matrices, eye position, time, z_near/z_far.
 //   Slot 3 (MaterialInfos): per-material colors and shininess.
 //   Slot 5 (CSMInfos): cascade VP matrices and split depths for GlobalLight CSM.
+//   Slot 7 (WindInfos): wind_xz, wind_strength, wind_time (global; all passes).
 //   Slot 8 (SkyInfos): sun direction, time of day, turbidity (sky pass only).
 //
 // Render targets (created at video resolution, recreated on resize):
@@ -133,6 +135,11 @@ class Renderer : public core::Singleton<Renderer> {
   // Sets the world time of day (hours, 0–24) forwarded to SkyRenderer each frame.
   void SetSkyWorldTime(float t) { sky_world_time_ = t; }
 
+  // Registers a WindSystem whose data is uploaded into slot 7 each frame.
+  // Pass nullptr to clear — the CB is still bound but filled with zeroes.
+  // The caller retains ownership.
+  void SetWindSystem(environment::WindSystem* wind) { wind_system_ = wind; }
+
   // Enables foliage rendering. When set, FoliageRenderer::Render() is called
   // in the geometry pass and FoliageRenderer::RenderBillboards() in the emissive
   // pass. Pass false to disable. The FoliageRenderer singleton must be built
@@ -165,6 +172,7 @@ class Renderer : public core::Singleton<Renderer> {
 
  private:
   void FillSceneInfos();
+  void FillWindInfos();
 
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice* video_;
@@ -178,6 +186,7 @@ class Renderer : public core::Singleton<Renderer> {
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<abstract::ConstantBuffer> material_infos_cb_;
   std::unique_ptr<abstract::ConstantBuffer> csm_infos_cb_;
+  std::unique_ptr<abstract::ConstantBuffer> wind_infos_cb_;
 
   std::unique_ptr<NoCullingVisibilitySystem> no_culling_system_;
   std::unique_ptr<OctreeVisibilitySystem>    octree_system_;
@@ -198,6 +207,9 @@ class Renderer : public core::Singleton<Renderer> {
   environment::SkyRenderer*  sky_renderer_     = nullptr;
   // cppcheck-suppress unusedStructMember
   float                      sky_world_time_   = 12.f;  // hours, 0–24
+  // Optional wind system uploaded into slot 7 each frame. Not owned by Renderer.
+  // cppcheck-suppress unusedStructMember
+  environment::WindSystem*   wind_system_      = nullptr;
 
   bool foliage_enabled_ = false;
 
