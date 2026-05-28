@@ -14,6 +14,9 @@
 #include "core/Mat4f.h"
 #include "core/ProjectionType.h"
 #include "core/Vec3f.h"
+#include "environment/SkyRenderer.h"
+#include "environment/WorldTime.h"
+#include "game/EnvironmentLighting.h"
 #include "game/FPSCameraController.h"
 #include "game/GameCamera.h"
 #include "game/GameLight.h"
@@ -27,6 +30,7 @@
 #include "game/MeshTemplate.h"
 #include "gldevices/GLDevices.h"
 #include "renderer/GeometryUtils.h"
+#include "renderer/GlobalLight.h"
 #include "renderer/MaterialDesc.h"
 #include "renderer/Renderer.h"
 
@@ -76,8 +80,9 @@ int main(int argc, char* argv[]) {
   game::FPSCameraController controller;
 
   // Map-loaded scene objects.
-  std::unique_ptr<game::GameMesh>  map_floor;
-  std::unique_ptr<game::GameLight> map_global_light;
+  std::unique_ptr<game::GameMesh>           map_floor;
+  std::unique_ptr<game::GameLight>          map_global_light;
+  std::unique_ptr<environment::WorldTime>   map_world_time;
   // cppcheck-suppress variableScope ; must outlive the main loop
   std::vector<std::unique_ptr<game::GameObject>> map_objects;
   game::GameCamera*      map_camera       = nullptr;
@@ -123,6 +128,16 @@ int main(int argc, char* argv[]) {
       map_global_light = std::make_unique<game::GameLight>(
           renderer::LightType::kGlobal, map_data.global_light);
       game.AddObject(map_global_light.get());
+
+      // Sky + dynamic lighting when the environment section enables it.
+      if (map_data.environment_desc.sky_enabled) {
+        map_world_time = std::make_unique<environment::WorldTime>(
+            map_data.environment_desc.time_scale);
+        new environment::SkyRenderer();
+        environment::SkyRenderer::Instance().Build(video);
+        renderer::Renderer::Instance().SetSkyRenderer(
+            &environment::SkyRenderer::Instance());
+      }
 
       // Add all map objects; locate the first camera and first player start.
       map_objects = std::move(map_data.objects);
@@ -269,7 +284,19 @@ int main(int argc, char* argv[]) {
   });
 
   // ---- Main loop ------------------------------------------------------------
+  float prev_elapsed = 0.f;
   while (game.IsRunning()) {
+    if (map_world_time && map_global_light) {
+      const float elapsed   = game.GetElapsedTime();
+      const float frame_dt  = elapsed - prev_elapsed;
+      prev_elapsed = elapsed;
+      map_world_time->Advance(frame_dt);
+      renderer::Renderer::Instance().SetSkyWorldTime(
+          map_world_time->GetTimeOfDay());
+      auto* gl = static_cast<renderer::GlobalLight*>(
+          map_global_light->GetLight());
+      game::UpdateGlobalLight(*gl, *map_world_time);
+    }
     video->BeginFrame();
     video->ClearRenderTargets(core::Color::kBlack);
     renderer::Renderer::Instance().SetDebugMode(debug_mode);
@@ -277,6 +304,11 @@ int main(int argc, char* argv[]) {
   }
 
   if (demo_mat) demo_mat->Release();
+
+  if (environment::SkyRenderer::IsInstanced()) {
+    environment::SkyRenderer::Instance().Reset();
+    environment::SkyRenderer::Shutdown();
+  }
 
   game::GameSystem::Shutdown();
   renderer::Renderer::Shutdown();
