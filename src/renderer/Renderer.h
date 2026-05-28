@@ -21,8 +21,9 @@
 #include "renderer/ShadowRenderer.h"
 #include "terrain/TerrainRenderer.h"
 
-namespace environment { class SkyRenderer;  }
-namespace environment { class WindSystem;   }
+namespace environment { class SkyRenderer;   }
+namespace environment { class WaterRenderer; }
+namespace environment { class WindSystem;    }
 
 namespace renderer {
 
@@ -140,6 +141,16 @@ class Renderer : public core::Singleton<Renderer> {
   // The caller retains ownership.
   void SetWindSystem(environment::WindSystem* wind) { wind_system_ = wind; }
 
+  // Registers a WaterRenderer to be drawn in the geometry pass (after terrain,
+  // before mesh objects). Pass nullptr to detach. The caller retains ownership.
+  void SetWaterRenderer(environment::WaterRenderer* water) {
+    water_renderer_ = water;
+  }
+
+  // Sets the sky world time forwarded to WaterRenderer for sun direction and
+  // sky zenith colour each frame. Must be kept in sync with SetSkyWorldTime().
+  void SetWaterSkyWorldTime(float t) { water_sky_world_time_ = t; }
+
   // Enables foliage rendering. When set, FoliageRenderer::Render() is called
   // in the geometry pass and FoliageRenderer::RenderBillboards() in the emissive
   // pass. Pass false to disable. The FoliageRenderer singleton must be built
@@ -173,6 +184,9 @@ class Renderer : public core::Singleton<Renderer> {
  private:
   void FillSceneInfos();
   void FillWindInfos();
+  // Derives sun direction and sky zenith colour from water_sky_world_time_ and
+  // pushes them to water_renderer_ before it draws.
+  void UpdateWaterRenderer();
 
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice* video_;
@@ -209,7 +223,12 @@ class Renderer : public core::Singleton<Renderer> {
   float                      sky_world_time_   = 12.f;  // hours, 0–24
   // Optional wind system uploaded into slot 7 each frame. Not owned by Renderer.
   // cppcheck-suppress unusedStructMember
-  environment::WindSystem*   wind_system_      = nullptr;
+  environment::WindSystem*    wind_system_          = nullptr;
+  // Optional water renderer drawn in the geometry pass. Not owned by Renderer.
+  // cppcheck-suppress unusedStructMember
+  environment::WaterRenderer* water_renderer_       = nullptr;
+  // cppcheck-suppress unusedStructMember
+  float                       water_sky_world_time_ = 12.f;  // hours, 0–24
 
   bool foliage_enabled_ = false;
 
