@@ -21,6 +21,8 @@
 #include "renderer/ShadowRenderer.h"
 #include "terrain/TerrainRenderer.h"
 
+namespace environment { class SkyRenderer; }
+
 namespace renderer {
 
 // Selects which G-buffer attachment is blitted to screen in debug mode.
@@ -41,6 +43,7 @@ enum class DebugMode : int {
 //   Slot 2 (SceneInfos): per-frame camera matrices, eye position, time, z_near/z_far.
 //   Slot 3 (MaterialInfos): per-material colors and shininess.
 //   Slot 5 (CSMInfos): cascade VP matrices and split depths for GlobalLight CSM.
+//   Slot 8 (SkyInfos): sun direction, time of day, turbidity (sky pass only).
 //
 // Render targets (created at video resolution, recreated on resize):
 //   gbuffer_      — 3-MRT FBO: albedo (RGBA8), normal (RGBA16F), specular (RGBA8)
@@ -50,8 +53,9 @@ enum class DebugMode : int {
 // Frame pipeline (Update()):
 //   1. Geometry pass  — G-buffer FBO; MeshRenderer fills albedo, normal, specular.
 //   2. Lighting pass  — HDR RT (additive blend); LightRenderer shades each light.
-//   3. Emissive pass  — HDR RT (additive, depth read-only); emissive/ambient meshes.
-//   4. Composite pass — default framebuffer; gamma correction.
+//   3. Sky pass       — HDR RT (depth LEQUAL, no blend); SkyRenderer fills background.
+//   4. Emissive pass  — HDR RT (additive, depth read-only); emissive/ambient meshes.
+//   5. Composite pass — default framebuffer; gamma correction.
 //
 // Debug mode (SetDebugMode != kNone):
 //   After the geometry pass, blits the chosen G-buffer RT to the default framebuffer
@@ -122,6 +126,13 @@ class Renderer : public core::Singleton<Renderer> {
     terrain_renderer_ = terrain;
   }
 
+  // Registers a SkyRenderer to be drawn into the emissive FBO before emissive
+  // geometry. Pass nullptr to detach. The caller retains ownership.
+  void SetSkyRenderer(environment::SkyRenderer* sky) { sky_renderer_ = sky; }
+
+  // Sets the world time of day (hours, 0–24) forwarded to SkyRenderer each frame.
+  void SetSkyWorldTime(float t) { sky_world_time_ = t; }
+
   // Enables foliage rendering. When set, FoliageRenderer::Render() is called
   // in the geometry pass and FoliageRenderer::RenderBillboards() in the emissive
   // pass. Pass false to disable. The FoliageRenderer singleton must be built
@@ -181,7 +192,12 @@ class Renderer : public core::Singleton<Renderer> {
   std::unique_ptr<ShadowDebugRenderer> shadow_debug_renderer_;
 
   // Optional terrain renderer called in the geometry pass. Not owned by Renderer.
-  terrain::TerrainRenderer* terrain_renderer_ = nullptr;
+  terrain::TerrainRenderer*  terrain_renderer_ = nullptr;
+  // Optional sky renderer drawn into the emissive FBO. Not owned by Renderer.
+  // cppcheck-suppress unusedStructMember
+  environment::SkyRenderer*  sky_renderer_     = nullptr;
+  // cppcheck-suppress unusedStructMember
+  float                      sky_world_time_   = 12.f;  // hours, 0–24
 
   bool foliage_enabled_ = false;
 

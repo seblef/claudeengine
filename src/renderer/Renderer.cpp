@@ -6,6 +6,7 @@
 #include "core/BBox3.h"
 #include "core/Color.h"
 #include "core/ViewFrustum.h"
+#include "environment/SkyRenderer.h"
 #include "renderer/CSMInfos.h"
 #include "renderer/GeometryUtils.h"
 #include "renderer/LightRenderer.h"
@@ -180,7 +181,18 @@ void Renderer::Update(float time, const core::Camera* camera,
   video_->SetBlendEnabled(false);
   emissive_fbo_.UnbindForWriting();
 
-  // 3. Emissive pass — additively draw emissive/ambient surfaces into the HDR RT.
+  // 3. Sky pass — render procedural sky into the HDR RT before emissive geometry.
+  //    Depth is read-only (LEQUAL) so the sky fills only background pixels
+  //    (those whose G-buffer depth equals the far-plane value 1.0).
+  if (sky_renderer_ && sky_renderer_->IsReady() && camera_) {
+    emissive_fbo_.BindForWriting();
+    sky_renderer_->Render(*camera_, sky_world_time_);
+    emissive_fbo_.UnbindForWriting();
+    video_->SetDepthTestEnabled(false);
+    video_->SetDepthWriteEnabled(true);
+  }
+
+  // 4. Emissive pass — additively draw emissive/ambient surfaces into the HDR RT.
   //    Depth is read-only (test on, write off) so emissive objects are occluded
   //    correctly by opaque geometry without corrupting G-buffer depth.
   //    GL_LEQUAL is required: emissive geometry was already drawn at the same depth
@@ -199,7 +211,7 @@ void Renderer::Update(float time, const core::Camera* camera,
   video_->SetDepthTestEnabled(false);
   emissive_fbo_.UnbindForWriting();
 
-  // 4. Composite pass — gamma-correct the HDR RT to the default framebuffer.
+  // 5. Composite pass — gamma-correct the HDR RT to the default framebuffer.
   emissive_fbo_.GetHDRRT()->BindAsSampler(0);
   composite_shader_->Activate();
   composite_quad_->Set();
@@ -207,7 +219,7 @@ void Renderer::Update(float time, const core::Camera* camera,
   video_->RenderIndexed(composite_quad_->GetNumIndices());
   if (output_fbo) output_fbo->UnbindForWriting();
 
-  // 5. Shadow debug overlay — renders thumbnails on the left side of screen.
+  // 6. Shadow debug overlay — renders thumbnails on the left side of screen.
   shadow_debug_renderer_->Render(LightRenderer::Instance().GetLights());
 
   // Restore default depth state for the next BeginFrame.
