@@ -21,6 +21,7 @@
 #include "renderer/ShadowRenderer.h"
 #include "terrain/TerrainRenderer.h"
 
+namespace environment { class CloudRenderer; }
 namespace environment { class SkyRenderer;   }
 namespace environment { class WaterRenderer; }
 namespace environment { class WindSystem;    }
@@ -136,6 +137,17 @@ class Renderer : public core::Singleton<Renderer> {
   // Sets the world time of day (hours, 0–24) forwarded to SkyRenderer each frame.
   void SetSkyWorldTime(float t) { sky_world_time_ = t; }
 
+  // Registers a CloudRenderer drawn into the emissive FBO after the sky pass
+  // and before the geometry pass. Pass nullptr to detach. The caller retains
+  // ownership.
+  void SetCloudRenderer(environment::CloudRenderer* clouds) {
+    cloud_renderer_ = clouds;
+  }
+
+  // Sets the cloud coverage fraction forwarded to CloudRenderer each frame.
+  // 0 = clear sky, 0.5 = partly cloudy, 0.9 = overcast.
+  void SetCloudDensity(float density) { cloud_density_ = density; }
+
   // Registers a WindSystem whose data is uploaded into slot 7 each frame.
   // Pass nullptr to clear — the CB is still bound but filled with zeroes.
   // The caller retains ownership.
@@ -218,9 +230,14 @@ class Renderer : public core::Singleton<Renderer> {
   terrain::TerrainRenderer*  terrain_renderer_ = nullptr;
   // Optional sky renderer drawn into the emissive FBO. Not owned by Renderer.
   // cppcheck-suppress unusedStructMember
-  environment::SkyRenderer*  sky_renderer_     = nullptr;
+  environment::SkyRenderer*   sky_renderer_    = nullptr;
   // cppcheck-suppress unusedStructMember
-  float                      sky_world_time_   = 12.f;  // hours, 0–24
+  float                       sky_world_time_  = 12.f;  // hours, 0–24
+  // Optional cloud renderer drawn after sky, before geometry. Not owned by Renderer.
+  // cppcheck-suppress unusedStructMember
+  environment::CloudRenderer* cloud_renderer_  = nullptr;
+  // cppcheck-suppress unusedStructMember
+  float                       cloud_density_   = 0.f;
   // Optional wind system uploaded into slot 7 each frame. Not owned by Renderer.
   // cppcheck-suppress unusedStructMember
   environment::WindSystem*    wind_system_          = nullptr;
