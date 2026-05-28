@@ -35,4 +35,13 @@ float WindSystem::GetWindStrength() const {
   return wind_vec_.Length();
 }
 
+void WindSystem::SetBaseDirection(const core::Vec3f& dir) {
+  const core::Vec3f xz(dir.x, 0.f, dir.z);
+  base_direction_ = xz.Normalized();
+}
+
+void WindSystem::SetBaseStrength(float strength) {
+  base_strength_ = strength;
+}
+
 }  // namespace environment

@@ -40,6 +40,12 @@ class WindSystem {
   // Returns accumulated simulation time in seconds (for shader phase effects).
   [[nodiscard]] float GetWindTime() const { return wind_time_; }
 
+  // Hot-updates the wind base direction (XZ unit vector; Y is ignored).
+  void SetBaseDirection(const core::Vec3f& dir);
+
+  // Hot-updates the base wind speed in m/s.
+  void SetBaseStrength(float strength);
+
  private:
   // cppcheck-suppress unusedStructMember
   core::Vec3f base_direction_;              // unit XZ vector

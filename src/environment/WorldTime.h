@@ -20,6 +20,9 @@ class WorldTime {
 
     void SetTimeScale(float s);
 
+    // Sets the time of day directly (hours in [0, 24)).
+    void SetTimeOfDay(float hours);
+
     // Returns the time of day in hours [0, 24).
     [[nodiscard]] float GetTimeOfDay() const;
 

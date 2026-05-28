@@ -91,6 +91,8 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
     scene_->AddGameMaterial(mat);
     material_editor_->Open(mat);
   });
+  environment_panel_.SetContext(scene_.get(), video_);
+
   loguru::add_callback("editor_log", &LogPanel::LogCallback,
                        log_panel_.get(), loguru::Verbosity_INFO);
 
@@ -112,6 +114,7 @@ void EditorWindow::OnEvent(const core::Event& event) {
 
 void EditorWindow::Render() {
   TickAutosave();
+  environment_panel_.Tick(ImGui::GetIO().DeltaTime);
 
   // 1. Full-screen DockSpace — all panels dock into it.
   ImGui::DockSpaceOverViewport();
@@ -221,6 +224,7 @@ void EditorWindow::Render() {
     history_.Clear();
     terrain_normal_map_.reset();
     WireTerrainPanel();
+    environment_panel_.SetContext(scene_.get(), video_);
     scene_dirty_ = false;
     LOG_F(INFO, "New map '%s' created (size %.1f)", new_name.c_str(),
           new_size);
@@ -240,6 +244,14 @@ void EditorWindow::Render() {
     viewport_->SetSculptActive(terrain_panel_.IsActive());
   } else {
     viewport_->SetSculptActive(false);
+  }
+
+  // 11c. Environment editor panel — dockable, shown via Map > Environment.
+  if (show_environment_panel_) {
+    if (ImGui::Begin("Environment##panel", &show_environment_panel_)) {
+      if (environment_panel_.Render()) scene_dirty_ = true;
+    }
+    ImGui::End();
   }
 
   // 12. Unsaved changes modal — OpenPopup is triggered by CheckDirtyThenRun().
@@ -323,6 +335,9 @@ void EditorWindow::RenderMenuBar() {
   if (ImGui::BeginMenu("Map")) {
     if (ImGui::MenuItem("Map Properties", nullptr, show_map_props_)) {
       show_map_props_ = !show_map_props_;
+    }
+    if (ImGui::MenuItem("Environment", nullptr, show_environment_panel_)) {
+      show_environment_panel_ = !show_environment_panel_;
     }
     ImGui::EndMenu();
   }
@@ -446,6 +461,7 @@ void EditorWindow::LoadFromFile() {
   history_.Clear();
   terrain_normal_map_.reset();
   WireTerrainPanel();
+  environment_panel_.SetContext(scene_.get(), video_);
   scene_dirty_ = false;
   LOG_F(INFO, "Map loaded from '%s'", path.string().c_str());
 }

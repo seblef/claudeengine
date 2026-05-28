@@ -24,6 +24,8 @@ struct EnvironmentDesc {
     float wind_strength = 3.f;
     // World-space XZ unit vector (Y component is ignored at runtime).
     core::Vec3f wind_direction = {1.f, 0.f, 0.f};
+    // Atmospheric turbidity: 1.7 = very clear, 2.0 = default, 10.0 = very hazy.
+    float turbidity = 2.f;
 };
 
 }  // namespace environment
