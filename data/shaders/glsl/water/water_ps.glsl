@@ -47,9 +47,9 @@ in  vec3 v_tangent;
 in  vec3 v_bitangent;
 in  vec2 v_uv;
 
-layout(binding = 0) uniform sampler2D u_normal_map;     // slot 0 — procedural normal map
-uniform sampler2D scene_color_tex;                      // slot 2 — scene colour snapshot
-uniform sampler2D depth_tex;                            // slot 3 — scene depth snapshot
+layout(binding = 0) uniform sampler2D u_normal_map;      // slot 0 — procedural normal map
+layout(binding = 2) uniform sampler2D scene_color_tex;  // slot 2 — scene colour snapshot
+layout(binding = 3) uniform sampler2D depth_tex;        // slot 3 — scene depth snapshot
 
 layout(location = 0) out vec4 out_color;
 
