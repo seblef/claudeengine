@@ -16,6 +16,8 @@ struct EnvironmentDesc {
 
     // World-space Y of the water surface.
     float water_level = 0.f;
+    // Starting time of day in hours [0, 24). Defaults to noon.
+    float start_time_of_day = 12.f;
     // Time multiplier: 1.0 = real time, 60.0 = 1 min real → 1 hr in-game.
     float time_scale = 1.f;
     // Cloud coverage in [0, 1].

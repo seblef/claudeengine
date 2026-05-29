@@ -82,7 +82,8 @@ void EnvironmentEditorPanel::Tick(float dt) {
 // ---- Subsystem lifecycle ----------------------------------------------------
 
 void EnvironmentEditorPanel::EnableSky(const environment::EnvironmentDesc& desc) {
-  world_time_ = std::make_unique<environment::WorldTime>(desc.time_scale);
+  world_time_ = std::make_unique<environment::WorldTime>(
+      desc.time_scale, desc.start_time_of_day);
   if (!environment::SkyRenderer::IsInstanced()) {
     new environment::SkyRenderer();
     environment::SkyRenderer::Instance().Build(video_);
@@ -204,6 +205,9 @@ bool EnvironmentEditorPanel::RenderTimeSection(environment::EnvironmentDesc& env
     ImGui::TextDisabled("(enable sky first)");
   }
 
+  if (ImGui::SliderFloat("Start time", &env.start_time_of_day, 0.f, 24.f, "%.2f h")) {
+    changed = true;
+  }
   if (ImGui::DragFloat("Time scale", &env.time_scale, 0.5f, 0.1f, 3600.f,
                         "%.1fx")) {
     if (world_time_) world_time_->SetTimeScale(env.time_scale);

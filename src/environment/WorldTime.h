@@ -12,7 +12,9 @@ namespace environment {
 // antipodal sun with a small fixed tilt offset.
 class WorldTime {
  public:
-    explicit WorldTime(float time_scale = 1.f);
+    // time_scale: simulation multiplier (1.0 = real time).
+    // start_time: starting time of day in hours [0, 24); defaults to noon.
+    explicit WorldTime(float time_scale = 1.f, float start_time = 12.f);
 
     // Advances world time by real_dt seconds multiplied by the time scale.
     // Wraps at 86400 s (one full day).
@@ -37,7 +39,8 @@ class WorldTime {
     [[nodiscard]] bool IsDaytime() const;
 
  private:
-    float world_time_ = 0.f;   // seconds, [0, 86400)
+    // cppcheck-suppress unusedStructMember
+    float world_time_;          // seconds, [0, 86400)
     float time_scale_ = 1.f;
 };
 

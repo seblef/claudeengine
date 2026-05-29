@@ -21,7 +21,8 @@ inline float ToHours(float world_time) {
 
 }  // namespace
 
-WorldTime::WorldTime(float time_scale) : time_scale_(time_scale) {}
+WorldTime::WorldTime(float time_scale, float start_time)
+    : world_time_(start_time * 3600.f), time_scale_(time_scale) {}
 
 void WorldTime::Advance(float real_dt) {
     world_time_ += real_dt * time_scale_;
