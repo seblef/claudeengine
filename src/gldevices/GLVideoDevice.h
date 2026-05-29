@@ -133,6 +133,15 @@ class GLVideoDevice : public abstract::VideoDevice {
       std::span<abstract::RenderTarget*> color_targets,
       abstract::RenderTarget* depth_stencil_target) override;
 
+  // Copies src into dst using glCopyImageSubData (no framebuffer rebinding).
+  // Both targets must have the same dimensions and compatible GL internal formats.
+  void CopyRenderTarget(abstract::RenderTarget* src,
+                        abstract::RenderTarget* dst) override;
+
+  // Creates a GL_RGBA8 tileable texture with GL_REPEAT wrapping and mipmaps.
+  [[nodiscard]] std::unique_ptr<abstract::RawTexture> CreateTileableTexture(
+      int width, int height, const uint8_t* data) override;
+
   // Creates (or retrieves from the registry) a GLShader by name.
   // Loads <name>_vs.glsl and <name>_ps.glsl from the configured data folder.
   [[nodiscard]] abstract::Shader* CreateShader(const std::string& name) override;

@@ -4,8 +4,8 @@
 #include <memory>
 #include <vector>
 
-#include "abstract/ConstantBuffer.h"
 #include "abstract/IndexBuffer.h"
+#include "abstract/RenderTarget.h"
 #include "abstract/Shader.h"
 #include "abstract/VertexBuffer.h"
 #include "abstract/VideoDevice.h"
@@ -19,23 +19,24 @@ namespace environment {
 //
 // Wave animation is driven by the WindInfos constant buffer (slot 7), which must
 // already be bound when Render() is called.  The fragment shader performs Fresnel
-// blending between a configurable deep-water colour and a sky zenith colour, and
-// adds a Blinn-Phong specular highlight from the current sun direction.
+// blending, depth-based absorption, refraction from the scene colour snapshot,
+// and Blinn-Phong specular from the sun direction.
 //
-// Outputs to the G-buffer (geometry pass), so water participates in the deferred
-// lighting pass. Water does NOT render in the shadow depth pass — it receives
-// shadows but does not cast them.
+// Renders in the FORWARD pass (after deferred lighting + emissive) using
+// SrcAlpha / OneMinusSrcAlpha blending.  The WaterInfos constant buffer at
+// slot 9 is owned by Renderer and must be bound before Render() is called.
 //
-// Constant buffer slot 9 (WaterInfos): water_color, water_level,
-//   sky_zenith_color, sun_direction.
+// Constant buffer slot 9 (WaterInfos): bound globally by Renderer.
+// Sampler slot 2: scene_color snapshot (RGBA16F).
+// Sampler slot 3: depth snapshot (DEPTH24STENCIL8).
 //
 // Usage:
 //   new WaterRenderer();
 //   WaterRenderer::Instance().Build(video, water_level);
-//   // each frame (inside the geometry pass):
+//   // each frame (after emissive pass, inside emissive FBO):
 //   WaterRenderer::Instance().SetSkyZenithColor(r, g, b);
 //   WaterRenderer::Instance().SetSunDirection(dir);
-//   WaterRenderer::Instance().Render(camera);
+//   WaterRenderer::Instance().Render(camera, scene_color_rt, depth_rt);
 //   WaterRenderer::Instance().Reset();  // release GPU resources
 //   WaterRenderer::Shutdown();          // delete instance
 class WaterRenderer : public core::Singleton<WaterRenderer> {
@@ -48,23 +49,24 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   WaterRenderer(WaterRenderer&&)                 = delete;
   WaterRenderer& operator=(WaterRenderer&&)      = delete;
 
-  // Creates a flat grid_size × grid_size mesh, loads water shaders, and
-  // allocates the WaterInfos constant buffer at slot 9.
+  // Creates a flat grid_size × grid_size mesh and loads water shaders.
   // water_level: world-space Y of the undisplaced water surface.
   // grid_size:   number of quads per side (default 128).
   // video must outlive this renderer.
   void Build(abstract::VideoDevice* video, float water_level, int grid_size = 128);
 
-  // Uploads the WaterInfos CB and draws the water grid into the G-buffer.
-  // The WindInfos CB (slot 7) and SceneInfos CB (slot 2) must be bound by the
-  // caller (Renderer::Update does this before the geometry pass).
-  void Render(const core::Camera& camera);
+  // Draws the water grid into the currently bound FBO (emissive FBO).
+  // scene_color: HDR snapshot taken just before this call (sampler slot 2).
+  // depth:       depth snapshot taken just before this call (sampler slot 3).
+  // The WaterInfos CB (slot 9) and SceneInfos CB (slot 2) must already be bound.
+  void Render(const core::Camera& camera,
+              abstract::RenderTarget* scene_color,
+              abstract::RenderTarget* depth);
 
   // Updates the world-space Y of the undisplaced surface (hot-path; no rebuild).
   void SetWaterLevel(float y) { water_level_ = y; }
 
-  // Updates the sky zenith colour used for the Fresnel highlight.
-  // Should be called once per frame from the renderer with the current sky colour.
+  // Updates the sky zenith colour used for Fresnel reflection.
   void SetSkyZenithColor(float r, float g, float b) {
     sky_zenith_r_ = r;
     sky_zenith_g_ = g;
@@ -72,8 +74,14 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   }
 
   // Updates the world-space sun direction for Blinn-Phong specular.
-  // Should be called once per frame from the renderer.
   void SetSunDirection(const core::Vec3f& dir) { sun_direction_ = dir; }
+
+  // Returns all water parameters packed into WaterInfos for upload by Renderer.
+  [[nodiscard]] float GetWaterLevel()   const { return water_level_; }
+  [[nodiscard]] float GetSkyZenithR()   const { return sky_zenith_r_; }
+  [[nodiscard]] float GetSkyZenithG()   const { return sky_zenith_g_; }
+  [[nodiscard]] float GetSkyZenithB()   const { return sky_zenith_b_; }
+  [[nodiscard]] const core::Vec3f& GetSunDirection() const { return sun_direction_; }
 
   // Releases all GPU resources. Called before Shutdown().
   void Reset();
@@ -84,13 +92,12 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   void BuildMesh(int grid_size);
 
   // cppcheck-suppress unusedStructMember
-  abstract::VideoDevice*                    video_   = nullptr;
+  abstract::VideoDevice*                  video_   = nullptr;
   // cppcheck-suppress unusedStructMember
-  abstract::Shader*                         shader_  = nullptr;
-  std::unique_ptr<abstract::ConstantBuffer> water_cb_;
-  std::unique_ptr<abstract::VertexBuffer>   grid_vb_;
-  std::unique_ptr<abstract::IndexBuffer>    grid_ib_;
-  int                                       num_indices_ = 0;
+  abstract::Shader*                       shader_  = nullptr;
+  std::unique_ptr<abstract::VertexBuffer> grid_vb_;
+  std::unique_ptr<abstract::IndexBuffer>  grid_ib_;
+  int                                     num_indices_ = 0;
 
   float         water_level_   = 0.f;
   float         sky_zenith_r_  = 0.40f;

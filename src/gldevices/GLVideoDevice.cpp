@@ -19,6 +19,7 @@
 #include "gldevices/GLShader.h"
 #include "gldevices/GLNormalMapTexture.h"
 #include "gldevices/GLRawTexture.h"
+#include "gldevices/GLTileableTexture.h"
 #include "gldevices/GLTexture.h"
 #include "gldevices/GLVertexBuffer.h"
 
@@ -172,6 +173,22 @@ std::unique_ptr<abstract::RawTexture> GLVideoDevice::CreateHeightmapTexture(
 std::unique_ptr<abstract::RawTexture> GLVideoDevice::CreateNormalMapTexture(
     int width, int height, const uint8_t* data) {
   return std::make_unique<GLNormalMapTexture>(width, height, data);
+}
+
+void GLVideoDevice::CopyRenderTarget(abstract::RenderTarget* src,
+                                     abstract::RenderTarget* dst) {
+  const GLuint src_id = static_cast<GLuint>(
+      reinterpret_cast<intptr_t>(src->GetNativeHandle()));
+  const GLuint dst_id = static_cast<GLuint>(
+      reinterpret_cast<intptr_t>(dst->GetNativeHandle()));
+  glCopyImageSubData(src_id, GL_TEXTURE_2D, 0, 0, 0, 0,
+                     dst_id, GL_TEXTURE_2D, 0, 0, 0, 0,
+                     src->GetWidth(), src->GetHeight(), 1);
+}
+
+std::unique_ptr<abstract::RawTexture> GLVideoDevice::CreateTileableTexture(
+    int width, int height, const uint8_t* data) {
+  return std::make_unique<GLTileableTexture>(width, height, data);
 }
 
 void GLVideoDevice::SetColorWriteEnabled(bool enabled) {

@@ -5,6 +5,7 @@ add_library(gldevices STATIC
     GLIndexBuffer.cpp
     GLNormalMapTexture.cpp
     GLRawTexture.cpp
+    GLTileableTexture.cpp
     GLRenderTarget.cpp
     GLRenderTargetCube.cpp
     GLRenderTargetGroup.cpp
