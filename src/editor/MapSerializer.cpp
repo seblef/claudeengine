@@ -75,6 +75,8 @@ void EmitEnvironment(YAML::Emitter& out,
     out << YAML::Key << "wind_strength"  << YAML::Value << env.wind_strength;
   if (env.trees_enabled != def.trees_enabled)
     out << YAML::Key << "trees_enabled" << YAML::Value << env.trees_enabled;
+  if (env.start_time_of_day != def.start_time_of_day)
+    out << YAML::Key << "start_time_of_day" << YAML::Value << env.start_time_of_day;
   if (env.time_scale    != def.time_scale)
     out << YAML::Key << "time_scale"    << YAML::Value << env.time_scale;
   if (env.turbidity     != def.turbidity)

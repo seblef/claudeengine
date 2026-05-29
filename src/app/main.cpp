@@ -136,7 +136,8 @@ int main(int argc, char* argv[]) {
       const environment::EnvironmentDesc& env = map_data.environment_desc;
 
       if (env.sky_enabled) {
-        map_world_time = std::make_unique<environment::WorldTime>(env.time_scale);
+        map_world_time = std::make_unique<environment::WorldTime>(
+            env.time_scale, env.start_time_of_day);
         new environment::SkyRenderer();
         environment::SkyRenderer::Instance().Build(video);
         renderer::Renderer::Instance().SetSkyRenderer(

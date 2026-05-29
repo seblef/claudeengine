@@ -46,6 +46,8 @@ environment::EnvironmentDesc ParseEnvironmentDesc(const YAML::Node& node) {
     desc.trees_enabled = node["trees_enabled"].as<bool>(desc.trees_enabled);
   if (node["water_level"])
     desc.water_level = node["water_level"].as<float>(desc.water_level);
+  if (node["start_time_of_day"])
+    desc.start_time_of_day = node["start_time_of_day"].as<float>(desc.start_time_of_day);
   if (node["time_scale"])
     desc.time_scale = node["time_scale"].as<float>(desc.time_scale);
   if (node["cloud_density"])
