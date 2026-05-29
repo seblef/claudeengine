@@ -225,6 +225,18 @@ if(BUILD_EDITOR)
     set(NFD_WAYLAND      OFF CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(nfd)
     message(STATUS "[ClaudeEngine] nfd (native file dialog) fetched")
+
+    # ---- TinyEXR (single-header OpenEXR loader) -----------------------------
+    # EXCLUDE_FROM_ALL: we only need the headers; skip TinyEXR's own targets.
+    FetchContent_Declare(
+        tinyexr
+        GIT_REPOSITORY https://github.com/syoyo/tinyexr.git
+        GIT_TAG        v1.0.13
+        GIT_SHALLOW    TRUE
+        EXCLUDE_FROM_ALL
+    )
+    FetchContent_MakeAvailable(tinyexr)
+    message(STATUS "[ClaudeEngine] TinyEXR fetched")
 endif()
 
 add_subdirectory(src)

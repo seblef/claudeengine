@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -14,6 +15,7 @@
 #include <nfd.h>
 #include <stb_image.h>
 #include <stb_image_write.h>
+#include <tinyexr.h>
 
 #include "abstract/VideoDevice.h"
 #include "core/Config.h"
@@ -930,17 +932,46 @@ bool TerrainEditorPanel::LoadAndApplyPNG(const std::string& path) {
 
 bool TerrainEditorPanel::LoadAndApplyHDR(const std::string& path) {
   io_status_msg_.clear();
-  int w = 0, h = 0, channels = 0;
-  float* pixels = stbi_loadf(path.c_str(), &w, &h, &channels, 1);
-  if (!pixels) {
-    io_status_msg_ = std::string("HDR/EXR load failed: ") + stbi_failure_reason();
-    io_status_ok_  = false;
-    LOG_F(ERROR, "TerrainEditorPanel: HDR/EXR load failed '%s': %s",
-          path.c_str(), stbi_failure_reason());
-    return false;
+  int w = 0, h = 0;
+  std::vector<float> pixels;
+
+  const std::string ext = std::filesystem::path(path).extension().string();
+  const bool is_exr = (ext == ".exr" || ext == ".EXR");
+
+  if (is_exr) {
+    const char* err = nullptr;
+    float* exr_rgba = nullptr;
+    const int ret = LoadEXR(&exr_rgba, &w, &h, path.c_str(), &err);
+    if (ret != TINYEXR_SUCCESS) {
+      const std::string reason = err ? err : "unknown EXR error";
+      FreeEXRErrorMessage(err);
+      io_status_msg_ = "EXR load failed: " + reason;
+      io_status_ok_  = false;
+      LOG_F(ERROR, "TerrainEditorPanel: EXR load failed '%s': %s",
+            path.c_str(), reason.c_str());
+      return false;
+    }
+    // EXR is loaded as RGBA floats; extract the R channel as height.
+    const std::size_t n = static_cast<std::size_t>(w) * h;
+    pixels.resize(n);
+    for (std::size_t i = 0; i < n; ++i)
+      pixels[i] = exr_rgba[i * 4];
+    free(exr_rgba);
+  } else {
+    int channels = 0;
+    float* raw = stbi_loadf(path.c_str(), &w, &h, &channels, 1);
+    if (!raw) {
+      io_status_msg_ = std::string("HDR load failed: ") + stbi_failure_reason();
+      io_status_ok_  = false;
+      LOG_F(ERROR, "TerrainEditorPanel: HDR load failed '%s': %s",
+            path.c_str(), stbi_failure_reason());
+      return false;
+    }
+    pixels.assign(raw, raw + static_cast<std::size_t>(w) * h);
+    stbi_image_free(raw);
   }
 
-  const std::size_t n = static_cast<std::size_t>(w) * h;
+  const std::size_t n = pixels.size();
   std::vector<uint16_t> samples(n);
   for (std::size_t i = 0; i < n; ++i) {
     const float world_h = std::clamp(pixels[i],
@@ -948,7 +979,6 @@ bool TerrainEditorPanel::LoadAndApplyHDR(const std::string& path) {
                                      data_->GetMaxHeight());
     samples[i] = data_->HeightToSample(world_h);
   }
-  stbi_image_free(pixels);
 
   const bool needs_resize =
       (w != data_->GetTexelWidth() || h != data_->GetTexelHeight());
