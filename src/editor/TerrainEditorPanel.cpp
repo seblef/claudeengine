@@ -819,7 +819,7 @@ void TerrainEditorPanel::RenderImportExportTab() {
   ImGui::SeparatorText("Import");
   ImGui::TextWrapped(
       "PNG: maps brightness [0\xe2\x80\x93""255] to height [min, max] (configurable).\n"
-      "HDR: float values are world-space metres (EXR requires RGBE encoding).");
+      "HDR/EXR: maps float values [0\xe2\x80\x93""1] to height [min, max] (configurable).");
   ImGui::Spacing();
 
   ImGui::DragFloat("Min Height##import", &import_min_h_, 0.5f,
@@ -972,11 +972,11 @@ bool TerrainEditorPanel::LoadAndApplyHDR(const std::string& path) {
   }
 
   const std::size_t n = pixels.size();
+  const float range = import_max_h_ - import_min_h_;
   std::vector<uint16_t> samples(n);
   for (std::size_t i = 0; i < n; ++i) {
-    const float world_h = std::clamp(pixels[i],
-                                     data_->GetMinHeight(),
-                                     data_->GetMaxHeight());
+    const float t = std::clamp(pixels[i], 0.f, 1.f);
+    const float world_h = import_min_h_ + t * range;
     samples[i] = data_->HeightToSample(world_h);
   }
 
