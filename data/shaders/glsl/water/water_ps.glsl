@@ -48,7 +48,17 @@
 //   absorption   = exp(-water_depth * absorption_scale)           // transmission factor
 //   refract_col  = mix(water_color, refract_col, absorption)      // tint towards water_color at depth
 //
-// UBO binding 2: scene_infos (eye_pos, inv_screen_size, inv_view_proj, z_near, z_far)
+// Screen-space reflections (SSR):
+//   R           = reflect(-V, N)
+//   Ray marched in world space (32 steps × 4 m = 128 m max reach).
+//   Each step projects sample_pos through view_proj into NDC, samples
+//   depth_tex and tests for intersection (ray_depth > stored_depth within
+//   a 0.02 NDC threshold).  On hit: edge_fade and dist_fade attenuate
+//   ssr_weight; reflect_color comes from scene_color_tex.
+//   Fresnel blend: sky_reflect = mix(sky_zenith, reflect_color, ssr_weight)
+//                  surface_col = mix(absorbed, sky_reflect, fresnel)
+//
+// UBO binding 2: scene_infos (view_proj, eye_pos, inv_screen_size, inv_view_proj, z_near, z_far)
 // UBO binding 9: water_infos
 // Sampler 0:     u_normal_map     — procedural tileable water normal map
 // Sampler 1:     u_foam_tex       — procedural tileable foam blob texture
@@ -152,9 +162,42 @@ void main() {
     float absorption = exp(-water_depth * refraction_params.y);
     vec3  absorbed   = mix(water_params.rgb, refract_color, absorption);
 
-    // Surface colour: Fresnel blend between absorbed (deep) and sky zenith.
-    vec3 sky_color   = sky_zenith_color.rgb;
-    vec3 surface_col = mix(absorbed, sky_color, fresnel);
+    // Screen-space reflections (SSR): ray march world-space reflect direction against
+    // the scene depth buffer (32 steps, 4 m each → 128 m max reach).
+    // Falls back to sky zenith where no intersection is found.
+    vec3  R             = reflect(-V, N);
+    vec3  reflect_color = sky_zenith_color.rgb;
+    float ssr_weight    = 0.0;
+
+    if (R.y >= -0.05 && fresnel > 0.03) {
+        const int   kSteps    = 32;
+        const float kStepSize = 4.0;
+
+        for (int i = 1; i <= kSteps; ++i) {
+            vec3 sample_pos = v_world_pos + R * kStepSize * float(i);
+            vec4 clip       = view_proj * vec4(sample_pos, 1.0);
+            if (clip.w <= 0.0) break;
+            vec3 ndc = clip.xyz / clip.w;
+            if (any(greaterThan(abs(ndc.xy), vec2(1.05)))) break;
+
+            vec2  suv          = ndc.xy * 0.5 + 0.5;
+            float ray_depth    = ndc.z  * 0.5 + 0.5;
+            float stored_depth = texture(depth_tex, suv).r;
+
+            // Hit: ray depth just crossed into scene geometry within 0.02 NDC threshold.
+            if (ray_depth > stored_depth && ray_depth - stored_depth < 0.02) {
+                vec2  edge_fade = 1.0 - smoothstep(0.8, 1.0, abs(suv * 2.0 - 1.0));
+                float dist_fade = 1.0 - float(i) / float(kSteps);
+                ssr_weight     = min(edge_fade.x, edge_fade.y) * dist_fade;
+                reflect_color  = texture(scene_color_tex, suv).rgb;
+                break;
+            }
+        }
+    }
+
+    // Fresnel blend: SSR result (or sky fallback) mixed into the reflection term.
+    vec3 sky_reflect = mix(sky_zenith_color.rgb, reflect_color, ssr_weight);
+    vec3 surface_col = mix(absorbed, sky_reflect, fresnel);
 
     // Cook-Torrance GGX microfacet specular from sun.
     vec3  sun_dir  = normalize(sun_params.xyz);
