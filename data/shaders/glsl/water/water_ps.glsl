@@ -22,9 +22,12 @@
 // Fresnel (Schlick):
 //   F = pow(1 - dot(N, V), 5)
 //
-// Specular (Blinn-Phong):
-//   H    = normalize(sun_dir + V)
-//   spec = pow(max(dot(N, H), 0), 1/roughness) * sun_intensity * sun_above_horizon
+// Specular (Cook-Torrance GGX microfacet):
+//   H      = normalize(sun_dir + V)
+//   D      = alpha2 / (PI * (n_dot_h^2 * (alpha2-1) + 1)^2)            // GGX NDF
+//   G      = G_V * G_L  where G_X = n_dot_x / (n_dot_x*(1-k)+k)        // Schlick-Smith
+//   F_spec = 0.02 + 0.98 * (1 - dot(H,V))^5                             // Schlick, f0=0.02
+//   spec   = D * G * F_spec / (4 * n_dot_v * n_dot_l) * n_dot_l * sun_intensity
 //
 // Refraction:
 //   Samples scene_color_tex with a UV distortion driven by the surface normal
@@ -40,6 +43,8 @@
 #version 460 core
 #include <uniforms/scene_infos.glsl>
 #include <uniforms/water_infos.glsl>
+
+#define PI 3.14159265359
 
 in  vec3 v_world_pos;
 in  vec3 v_world_normal;
@@ -107,16 +112,33 @@ void main() {
     vec3 sky_color   = sky_zenith_color.rgb;
     vec3 surface_col = mix(absorbed, sky_color, fresnel);
 
-    // Blinn-Phong specular from sun.
+    // Cook-Torrance GGX microfacet specular from sun.
     vec3  sun_dir  = normalize(sun_params.xyz);
     float sun_vis  = max(sign(sun_dir.y), 0.0);
     vec3  H        = normalize(sun_dir + V);
-    // Map roughness → Blinn-Phong shininess: shininess = 2/r² − 2.
-    // roughness=0.05 → ~798, roughness=0.1 → ~198.
     float roughness = max(sky_zenith_color.a, 0.001);
-    float shininess = max(2.0 / (roughness * roughness) - 2.0, 1.0);
-    float spec_raw  = pow(max(dot(N, H), 0.0), shininess);
-    vec3  spec      = vec3(spec_raw * sun_vis * sun_params.w);
+    float n_dot_l  = max(dot(N, sun_dir), 0.0);
+    float n_dot_h  = max(dot(N, H), 0.0);
+
+    // GGX normal distribution function.
+    float alpha  = roughness * roughness;
+    float alpha2 = alpha * alpha;
+    float d      = n_dot_h * n_dot_h * (alpha2 - 1.0) + 1.0;
+    float D      = alpha2 / (PI * d * d);
+
+    // Schlick-Smith geometry term (direct lighting).
+    float k   = (roughness + 1.0) * (roughness + 1.0) / 8.0;
+    float G_V = n_dot_v / max(n_dot_v * (1.0 - k) + k, 0.001);
+    float G_L = n_dot_l / max(n_dot_l * (1.0 - k) + k, 0.001);
+    float G   = G_V * G_L;
+
+    // Schlick Fresnel (water IOR 1.33 → f0 ≈ 0.02).
+    float f0     = 0.02;
+    float F_spec = f0 + (1.0 - f0) * pow(1.0 - max(dot(H, V), 0.0), 5.0);
+
+    // Cook-Torrance BRDF × cosine term × sun radiance.
+    float spec_brdf = D * G * F_spec / max(4.0 * n_dot_v * n_dot_l, 0.001) * n_dot_l;
+    vec3  spec      = vec3(spec_brdf) * sun_params.w * sun_vis;
 
     vec3 final_color = surface_col + spec;
 
