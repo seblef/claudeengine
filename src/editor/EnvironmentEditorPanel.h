@@ -67,6 +67,11 @@ class EnvironmentEditorPanel {
   void EnableSky(const environment::EnvironmentDesc& desc);
   void DisableSky();
 
+  // Derives global light direction, color and intensity from the current sky
+  // state (sun or moon) and pushes the update to the scene's global light.
+  // No-op when sky is disabled (world_time_ is null) or no scene is set.
+  void UpdateGlobalLightFromSky();
+
   void EnableWater(const environment::EnvironmentDesc& desc);
   void DisableWater();
 
