@@ -26,6 +26,9 @@ enum class Key : uint16_t {
   // ---- Special keys ---------------------------------------------------------
   kEscape, kEnter, kSpace, kTab, kBackspace,
   kDelete, kInsert, kHome, kEnd, kPageUp, kPageDown,
+  // ---- Numpad keys ----------------------------------------------------------
+  kNumpad0, kNumpad1, kNumpad2, kNumpad3, kNumpad4,
+  kNumpad5, kNumpad6, kNumpad7, kNumpad8, kNumpad9,
   // ---- Sentinel -------------------------------------------------------------
   kUnknown,
 };

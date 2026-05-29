@@ -340,6 +340,7 @@ void EditorViewport::Render() {
 
   // Capture the image top-left before the Image widget advances the cursor.
   const ImVec2 image_pos = ImGui::GetCursorScreenPos();
+  camera_ctrl_->SetViewportRect(image_pos.x, image_pos.y, avail.x, avail.y);
 
   if (render_target_) {
     // uv0=(0,1) uv1=(1,0): Y-flip because OpenGL FBO origin is bottom-left.
