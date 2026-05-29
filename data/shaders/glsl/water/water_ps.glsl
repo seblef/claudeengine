@@ -58,6 +58,13 @@
 //   Fresnel blend: sky_reflect = mix(sky_zenith, reflect_color, ssr_weight)
 //                  surface_col = mix(absorbed, sky_reflect, fresnel)
 //
+// Wave-tip translucency (subsurface-scattering approximation):
+//   back_scatter  = max(dot(sun_dir, -N), 0)    // sun behind the wave face
+//   steepness     = 1 - v_world_normal.y         // 0 = flat, 1 = vertical crest
+//   tip_amount    = back_scatter * steepness * sun_vis
+//   translucency  = kTipColor * tip_amount * sun_intensity * 0.15
+//   final_color  += translucency
+//
 // UBO binding 2: scene_infos (view_proj, eye_pos, inv_screen_size, inv_view_proj, z_near, z_far)
 // UBO binding 9: water_infos
 // Sampler 0:     u_normal_map     — procedural tileable water normal map
@@ -228,6 +235,17 @@ void main() {
     vec3  spec      = vec3(spec_brdf) * sun_params.w * sun_vis;
 
     vec3 final_color = surface_col + spec;
+
+    // Wave-tip translucency: cyan-teal glow where wave crests are steep and backlit.
+    // back_scatter peaks when the sun shines from behind the wave face; steepness
+    // (from the Gerstner macro normal) selects only near-vertical crests so flat
+    // water is unaffected.  The 0.15 scale keeps it subtle relative to specular.
+    float back_scatter = max(dot(sun_dir, -N), 0.0);
+    float tip_amount   = back_scatter * steepness * sun_vis;
+    const vec3 kTipColor = vec3(0.10, 0.80, 0.70);
+    vec3 translucency    = kTipColor * tip_amount * sun_params.w * 0.15;
+    final_color += translucency;
+
     final_color = mix(final_color, vec3(1.0), foam_amount);
 
     // Alpha: shoreline fade-in, foam override, Fresnel lift.
