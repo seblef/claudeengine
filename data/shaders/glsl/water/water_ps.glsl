@@ -14,7 +14,7 @@
 //   where TBN comes from the Gerstner analytical tangent frame (from VS).
 //
 // Alpha equation:
-//   water_depth = linear depth of scene bottom - linear depth of water surface
+//   water_depth = v_world_pos.y - world_y_of_scene_bottom  (world-space metres)
 //   out_alpha   = smoothstep(0, 1.5, water_depth)       // shoreline fade-in
 //   out_alpha   = max(out_alpha, foam_amount)            // foam always opaque
 //   out_alpha   = clamp(out_alpha + F*(1-out_alpha), 0, 1)  // Fresnel lift
@@ -29,12 +29,17 @@
 //   F_spec = 0.02 + 0.98 * (1 - dot(H,V))^5                             // Schlick, f0=0.02
 //   spec   = D * G * F_spec / (4 * n_dot_v * n_dot_l) * n_dot_l * sun_intensity
 //
-// Refraction:
-//   Samples scene_color_tex with a UV distortion driven by the surface normal
-//   and refraction_strength. Absorption_scale darkens the refracted colour
-//   towards water_color with depth.
+// Refraction (screen-space):
+//   refract_uv  = screen_uv + ts_n.xy * refraction_strength
+//   Safety: fall back to screen_uv when distorted UV lands on sky (depth ≥ 1).
+//   refract_col = scene_color_tex[refract_uv]
 //
-// UBO binding 2: scene_infos (eye_pos, inv_screen_size, z_near_, z_far_)
+// Beer-Lambert absorption:
+//   water_depth  = v_world_pos.y - (inv_view_proj * ndc).y / w   (metres below surface)
+//   absorption   = exp(-water_depth * absorption_scale)           // transmission factor
+//   refract_col  = mix(water_color, refract_col, absorption)      // tint towards water_color at depth
+//
+// UBO binding 2: scene_infos (eye_pos, inv_screen_size, inv_view_proj, z_near, z_far)
 // UBO binding 9: water_infos
 // Sampler 0:     u_normal_map     — procedural tileable water normal map
 // Sampler 2:     scene_color_tex  — HDR copy before water pass
@@ -58,12 +63,6 @@ layout(binding = 3) uniform sampler2D depth_tex;        // slot 3 — scene dept
 
 layout(location = 0) out vec4 out_color;
 
-// Convert a raw depth buffer value [0,1] to linear view-space depth.
-float LinearizeDepth(float d) {
-    float z_ndc = 2.0 * d - 1.0;
-    return (2.0 * z_near * z_far) / (z_far + z_near - z_ndc * (z_far - z_near));
-}
-
 void main() {
     // Sample two scrolling normal map layers and combine into a world-space normal.
     // foam_params.z/w = normal_scale1/2; scroll_params.x/y = scroll speeds.
@@ -85,11 +84,30 @@ void main() {
     // Screen-space UV of the current fragment.
     vec2 screen_uv = gl_FragCoord.xy * inv_screen_size;
 
-    // Water column depth: distance from surface to scene geometry beneath.
-    float raw_scene_depth = texture(depth_tex, screen_uv).r;
-    float linear_scene  = LinearizeDepth(raw_scene_depth);
-    float linear_water  = LinearizeDepth(gl_FragCoord.z);
-    float water_depth   = max(linear_scene - linear_water, 0.0);
+    // Screen-space refraction: distort UV using tangent-space normal xy.
+    // ts_n.xy produces screen-aligned distortion that tracks surface ripples.
+    vec2 distortion = ts_n.xy * refraction_params.x;
+    vec2 refract_uv = clamp(screen_uv + distortion, vec2(0.001), vec2(0.999));
+
+    // Safety: if the distorted UV lands on sky geometry (no depth), fall back to
+    // undistorted UV to avoid sampling the sky colour through the water surface.
+    if (texture(depth_tex, refract_uv).r >= 0.9999)
+        refract_uv = screen_uv;
+
+    vec3 refract_color = texture(scene_color_tex, refract_uv).rgb;
+
+    // Water column depth via world-space reconstruction from the depth buffer.
+    // inv_view_proj unprojection gives the world-space position of the scene bottom;
+    // the Y difference to the water surface yields depth in world-space metres.
+    float scene_d = texture(depth_tex, screen_uv).r;
+    float water_depth;
+    if (scene_d >= 0.9999) {
+        water_depth = 100.0;   // sky below water — treat as very deep
+    } else {
+        vec4 ndc   = vec4(screen_uv * 2.0 - 1.0, scene_d * 2.0 - 1.0, 1.0);
+        vec4 world = inv_view_proj * ndc;
+        water_depth = max(v_world_pos.y - (world.y / world.w), 0.0);
+    }
 
     // Shoreline foam: strong near shore (water_depth < foam_shoreline_depth).
     float foam_amount = 1.0 - smoothstep(0.0, refraction_params.w, water_depth);
@@ -98,15 +116,11 @@ void main() {
     float n_dot_v = max(dot(N, V), 0.0);
     float fresnel  = pow(1.0 - n_dot_v, 5.0);
 
-    // Refraction: distort screen UV by surface normal, scaled by depth opacity.
-    float refraction_str = refraction_params.x;
-    vec2 distortion = N.xz * refraction_str * max(1.0 - water_depth * 0.5, 0.0);
-    vec3 refracted = texture(scene_color_tex, clamp(screen_uv + distortion,
-                                                     vec2(0.0), vec2(1.0))).rgb;
-
-    // Depth-based absorption: blend refracted colour towards water_color.
-    float absorption = 1.0 - exp(-water_depth * refraction_params.y);
-    vec3  absorbed   = mix(refracted, water_params.rgb, absorption);
+    // Beer-Lambert absorption: transmission factor → 0 (opaque) at depth, 1 at surface.
+    // mix(water_color, refract, absorption): deep water shows intrinsic water_color,
+    // shallow water shows the refracted scene below.
+    float absorption = exp(-water_depth * refraction_params.y);
+    vec3  absorbed   = mix(water_params.rgb, refract_color, absorption);
 
     // Surface colour: Fresnel blend between absorbed (deep) and sky zenith.
     vec3 sky_color   = sky_zenith_color.rgb;
