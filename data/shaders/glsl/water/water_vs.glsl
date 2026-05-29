@@ -67,7 +67,7 @@ void main() {
     freqs[3]  = 0.06;  amps[3]  = 0.25;  speeds[3]  = 0.5;
 
     vec2  xz      = in_position.xz;
-    float water_y = water_params.a;  // undisplaced surface height
+    float water_y = water_params.a;  // world_level stored in water_params.a
 
     float total_y  = 0.0;
     float d_dx     = 0.0;

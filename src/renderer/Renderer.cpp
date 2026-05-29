@@ -11,6 +11,7 @@
 #include "core/ViewFrustum.h"
 #include "environment/CloudRenderer.h"
 #include "environment/SkyRenderer.h"
+#include "environment/WaterInfos.h"
 #include "environment/WaterRenderer.h"
 #include "environment/WindInfos.h"
 #include "environment/WindSystem.h"
@@ -35,6 +36,8 @@ constexpr int kCSMInfosSlot           = 5;
 constexpr int kCSMInfosFloat4s        = sizeof(CSMInfos) / 16;          // 272 / 16 = 17
 constexpr int kWindInfosSlot          = 7;
 constexpr int kWindInfosFloat4s       = sizeof(environment::WindInfos) / 16;  // 16 / 16 = 1
+constexpr int kWaterInfosSlot         = 9;
+constexpr int kWaterInfosFloat4s      = sizeof(environment::WaterInfos) / 16;  // 96 / 16 = 6
 }  // namespace
 
 Renderer::Renderer(abstract::VideoDevice* video)
@@ -52,11 +55,17 @@ Renderer::Renderer(abstract::VideoDevice* video)
       kCSMInfosFloat4s, kCSMInfosSlot, abstract::BufferUsage::kDynamic);
   wind_infos_cb_ = video_->CreateConstantBuffer(
       kWindInfosFloat4s, kWindInfosSlot, abstract::BufferUsage::kDynamic);
+  water_infos_cb_ = video_->CreateConstantBuffer(
+      kWaterInfosFloat4s, kWaterInfosSlot, abstract::BufferUsage::kDynamic);
 
   render_w_ = video_->GetWidth();
   render_h_ = video_->GetHeight();
   gbuffer_.Create(video_, render_w_, render_h_);
   emissive_fbo_.Create(video_, render_w_, render_h_, gbuffer_.GetDepthRT());
+  water_scene_color_rt_ = video_->CreateRenderTarget(
+      render_w_, render_h_, abstract::TextureFormat::kRGBA16F);
+  water_depth_copy_rt_  = video_->CreateRenderTarget(
+      render_w_, render_h_, abstract::TextureFormat::kDepth24Stencil8);
 
   new MeshRenderer(video_);
   new LightRenderer(video_);
@@ -123,8 +132,10 @@ void Renderer::Update(float time, const core::Camera* camera,
   material_infos_cb_->Bind();
   csm_infos_cb_->Bind();
   wind_infos_cb_->Bind();
+  water_infos_cb_->Bind();
   if (camera_) FillSceneInfos();
   FillWindInfos();
+  if (water_renderer_) UpdateWaterRenderer();
 
   if (camera_) {
     const core::ViewFrustum frustum(camera_->GetViewProjectionMatrix());
@@ -160,10 +171,6 @@ void Renderer::Update(float time, const core::Camera* camera,
   if (tree_enabled_ && TreeRenderer::IsInstanced() &&
       TreeRenderer::Instance().IsReady() && camera_)
     TreeRenderer::Instance().Render(*camera_);
-  if (water_renderer_ && water_renderer_->IsReady() && camera_) {
-    UpdateWaterRenderer();
-    water_renderer_->Render(*camera_);
-  }
   gbuffer_.UnbindForWriting();
 
   // Debug bypass — blit a chosen G-buffer RT to the default framebuffer and skip
@@ -248,6 +255,30 @@ void Renderer::Update(float time, const core::Camera* camera,
   video_->SetDepthTestEnabled(false);
   emissive_fbo_.UnbindForWriting();
 
+  // 4b. Forward water pass — copy scene colour and depth, then alpha-blend water
+  //     on top of the HDR RT.  Runs after emissive so the scene snapshot includes
+  //     sky, lighting, and emissive objects.
+  if (water_renderer_ && water_renderer_->IsReady() && camera_) {
+    video_->CopyRenderTarget(emissive_fbo_.GetHDRRT(),
+                             water_scene_color_rt_.get());
+    video_->CopyRenderTarget(gbuffer_.GetDepthRT(),
+                             water_depth_copy_rt_.get());
+    emissive_fbo_.BindForWriting();
+    video_->SetDepthTestEnabled(true);
+    video_->SetDepthFunc(abstract::CompareFunc::kLessEqual);
+    video_->SetDepthWriteEnabled(false);
+    video_->SetBlendEnabled(true, abstract::BlendFactor::kSrcAlpha,
+                            abstract::BlendFactor::kOneMinusSrcAlpha);
+    water_renderer_->Render(*camera_,
+                            water_scene_color_rt_.get(),
+                            water_depth_copy_rt_.get());
+    video_->SetBlendEnabled(false);
+    video_->SetDepthFunc(abstract::CompareFunc::kLess);
+    video_->SetDepthWriteEnabled(true);
+    video_->SetDepthTestEnabled(false);
+    emissive_fbo_.UnbindForWriting();
+  }
+
   // 5. Composite pass — gamma-correct the HDR RT to the default framebuffer.
   emissive_fbo_.GetHDRRT()->BindAsSampler(0);
   composite_shader_->Activate();
@@ -279,6 +310,10 @@ void Renderer::OnResize(int w, int h) {
   render_h_ = h;
   gbuffer_.Resize(video_, w, h);
   emissive_fbo_.Resize(video_, w, h, gbuffer_.GetDepthRT());
+  water_scene_color_rt_ = video_->CreateRenderTarget(
+      w, h, abstract::TextureFormat::kRGBA16F);
+  water_depth_copy_rt_  = video_->CreateRenderTarget(
+      w, h, abstract::TextureFormat::kDepth24Stencil8);
 }
 
 void Renderer::ResizeTargets(int w, int h) {
@@ -286,6 +321,10 @@ void Renderer::ResizeTargets(int w, int h) {
   render_h_ = h;
   gbuffer_.Resize(video_, w, h);
   emissive_fbo_.Resize(video_, w, h, gbuffer_.GetDepthRT());
+  water_scene_color_rt_ = video_->CreateRenderTarget(
+      w, h, abstract::TextureFormat::kRGBA16F);
+  water_depth_copy_rt_  = video_->CreateRenderTarget(
+      w, h, abstract::TextureFormat::kDepth24Stencil8);
 }
 
 void Renderer::RenderTerrainWireframe(const core::Camera& camera,
@@ -338,8 +377,7 @@ void Renderer::UpdateWaterRenderer() {
        std::sin(elev),
       -std::sin(azimuth) * cos_el);
 
-  // Simple sky zenith colour interpolation: night (dark blue) → day (bright blue).
-  // Matches the qualitative output of the Preetham sky at the zenith.
+  // Simple sky zenith colour: night (dark blue) → day (bright blue).
   const float day_factor = std::clamp(sun_dir.y, 0.f, 1.f);
   const float r = 0.05f + day_factor * 0.35f;
   const float g = 0.10f + day_factor * 0.55f;
@@ -347,6 +385,20 @@ void Renderer::UpdateWaterRenderer() {
 
   water_renderer_->SetSunDirection(sun_dir.Normalized());
   water_renderer_->SetSkyZenithColor(r, g, b);
+
+  // Upload WaterInfos CB (slot 9) so terrain shaders can read water_level
+  // during the geometry pass and water shader reads it in the forward pass.
+  // Remaining fields use their WaterInfos default values.
+  const core::Vec3f nd = sun_dir.Normalized();
+  environment::WaterInfos wi;
+  wi.water_level  = water_renderer_->GetWaterLevel();
+  wi.sky_zenith_r = water_renderer_->GetSkyZenithR();
+  wi.sky_zenith_g = water_renderer_->GetSkyZenithG();
+  wi.sky_zenith_b = water_renderer_->GetSkyZenithB();
+  wi.sun_dir_x    = nd.x;
+  wi.sun_dir_y    = nd.y;
+  wi.sun_dir_z    = nd.z;
+  water_infos_cb_->Fill(&wi);
 }
 
 }  // namespace renderer

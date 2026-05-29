@@ -49,17 +49,21 @@ enum class DebugMode : int {
 //   Slot 5 (CSMInfos): cascade VP matrices and split depths for GlobalLight CSM.
 //   Slot 7 (WindInfos): wind_xz, wind_strength, wind_time (global; all passes).
 //   Slot 8 (SkyInfos): sun direction, time of day, turbidity (sky pass only).
+//   Slot 9 (WaterInfos): water level, colours, sun, foam params (global; all passes).
 //
 // Render targets (created at video resolution, recreated on resize):
-//   gbuffer_      — 3-MRT FBO: albedo (RGBA8), normal (RGBA16F), specular (RGBA8)
-//                   + shared depth+stencil (DEPTH24_STENCIL8).
-//   emissive_fbo_ — HDR RT (RGBA16F) as color + G-buffer depth+stencil as depth.
+//   gbuffer_              — 3-MRT FBO: albedo (RGBA8), normal (RGBA16F), specular (RGBA8)
+//                           + shared depth+stencil (DEPTH24_STENCIL8).
+//   emissive_fbo_         — HDR RT (RGBA16F) as color + G-buffer depth+stencil as depth.
+//   water_scene_color_rt_ — RGBA16F snapshot of HDR RT taken before the water pass.
+//   water_depth_copy_rt_  — DEPTH24STENCIL8 snapshot of depth taken before the water pass.
 //
 // Frame pipeline (Update()):
 //   1. Geometry pass  — G-buffer FBO; MeshRenderer fills albedo, normal, specular.
 //   2. Lighting pass  — HDR RT (additive blend); LightRenderer shades each light.
 //   3. Sky pass       — HDR RT (depth LEQUAL, no blend); SkyRenderer fills background.
 //   4. Emissive pass  — HDR RT (additive, depth read-only); emissive/ambient meshes.
+//   4b.Water pass     — copy HDR RT + depth; forward SrcAlpha blend into emissive FBO.
 //   5. Composite pass — default framebuffer; gamma correction.
 //
 // Debug mode (SetDebugMode != kNone):
@@ -154,8 +158,9 @@ class Renderer : public core::Singleton<Renderer> {
   // The caller retains ownership.
   void SetWindSystem(environment::WindSystem* wind) { wind_system_ = wind; }
 
-  // Registers a WaterRenderer to be drawn in the geometry pass (after terrain,
-  // before mesh objects). Pass nullptr to detach. The caller retains ownership.
+  // Registers a WaterRenderer to be drawn in the forward water pass (after the
+  // emissive pass, before composite). Pass nullptr to detach. The caller retains
+  // ownership.
   void SetWaterRenderer(environment::WaterRenderer* water) {
     water_renderer_ = water;
   }
@@ -204,7 +209,7 @@ class Renderer : public core::Singleton<Renderer> {
   void FillSceneInfos();
   void FillWindInfos();
   // Derives sun direction and sky zenith colour from water_sky_world_time_ and
-  // pushes them to water_renderer_ before it draws.
+  // pushes them to water_renderer_, then uploads the WaterInfos CB (slot 9).
   void UpdateWaterRenderer();
 
   // cppcheck-suppress unusedStructMember
@@ -220,6 +225,8 @@ class Renderer : public core::Singleton<Renderer> {
   std::unique_ptr<abstract::ConstantBuffer> material_infos_cb_;
   std::unique_ptr<abstract::ConstantBuffer> csm_infos_cb_;
   std::unique_ptr<abstract::ConstantBuffer> wind_infos_cb_;
+  // WaterInfos CB — bound globally so terrain shaders can read water_level.
+  std::unique_ptr<abstract::ConstantBuffer> water_infos_cb_;
 
   std::unique_ptr<NoCullingVisibilitySystem> no_culling_system_;
   std::unique_ptr<OctreeVisibilitySystem>    octree_system_;
@@ -228,6 +235,11 @@ class Renderer : public core::Singleton<Renderer> {
   // gbuffer's depth RT, so it must be destroyed first (reverse declaration order).
   GBuffer     gbuffer_;
   EmissiveFBO emissive_fbo_;
+
+  // Snapshots taken just before the water forward pass.
+  // Owned by Renderer; recreated on resize alongside gbuffer_ and emissive_fbo_.
+  std::unique_ptr<abstract::RenderTarget> water_scene_color_rt_;
+  std::unique_ptr<abstract::RenderTarget> water_depth_copy_rt_;
 
   DebugMode debug_mode_ = DebugMode::kNone;
 

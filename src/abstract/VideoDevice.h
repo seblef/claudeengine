@@ -199,6 +199,18 @@ class VideoDevice {
       std::span<RenderTarget*> color_targets,
       RenderTarget* depth_stencil_target) = 0;
 
+  // Copies the full contents of src into dst.
+  // Both targets must have the same dimensions and format.
+  // Implemented with glCopyImageSubData (OpenGL 4.3+); no framebuffer rebinding.
+  virtual void CopyRenderTarget(RenderTarget* src, RenderTarget* dst) = 0;
+
+  // Creates an RGBA8 tileable texture from raw CPU data.
+  // Uses GL_REPEAT wrapping and GL_LINEAR_MIPMAP_LINEAR filtering with
+  // auto-generated mipmaps. Intended for tiling procedural textures such as
+  // water normal maps and foam.  The caller owns the returned object via unique_ptr.
+  [[nodiscard]] virtual std::unique_ptr<RawTexture> CreateTileableTexture(
+      int width, int height, const uint8_t* data) = 0;
+
   // Creates (or retrieves) a shader by name. The resource registry starts
   // the object with ref_count = 1; call Release() when done.
   [[nodiscard]] virtual Shader* CreateShader(const std::string& name) = 0;
