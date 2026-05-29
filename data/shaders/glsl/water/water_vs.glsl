@@ -1,14 +1,27 @@
-// Water vertex shader — geometry pass.
+// Water vertex shader — forward pass (after deferred lighting).
 //
-// Displaces the flat XZ grid vertically with a sum of 4 sine waves whose
-// directions and frequencies are derived from the current wind vector.  The
-// analytical normal is computed from the wave height derivatives.
+// Displaces the flat XZ grid using Gerstner waves, which produce physically
+// realistic circular particle orbits with cresting.
 //
-// Wave model (per wave i):
-//   height_i = A_i * sin(dot(dir_i, xz) * freq_i + time * speed_i)
-//   dH/dx_i  = A_i * freq_i * cos(...) * dir_i.x
-//   dH/dz_i  = A_i * freq_i * cos(...) * dir_i.y
-//   N = normalize(vec3(-sum(dH/dx), 1.0, -sum(dH/dz)))
+// Gerstner wave model (per wave i):
+//   phi_i    = freq_i × dot(dir_i, xz) + speed_i × time
+//   offset.x += Q_i × A_i × dir_i.x × cos(phi_i)
+//   offset.y += A_i × sin(phi_i)
+//   offset.z += Q_i × A_i × dir_i.y × cos(phi_i)
+// where Q_i = 0.5 (steepness; 0 = pure sine, 1 = sharp crest).
+//
+// Analytical TBN from Gerstner derivatives:
+//   N.x -= dir_i.x × w_i × A_i × cos(phi_i)
+//   N.y -= Q_i × w_i × A_i × sin(phi_i)       (from 1.0 base)
+//   N.z -= dir_i.y × w_i × A_i × cos(phi_i)
+//
+//   T.x -= Q_i × dir_i.x² × w_i × A_i × sin(phi_i)
+//   T.y += dir_i.x × w_i × A_i × cos(phi_i)
+//   T.z -= Q_i × dir_i.x × dir_i.y × w_i × A_i × sin(phi_i)
+//
+//   B.x -= Q_i × dir_i.x × dir_i.y × w_i × A_i × sin(phi_i)
+//   B.y += dir_i.y × w_i × A_i × cos(phi_i)
+//   B.z -= Q_i × dir_i.y² × w_i × A_i × sin(phi_i)
 //
 // Wave phase is driven by scene_infos.time (always advancing) so waves
 // animate regardless of whether the wind system is active.
@@ -26,6 +39,9 @@
 
 out vec3 v_world_pos;
 out vec3 v_world_normal;
+out vec3 v_tangent;
+out vec3 v_bitangent;
+out vec2 v_uv;
 
 // Rotates a 2D unit vector by angle_rad (counter-clockwise).
 vec2 Rotate2D(vec2 v, float angle_rad) {
@@ -35,8 +51,6 @@ vec2 Rotate2D(vec2 v, float angle_rad) {
 }
 
 void main() {
-    const float PI = 3.14159265;
-
     // Derive a base wind direction unit vector from wind_xz.
     // Fall back to +X when wind is calm.
     vec2  wind_dir = (wind_strength > 0.001)
@@ -46,9 +60,11 @@ void main() {
     // Wind-scaled base amplitude: at 10 m/s the surface swings ±0.4 m.
     float base_amp = clamp(wind_strength * 0.04, 0.0, 2.0);
 
-    // 4 waves with distinct directions (rotations of wind_dir), frequencies,
-    // amplitudes (as fractions of base_amp), and propagation speeds.
-    const int N_WAVES = 4;
+    // 4 Gerstner waves with distinct directions (rotations of wind_dir),
+    // frequencies, amplitudes (as fractions of base_amp), and speeds.
+    const int   N_WAVES    = 4;
+    const float Q_STEEP    = 0.5;  // steepness: 0 = pure sine, 1 = sharp crest
+
     vec2  dirs[N_WAVES];
     float freqs[N_WAVES];
     float amps[N_WAVES];
@@ -69,35 +85,54 @@ void main() {
     vec2  xz      = in_position.xz;
     float water_y = water_params.a;  // world_level stored in water_params.a
 
-    float total_y  = 0.0;
-    float d_dx     = 0.0;
-    float d_dz     = 0.0;
+    vec3 offset = vec3(0.0);
+
+    // TBN accumulation — analytical Gerstner derivatives.
+    // Initialized to flat-surface frame.
+    vec3 N = vec3(0.0, 1.0, 0.0);
+    vec3 T = vec3(1.0, 0.0, 0.0);
+    vec3 B = vec3(0.0, 0.0, 1.0);
 
     for (int i = 0; i < N_WAVES; ++i) {
-        float amp   = base_amp * amps[i];
-        // Use scene time (always advancing) so waves move regardless of
-        // whether the wind system is running.
-        float phase = dot(dirs[i], xz) * freqs[i] + time * speeds[i];
-        float s     = sin(phase);
-        float c     = cos(phase);
+        float A   = base_amp * amps[i];
+        float w   = freqs[i];
+        float phi = dot(dirs[i], xz) * w + time * speeds[i];
+        float s   = sin(phi);
+        float c   = cos(phi);
 
-        // Height contribution.
-        total_y += amp * s;
+        float wA  = w * A;
+        float QwA = Q_STEEP * wA;
 
-        // Analytical partial derivatives for normal computation.
-        // dH/dx = amp * cos(phase) * freq * dir.x
-        // dH/dz = amp * cos(phase) * freq * dir.y
-        d_dx += amp * freqs[i] * c * dirs[i].x;
-        d_dz += amp * freqs[i] * c * dirs[i].y;
+        // Gerstner position offset.
+        offset.x += Q_STEEP * A * dirs[i].x * c;
+        offset.y += A * s;
+        offset.z += Q_STEEP * A * dirs[i].y * c;
+
+        // Analytical normal derivatives.
+        N.x -= dirs[i].x * wA * c;
+        N.y -= Q_STEEP   * wA * s;
+        N.z -= dirs[i].y * wA * c;
+
+        // Analytical tangent derivatives.
+        T.x -= QwA * dirs[i].x * dirs[i].x * s;
+        T.y += dirs[i].x * wA * c;
+        T.z -= QwA * dirs[i].x * dirs[i].y * s;
+
+        // Analytical bitangent derivatives.
+        B.x -= QwA * dirs[i].x * dirs[i].y * s;
+        B.y += dirs[i].y * wA * c;
+        B.z -= QwA * dirs[i].y * dirs[i].y * s;
     }
 
-    vec3 world_pos = vec3(in_position.x,
-                          water_y + total_y,
-                          in_position.z);
+    vec3 world_pos = vec3(in_position.x + offset.x,
+                          water_y       + offset.y,
+                          in_position.z + offset.z);
 
-    // Surface normal from height field: N = normalize(-dH/dx, 1, -dH/dz).
-    v_world_normal = normalize(vec3(-d_dx, 1.0, -d_dz));
+    v_world_normal = normalize(N);
+    v_tangent      = normalize(T);
+    v_bitangent    = normalize(B);
     v_world_pos    = world_pos;
+    v_uv           = in_position.xz;  // world XZ for tileable normal map sampling
 
     gl_Position = view_proj * vec4(world_pos, 1.0);
 }
