@@ -18,6 +18,7 @@ namespace {
 
 constexpr float kCellSize      = 10.f;   // world units per grid cell
 constexpr int   kNormalMapSize = 512;    // resolution of the procedural normal map
+constexpr int   kFoamTexSize   = 256;    // resolution of the procedural foam texture
 
 // Returns the height of an overlapping multi-frequency sine field at (u, v).
 // u and v are in [0, kNormalMapSize) and represent normalised tile coordinates.
@@ -31,6 +32,19 @@ float NormalMapHeight(float u, float v) {
         + 0.15f * std::sin(u * s * 13.f + v * s * 3.f);
 }
 
+// Returns a foam intensity in [0,1] at texel (u,v) by taking the product of four
+// overlapping sine terms.  Peaks only occur where all four waves coincide, producing
+// sparse, isolated blobby bright patches that tile seamlessly.
+float FoamValue(float u, float v) {
+  const float pi2 = 6.28318530f;
+  const float s   = pi2 / static_cast<float>(kFoamTexSize);
+  const float a   = (std::sin(u * s * 3.f + v * s * 2.f) + 1.0f) * 0.5f;
+  const float b   = (std::sin(u * s * 7.f - v * s * 5.f) + 1.0f) * 0.5f;
+  const float c   = (std::sin(u * s * 5.f + v * s * 9.f) + 1.0f) * 0.5f;
+  const float d   = (std::sin(u * s * 11.f - v * s * 3.f) + 1.0f) * 0.5f;
+  return a * b * c * d;
+}
+
 }  // namespace
 
 void WaterRenderer::Build(abstract::VideoDevice* video,
@@ -41,6 +55,7 @@ void WaterRenderer::Build(abstract::VideoDevice* video,
 
   BuildMesh(grid_size);
   BuildNormalMap();
+  BuildFoamTexture();
 }
 
 void WaterRenderer::BuildMesh(int grid_size) {
@@ -136,12 +151,34 @@ void WaterRenderer::BuildNormalMap() {
   normal_map_tex_ = video_->CreateTileableTexture(size, size, pixels.data());
 }
 
+void WaterRenderer::BuildFoamTexture() {
+  constexpr int size = kFoamTexSize;
+
+  std::vector<uint8_t> pixels(static_cast<size_t>(size * size * 4));
+  for (int y = 0; y < size; ++y) {
+    for (int x = 0; x < size; ++x) {
+      // Boost sparse bright peaks into visible range, then clamp to [0,1].
+      float val = std::min(1.0f, FoamValue(static_cast<float>(x),
+                                           static_cast<float>(y)) * 6.0f);
+      const auto  b8  = static_cast<uint8_t>(val * 255.0f);
+      const int   idx = (y * size + x) * 4;
+      pixels[static_cast<size_t>(idx + 0)] = b8;
+      pixels[static_cast<size_t>(idx + 1)] = b8;
+      pixels[static_cast<size_t>(idx + 2)] = b8;
+      pixels[static_cast<size_t>(idx + 3)] = 255;
+    }
+  }
+
+  foam_tex_ = video_->CreateTileableTexture(size, size, pixels.data());
+}
+
 void WaterRenderer::Render([[maybe_unused]] const core::Camera& camera,
                            abstract::RenderTarget* scene_color,
                            abstract::RenderTarget* depth) {
   if (!shader_) return;
 
   normal_map_tex_->Bind(0);
+  foam_tex_->Bind(1);
   scene_color->BindAsSampler(2);
   depth->BindAsSampler(3);
 
@@ -154,6 +191,7 @@ void WaterRenderer::Render([[maybe_unused]] const core::Camera& camera,
   grid_ib_->Bind();
   video_->RenderIndexed(num_indices_);
 
+  video_->UnbindSampler(1);
   video_->UnbindSampler(2);
   video_->UnbindSampler(3);
 }
@@ -166,6 +204,7 @@ void WaterRenderer::Reset() {
   grid_vb_.reset();
   grid_ib_.reset();
   normal_map_tex_.reset();
+  foam_tex_.reset();
   video_     = nullptr;
   num_indices_ = 0;
 }
