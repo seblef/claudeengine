@@ -21,13 +21,16 @@ namespace environment {
 // Wave animation is driven by the WindInfos constant buffer (slot 7), which must
 // already be bound when Render() is called.  The fragment shader performs Fresnel
 // blending, depth-based absorption, refraction from the scene colour snapshot,
-// and Blinn-Phong specular from the sun direction.
+// Cook-Torrance GGX specular from the sun direction, and physically-motivated foam
+// (wave-height, surface steepness, and animated shoreline ring).
 //
 // Renders in the FORWARD pass (after deferred lighting + emissive) using
 // SrcAlpha / OneMinusSrcAlpha blending.  The WaterInfos constant buffer at
 // slot 9 is owned by Renderer and must be bound before Render() is called.
 //
 // Constant buffer slot 9 (WaterInfos): bound globally by Renderer.
+// Sampler slot 0: procedural water normal map (RGBA8, tileable).
+// Sampler slot 1: procedural foam texture    (RGBA8, tileable).
 // Sampler slot 2: scene_color snapshot (RGBA16F).
 // Sampler slot 3: depth snapshot (DEPTH24STENCIL8).
 //
@@ -92,6 +95,7 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
  private:
   void BuildMesh(int grid_size);
   void BuildNormalMap();
+  void BuildFoamTexture();
 
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice*                  video_   = nullptr;
@@ -100,6 +104,7 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   std::unique_ptr<abstract::VertexBuffer> grid_vb_;
   std::unique_ptr<abstract::IndexBuffer>  grid_ib_;
   std::unique_ptr<abstract::RawTexture>   normal_map_tex_;
+  std::unique_ptr<abstract::RawTexture>   foam_tex_;
   int                                     num_indices_ = 0;
 
   float         water_level_   = 0.f;

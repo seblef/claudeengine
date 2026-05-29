@@ -13,6 +13,15 @@
 //   N    = normalize(TBN * ts_n)
 //   where TBN comes from the Gerstner analytical tangent frame (from VS).
 //
+// Foam (three physically-motivated sources):
+//   h_foam      = smoothstep(thresh, thresh+0.5, v_world_pos.y - water_level)  // crest
+//   steep_foam  = smoothstep(st-0.1, st, 1-v_world_normal.y)                   // steepness
+//   sl_foam     = (1-smoothstep(0,shore_depth,depth)) * animRing * 0.8         // shoreline
+//   foam_amount = max(max(h_foam, steep_foam), sl_foam)
+//   ft          = foam_tex(v_uv*0.04 + t*0.015).r * foam_tex(v_uv*0.07 - t*0.010).r
+//   foam_amount = clamp(foam_amount * ft * 2.5, 0, 1)
+//   final_color = mix(final_color, vec3(1), foam_amount)
+//
 // Alpha equation:
 //   water_depth = v_world_pos.y - world_y_of_scene_bottom  (world-space metres)
 //   out_alpha   = smoothstep(0, 1.5, water_depth)       // shoreline fade-in
@@ -42,6 +51,7 @@
 // UBO binding 2: scene_infos (eye_pos, inv_screen_size, inv_view_proj, z_near, z_far)
 // UBO binding 9: water_infos
 // Sampler 0:     u_normal_map     — procedural tileable water normal map
+// Sampler 1:     u_foam_tex       — procedural tileable foam blob texture
 // Sampler 2:     scene_color_tex  — HDR copy before water pass
 // Sampler 3:     depth_tex        — depth copy before water pass
 
@@ -58,6 +68,7 @@ in  vec3 v_bitangent;
 in  vec2 v_uv;
 
 layout(binding = 0) uniform sampler2D u_normal_map;      // slot 0 — procedural normal map
+layout(binding = 1) uniform sampler2D u_foam_tex;        // slot 1 — procedural foam texture
 layout(binding = 2) uniform sampler2D scene_color_tex;  // slot 2 — scene colour snapshot
 layout(binding = 3) uniform sampler2D depth_tex;        // slot 3 — scene depth snapshot
 
@@ -109,8 +120,27 @@ void main() {
         water_depth = max(v_world_pos.y - (world.y / world.w), 0.0);
     }
 
-    // Shoreline foam: strong near shore (water_depth < foam_shoreline_depth).
-    float foam_amount = 1.0 - smoothstep(0.0, refraction_params.w, water_depth);
+    // 1. Wave-height foam: crest exceeds foam_height_thresh.
+    float wave_height = v_world_pos.y - water_params.a;
+    float h_foam      = smoothstep(refraction_params.z,
+                                   refraction_params.z + 0.5,
+                                   wave_height);
+
+    // 2. Steepness foam: Gerstner macro normal tilted far from vertical.
+    float steepness  = 1.0 - v_world_normal.y;
+    float steep_foam = smoothstep(foam_params.x - 0.1, foam_params.x, steepness);
+
+    // 3. Shoreline foam: shallow water with an animated ring following the wave.
+    float shore_foam = 1.0 - smoothstep(0.0, refraction_params.w, water_depth);
+    float anim       = sin(water_depth * 6.0 - time * foam_params.y) * 0.5 + 0.5;
+    float sl_foam    = shore_foam * anim * 0.8;
+
+    float foam_amount = max(max(h_foam, steep_foam), sl_foam);
+
+    // Foam texture modulation — two scrolling samples break foam into natural clumps.
+    float ft = texture(u_foam_tex, v_uv * 0.04 + time * 0.015).r
+             * texture(u_foam_tex, v_uv * 0.07 - time * 0.010).r;
+    foam_amount = clamp(foam_amount * ft * 2.5, 0.0, 1.0);
 
     // Schlick Fresnel.
     float n_dot_v = max(dot(N, V), 0.0);
@@ -155,6 +185,7 @@ void main() {
     vec3  spec      = vec3(spec_brdf) * sun_params.w * sun_vis;
 
     vec3 final_color = surface_col + spec;
+    final_color = mix(final_color, vec3(1.0), foam_amount);
 
     // Alpha: shoreline fade-in, foam override, Fresnel lift.
     float out_alpha = smoothstep(0.0, 1.5, water_depth);
