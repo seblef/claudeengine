@@ -151,6 +151,17 @@ core::Key GLDevices::GlfwKeyToKey(int k) {
     case GLFW_KEY_PAGE_UP:   return core::Key::kPageUp;
     case GLFW_KEY_PAGE_DOWN: return core::Key::kPageDown;
 
+    case GLFW_KEY_KP_0: return core::Key::kNumpad0;
+    case GLFW_KEY_KP_1: return core::Key::kNumpad1;
+    case GLFW_KEY_KP_2: return core::Key::kNumpad2;
+    case GLFW_KEY_KP_3: return core::Key::kNumpad3;
+    case GLFW_KEY_KP_4: return core::Key::kNumpad4;
+    case GLFW_KEY_KP_5: return core::Key::kNumpad5;
+    case GLFW_KEY_KP_6: return core::Key::kNumpad6;
+    case GLFW_KEY_KP_7: return core::Key::kNumpad7;
+    case GLFW_KEY_KP_8: return core::Key::kNumpad8;
+    case GLFW_KEY_KP_9: return core::Key::kNumpad9;
+
     default: return core::Key::kUnknown;
   }
 }

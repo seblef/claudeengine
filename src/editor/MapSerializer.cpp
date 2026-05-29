@@ -373,11 +373,13 @@ bool MapSerializer::Save(const EditorScene& scene,
   } else {
     out << YAML::Null;
   }
-  out << YAML::Key << "camera_focus" << YAML::Value;
+  out << YAML::Key << "camera" << YAML::Value << YAML::BeginMap;
+  out << YAML::Key << "focus" << YAML::Value;
   EmitVec3(out, cam.focus);
-  out << YAML::Key << "camera_azimuth"   << YAML::Value << cam.azimuth;
-  out << YAML::Key << "camera_elevation" << YAML::Value << cam.elevation;
-  out << YAML::Key << "camera_distance"  << YAML::Value << cam.distance;
+  out << YAML::Key << "azimuth"   << YAML::Value << cam.azimuth;
+  out << YAML::Key << "elevation" << YAML::Value << cam.elevation;
+  out << YAML::Key << "distance"  << YAML::Value << cam.distance;
+  out << YAML::EndMap;
   out << YAML::Key << "snap_grid"        << YAML::Value << 0.0f;
   out << YAML::EndMap;
 
@@ -436,14 +438,28 @@ std::optional<MapLoadResult> MapSerializer::Load(
     YAML::Node root = YAML::LoadFile(path.string());
     const YAML::Node& editor = root["editor"];
     if (editor) {
-      if (editor["camera_focus"]) {
-        const YAML::Node& f = editor["camera_focus"];
-        if (f.IsSequence() && f.size() >= 3)
-          cam.focus = {f[0].as<float>(), f[1].as<float>(), f[2].as<float>()};
+      // New nested format: editor.camera.{ focus, azimuth, elevation, distance }
+      const YAML::Node& cam_node = editor["camera"];
+      if (cam_node) {
+        if (cam_node["focus"]) {
+          const YAML::Node& f = cam_node["focus"];
+          if (f.IsSequence() && f.size() >= 3)
+            cam.focus = {f[0].as<float>(), f[1].as<float>(), f[2].as<float>()};
+        }
+        cam.azimuth   = cam_node["azimuth"].as<float>(0.f);
+        cam.elevation = cam_node["elevation"].as<float>(0.3f);
+        cam.distance  = cam_node["distance"].as<float>(15.f);
+      } else {
+        // Backward compat: flat keys written by older saves.
+        if (editor["camera_focus"]) {
+          const YAML::Node& f = editor["camera_focus"];
+          if (f.IsSequence() && f.size() >= 3)
+            cam.focus = {f[0].as<float>(), f[1].as<float>(), f[2].as<float>()};
+        }
+        cam.azimuth   = editor["camera_azimuth"].as<float>(0.f);
+        cam.elevation = editor["camera_elevation"].as<float>(0.3f);
+        cam.distance  = editor["camera_distance"].as<float>(15.f);
       }
-      cam.azimuth   = editor["camera_azimuth"].as<float>(0.f);
-      cam.elevation = editor["camera_elevation"].as<float>(0.3f);
-      cam.distance  = editor["camera_distance"].as<float>(15.f);
 
       const YAML::Node& sel_node = editor["selected_object"];
       if (sel_node && !sel_node.IsNull()) {
