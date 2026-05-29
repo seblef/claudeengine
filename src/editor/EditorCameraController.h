@@ -12,7 +12,8 @@ namespace editor {
 // Controls:
 //   Alt + LMB drag     — orbit (change azimuth and elevation)
 //   Shift + RMB drag   — pan (translate focus point)
-//   RMB (no modifier)  — fly-through: WASD to move, mouse to look
+//   RMB (no modifier)  — fly-through: WASD/QE to move, mouse to look
+//   W / S (orbit)      — translate focus forward/backward along look direction
 //   Scroll wheel       — dolly zooming toward the cursor position
 //   Numpad 1           — snap to front view (looking in −Z)
 //   Numpad 3           — snap to right view (looking in −X)
@@ -123,7 +124,7 @@ class EditorCameraController : public game::ICameraController {
   float       fly_yaw_   = 0.f;
   // cppcheck-suppress unusedStructMember
   float       fly_pitch_ = 0.f;
-  // WASD movement keys (tracked while fly_active_).
+  // WASDQE movement keys. W/S also active in orbit mode for focus translation.
   // cppcheck-suppress unusedStructMember
   bool w_down_ = false;
   // cppcheck-suppress unusedStructMember
@@ -132,6 +133,10 @@ class EditorCameraController : public game::ICameraController {
   bool s_down_ = false;
   // cppcheck-suppress unusedStructMember
   bool d_down_ = false;
+  // cppcheck-suppress unusedStructMember
+  bool e_down_ = false;
+  // cppcheck-suppress unusedStructMember
+  bool q_down_ = false;
 
   // Viewport panel screen rect, updated each frame by SetViewportRect().
   // Used by the scroll handler for zoom-toward-cursor unprojection.

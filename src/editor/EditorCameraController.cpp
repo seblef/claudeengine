@@ -69,7 +69,7 @@ void EditorCameraController::ExitFlyMode() {
   };
   focus_     = fly_pos_ + fwd * distance_;
   fly_active_ = false;
-  w_down_ = a_down_ = s_down_ = d_down_ = false;
+  w_down_ = a_down_ = s_down_ = d_down_ = e_down_ = q_down_ = false;
 }
 
 void EditorCameraController::OnEvent(const core::Event& event) {
@@ -86,6 +86,8 @@ void EditorCameraController::OnEvent(const core::Event& event) {
         case core::Key::kA:       a_down_     = true;  break;
         case core::Key::kS:       s_down_     = true;  break;
         case core::Key::kD:       d_down_     = true;  break;
+        case core::Key::kE:       e_down_     = true;  break;
+        case core::Key::kQ:       q_down_     = true;  break;
 
         // Preset views (Blender numpad conventions).
         case core::Key::kNumpad1:
@@ -120,6 +122,8 @@ void EditorCameraController::OnEvent(const core::Event& event) {
         case core::Key::kA:       a_down_     = false; break;
         case core::Key::kS:       s_down_     = false; break;
         case core::Key::kD:       d_down_     = false; break;
+        case core::Key::kE:       e_down_     = false; break;
+        case core::Key::kQ:       q_down_     = false; break;
         default: break;
       }
       break;
@@ -273,10 +277,12 @@ void EditorCameraController::Update(float dt) {
 
     // WASD movement scaled by orbit distance for comfortable traversal at any zoom.
     const float speed = distance_ * kFlySpeedFactor * dt;
-    if (w_down_) fly_pos_ += fwd   * speed;
-    if (s_down_) fly_pos_ -= fwd   * speed;
-    if (a_down_) fly_pos_ -= right * speed;
-    if (d_down_) fly_pos_ += right * speed;
+    if (w_down_) fly_pos_ += fwd                  * speed;
+    if (s_down_) fly_pos_ -= fwd                  * speed;
+    if (a_down_) fly_pos_ -= right                * speed;
+    if (d_down_) fly_pos_ += right                * speed;
+    if (e_down_) fly_pos_ += core::Vec3f::kAxisY  * speed;
+    if (q_down_) fly_pos_ -= core::Vec3f::kAxisY  * speed;
 
     camera_->SetWorldTransform(core::Mat4f(
         right.x, core::Vec3f::kAxisY.x, -fwd.x, fly_pos_.x,
@@ -290,6 +296,15 @@ void EditorCameraController::Update(float dt) {
   const float cos_el = std::cos(elevation_);
   const float sin_az = std::sin(azimuth_);
   const float cos_az = std::cos(azimuth_);
+
+  // W/S translate the focus forward/backward along the look direction so the
+  // user can reposition the orbit pivot without entering fly mode.
+  if (w_down_ || s_down_) {
+    const core::Vec3f fwd = {-cos_el * sin_az, -std::sin(elevation_), -cos_el * cos_az};
+    const float speed = distance_ * kFlySpeedFactor * dt;
+    if (w_down_) focus_ += fwd * speed;
+    if (s_down_) focus_ -= fwd * speed;
+  }
 
   const core::Vec3f eye = {
       focus_.x + distance_ * cos_el * sin_az,
