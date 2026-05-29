@@ -5,16 +5,25 @@
 
 #include <imgui.h>
 
+#include "core/Color.h"
+#include "core/Vec3f.h"
 #include "editor/EditorScene.h"
 #include "environment/CloudRenderer.h"
 #include "environment/EnvironmentDesc.h"
 #include "environment/SkyRenderer.h"
 #include "environment/WaterRenderer.h"
+#include "game/GameLightDesc.h"
 #include "renderer/Renderer.h"
 
 namespace editor {
 
 namespace {
+
+// Sun/moon global light parameters driven by sky state.
+constexpr float kSunMaxIntensity  = 1.2f;
+constexpr float kMoonIntensity    = 0.08f;
+// sin(45°) — maximum solar elevation for this engine's assumed latitude.
+constexpr float kSinMaxElevation  = 0.7071f;
 
 // Converts a XZ direction vector to a compass angle in degrees [0, 360).
 // 0° = +X (east), increasing clockwise toward +Z (south).
@@ -75,6 +84,7 @@ void EnvironmentEditorPanel::Tick(float dt) {
     const float tod = world_time_->GetTimeOfDay();
     renderer::Renderer::Instance().SetSkyWorldTime(tod);
     renderer::Renderer::Instance().SetWaterSkyWorldTime(tod);
+    UpdateGlobalLightFromSky();
   }
   if (wind_system_) wind_system_->Update(dt);
 }
@@ -93,6 +103,7 @@ void EnvironmentEditorPanel::EnableSky(const environment::EnvironmentDesc& desc)
       &environment::SkyRenderer::Instance());
   renderer::Renderer::Instance().SetSkyWorldTime(world_time_->GetTimeOfDay());
   renderer::Renderer::Instance().SetWaterSkyWorldTime(world_time_->GetTimeOfDay());
+  UpdateGlobalLightFromSky();
 }
 
 void EnvironmentEditorPanel::DisableSky() {
@@ -156,6 +167,36 @@ void EnvironmentEditorPanel::DisableWind() {
   wind_system_.reset();
 }
 
+void EnvironmentEditorPanel::UpdateGlobalLightFromSky() {
+  if (!world_time_ || !scene_) return;
+
+  const bool daytime = world_time_->IsDaytime();
+
+  // The sky vector points *toward* the celestial body (positive Y = above horizon).
+  // GameLightDesc.direction is the *ray* direction (from source toward surface),
+  // so negate to convert.
+  const core::Vec3f sky_toward =
+      daytime ? world_time_->GetSunDirection() : world_time_->GetMoonDirection();
+  const core::Vec3f light_dir = core::Vec3f(-sky_toward.x, -sky_toward.y, -sky_toward.z);
+
+  game::GameLightDesc desc = scene_->GetGlobalLightDesc();
+  desc.direction = light_dir;
+
+  if (daytime) {
+    // Sun: warm white; intensity scales with elevation (0 at horizon, max at noon).
+    const float elevation_factor =
+        std::max(0.f, sky_toward.y) / kSinMaxElevation;
+    desc.color     = core::Color(1.f, 0.95f, 0.8f);
+    desc.intensity = kSunMaxIntensity * elevation_factor;
+  } else {
+    // Moon: cool blue-white, dim.
+    desc.color     = core::Color(0.45f, 0.5f, 0.8f);
+    desc.intensity = kMoonIntensity;
+  }
+
+  scene_->SetGlobalLightDesc(desc);
+}
+
 // ---- Render -----------------------------------------------------------------
 
 bool EnvironmentEditorPanel::Render() {
@@ -190,6 +231,7 @@ bool EnvironmentEditorPanel::RenderTimeSection(environment::EnvironmentDesc& env
       world_time_->SetTimeOfDay(tod);
       renderer::Renderer::Instance().SetSkyWorldTime(tod);
       renderer::Renderer::Instance().SetWaterSkyWorldTime(tod);
+      UpdateGlobalLightFromSky();
     }
     ImGui::Checkbox("Pause time", &time_paused_);
     ImGui::SameLine();
