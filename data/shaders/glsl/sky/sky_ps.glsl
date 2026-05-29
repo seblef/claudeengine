@@ -148,17 +148,44 @@ void main() {
     sky_rgb += mix(night_zenith, night_horizon, horizon_t) * night_factor;
 
     // --- Stars (night only, sky hemisphere) ---------------------------------
+    // Each star is placed at a random sub-cell position and rendered as a tight
+    // Gaussian point plus axis-aligned diffraction spikes, so it looks like a
+    // point of light rather than a uniform cell-wide quad.
     if (night_factor > 0.05 && view_dir.y > 0.01) {
-        // Project view direction to a 2D grid for hashing.
+        // Project view direction onto a spherical (lon, lat) grid.
         float lat = asin(clamp(view_dir.y, -1.0, 1.0));
         float lon = atan(view_dir.z, view_dir.x);
-        vec2 star_grid = floor(vec2(lon, lat) * 80.0);
+        vec2  star_coord = vec2(lon, lat) * 80.0;
+        vec2  star_grid  = floor(star_coord);
+        vec2  star_uv    = fract(star_coord);   // [0, 1) within cell
+
         float h = StarHash(star_grid);
         // Only ~3 % of cells contain a visible star.
-        float star_thresh = 0.97;
-        if (h > star_thresh) {
-            float brightness = pow((h - star_thresh) / (1.0 - star_thresh), 2.0);
-            sky_rgb += vec3(brightness * 1.5) * night_factor;
+        const float kStarThresh = 0.97;
+        if (h > kStarThresh) {
+            float brightness = pow((h - kStarThresh) / (1.0 - kStarThresh), 2.0) * 1.5;
+
+            // Random centre within the cell so the star is not at the grid corner.
+            vec2 centre = vec2(StarHash(star_grid + vec2(3.7, 1.3)),
+                               StarHash(star_grid + vec2(2.1, 5.9)));
+            // Offset from current pixel to star centre, in cell-width units [-1, 1].
+            vec2 d = star_uv - centre;
+
+            // Tight Gaussian core — σ ≈ 0.07 cell → ~1 px at typical resolution.
+            float core = exp(-dot(d, d) * 100.0);
+
+            // Axis-aligned diffraction spikes (horizontal + vertical).
+            //   Length falloff : exp(-d_along² * 3)   → half-power ≈ 0.5 cell
+            //   Width  falloff : exp(-d_perp² * 120)  → half-power ≈ 0.08 cell (~1 px)
+            float spike_h = exp(-d.x * d.x * 3.0) * exp(-d.y * d.y * 120.0);
+            float spike_v = exp(-d.y * d.y * 3.0) * exp(-d.x * d.x * 120.0);
+            float spikes  = (spike_h + spike_v) * 0.4;
+
+            // Per-star colour tint spanning blue-white to yellow-white.
+            float tint       = StarHash(star_grid + vec2(7.3, 4.1));
+            vec3  star_color = mix(vec3(0.75, 0.9, 1.0), vec3(1.0, 0.95, 0.8), tint);
+
+            sky_rgb += star_color * brightness * (core + spikes) * night_factor;
         }
     }
 
