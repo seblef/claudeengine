@@ -4,6 +4,15 @@
 // Outputs a single RGBA value; the alpha channel drives SrcAlpha blending so
 // shallow shoreline water fades in and deep water is opaque.
 //
+// Normal map blending:
+//   Two tileable water normal map layers scroll in slightly different directions
+//   to produce micro-surface ripple detail independent of the vertex waves.
+//   uv1 = v_uv * normal_scale1 + time * scroll_speed1 * vec2(1.0, 0.6)
+//   uv2 = v_uv * normal_scale2 - time * scroll_speed2 * vec2(0.7, 1.0)
+//   ts_n = normalize(n1 + n2)
+//   N    = normalize(TBN * ts_n)
+//   where TBN comes from the Gerstner analytical tangent frame (from VS).
+//
 // Alpha equation:
 //   water_depth = linear depth of scene bottom - linear depth of water surface
 //   out_alpha   = smoothstep(0, 1.5, water_depth)       // shoreline fade-in
@@ -24,6 +33,7 @@
 //
 // UBO binding 2: scene_infos (eye_pos, inv_screen_size, z_near_, z_far_)
 // UBO binding 9: water_infos
+// Sampler 0:     u_normal_map     — procedural tileable water normal map
 // Sampler 2:     scene_color_tex  — HDR copy before water pass
 // Sampler 3:     depth_tex        — depth copy before water pass
 
@@ -33,9 +43,13 @@
 
 in  vec3 v_world_pos;
 in  vec3 v_world_normal;
+in  vec3 v_tangent;
+in  vec3 v_bitangent;
+in  vec2 v_uv;
 
-uniform sampler2D scene_color_tex;  // slot 2 — scene colour snapshot
-uniform sampler2D depth_tex;        // slot 3 — scene depth snapshot
+layout(binding = 0) uniform sampler2D u_normal_map;      // slot 0 — procedural normal map
+layout(binding = 2) uniform sampler2D scene_color_tex;  // slot 2 — scene colour snapshot
+layout(binding = 3) uniform sampler2D depth_tex;        // slot 3 — scene depth snapshot
 
 layout(location = 0) out vec4 out_color;
 
@@ -46,7 +60,21 @@ float LinearizeDepth(float d) {
 }
 
 void main() {
-    vec3 N = normalize(v_world_normal);
+    // Sample two scrolling normal map layers and combine into a world-space normal.
+    // foam_params.z/w = normal_scale1/2; scroll_params.x/y = scroll speeds.
+    vec2 uv1 = v_uv * foam_params.z + time * scroll_params.x * vec2(1.0, 0.6);
+    vec2 uv2 = v_uv * foam_params.w - time * scroll_params.y * vec2(0.7, 1.0);
+
+    vec3 n1   = texture(u_normal_map, uv1).rgb * 2.0 - 1.0;
+    vec3 n2   = texture(u_normal_map, uv2).rgb * 2.0 - 1.0;
+    vec3 ts_n = normalize(n1 + n2);
+
+    // Transform tangent-space normal into world space using analytical Gerstner TBN.
+    mat3 TBN = mat3(normalize(v_tangent),
+                    normalize(v_bitangent),
+                    normalize(v_world_normal));
+    vec3 N = normalize(TBN * ts_n);
+
     vec3 V = normalize(eye_pos - v_world_pos);
 
     // Screen-space UV of the current fragment.

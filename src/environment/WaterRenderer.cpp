@@ -1,6 +1,8 @@
 #include "environment/WaterRenderer.h"
 
+#include <cmath>
 #include <cstdint>
+#include <vector>
 
 #include "abstract/BufferUsage.h"
 #include "abstract/CompareFunc.h"
@@ -13,7 +15,22 @@
 namespace environment {
 
 namespace {
-constexpr float kCellSize = 10.f;   // world units per grid cell
+
+constexpr float kCellSize      = 10.f;   // world units per grid cell
+constexpr int   kNormalMapSize = 512;    // resolution of the procedural normal map
+
+// Returns the height of an overlapping multi-frequency sine field at (u, v).
+// u and v are in [0, kNormalMapSize) and represent normalised tile coordinates.
+float NormalMapHeight(float u, float v) {
+  const float pi2 = 6.28318530f;
+  const float s   = pi2 / static_cast<float>(kNormalMapSize);
+  // Four overlapping sine waves at different frequencies and angles.
+  return  0.40f * std::sin(u * s * 3.f + v * s * 1.f)
+        + 0.25f * std::sin(u * s * 7.f - v * s * 5.f)
+        + 0.20f * std::sin(u * s * 2.f + v * s * 11.f)
+        + 0.15f * std::sin(u * s * 13.f + v * s * 3.f);
+}
+
 }  // namespace
 
 void WaterRenderer::Build(abstract::VideoDevice* video,
@@ -23,6 +40,7 @@ void WaterRenderer::Build(abstract::VideoDevice* video,
   shader_      = video_->CreateShader("water/water");
 
   BuildMesh(grid_size);
+  BuildNormalMap();
 }
 
 void WaterRenderer::BuildMesh(int grid_size) {
@@ -78,11 +96,52 @@ void WaterRenderer::BuildMesh(int grid_size) {
       abstract::BufferUsage::kImmutable, indices.data());
 }
 
+void WaterRenderer::BuildNormalMap() {
+  constexpr int   size  = kNormalMapSize;
+  constexpr float scale = 8.f;  // normal contrast multiplier
+  constexpr float eps   = 1.f;  // finite-difference step in texel units
+
+  std::vector<uint8_t> pixels;
+  pixels.resize(static_cast<size_t>(size * size * 4));
+
+  for (int y = 0; y < size; ++y) {
+    for (int x = 0; x < size; ++x) {
+      // Wrap-around finite differences for tileability.
+      const float fx = static_cast<float>(x);
+      const float fy = static_cast<float>(y);
+
+      const float dhdx = (NormalMapHeight(fx + eps, fy) -
+                          NormalMapHeight(fx - eps, fy)) / (2.f * eps);
+      const float dhdz = (NormalMapHeight(fx, fy + eps) -
+                          NormalMapHeight(fx, fy - eps)) / (2.f * eps);
+
+      // Surface normal from height field finite differences.
+      const float nx = -dhdx * scale;
+      const float ny = 1.f;
+      const float nz = -dhdz * scale;
+      const float len = std::sqrt(nx * nx + ny * ny + nz * nz);
+
+      const int idx = (y * size + x) * 4;
+      // Encode: R = N.x*0.5+0.5, G = N.z*0.5+0.5, B = N.y*0.5+0.5
+      pixels[static_cast<size_t>(idx + 0)] =
+          static_cast<uint8_t>((nx / len) * 127.5f + 127.5f);
+      pixels[static_cast<size_t>(idx + 1)] =
+          static_cast<uint8_t>((nz / len) * 127.5f + 127.5f);
+      pixels[static_cast<size_t>(idx + 2)] =
+          static_cast<uint8_t>((ny / len) * 127.5f + 127.5f);
+      pixels[static_cast<size_t>(idx + 3)] = 255;
+    }
+  }
+
+  normal_map_tex_ = video_->CreateTileableTexture(size, size, pixels.data());
+}
+
 void WaterRenderer::Render([[maybe_unused]] const core::Camera& camera,
                            abstract::RenderTarget* scene_color,
                            abstract::RenderTarget* depth) {
   if (!shader_) return;
 
+  normal_map_tex_->Bind(0);
   scene_color->BindAsSampler(2);
   depth->BindAsSampler(3);
 
@@ -106,6 +165,7 @@ void WaterRenderer::Reset() {
   }
   grid_vb_.reset();
   grid_ib_.reset();
+  normal_map_tex_.reset();
   video_     = nullptr;
   num_indices_ = 0;
 }

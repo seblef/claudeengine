@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "abstract/IndexBuffer.h"
+#include "abstract/RawTexture.h"
 #include "abstract/RenderTarget.h"
 #include "abstract/Shader.h"
 #include "abstract/VertexBuffer.h"
@@ -90,6 +91,7 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
 
  private:
   void BuildMesh(int grid_size);
+  void BuildNormalMap();
 
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice*                  video_   = nullptr;
@@ -97,6 +99,7 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   abstract::Shader*                       shader_  = nullptr;
   std::unique_ptr<abstract::VertexBuffer> grid_vb_;
   std::unique_ptr<abstract::IndexBuffer>  grid_ib_;
+  std::unique_ptr<abstract::RawTexture>   normal_map_tex_;
   int                                     num_indices_ = 0;
 
   float         water_level_   = 0.f;
