@@ -92,6 +92,10 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
     material_editor_->Open(mat);
   });
   environment_panel_.SetContext(scene_.get(), video_);
+  terrain_panel_.SetOnCreateFromImport(
+      [this](std::vector<uint16_t> s, int w, int h, float mn, float mx) {
+        CreateTerrainFromImport(std::move(s), w, h, mn, mx);
+      });
 
   loguru::add_callback("editor_log", &LogPanel::LogCallback,
                        log_panel_.get(), loguru::Verbosity_INFO);
@@ -234,7 +238,30 @@ void EditorWindow::Render() {
   if (terrain_dialog_.Render())
     CreateTerrain();
 
-  // 11b. Terrain editor panel — dockable, shown via Terrain menu.
+  // 11a. Terrain import window — floating, opened via Terrain > Import.
+  terrain_panel_.RenderImportWindow();
+
+  // 11b. Confirm remove terrain modal — triggered by Terrain > Remove.
+  if (confirm_remove_terrain_) {
+    ImGui::OpenPopup("Remove Terrain?##modal");
+    confirm_remove_terrain_ = false;
+  }
+  if (ImGui::BeginPopupModal("Remove Terrain?##modal", nullptr,
+                             ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImGui::TextUnformatted("Remove the terrain from this scene?");
+    ImGui::TextWrapped("This action cannot be undone via Ctrl+Z.");
+    ImGui::Spacing();
+    if (ImGui::Button("Remove", {120.f, 0.f})) {
+      RemoveTerrain();
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel", {120.f, 0.f}))
+      ImGui::CloseCurrentPopup();
+    ImGui::EndPopup();
+  }
+
+  // 11d. Terrain editor panel — dockable, shown via Terrain menu.
   if (show_terrain_panel_) {
     if (ImGui::Begin("Terrain", &show_terrain_panel_)) {
       terrain_panel_.Render();
@@ -246,7 +273,7 @@ void EditorWindow::Render() {
     viewport_->SetSculptActive(false);
   }
 
-  // 11c. Environment editor panel — dockable, shown via Map > Environment.
+  // 11e. Environment editor panel — dockable, shown via Map > Environment.
   if (show_environment_panel_) {
     if (ImGui::Begin("Environment##panel", &show_environment_panel_)) {
       if (environment_panel_.Render()) scene_dirty_ = true;
@@ -363,6 +390,18 @@ void EditorWindow::RenderMenuBar() {
     ImGui::EndDisabled();
     if (!has_terrain)
       ImGui::SetItemTooltip("Add a terrain first");
+
+    if (ImGui::MenuItem("Import"))
+      terrain_panel_.OpenImportWindow();
+
+    ImGui::Separator();
+
+    ImGui::BeginDisabled(!has_terrain);
+    if (ImGui::MenuItem("Remove", nullptr, false, has_terrain))
+      confirm_remove_terrain_ = true;
+    ImGui::EndDisabled();
+    if (!has_terrain)
+      ImGui::SetItemTooltip("No terrain to remove");
 
     ImGui::EndMenu();
   }
@@ -596,6 +635,51 @@ void EditorWindow::CreateTerrain() {
   scene_dirty_ = true;
   LOG_F(INFO, "Terrain created: %dx%d texels, %.2f m/texel, "
         "Y=[%.1f, %.1f]", width, height, safe_res, p.min_height, p.max_height);
+}
+
+void EditorWindow::CreateTerrainFromImport(std::vector<uint16_t> samples,
+                                           int w, int h,
+                                           float min_h, float max_h) {
+  constexpr float kDefaultResolution = 1.f;
+
+  auto data = std::make_unique<terrain::TerrainData>(
+      samples.data(), w, h, kDefaultResolution, min_h, max_h);
+
+  YAML::Node mat_node;
+  YAML::Node layer0;
+  layer0["albedo"] = std::string("default/diffuse.png");
+  layer0["normal"] = std::string("default/normal.png");
+  layer0["tiling"] = 8.f;
+  mat_node["layers"].push_back(layer0);
+  auto material = std::make_unique<terrain::TerrainMaterial>();
+  material->Load(mat_node, video_, w, h);
+
+  terrain_normal_map_ = std::make_unique<terrain::TerrainNormalMap>();
+  terrain_normal_map_->Build(*data);
+
+  auto terrain_obj = std::make_unique<game::GameTerrain>(
+      std::move(data), std::move(material), video_);
+  terrain_obj->SetName("terrain");
+  scene_->AddDynamicObject(std::move(terrain_obj));
+
+  terrain_normal_map_->Upload(video_);
+  WireTerrainPanel();
+  scene_dirty_ = true;
+  LOG_F(INFO, "Terrain created from import: %dx%d texels, 1.0 m/texel, "
+        "Y=[%.1f, %.1f]", w, h, min_h, max_h);
+}
+
+void EditorWindow::RemoveTerrain() {
+  game::GameTerrain* gt = FindTerrain(*scene_);
+  if (!gt) return;
+
+  scene_->RemoveDynamicObject(gt);
+  terrain_normal_map_.reset();
+  show_terrain_panel_ = false;
+  history_.Clear();
+  WireTerrainPanel();
+  scene_dirty_ = true;
+  LOG_F(INFO, "Terrain removed from scene");
 }
 
 void EditorWindow::WireTerrainPanel() {

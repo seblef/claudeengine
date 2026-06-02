@@ -1,8 +1,10 @@
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "abstract/VideoDevice.h"
 #include "core/Event.h"
@@ -78,6 +80,14 @@ class EditorWindow {
   // Builds TerrainData/TerrainMaterial/TerrainNormalMap from dialog params
   // and adds a GameTerrain to the scene.
   void CreateTerrain();
+
+  // Removes the terrain from the scene and resets all terrain-related state.
+  void RemoveTerrain();
+
+  // Creates a new terrain from an imported heightmap and adds it to the scene.
+  // Called by the TerrainEditorPanel callback when no terrain exists yet.
+  void CreateTerrainFromImport(std::vector<uint16_t> samples,
+                               int w, int h, float min_h, float max_h);
 
   // Connects TerrainEditorPanel and viewport sculpt callbacks to the terrain
   // object currently in scene_, if any. Resets context when no terrain exists.
@@ -160,7 +170,10 @@ class EditorWindow {
   // cppcheck-suppress unusedStructMember
   TerrainEditorPanel terrain_panel_;
   // cppcheck-suppress unusedStructMember
-  bool               show_terrain_panel_ = false;
+  bool               show_terrain_panel_         = false;
+  // True on the frame "Remove" is clicked; triggers the confirm modal.
+  // cppcheck-suppress unusedStructMember
+  bool               confirm_remove_terrain_      = false;
 
   // Environment editor panel — shown via the Map menu.
   // cppcheck-suppress unusedStructMember

@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -14,6 +15,7 @@
 #include <nfd.h>
 #include <stb_image.h>
 #include <stb_image_write.h>
+#include <tinyexr.h>
 
 #include "abstract/VideoDevice.h"
 #include "core/Config.h"
@@ -93,9 +95,9 @@ void TerrainEditorPanel::Render() {
       RenderPropertiesTab();
       ImGui::EndTabItem();
     }
-    if (ImGui::BeginTabItem("Import / Export")) {
-      active_tab_ = ActiveTab::kImportExport;
-      RenderImportExportTab();
+    if (ImGui::BeginTabItem("Export")) {
+      active_tab_ = ActiveTab::kExport;
+      RenderExportTab();
       ImGui::EndTabItem();
     }
     if (ImGui::BeginTabItem("Foliage")) {
@@ -771,12 +773,19 @@ void TerrainEditorPanel::RenderPropertiesTab() {
                    data_->GetWorldWidth(), data_->GetWorldHeight());
 }
 
-// ---- Import / Export tab ----------------------------------------------------
+// ---- Import window ----------------------------------------------------------
 
-void TerrainEditorPanel::RenderImportExportTab() {
-  if (!data_) return;
+void TerrainEditorPanel::SetOnCreateFromImport(
+    std::function<void(std::vector<uint16_t>, int, int, float, float)> cb) {
+  on_create_from_import_ = std::move(cb);
+}
 
-  // ---- Resize-confirmation modal -------------------------------------------
+void TerrainEditorPanel::OpenImportWindow() {
+  show_import_window_ = true;
+  io_status_msg_.clear();
+}
+
+void TerrainEditorPanel::RenderImportStatusAndModal() {
   if (io_state_ == IoState::kConfirmResize) {
     ImGui::OpenPopup("Resize Terrain?##io");
   }
@@ -804,7 +813,82 @@ void TerrainEditorPanel::RenderImportExportTab() {
     ImGui::EndPopup();
   }
 
-  // ---- Status message -------------------------------------------------------
+  if (!io_status_msg_.empty()) {
+    if (io_status_ok_)
+      ImGui::TextColored({0.4f, 0.9f, 0.4f, 1.f}, "%s", io_status_msg_.c_str());
+    else
+      ImGui::TextColored({0.9f, 0.3f, 0.3f, 1.f}, "%s", io_status_msg_.c_str());
+    ImGui::Spacing();
+  }
+}
+
+void TerrainEditorPanel::RenderImportWindow() {
+  if (!show_import_window_) return;
+
+  ImGui::SetNextWindowSize({400.f, 0.f}, ImGuiCond_FirstUseEver);
+  if (ImGui::Begin("Terrain Import", &show_import_window_,
+                   ImGuiWindowFlags_AlwaysAutoResize)) {
+    // Resize-confirmation modal is only relevant when an existing terrain is
+    // being replaced; show it (and the shared status) only in that case.
+    if (data_) {
+      RenderImportStatusAndModal();
+    } else if (!io_status_msg_.empty()) {
+      if (io_status_ok_)
+        ImGui::TextColored({0.4f, 0.9f, 0.4f, 1.f}, "%s", io_status_msg_.c_str());
+      else
+        ImGui::TextColored({0.9f, 0.3f, 0.3f, 1.f}, "%s", io_status_msg_.c_str());
+      ImGui::Spacing();
+    }
+
+    ImGui::TextWrapped(
+        "PNG: maps brightness [0\xe2\x80\x93""255] to height [min, max] (configurable).\n"
+        "HDR/EXR: maps float values [0\xe2\x80\x93""1] to height [min, max] (configurable).");
+    ImGui::Spacing();
+
+    ImGui::DragFloat("Min Height##import", &import_min_h_, 0.5f,
+                     -10000.f, import_max_h_ - 0.1f, "%.1f m");
+    ImGui::DragFloat("Max Height##import", &import_max_h_, 0.5f,
+                     import_min_h_ + 0.1f, 10000.f, "%.1f m");
+    import_max_h_ = std::max(import_max_h_, import_min_h_ + 0.1f);
+
+    ImGui::Spacing();
+
+    if (ImGui::Button("Import PNG...", {-1.f, 0.f})) {
+      nfdu8char_t* out_path = nullptr;
+      const nfdu8filteritem_t filter = {"PNG Heightmap", "png"};
+      const nfdresult_t res =
+          NFD_OpenDialogU8(&out_path, &filter, 1, nullptr);
+      if (res == NFD_OKAY) {
+        const std::string path(out_path);
+        NFD_FreePathU8(out_path);
+        LoadAndApplyPNG(path);
+      } else if (res == NFD_ERROR) {
+        LOG_F(ERROR, "TerrainEditorPanel: NFD error on PNG import");
+      }
+    }
+
+    if (ImGui::Button("Import HDR / EXR...", {-1.f, 0.f})) {
+      nfdu8char_t* out_path = nullptr;
+      const nfdu8filteritem_t filter = {"HDR / EXR Heightmap", "hdr,exr"};
+      const nfdresult_t res =
+          NFD_OpenDialogU8(&out_path, &filter, 1, nullptr);
+      if (res == NFD_OKAY) {
+        const std::string path(out_path);
+        NFD_FreePathU8(out_path);
+        LoadAndApplyHDR(path);
+      } else if (res == NFD_ERROR) {
+        LOG_F(ERROR, "TerrainEditorPanel: NFD error on HDR import");
+      }
+    }
+  }
+  ImGui::End();
+}
+
+// ---- Export tab -------------------------------------------------------------
+
+void TerrainEditorPanel::RenderExportTab() {
+  if (!data_) return;
+
   if (!io_status_msg_.empty()) {
     if (io_status_ok_)
       ImGui::TextColored({0.4f, 0.9f, 0.4f, 1.f}, "%s", io_status_msg_.c_str());
@@ -813,52 +897,6 @@ void TerrainEditorPanel::RenderImportExportTab() {
     ImGui::Spacing();
   }
 
-  // ---- Import section -------------------------------------------------------
-  ImGui::SeparatorText("Import");
-  ImGui::TextWrapped(
-      "PNG: maps brightness [0\xe2\x80\x93""255] to height [min, max] (configurable).\n"
-      "HDR: float values are world-space metres (EXR requires RGBE encoding).");
-  ImGui::Spacing();
-
-  ImGui::DragFloat("Min Height##import", &import_min_h_, 0.5f,
-                   -10000.f, import_max_h_ - 0.1f, "%.1f m");
-  ImGui::DragFloat("Max Height##import", &import_max_h_, 0.5f,
-                   import_min_h_ + 0.1f, 10000.f, "%.1f m");
-  import_max_h_ = std::max(import_max_h_, import_min_h_ + 0.1f);
-
-  ImGui::Spacing();
-
-  if (ImGui::Button("Import PNG...", {-1.f, 0.f})) {
-    nfdu8char_t* out_path = nullptr;
-    const nfdu8filteritem_t filter = {"PNG Heightmap", "png"};
-    const nfdresult_t res =
-        NFD_OpenDialogU8(&out_path, &filter, 1, nullptr);
-    if (res == NFD_OKAY) {
-      const std::string path(out_path);
-      NFD_FreePathU8(out_path);
-      LoadAndApplyPNG(path);
-    } else if (res == NFD_ERROR) {
-      LOG_F(ERROR, "TerrainEditorPanel: NFD error on PNG import");
-    }
-  }
-
-  if (ImGui::Button("Import HDR / EXR...", {-1.f, 0.f})) {
-    nfdu8char_t* out_path = nullptr;
-    const nfdu8filteritem_t filter = {"HDR / EXR Heightmap", "hdr,exr"};
-    const nfdresult_t res =
-        NFD_OpenDialogU8(&out_path, &filter, 1, nullptr);
-    if (res == NFD_OKAY) {
-      const std::string path(out_path);
-      NFD_FreePathU8(out_path);
-      LoadAndApplyHDR(path);
-    } else if (res == NFD_ERROR) {
-      LOG_F(ERROR, "TerrainEditorPanel: NFD error on HDR import");
-    }
-  }
-
-  // ---- Export section -------------------------------------------------------
-  ImGui::Spacing();
-  ImGui::SeparatorText("Export");
   ImGui::TextWrapped(
       "PNG: 8-bit grayscale, maps [min, max] height to [0\xe2\x80\x93""255].\n"
       "R16: raw uint16 binary (row-major, same format as map serialisation).");
@@ -908,6 +946,20 @@ bool TerrainEditorPanel::LoadAndApplyPNG(const std::string& path) {
   const std::size_t n = static_cast<std::size_t>(w) * h;
   std::vector<uint16_t> samples(n);
   const float range = import_max_h_ - import_min_h_;
+
+  if (!data_) {
+    // No existing terrain: pixel [0,255] maps linearly to sample [0,65535].
+    // The new terrain will use [import_min_h_, import_max_h_] as its range.
+    for (std::size_t i = 0; i < n; ++i)
+      samples[i] = static_cast<uint16_t>(pixels[i] / 255.f * 65535.f + 0.5f);
+    stbi_image_free(pixels);
+    if (on_create_from_import_)
+      on_create_from_import_(std::move(samples), w, h, import_min_h_, import_max_h_);
+    io_status_msg_ = "Import successful.";
+    io_status_ok_  = true;
+    return true;
+  }
+
   for (std::size_t i = 0; i < n; ++i) {
     const float world_h = import_min_h_ + (pixels[i] / 255.f) * range;
     samples[i] = data_->HeightToSample(world_h);
@@ -930,25 +982,68 @@ bool TerrainEditorPanel::LoadAndApplyPNG(const std::string& path) {
 
 bool TerrainEditorPanel::LoadAndApplyHDR(const std::string& path) {
   io_status_msg_.clear();
-  int w = 0, h = 0, channels = 0;
-  float* pixels = stbi_loadf(path.c_str(), &w, &h, &channels, 1);
-  if (!pixels) {
-    io_status_msg_ = std::string("HDR/EXR load failed: ") + stbi_failure_reason();
-    io_status_ok_  = false;
-    LOG_F(ERROR, "TerrainEditorPanel: HDR/EXR load failed '%s': %s",
-          path.c_str(), stbi_failure_reason());
-    return false;
+
+  int w = 0, h = 0;
+  std::vector<float> pixels;
+
+  const std::string ext = std::filesystem::path(path).extension().string();
+  const bool is_exr = (ext == ".exr" || ext == ".EXR");
+
+  if (is_exr) {
+    const char* err = nullptr;
+    float* exr_rgba = nullptr;
+    const int ret = LoadEXR(&exr_rgba, &w, &h, path.c_str(), &err);
+    if (ret != TINYEXR_SUCCESS) {
+      const std::string reason = err ? err : "unknown EXR error";
+      FreeEXRErrorMessage(err);
+      io_status_msg_ = "EXR load failed: " + reason;
+      io_status_ok_  = false;
+      LOG_F(ERROR, "TerrainEditorPanel: EXR load failed '%s': %s",
+            path.c_str(), reason.c_str());
+      return false;
+    }
+    // EXR is loaded as RGBA floats; use the R channel as the height value.
+    const std::size_t n = static_cast<std::size_t>(w) * h;
+    pixels.resize(n);
+    for (std::size_t i = 0; i < n; ++i)
+      pixels[i] = exr_rgba[i * 4];
+    free(exr_rgba);
+  } else {
+    int channels = 0;
+    float* raw = stbi_loadf(path.c_str(), &w, &h, &channels, 1);
+    if (!raw) {
+      io_status_msg_ = std::string("HDR load failed: ") + stbi_failure_reason();
+      io_status_ok_  = false;
+      LOG_F(ERROR, "TerrainEditorPanel: HDR load failed '%s': %s",
+            path.c_str(), stbi_failure_reason());
+      return false;
+    }
+    pixels.assign(raw, raw + static_cast<std::size_t>(w) * h);
+    stbi_image_free(raw);
   }
 
-  const std::size_t n = static_cast<std::size_t>(w) * h;
+  // Float pixel values are in [0, 1]; map them to [import_min_h_, import_max_h_].
+  const std::size_t n = pixels.size();
+  const float range = import_max_h_ - import_min_h_;
   std::vector<uint16_t> samples(n);
+
+  if (!data_) {
+    for (std::size_t i = 0; i < n; ++i) {
+      const float t = std::clamp(pixels[i], 0.f, 1.f);
+      samples[i] = static_cast<uint16_t>(t * 65535.f + 0.5f);
+    }
+    if (on_create_from_import_)
+      on_create_from_import_(std::move(samples), w, h, import_min_h_, import_max_h_);
+    io_status_msg_ = "Import successful.";
+    io_status_ok_  = true;
+    return true;
+  }
+
   for (std::size_t i = 0; i < n; ++i) {
-    const float world_h = std::clamp(pixels[i],
-                                     data_->GetMinHeight(),
-                                     data_->GetMaxHeight());
+    const float t = std::clamp(pixels[i], 0.f, 1.f);
+    const float world_h = import_min_h_ + t * range;
     samples[i] = data_->HeightToSample(world_h);
   }
-  stbi_image_free(pixels);
 
   const bool needs_resize =
       (w != data_->GetTexelWidth() || h != data_->GetTexelHeight());

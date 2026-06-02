@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -50,6 +51,14 @@ class TerrainEditorPanel {
   // Must be called inside an ImGui::Begin/End block.
   void Render();
 
+  // Opens the standalone terrain import floating window.
+  // Must be called outside any ImGui::Begin/End block.
+  void OpenImportWindow();
+
+  // Renders the terrain import floating window when open.
+  // Must be called outside any ImGui::Begin/End block each frame.
+  void RenderImportWindow();
+
   // Provides the editing context. Call when a terrain is added/loaded;
   // pass nullptr data to reset. history must outlive this panel.
   // terrain_obj is used by the Foliage tab to manage foliage layers.
@@ -72,11 +81,18 @@ class TerrainEditorPanel {
   // Returns true when a context is set (terrain exists in scene).
   [[nodiscard]] bool IsActive() const { return data_ != nullptr; }
 
+  // Sets a callback invoked when the user imports a heightmap with no terrain
+  // currently in the scene. The callback receives the decoded uint16 samples,
+  // terrain dimensions (w, h), and the mapped height range [min_h, max_h].
+  // EditorWindow uses this to create and register a new terrain.
+  void SetOnCreateFromImport(
+      std::function<void(std::vector<uint16_t>, int, int, float, float)> cb);
+
  private:
   enum class Tool    { kRaise, kLower, kSmooth, kFlatten };
   enum class Falloff { kLinear, kSmooth };
   enum class FoliageBrushMode { kPaint, kErase };
-  enum class ActiveTab { kSculpt, kPaint, kMaterial, kProperties, kImportExport, kFoliage };
+  enum class ActiveTab { kSculpt, kPaint, kMaterial, kProperties, kExport, kFoliage };
   enum class IoState  { kIdle, kConfirmResize };
 
   // Returns the falloff weight for normalised distance t in [0, 1].
@@ -115,8 +131,12 @@ class TerrainEditorPanel {
   void RenderPaintTab();
   void RenderMaterialTab();
   void RenderPropertiesTab();
-  void RenderImportExportTab();
+  void RenderExportTab();
   void RenderFoliageTab();
+
+  // Renders the resize-confirmation modal and status message for import ops.
+  // Called both from RenderImportWindow() and can be shared with export output.
+  void RenderImportStatusAndModal();
 
   // Opens an NFD texture file dialog starting in data/textures/ and returns
   // the relative path (relative to data/textures/) on success, or an empty
@@ -134,9 +154,10 @@ class TerrainEditorPanel {
   // Returns false and sets io_status_msg_ on load error.
   bool LoadAndApplyPNG(const std::string& path);
 
-  // Loads an HDR/EXR heightmap (via stbi_loadf) and either applies it or sets
-  // the pending-resize state. EXR requires RGBE encoding (true OpenEXR is not
-  // supported by stb_image). Returns false and sets io_status_msg_ on error.
+  // Loads an HDR heightmap (via stbi_loadf) or a true OpenEXR file (via
+  // TinyEXR), dispatching on file extension. Float pixel values are expected
+  // in [0, 1] and mapped to [import_min_h_, import_max_h_]. Either applies
+  // immediately or sets the pending-resize state. Returns false on error.
   bool LoadAndApplyHDR(const std::string& path);
 
   // Applies an already-decoded heightmap to the terrain. If needs_resize is
@@ -169,7 +190,11 @@ class TerrainEditorPanel {
   float  import_min_h_  = 0.f;
   float  import_max_h_  = 100.f;
 
-  IoState io_state_     = IoState::kIdle;
+  bool    show_import_window_ = false;
+  // cppcheck-suppress unusedStructMember
+  std::function<void(std::vector<uint16_t>, int, int, float, float)>
+      on_create_from_import_;
+  IoState io_state_           = IoState::kIdle;
   int     io_pending_w_ = 0;
   int     io_pending_h_ = 0;
   // cppcheck-suppress unusedStructMember
