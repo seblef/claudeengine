@@ -53,11 +53,19 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   WaterRenderer(WaterRenderer&&)                 = delete;
   WaterRenderer& operator=(WaterRenderer&&)      = delete;
 
-  // Creates a flat grid_size × grid_size mesh and loads water shaders.
-  // water_level: world-space Y of the undisplaced water surface.
-  // grid_size:   number of quads per side (default 128).
+  // Creates a flat water mesh and loads water shaders.
+  // water_level:          world-space Y of the undisplaced water surface.
+  // terrain_world_width:  world-space width of the terrain (X axis). Pass 0 for a
+  //                       fixed-size mesh centred at the world origin.
+  // terrain_world_height: world-space depth of the terrain (Z axis). Pass 0 for a
+  //                       fixed-size mesh centred at the world origin.
+  // When non-zero terrain dimensions are provided the mesh is centred at the
+  // terrain's midpoint and extends kTerrainMarginFactor times beyond its edges.
+  // grid_size: number of quads per side when terrain dimensions are not supplied.
   // video must outlive this renderer.
-  void Build(abstract::VideoDevice* video, float water_level, int grid_size = 128);
+  void Build(abstract::VideoDevice* video, float water_level,
+             float terrain_world_width = 0.f, float terrain_world_height = 0.f,
+             int grid_size = 128);
 
   // Draws the water grid into the currently bound FBO (emissive FBO).
   // scene_color: HDR snapshot taken just before this call (sampler slot 2).
@@ -93,6 +101,11 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   [[nodiscard]] bool IsReady() const { return shader_ != nullptr; }
 
  private:
+  // Fraction by which the water plane extends beyond each terrain edge.
+  // 1.2 means the water is 20 % wider/deeper than the terrain on every side.
+  // cppcheck-suppress unusedStructMember
+  static constexpr float kTerrainMarginFactor = 1.2f;
+
   void BuildMesh(int grid_size);
   void BuildNormalMap();
   void BuildFoamTexture();
@@ -107,7 +120,11 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   std::unique_ptr<abstract::RawTexture>   foam_tex_;
   int                                     num_indices_ = 0;
 
-  float         water_level_   = 0.f;
+  // cppcheck-suppress unusedStructMember
+  float         terrain_world_width_  = 0.f;
+  // cppcheck-suppress unusedStructMember
+  float         terrain_world_height_ = 0.f;
+  float         water_level_          = 0.f;
   float         sky_zenith_r_  = 0.40f;
   float         sky_zenith_g_  = 0.65f;
   float         sky_zenith_b_  = 0.90f;

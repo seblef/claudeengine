@@ -48,10 +48,15 @@ float FoamValue(float u, float v) {
 }  // namespace
 
 void WaterRenderer::Build(abstract::VideoDevice* video,
-                          float water_level, int grid_size) {
-  video_       = video;
-  water_level_ = water_level;
-  shader_      = video_->CreateShader("water/water");
+                          float water_level,
+                          float terrain_world_width,
+                          float terrain_world_height,
+                          int grid_size) {
+  video_                = video;
+  water_level_          = water_level;
+  terrain_world_width_  = terrain_world_width;
+  terrain_world_height_ = terrain_world_height;
+  shader_               = video_->CreateShader("water/water");
 
   BuildMesh(grid_size);
   BuildNormalMap();
@@ -59,18 +64,35 @@ void WaterRenderer::Build(abstract::VideoDevice* video,
 }
 
 void WaterRenderer::BuildMesh(int grid_size) {
-  const int   verts_per_side = grid_size + 1;
-  const int   num_verts      = verts_per_side * verts_per_side;
-  const int   num_quads      = grid_size * grid_size;
-  const float half           = grid_size * kCellSize * 0.5f;
+  // When terrain dimensions are supplied, fit the mesh to the terrain:
+  //   centre the grid at the terrain's midpoint and extend it by
+  //   kTerrainMarginFactor so the water visibly exceeds the terrain edges.
+  float center_x = 0.f;
+  float center_z = 0.f;
+  float half      = 0.f;
+
+  if (terrain_world_width_ > 0.f && terrain_world_height_ > 0.f) {
+    center_x  = terrain_world_width_  * 0.5f;
+    center_z  = terrain_world_height_ * 0.5f;
+    const float terrain_half = std::max(terrain_world_width_,
+                                        terrain_world_height_) * 0.5f;
+    half      = terrain_half * kTerrainMarginFactor;
+    grid_size = static_cast<int>(std::ceil(half * 2.f / kCellSize));
+  } else {
+    half = static_cast<float>(grid_size) * kCellSize * 0.5f;
+  }
+
+  const int verts_per_side = grid_size + 1;
+  const int num_verts      = verts_per_side * verts_per_side;
+  const int num_quads      = grid_size * grid_size;
 
   std::vector<core::Vertex3D> verts;
   verts.reserve(static_cast<size_t>(num_verts));
 
   for (int j = 0; j <= grid_size; ++j) {
     for (int i = 0; i <= grid_size; ++i) {
-      const float x = -half + static_cast<float>(i) * kCellSize;
-      const float z = -half + static_cast<float>(j) * kCellSize;
+      const float x = center_x - half + static_cast<float>(i) * kCellSize;
+      const float z = center_z - half + static_cast<float>(j) * kCellSize;
       verts.push_back({
         core::Vec3f(x, 0.f, z),
         core::Vec3f(0.f, 1.f, 0.f),

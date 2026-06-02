@@ -13,7 +13,9 @@
 #include "environment/SkyRenderer.h"
 #include "environment/WaterRenderer.h"
 #include "game/GameLightDesc.h"
+#include "game/GameTerrain.h"
 #include "renderer/Renderer.h"
+#include "terrain/TerrainData.h"
 
 namespace editor {
 
@@ -119,8 +121,22 @@ void EnvironmentEditorPanel::DisableSky() {
 
 void EnvironmentEditorPanel::EnableWater(const environment::EnvironmentDesc& desc) {
   if (!environment::WaterRenderer::IsInstanced()) {
+    float tw = 0.f;
+    float th = 0.f;
+    if (scene_) {
+      const auto& objs = scene_->GetObjects();
+      const auto  it   = std::find_if(objs.begin(), objs.end(),
+          [](const game::GameObject* o) {
+            return dynamic_cast<const game::GameTerrain*>(o) != nullptr;
+          });
+      if (it != objs.end()) {
+        const auto* gt = dynamic_cast<const game::GameTerrain*>(*it);
+        tw = gt->GetData().GetWorldWidth();
+        th = gt->GetData().GetWorldHeight();
+      }
+    }
     new environment::WaterRenderer();
-    environment::WaterRenderer::Instance().Build(video_, desc.water_level);
+    environment::WaterRenderer::Instance().Build(video_, desc.water_level, tw, th);
   } else {
     environment::WaterRenderer::Instance().SetWaterLevel(desc.water_level);
   }
