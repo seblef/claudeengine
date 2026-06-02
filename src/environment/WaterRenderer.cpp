@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <vector>
 
+#include <loguru.hpp>
+
 #include "abstract/BufferUsage.h"
 #include "abstract/CompareFunc.h"
 #include "abstract/IndexType.h"
@@ -78,8 +80,13 @@ void WaterRenderer::BuildMesh(int grid_size) {
                                         terrain_world_height_) * 0.5f;
     half      = terrain_half * kTerrainMarginFactor;
     grid_size = static_cast<int>(std::ceil(half * 2.f / kCellSize));
+    LOG_F(INFO, "WaterRenderer: terrain %.0fx%.0f m → water center=(%.0f,%.0f) "
+          "half=%.0f grid=%d", terrain_world_width_, terrain_world_height_,
+          center_x, center_z, half, grid_size);
   } else {
     half = static_cast<float>(grid_size) * kCellSize * 0.5f;
+    LOG_F(INFO, "WaterRenderer: no terrain — fixed grid=%d half=%.0f",
+          grid_size, half);
   }
 
   const int verts_per_side = grid_size + 1;
