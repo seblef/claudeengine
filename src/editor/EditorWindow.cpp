@@ -234,7 +234,30 @@ void EditorWindow::Render() {
   if (terrain_dialog_.Render())
     CreateTerrain();
 
-  // 11b. Terrain editor panel — dockable, shown via Terrain menu.
+  // 11a. Terrain import window — floating, opened via Terrain > Import.
+  terrain_panel_.RenderImportWindow();
+
+  // 11b. Confirm remove terrain modal — triggered by Terrain > Remove.
+  if (confirm_remove_terrain_) {
+    ImGui::OpenPopup("Remove Terrain?##modal");
+    confirm_remove_terrain_ = false;
+  }
+  if (ImGui::BeginPopupModal("Remove Terrain?##modal", nullptr,
+                             ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImGui::TextUnformatted("Remove the terrain from this scene?");
+    ImGui::TextWrapped("This action cannot be undone via Ctrl+Z.");
+    ImGui::Spacing();
+    if (ImGui::Button("Remove", {120.f, 0.f})) {
+      RemoveTerrain();
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel", {120.f, 0.f}))
+      ImGui::CloseCurrentPopup();
+    ImGui::EndPopup();
+  }
+
+  // 11d. Terrain editor panel — dockable, shown via Terrain menu.
   if (show_terrain_panel_) {
     if (ImGui::Begin("Terrain", &show_terrain_panel_)) {
       terrain_panel_.Render();
@@ -246,7 +269,7 @@ void EditorWindow::Render() {
     viewport_->SetSculptActive(false);
   }
 
-  // 11c. Environment editor panel — dockable, shown via Map > Environment.
+  // 11e. Environment editor panel — dockable, shown via Map > Environment.
   if (show_environment_panel_) {
     if (ImGui::Begin("Environment##panel", &show_environment_panel_)) {
       if (environment_panel_.Render()) scene_dirty_ = true;
@@ -360,9 +383,20 @@ void EditorWindow::RenderMenuBar() {
     ImGui::BeginDisabled(!has_terrain);
     if (ImGui::MenuItem("Sculpt", nullptr, show_terrain_panel_, has_terrain))
       show_terrain_panel_ = !show_terrain_panel_;
+    if (ImGui::MenuItem("Import", nullptr, false, has_terrain))
+      terrain_panel_.OpenImportWindow();
     ImGui::EndDisabled();
     if (!has_terrain)
       ImGui::SetItemTooltip("Add a terrain first");
+
+    ImGui::Separator();
+
+    ImGui::BeginDisabled(!has_terrain);
+    if (ImGui::MenuItem("Remove", nullptr, false, has_terrain))
+      confirm_remove_terrain_ = true;
+    ImGui::EndDisabled();
+    if (!has_terrain)
+      ImGui::SetItemTooltip("No terrain to remove");
 
     ImGui::EndMenu();
   }
@@ -596,6 +630,19 @@ void EditorWindow::CreateTerrain() {
   scene_dirty_ = true;
   LOG_F(INFO, "Terrain created: %dx%d texels, %.2f m/texel, "
         "Y=[%.1f, %.1f]", width, height, safe_res, p.min_height, p.max_height);
+}
+
+void EditorWindow::RemoveTerrain() {
+  game::GameTerrain* gt = FindTerrain(*scene_);
+  if (!gt) return;
+
+  scene_->RemoveDynamicObject(gt);
+  terrain_normal_map_.reset();
+  show_terrain_panel_ = false;
+  history_.Clear();
+  WireTerrainPanel();
+  scene_dirty_ = true;
+  LOG_F(INFO, "Terrain removed from scene");
 }
 
 void EditorWindow::WireTerrainPanel() {

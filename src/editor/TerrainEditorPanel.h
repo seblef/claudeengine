@@ -50,6 +50,14 @@ class TerrainEditorPanel {
   // Must be called inside an ImGui::Begin/End block.
   void Render();
 
+  // Opens the standalone terrain import floating window.
+  // Must be called outside any ImGui::Begin/End block.
+  void OpenImportWindow();
+
+  // Renders the terrain import floating window when open.
+  // Must be called outside any ImGui::Begin/End block each frame.
+  void RenderImportWindow();
+
   // Provides the editing context. Call when a terrain is added/loaded;
   // pass nullptr data to reset. history must outlive this panel.
   // terrain_obj is used by the Foliage tab to manage foliage layers.
@@ -76,7 +84,7 @@ class TerrainEditorPanel {
   enum class Tool    { kRaise, kLower, kSmooth, kFlatten };
   enum class Falloff { kLinear, kSmooth };
   enum class FoliageBrushMode { kPaint, kErase };
-  enum class ActiveTab { kSculpt, kPaint, kMaterial, kProperties, kImportExport, kFoliage };
+  enum class ActiveTab { kSculpt, kPaint, kMaterial, kProperties, kExport, kFoliage };
   enum class IoState  { kIdle, kConfirmResize };
 
   // Returns the falloff weight for normalised distance t in [0, 1].
@@ -115,8 +123,12 @@ class TerrainEditorPanel {
   void RenderPaintTab();
   void RenderMaterialTab();
   void RenderPropertiesTab();
-  void RenderImportExportTab();
+  void RenderExportTab();
   void RenderFoliageTab();
+
+  // Renders the resize-confirmation modal and status message for import ops.
+  // Called both from RenderImportWindow() and can be shared with export output.
+  void RenderImportStatusAndModal();
 
   // Opens an NFD texture file dialog starting in data/textures/ and returns
   // the relative path (relative to data/textures/) on success, or an empty
@@ -169,7 +181,8 @@ class TerrainEditorPanel {
   float  import_min_h_  = 0.f;
   float  import_max_h_  = 100.f;
 
-  IoState io_state_     = IoState::kIdle;
+  bool    show_import_window_ = false;
+  IoState io_state_           = IoState::kIdle;
   int     io_pending_w_ = 0;
   int     io_pending_h_ = 0;
   // cppcheck-suppress unusedStructMember

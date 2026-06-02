@@ -93,9 +93,9 @@ void TerrainEditorPanel::Render() {
       RenderPropertiesTab();
       ImGui::EndTabItem();
     }
-    if (ImGui::BeginTabItem("Import / Export")) {
-      active_tab_ = ActiveTab::kImportExport;
-      RenderImportExportTab();
+    if (ImGui::BeginTabItem("Export")) {
+      active_tab_ = ActiveTab::kExport;
+      RenderExportTab();
       ImGui::EndTabItem();
     }
     if (ImGui::BeginTabItem("Foliage")) {
@@ -771,12 +771,14 @@ void TerrainEditorPanel::RenderPropertiesTab() {
                    data_->GetWorldWidth(), data_->GetWorldHeight());
 }
 
-// ---- Import / Export tab ----------------------------------------------------
+// ---- Import window ----------------------------------------------------------
 
-void TerrainEditorPanel::RenderImportExportTab() {
-  if (!data_) return;
+void TerrainEditorPanel::OpenImportWindow() {
+  show_import_window_ = true;
+  io_status_msg_.clear();
+}
 
-  // ---- Resize-confirmation modal -------------------------------------------
+void TerrainEditorPanel::RenderImportStatusAndModal() {
   if (io_state_ == IoState::kConfirmResize) {
     ImGui::OpenPopup("Resize Terrain?##io");
   }
@@ -804,7 +806,76 @@ void TerrainEditorPanel::RenderImportExportTab() {
     ImGui::EndPopup();
   }
 
-  // ---- Status message -------------------------------------------------------
+  if (!io_status_msg_.empty()) {
+    if (io_status_ok_)
+      ImGui::TextColored({0.4f, 0.9f, 0.4f, 1.f}, "%s", io_status_msg_.c_str());
+    else
+      ImGui::TextColored({0.9f, 0.3f, 0.3f, 1.f}, "%s", io_status_msg_.c_str());
+    ImGui::Spacing();
+  }
+}
+
+void TerrainEditorPanel::RenderImportWindow() {
+  if (!show_import_window_) return;
+
+  ImGui::SetNextWindowSize({400.f, 0.f}, ImGuiCond_FirstUseEver);
+  if (ImGui::Begin("Terrain Import", &show_import_window_,
+                   ImGuiWindowFlags_AlwaysAutoResize)) {
+    if (!data_) {
+      ImGui::TextDisabled("No terrain in scene.");
+    } else {
+      RenderImportStatusAndModal();
+
+      ImGui::TextWrapped(
+          "PNG: maps brightness [0\xe2\x80\x93""255] to height [min, max] (configurable).\n"
+          "HDR: float values are world-space metres (EXR requires RGBE encoding).");
+      ImGui::Spacing();
+
+      ImGui::DragFloat("Min Height##import", &import_min_h_, 0.5f,
+                       -10000.f, import_max_h_ - 0.1f, "%.1f m");
+      ImGui::DragFloat("Max Height##import", &import_max_h_, 0.5f,
+                       import_min_h_ + 0.1f, 10000.f, "%.1f m");
+      import_max_h_ = std::max(import_max_h_, import_min_h_ + 0.1f);
+
+      ImGui::Spacing();
+
+      if (ImGui::Button("Import PNG...", {-1.f, 0.f})) {
+        nfdu8char_t* out_path = nullptr;
+        const nfdu8filteritem_t filter = {"PNG Heightmap", "png"};
+        const nfdresult_t res =
+            NFD_OpenDialogU8(&out_path, &filter, 1, nullptr);
+        if (res == NFD_OKAY) {
+          const std::string path(out_path);
+          NFD_FreePathU8(out_path);
+          LoadAndApplyPNG(path);
+        } else if (res == NFD_ERROR) {
+          LOG_F(ERROR, "TerrainEditorPanel: NFD error on PNG import");
+        }
+      }
+
+      if (ImGui::Button("Import HDR / EXR...", {-1.f, 0.f})) {
+        nfdu8char_t* out_path = nullptr;
+        const nfdu8filteritem_t filter = {"HDR / EXR Heightmap", "hdr,exr"};
+        const nfdresult_t res =
+            NFD_OpenDialogU8(&out_path, &filter, 1, nullptr);
+        if (res == NFD_OKAY) {
+          const std::string path(out_path);
+          NFD_FreePathU8(out_path);
+          LoadAndApplyHDR(path);
+        } else if (res == NFD_ERROR) {
+          LOG_F(ERROR, "TerrainEditorPanel: NFD error on HDR import");
+        }
+      }
+    }
+  }
+  ImGui::End();
+}
+
+// ---- Export tab -------------------------------------------------------------
+
+void TerrainEditorPanel::RenderExportTab() {
+  if (!data_) return;
+
   if (!io_status_msg_.empty()) {
     if (io_status_ok_)
       ImGui::TextColored({0.4f, 0.9f, 0.4f, 1.f}, "%s", io_status_msg_.c_str());
@@ -813,52 +884,6 @@ void TerrainEditorPanel::RenderImportExportTab() {
     ImGui::Spacing();
   }
 
-  // ---- Import section -------------------------------------------------------
-  ImGui::SeparatorText("Import");
-  ImGui::TextWrapped(
-      "PNG: maps brightness [0\xe2\x80\x93""255] to height [min, max] (configurable).\n"
-      "HDR: float values are world-space metres (EXR requires RGBE encoding).");
-  ImGui::Spacing();
-
-  ImGui::DragFloat("Min Height##import", &import_min_h_, 0.5f,
-                   -10000.f, import_max_h_ - 0.1f, "%.1f m");
-  ImGui::DragFloat("Max Height##import", &import_max_h_, 0.5f,
-                   import_min_h_ + 0.1f, 10000.f, "%.1f m");
-  import_max_h_ = std::max(import_max_h_, import_min_h_ + 0.1f);
-
-  ImGui::Spacing();
-
-  if (ImGui::Button("Import PNG...", {-1.f, 0.f})) {
-    nfdu8char_t* out_path = nullptr;
-    const nfdu8filteritem_t filter = {"PNG Heightmap", "png"};
-    const nfdresult_t res =
-        NFD_OpenDialogU8(&out_path, &filter, 1, nullptr);
-    if (res == NFD_OKAY) {
-      const std::string path(out_path);
-      NFD_FreePathU8(out_path);
-      LoadAndApplyPNG(path);
-    } else if (res == NFD_ERROR) {
-      LOG_F(ERROR, "TerrainEditorPanel: NFD error on PNG import");
-    }
-  }
-
-  if (ImGui::Button("Import HDR / EXR...", {-1.f, 0.f})) {
-    nfdu8char_t* out_path = nullptr;
-    const nfdu8filteritem_t filter = {"HDR / EXR Heightmap", "hdr,exr"};
-    const nfdresult_t res =
-        NFD_OpenDialogU8(&out_path, &filter, 1, nullptr);
-    if (res == NFD_OKAY) {
-      const std::string path(out_path);
-      NFD_FreePathU8(out_path);
-      LoadAndApplyHDR(path);
-    } else if (res == NFD_ERROR) {
-      LOG_F(ERROR, "TerrainEditorPanel: NFD error on HDR import");
-    }
-  }
-
-  // ---- Export section -------------------------------------------------------
-  ImGui::Spacing();
-  ImGui::SeparatorText("Export");
   ImGui::TextWrapped(
       "PNG: 8-bit grayscale, maps [min, max] height to [0\xe2\x80\x93""255].\n"
       "R16: raw uint16 binary (row-major, same format as map serialisation).");

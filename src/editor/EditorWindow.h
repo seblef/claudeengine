@@ -79,6 +79,9 @@ class EditorWindow {
   // and adds a GameTerrain to the scene.
   void CreateTerrain();
 
+  // Removes the terrain from the scene and resets all terrain-related state.
+  void RemoveTerrain();
+
   // Connects TerrainEditorPanel and viewport sculpt callbacks to the terrain
   // object currently in scene_, if any. Resets context when no terrain exists.
   void WireTerrainPanel();
@@ -160,7 +163,10 @@ class EditorWindow {
   // cppcheck-suppress unusedStructMember
   TerrainEditorPanel terrain_panel_;
   // cppcheck-suppress unusedStructMember
-  bool               show_terrain_panel_ = false;
+  bool               show_terrain_panel_         = false;
+  // True on the frame "Remove" is clicked; triggers the confirm modal.
+  // cppcheck-suppress unusedStructMember
+  bool               confirm_remove_terrain_      = false;
 
   // Environment editor panel — shown via the Map menu.
   // cppcheck-suppress unusedStructMember
