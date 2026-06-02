@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -14,6 +15,7 @@
 #include <nfd.h>
 #include <stb_image.h>
 #include <stb_image_write.h>
+#include <tinyexr.h>
 
 #include "abstract/VideoDevice.h"
 #include "core/Config.h"
@@ -840,7 +842,7 @@ void TerrainEditorPanel::RenderImportWindow() {
 
     ImGui::TextWrapped(
         "PNG: maps brightness [0\xe2\x80\x93""255] to height [min, max] (configurable).\n"
-        "HDR: float values are world-space metres (EXR requires RGBE encoding).");
+        "HDR/EXR: maps float values [0\xe2\x80\x93""1] to height [min, max] (configurable).");
     ImGui::Spacing();
 
     ImGui::DragFloat("Min Height##import", &import_min_h_, 0.5f,
@@ -980,28 +982,56 @@ bool TerrainEditorPanel::LoadAndApplyPNG(const std::string& path) {
 
 bool TerrainEditorPanel::LoadAndApplyHDR(const std::string& path) {
   io_status_msg_.clear();
-  int w = 0, h = 0, channels = 0;
-  float* pixels = stbi_loadf(path.c_str(), &w, &h, &channels, 1);
-  if (!pixels) {
-    io_status_msg_ = std::string("HDR/EXR load failed: ") + stbi_failure_reason();
-    io_status_ok_  = false;
-    LOG_F(ERROR, "TerrainEditorPanel: HDR/EXR load failed '%s': %s",
-          path.c_str(), stbi_failure_reason());
-    return false;
+
+  int w = 0, h = 0;
+  std::vector<float> pixels;
+
+  const std::string ext = std::filesystem::path(path).extension().string();
+  const bool is_exr = (ext == ".exr" || ext == ".EXR");
+
+  if (is_exr) {
+    const char* err = nullptr;
+    float* exr_rgba = nullptr;
+    const int ret = LoadEXR(&exr_rgba, &w, &h, path.c_str(), &err);
+    if (ret != TINYEXR_SUCCESS) {
+      const std::string reason = err ? err : "unknown EXR error";
+      FreeEXRErrorMessage(err);
+      io_status_msg_ = "EXR load failed: " + reason;
+      io_status_ok_  = false;
+      LOG_F(ERROR, "TerrainEditorPanel: EXR load failed '%s': %s",
+            path.c_str(), reason.c_str());
+      return false;
+    }
+    // EXR is loaded as RGBA floats; use the R channel as the height value.
+    const std::size_t n = static_cast<std::size_t>(w) * h;
+    pixels.resize(n);
+    for (std::size_t i = 0; i < n; ++i)
+      pixels[i] = exr_rgba[i * 4];
+    free(exr_rgba);
+  } else {
+    int channels = 0;
+    float* raw = stbi_loadf(path.c_str(), &w, &h, &channels, 1);
+    if (!raw) {
+      io_status_msg_ = std::string("HDR load failed: ") + stbi_failure_reason();
+      io_status_ok_  = false;
+      LOG_F(ERROR, "TerrainEditorPanel: HDR load failed '%s': %s",
+            path.c_str(), stbi_failure_reason());
+      return false;
+    }
+    pixels.assign(raw, raw + static_cast<std::size_t>(w) * h);
+    stbi_image_free(raw);
   }
 
-  const std::size_t n = static_cast<std::size_t>(w) * h;
+  // Float pixel values are in [0, 1]; map them to [import_min_h_, import_max_h_].
+  const std::size_t n = pixels.size();
+  const float range = import_max_h_ - import_min_h_;
   std::vector<uint16_t> samples(n);
 
   if (!data_) {
-    // No existing terrain: clamp to [import_min_h_, import_max_h_] and convert.
-    const float min_h  = import_min_h_;
-    const float range  = import_max_h_ - import_min_h_;
     for (std::size_t i = 0; i < n; ++i) {
-      const float t = std::clamp((pixels[i] - min_h) / range, 0.f, 1.f);
+      const float t = std::clamp(pixels[i], 0.f, 1.f);
       samples[i] = static_cast<uint16_t>(t * 65535.f + 0.5f);
     }
-    stbi_image_free(pixels);
     if (on_create_from_import_)
       on_create_from_import_(std::move(samples), w, h, import_min_h_, import_max_h_);
     io_status_msg_ = "Import successful.";
@@ -1010,12 +1040,10 @@ bool TerrainEditorPanel::LoadAndApplyHDR(const std::string& path) {
   }
 
   for (std::size_t i = 0; i < n; ++i) {
-    const float world_h = std::clamp(pixels[i],
-                                     data_->GetMinHeight(),
-                                     data_->GetMaxHeight());
+    const float t = std::clamp(pixels[i], 0.f, 1.f);
+    const float world_h = import_min_h_ + t * range;
     samples[i] = data_->HeightToSample(world_h);
   }
-  stbi_image_free(pixels);
 
   const bool needs_resize =
       (w != data_->GetTexelWidth() || h != data_->GetTexelHeight());

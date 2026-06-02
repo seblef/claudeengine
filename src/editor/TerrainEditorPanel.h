@@ -154,9 +154,10 @@ class TerrainEditorPanel {
   // Returns false and sets io_status_msg_ on load error.
   bool LoadAndApplyPNG(const std::string& path);
 
-  // Loads an HDR/EXR heightmap (via stbi_loadf) and either applies it or sets
-  // the pending-resize state. EXR requires RGBE encoding (true OpenEXR is not
-  // supported by stb_image). Returns false and sets io_status_msg_ on error.
+  // Loads an HDR heightmap (via stbi_loadf) or a true OpenEXR file (via
+  // TinyEXR), dispatching on file extension. Float pixel values are expected
+  // in [0, 1] and mapped to [import_min_h_, import_max_h_]. Either applies
+  // immediately or sets the pending-resize state. Returns false on error.
   bool LoadAndApplyHDR(const std::string& path);
 
   // Applies an already-decoded heightmap to the terrain. If needs_resize is
