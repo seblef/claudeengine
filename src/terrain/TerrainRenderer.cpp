@@ -31,6 +31,24 @@ TerrainRenderer::~TerrainRenderer() {
   if (wireframe_shader_) wireframe_shader_->Release();
 }
 
+void TerrainRenderer::Deinit() {
+  if (shader_) {
+    shader_->Release();
+    shader_ = nullptr;
+  }
+  if (wireframe_shader_) {
+    wireframe_shader_->Release();
+    wireframe_shader_ = nullptr;
+  }
+  heightmap_.reset();
+  patch_cb_.reset();
+  patch_mesh_.reset();
+  patches_.clear();
+  material_      = nullptr;
+  macro_texture_ = nullptr;
+  video_         = nullptr;
+}
+
 void TerrainRenderer::Init(abstract::VideoDevice* video, const TerrainData& data,
                            int patch_size, int lod_count) {
   video_      = video;

@@ -61,6 +61,12 @@ class TerrainRenderer : public core::Singleton<TerrainRenderer> {
   void Init(abstract::VideoDevice* video, const TerrainData& data,
             int patch_size = 64, int lod_count = 6);
 
+  // Releases all GPU resources and resets the renderer to its pre-Init() state.
+  // After this call IsReady() returns false and Render() is a no-op.
+  // Call when the terrain is removed from the scene so the singleton can be
+  // re-Inited for a new terrain without destroying and recreating it.
+  void Deinit();
+
   // Updates the maximum triangle budget forwarded to CDLODQuadTree::Select().
   void SetTriangleBudget(int budget) { triangle_budget_ = budget; }
 

@@ -39,7 +39,7 @@ void GameTerrain::OnAddedToScene() {
 }
 
 void GameTerrain::OnRemovedFromScene() {
-  terrain::TerrainRenderer::Instance().SetMaterial(nullptr);
+  terrain::TerrainRenderer::Instance().Deinit();
   if (renderer::FoliageRenderer::IsInstanced())
     renderer::FoliageRenderer::Shutdown();
   renderer::Renderer::Instance().SetFoliageEnabled(false);

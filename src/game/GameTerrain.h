@@ -43,7 +43,7 @@ class GameTerrain : public GameObject {
   // Calls TerrainRenderer::Init() and SetMaterial().
   void OnAddedToScene() override;
 
-  // Calls TerrainRenderer::Shutdown().
+  // Calls TerrainRenderer::Deinit() and FoliageRenderer::Shutdown().
   void OnRemovedFromScene() override;
 
   // Terrain has no movable transform; this is a no-op.
