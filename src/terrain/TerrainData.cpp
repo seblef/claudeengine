@@ -18,6 +18,8 @@ TerrainData::TerrainData(const uint16_t* data, int width, int height,
   assert(width > 0 && height > 0);
   assert(meters_per_texel > 0.f);
   assert(min_height <= max_height);
+
+  UpdateRange();
 }
 
 float TerrainData::SampleToHeight(uint16_t sample) const {
@@ -29,6 +31,10 @@ float TerrainData::HeightAt(int tx, int tz) const {
   tx = std::clamp(tx, 0, width_  - 1);
   tz = std::clamp(tz, 0, height_ - 1);
   return SampleToHeight(data_[static_cast<std::size_t>(tz) * width_ + tx]);
+}
+
+void TerrainData::UpdateRange() {
+  range_ = std::abs(max_height_ - min_height_);
 }
 
 float TerrainData::GetHeight(float x, float z) const {
@@ -86,9 +92,7 @@ void TerrainData::ReplaceHeightmap(const uint16_t* data, int width, int height) 
 }
 
 uint16_t TerrainData::HeightToSample(float h) const {
-  const float range = max_height_ - min_height_;
-  if (range <= 0.f) return 0u;
-  const float t = (h - min_height_) / range;
+  const float t = (h - min_height_) / range_;
   const float clamped = t < 0.f ? 0.f : (t > 1.f ? 1.f : t);
   return static_cast<uint16_t>(std::lround(clamped * 65535.f));
 }

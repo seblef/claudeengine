@@ -58,8 +58,8 @@ class TerrainData {
   // uint16_t samples. The renderer must be notified separately via
   // TerrainRenderer::SetHeightRange(); the normal map must be rebuilt via
   // TerrainNormalMap::Build().
-  void SetMinHeight(float h) { min_height_ = h; }
-  void SetMaxHeight(float h) { max_height_ = h; }
+  void SetMinHeight(float h) { min_height_ = h; UpdateRange(); }
+  void SetMaxHeight(float h) { max_height_ = h; UpdateRange(); }
 
   // ---- Sculpt accessors ---------------------------------------------------
 
@@ -86,12 +86,17 @@ class TerrainData {
   // Returns the height at texel (tx, tz), clamped to valid range.
   float HeightAt(int tx, int tz) const;
 
+  // Update the range from min and max height
+  void UpdateRange();
+
   std::vector<uint16_t> data_;
   int   width_;
   int   height_;
   float meters_per_texel_;
   float min_height_;
   float max_height_;
+  // cppcheck-suppress unusedStructMember
+  float range_;
 };
 
 }  // namespace terrain
