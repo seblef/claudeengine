@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -79,6 +80,13 @@ class TerrainEditorPanel {
 
   // Returns true when a context is set (terrain exists in scene).
   [[nodiscard]] bool IsActive() const { return data_ != nullptr; }
+
+  // Sets a callback invoked when the user imports a heightmap with no terrain
+  // currently in the scene. The callback receives the decoded uint16 samples,
+  // terrain dimensions (w, h), and the mapped height range [min_h, max_h].
+  // EditorWindow uses this to create and register a new terrain.
+  void SetOnCreateFromImport(
+      std::function<void(std::vector<uint16_t>, int, int, float, float)> cb);
 
  private:
   enum class Tool    { kRaise, kLower, kSmooth, kFlatten };
@@ -182,6 +190,9 @@ class TerrainEditorPanel {
   float  import_max_h_  = 100.f;
 
   bool    show_import_window_ = false;
+  // cppcheck-suppress unusedStructMember
+  std::function<void(std::vector<uint16_t>, int, int, float, float)>
+      on_create_from_import_;
   IoState io_state_           = IoState::kIdle;
   int     io_pending_w_ = 0;
   int     io_pending_h_ = 0;

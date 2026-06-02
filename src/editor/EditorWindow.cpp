@@ -92,6 +92,10 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
     material_editor_->Open(mat);
   });
   environment_panel_.SetContext(scene_.get(), video_);
+  terrain_panel_.SetOnCreateFromImport(
+      [this](std::vector<uint16_t> s, int w, int h, float mn, float mx) {
+        CreateTerrainFromImport(std::move(s), w, h, mn, mx);
+      });
 
   loguru::add_callback("editor_log", &LogPanel::LogCallback,
                        log_panel_.get(), loguru::Verbosity_INFO);
@@ -383,11 +387,12 @@ void EditorWindow::RenderMenuBar() {
     ImGui::BeginDisabled(!has_terrain);
     if (ImGui::MenuItem("Sculpt", nullptr, show_terrain_panel_, has_terrain))
       show_terrain_panel_ = !show_terrain_panel_;
-    if (ImGui::MenuItem("Import", nullptr, false, has_terrain))
-      terrain_panel_.OpenImportWindow();
     ImGui::EndDisabled();
     if (!has_terrain)
       ImGui::SetItemTooltip("Add a terrain first");
+
+    if (ImGui::MenuItem("Import"))
+      terrain_panel_.OpenImportWindow();
 
     ImGui::Separator();
 
@@ -630,6 +635,38 @@ void EditorWindow::CreateTerrain() {
   scene_dirty_ = true;
   LOG_F(INFO, "Terrain created: %dx%d texels, %.2f m/texel, "
         "Y=[%.1f, %.1f]", width, height, safe_res, p.min_height, p.max_height);
+}
+
+void EditorWindow::CreateTerrainFromImport(std::vector<uint16_t> samples,
+                                           int w, int h,
+                                           float min_h, float max_h) {
+  constexpr float kDefaultResolution = 1.f;
+
+  auto data = std::make_unique<terrain::TerrainData>(
+      samples.data(), w, h, kDefaultResolution, min_h, max_h);
+
+  YAML::Node mat_node;
+  YAML::Node layer0;
+  layer0["albedo"] = std::string("default/diffuse.png");
+  layer0["normal"] = std::string("default/normal.png");
+  layer0["tiling"] = 8.f;
+  mat_node["layers"].push_back(layer0);
+  auto material = std::make_unique<terrain::TerrainMaterial>();
+  material->Load(mat_node, video_, w, h);
+
+  terrain_normal_map_ = std::make_unique<terrain::TerrainNormalMap>();
+  terrain_normal_map_->Build(*data);
+
+  auto terrain_obj = std::make_unique<game::GameTerrain>(
+      std::move(data), std::move(material), video_);
+  terrain_obj->SetName("terrain");
+  scene_->AddDynamicObject(std::move(terrain_obj));
+
+  terrain_normal_map_->Upload(video_);
+  WireTerrainPanel();
+  scene_dirty_ = true;
+  LOG_F(INFO, "Terrain created from import: %dx%d texels, 1.0 m/texel, "
+        "Y=[%.1f, %.1f]", w, h, min_h, max_h);
 }
 
 void EditorWindow::RemoveTerrain() {
