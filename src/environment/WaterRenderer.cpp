@@ -96,10 +96,17 @@ void WaterRenderer::BuildMesh(int grid_size) {
   std::vector<core::Vertex3D> verts;
   verts.reserve(static_cast<size_t>(num_verts));
 
+  const float mesh_x0 = center_x - half;
+  const float mesh_z0 = center_z - half;
+  const float mesh_x1 = mesh_x0 + static_cast<float>(grid_size) * kCellSize;
+  const float mesh_z1 = mesh_z0 + static_cast<float>(grid_size) * kCellSize;
+  LOG_F(INFO, "WaterRenderer mesh bounds: X=[%.1f, %.1f] Z=[%.1f, %.1f]",
+        mesh_x0, mesh_x1, mesh_z0, mesh_z1);
+
   for (int j = 0; j <= grid_size; ++j) {
     for (int i = 0; i <= grid_size; ++i) {
-      const float x = center_x - half + static_cast<float>(i) * kCellSize;
-      const float z = center_z - half + static_cast<float>(j) * kCellSize;
+      const float x = mesh_x0 + static_cast<float>(i) * kCellSize;
+      const float z = mesh_z0 + static_cast<float>(j) * kCellSize;
       verts.push_back({
         core::Vec3f(x, 0.f, z),
         core::Vec3f(0.f, 1.f, 0.f),
