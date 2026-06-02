@@ -47,6 +47,7 @@ void TerrainRenderer::Deinit() {
   material_      = nullptr;
   macro_texture_ = nullptr;
   video_         = nullptr;
+  logged_origin_ = false;
 }
 
 void TerrainRenderer::Init(abstract::VideoDevice* video, const TerrainData& data,
@@ -133,6 +134,15 @@ void TerrainRenderer::FillPatchInfos(const TerrainPatch& patch) {
   infos.patch_origin    = {
       static_cast<float>(patch.grid_x) * patch_scale * static_cast<float>(patch_size_),
       static_cast<float>(patch.grid_z) * patch_scale * static_cast<float>(patch_size_)};
+
+  // One-shot diagnostic: log the first patch origin to verify world origin.
+  if (patch.grid_x == 0 && patch.grid_z == 0 && !logged_origin_) {
+    LOG_F(INFO, "TerrainRenderer first patch origin=(%.1f,%.1f) scale=%.2f "
+          "mpt=%.2f patch_size=%d lod=%d",
+          infos.patch_origin.x, infos.patch_origin.y,
+          patch_scale, meters_per_texel_, patch_size_, patch.lod);
+    logged_origin_ = true;
+  }
   infos.patch_scale        = patch_scale;
   infos.lod_level          = patch.lod;
   infos.morph_factor       = patch.morph;

@@ -165,6 +165,8 @@ class TerrainRenderer : public core::Singleton<TerrainRenderer> {
   float       triplanar_threshold_   = 0.5f;
 
   bool        tess_enabled_       = true;
+  // cppcheck-suppress unusedStructMember
+  mutable bool logged_origin_     = false;
   float       tess_falloff_dist_  = 500.f;
   float       max_tess_           = 8.f;
   int         max_tess_lod_       = 2;
