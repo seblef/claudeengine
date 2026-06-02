@@ -34,8 +34,17 @@ EditorScene::EditorScene(abstract::VideoDevice* video)
 EditorScene::EditorScene(abstract::VideoDevice* video,
                          const std::string& map_name,
                          float map_size,
-                         const game::GameLightDesc& light_desc)
-    : map_name_(map_name), map_size_(map_size), global_light_desc_(light_desc) {
+                         const game::GameLightDesc& light_desc,
+                         bool add_default_objects)
+    : map_name_(map_name), map_size_(map_size), global_light_desc_(light_desc),
+      light_(std::make_unique<game::GameLight>(renderer::LightType::kGlobal,
+                                               light_desc)) {
+  light_->SetName("Sun");
+  game::GameSystem::Instance().AddObject(light_.get());
+  objects_.push_back(light_.get());
+
+  if (!add_default_objects) return;
+
   // Floor plane — neutral grey diffuse, map_size × map_size world units.
   // Added as a dynamic (user-deletable) object so it can be selected, moved,
   // or removed when a terrain is present.
@@ -50,14 +59,7 @@ EditorScene::EditorScene(abstract::VideoDevice* video,
   plane_tmpl->Release();
   AddDynamicObject(std::move(floor));
 
-  // Global directional light.
-  light_ = std::make_unique<game::GameLight>(renderer::LightType::kGlobal, light_desc);
-  light_->SetName("Sun");
-  game::GameSystem::Instance().AddObject(light_.get());
-  objects_.push_back(light_.get());
-
   // Unit cube scaled ×2 and placed at (0,1,0) so its bottom face sits on the floor.
-  // Added as the first dynamic (user-deletable) object.
   auto* cube_mat = new game::GameMaterial(
       "__proc_editor_cube",
       renderer::MaterialDesc().SetDiffuseColor(core::Color(0.7f, 0.7f, 0.7f)), video);

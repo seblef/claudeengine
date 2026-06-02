@@ -407,7 +407,7 @@ std::optional<MapLoadResult> MapSerializer::Load(
 
   MapLoadResult result;
   result.scene = std::make_unique<EditorScene>(
-      video, map_data.name, map_data.map_size, map_data.global_light);
+      video, map_data.name, map_data.map_size, map_data.global_light, false);
   result.scene->SetEnvironmentDesc(map_data.environment_desc);
 
   // Transfer objects and their resource ownership to the scene.
