@@ -105,15 +105,17 @@ void WaterRenderer::BuildMesh(int grid_size) {
   }
 
   // Each quad → 2 CW triangles (consistent with the geometry pass winding).
-  std::vector<uint16_t> indices;
+  // uint32 indices are required: large terrains exceed the uint16 limit of 65535
+  // vertices (e.g. a 984-quad grid has 985² = 970 225 vertices).
+  std::vector<uint32_t> indices;
   indices.reserve(static_cast<size_t>(num_quads) * 6);
 
   for (int j = 0; j < grid_size; ++j) {
     for (int i = 0; i < grid_size; ++i) {
-      const uint16_t tl = static_cast<uint16_t>( j      * verts_per_side + i    );
-      const uint16_t tr = static_cast<uint16_t>( j      * verts_per_side + i + 1);
-      const uint16_t bl = static_cast<uint16_t>((j + 1) * verts_per_side + i    );
-      const uint16_t br = static_cast<uint16_t>((j + 1) * verts_per_side + i + 1);
+      const uint32_t tl = static_cast<uint32_t>( j      * verts_per_side + i    );
+      const uint32_t tr = static_cast<uint32_t>( j      * verts_per_side + i + 1);
+      const uint32_t bl = static_cast<uint32_t>((j + 1) * verts_per_side + i    );
+      const uint32_t br = static_cast<uint32_t>((j + 1) * verts_per_side + i + 1);
       indices.push_back(tl);
       indices.push_back(br);
       indices.push_back(tr);
@@ -129,7 +131,7 @@ void WaterRenderer::BuildMesh(int grid_size) {
       core::VertexType::k3D, num_verts,
       abstract::BufferUsage::kImmutable, verts.data());
   grid_ib_ = video_->CreateIndexBuffer(
-      abstract::IndexType::kUInt16, num_indices_,
+      abstract::IndexType::kUInt32, num_indices_,
       abstract::BufferUsage::kImmutable, indices.data());
 }
 
