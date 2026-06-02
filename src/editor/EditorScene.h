@@ -35,10 +35,13 @@ namespace editor {
 class EditorScene {
  public:
   explicit EditorScene(abstract::VideoDevice* video);
+  // When add_default_objects is false, the floor plane and cube are omitted.
+  // Pass false when constructing from a saved map to avoid stale defaults.
   EditorScene(abstract::VideoDevice* video,
               const std::string& map_name,
               float map_size,
-              const game::GameLightDesc& light_desc);
+              const game::GameLightDesc& light_desc,
+              bool add_default_objects = true);
   ~EditorScene();
 
   EditorScene(const EditorScene&)            = delete;
