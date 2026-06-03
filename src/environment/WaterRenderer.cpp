@@ -24,6 +24,9 @@ constexpr int   kFoamTexSize   = 256;    // resolution of the procedural foam te
 constexpr int   kTileSize      = 8;      // grid cells per tile side for frustum culling
 // Max Gerstner Y offset: base_amp(max=2m) × (1.0+0.6+0.35+0.25) = 4.4 m — use 5 m for safety.
 constexpr float kWaveAmplitude = 5.f;    // Y half-extent added above/below water_level_ for tile AABBs
+// Gerstner XZ displacement reaches up to Q×base_amp×2.2 ≈ 2.2 m; pad by 5 m to keep border
+// tiles visible when displaced vertices cross just outside the tight grid bounds.
+constexpr float kTileXZPad     = 5.f;
 
 // Returns the height of an overlapping multi-frequency sine field at (u, v).
 // u and v are in [0, kNormalMapSize) and represent normalised tile coordinates.
@@ -148,10 +151,10 @@ void WaterRenderer::BuildMesh(int grid_size) {
 
       tile.index_count = static_cast<int>(indices.size()) - tile.first_index;
 
-      const float wx0 = mesh_x0 + static_cast<float>(ti)      * kCellSize;
-      const float wz0 = mesh_z0 + static_cast<float>(tj)      * kCellSize;
-      const float wx1 = mesh_x0 + static_cast<float>(cell_x1) * kCellSize;
-      const float wz1 = mesh_z0 + static_cast<float>(cell_z1) * kCellSize;
+      const float wx0 = mesh_x0 + static_cast<float>(ti)      * kCellSize - kTileXZPad;
+      const float wz0 = mesh_z0 + static_cast<float>(tj)      * kCellSize - kTileXZPad;
+      const float wx1 = mesh_x0 + static_cast<float>(cell_x1) * kCellSize + kTileXZPad;
+      const float wz1 = mesh_z0 + static_cast<float>(cell_z1) * kCellSize + kTileXZPad;
       tile.aabb = core::BBox3(wx0, water_level_ - kWaveAmplitude, wz0,
                               wx1, water_level_ + kWaveAmplitude, wz1);
       tiles_.push_back(tile);
