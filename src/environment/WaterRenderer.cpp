@@ -21,8 +21,9 @@ namespace {
 constexpr float kCellSize      = 10.f;   // world units per grid cell
 constexpr int   kNormalMapSize = 512;    // resolution of the procedural normal map
 constexpr int   kFoamTexSize   = 256;    // resolution of the procedural foam texture
-constexpr int   kTileSize      = 16;     // grid cells per tile side for frustum culling
-constexpr float kWaveAmplitude = 2.f;    // Y margin added above/below water_level_ for tile AABBs
+constexpr int   kTileSize      = 8;      // grid cells per tile side for frustum culling
+// Max Gerstner Y offset: base_amp(max=2m) × (1.0+0.6+0.35+0.25) = 4.4 m — use 5 m for safety.
+constexpr float kWaveAmplitude = 5.f;    // Y half-extent added above/below water_level_ for tile AABBs
 
 // Returns the height of an overlapping multi-frequency sine field at (u, v).
 // u and v are in [0, kNormalMapSize) and represent normalised tile coordinates.
