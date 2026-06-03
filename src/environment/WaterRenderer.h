@@ -76,7 +76,7 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
               abstract::RenderTarget* depth);
 
   // Updates the world-space Y of the undisplaced surface (hot-path; no rebuild).
-  void SetWaterLevel(float y) { water_level_ = y; }
+  void SetWaterLevel(float y);
 
   // Updates the sky zenith colour used for Fresnel reflection.
   void SetSkyZenithColor(float r, float g, float b) {
@@ -101,6 +101,22 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   [[nodiscard]] bool IsReady() const { return shader_ != nullptr; }
 
  private:
+  // One tile of the water grid, used for view-frustum culling.
+  struct TileInfo {
+    // cppcheck-suppress unusedStructMember
+    int   first_index;
+    // cppcheck-suppress unusedStructMember
+    int   index_count;
+    // cppcheck-suppress unusedStructMember
+    float x0;   // world-space XZ bounds of this tile
+    // cppcheck-suppress unusedStructMember
+    float z0;
+    // cppcheck-suppress unusedStructMember
+    float x1;
+    // cppcheck-suppress unusedStructMember
+    float z1;
+  };
+
   // Fraction by which the water plane extends beyond each terrain edge.
   // 1.2 means the water is 20 % wider/deeper than the terrain on every side.
   // cppcheck-suppress unusedStructMember
@@ -119,6 +135,8 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   std::unique_ptr<abstract::RawTexture>   normal_map_tex_;
   std::unique_ptr<abstract::RawTexture>   foam_tex_;
   int                                     num_indices_ = 0;
+  // cppcheck-suppress unusedStructMember
+  std::vector<TileInfo>                   tiles_;
 
   // cppcheck-suppress unusedStructMember
   float         terrain_world_width_  = 0.f;
