@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <string>
@@ -68,6 +69,16 @@ class EditorWindow {
 
   // Opens a native open dialog and loads a map file.
   void LoadFromFile();
+
+  // Loads a map from path; updates recent maps list on success.
+  void LoadMap(const std::filesystem::path& path);
+
+  // Prepends path to recent_maps_, deduplicates, trims to kMaxRecentMaps, and
+  // writes the list back to config.yaml.
+  void AddToRecentMaps(const std::filesystem::path& path);
+
+  // Persists recent_maps_ to the editor section of config.yaml.
+  void SaveRecentMaps();
 
   // Shows the "Unsaved Changes" modal if dirty, then fires on_proceed.
   // Stores on_proceed in pending_after_save_ and sets the open flag.
@@ -180,6 +191,14 @@ class EditorWindow {
   EnvironmentEditorPanel environment_panel_;
   // cppcheck-suppress unusedStructMember
   bool                   show_environment_panel_ = false;
+
+  // Maximum number of entries kept in the recent maps list.
+  // cppcheck-suppress unusedStructMember
+  static constexpr int kMaxRecentMaps = 5;
+
+  // Ordered list of recently opened map paths (most-recent first).
+  // cppcheck-suppress unusedStructMember
+  std::vector<std::string> recent_maps_;
 
   // Debug state.
   // cppcheck-suppress unusedStructMember
