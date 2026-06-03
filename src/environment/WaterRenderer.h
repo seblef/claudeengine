@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -12,6 +13,7 @@
 #include "abstract/VideoDevice.h"
 #include "core/Camera.h"
 #include "core/Singleton.h"
+#include "core/Vec2f.h"
 #include "core/Vec3f.h"
 
 namespace environment {
@@ -34,6 +36,11 @@ namespace environment {
 // Sampler slot 2: scene_color snapshot (RGBA16F).
 // Sampler slot 3: depth snapshot (DEPTH24STENCIL8).
 //
+// The water surface is partitioned into 3 clipmap LOD rings centered on the
+// camera and snapped to a coarse grid.  Only ring geometry within the view
+// frustum is drawn, and rings are only rebuilt when the camera has moved by at
+// least half a cell width since the last rebuild.
+//
 // Usage:
 //   new WaterRenderer();
 //   WaterRenderer::Instance().Build(video, water_level);
@@ -53,21 +60,22 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   WaterRenderer(WaterRenderer&&)                 = delete;
   WaterRenderer& operator=(WaterRenderer&&)      = delete;
 
-  // Creates a flat water mesh and loads water shaders.
+  // Creates clipmap LOD ring meshes and loads water shaders.
   // water_level:          world-space Y of the undisplaced water surface.
   // terrain_world_width:  world-space width of the terrain (X axis). Pass 0 for a
   //                       fixed-size mesh centred at the world origin.
   // terrain_world_height: world-space depth of the terrain (Z axis). Pass 0 for a
   //                       fixed-size mesh centred at the world origin.
-  // When non-zero terrain dimensions are provided the mesh is centred at the
-  // terrain's midpoint and extends kTerrainMarginFactor times beyond its edges.
-  // grid_size: number of quads per side when terrain dimensions are not supplied.
+  // When non-zero terrain dimensions are provided, LOD 2's outer radius extends
+  // kTerrainMarginFactor times beyond the terrain's longest half-edge.
+  // grid_size: used to derive the LOD 2 outer radius when terrain dimensions are
+  //            not supplied (outer = grid_size * 10 m / 2, at least 1000 m).
   // video must outlive this renderer.
   void Build(abstract::VideoDevice* video, float water_level,
              float terrain_world_width = 0.f, float terrain_world_height = 0.f,
              int grid_size = 128);
 
-  // Draws the water grid into the currently bound FBO (emissive FBO).
+  // Draws the water surface into the currently bound FBO (emissive FBO).
   // scene_color: HDR snapshot taken just before this call (sampler slot 2).
   // depth:       depth snapshot taken just before this call (sampler slot 3).
   // The WaterInfos CB (slot 9) and SceneInfos CB (slot 2) must already be bound.
@@ -111,7 +119,7 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   [[nodiscard]] bool IsReady() const { return shader_ != nullptr; }
 
  private:
-  // One tile of the water grid, used for view-frustum culling.
+  // One tile of a LOD ring, used for per-ring view-frustum culling.
   struct TileInfo {
     // cppcheck-suppress unusedStructMember
     int   first_index;
@@ -127,12 +135,37 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
     float z1;
   };
 
+  // One clipmap LOD ring.  Geometry is rebuilt (via Fill()) whenever the
+  // camera snaps to a new grid-aligned position far enough from last_snap.
+  struct LodRing {
+    // cppcheck-suppress unusedStructMember
+    std::unique_ptr<abstract::VertexBuffer> vb;
+    // cppcheck-suppress unusedStructMember
+    std::unique_ptr<abstract::IndexBuffer>  ib;
+    // cppcheck-suppress unusedStructMember
+    int           num_indices  = 0;
+    // cppcheck-suppress unusedStructMember
+    float         cell_size    = 0.f;
+    // cppcheck-suppress unusedStructMember
+    float         inner_radius = 0.f;
+    // cppcheck-suppress unusedStructMember
+    float         outer_radius = 0.f;
+    // cppcheck-suppress unusedStructMember
+    core::Vec2f   last_snap    = {-1e9f, -1e9f};
+    // cppcheck-suppress unusedStructMember
+    std::vector<TileInfo> tiles;
+  };
+
   // Fraction by which the water plane extends beyond each terrain edge.
   // 1.2 means the water is 20 % wider/deeper than the terrain on every side.
   // cppcheck-suppress unusedStructMember
   static constexpr float kTerrainMarginFactor = 1.2f;
 
-  void BuildMesh(int grid_size);
+  // Fills ring VB+IB with geometry centered on snap_pos, keeping only quads
+  // whose centre falls in [ring.inner_radius, ring.outer_radius] from snap_pos.
+  // Indices are emitted in tile-major order for per-tile frustum culling.
+  static void BuildRingGeometry(LodRing& ring, core::Vec2f snap_pos);
+
   void BuildNormalMap();
   void BuildFoamTexture();
 
@@ -140,13 +173,10 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   abstract::VideoDevice*                  video_   = nullptr;
   // cppcheck-suppress unusedStructMember
   abstract::Shader*                       shader_  = nullptr;
-  std::unique_ptr<abstract::VertexBuffer> grid_vb_;
-  std::unique_ptr<abstract::IndexBuffer>  grid_ib_;
   std::unique_ptr<abstract::RawTexture>   normal_map_tex_;
   std::unique_ptr<abstract::RawTexture>   foam_tex_;
-  int                                     num_indices_ = 0;
   // cppcheck-suppress unusedStructMember
-  std::vector<TileInfo>                   tiles_;
+  std::array<LodRing, 3>                  lod_rings_;
 
   // cppcheck-suppress unusedStructMember
   float         terrain_world_width_  = 0.f;

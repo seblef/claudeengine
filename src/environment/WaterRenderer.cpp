@@ -1,5 +1,6 @@
 #include "environment/WaterRenderer.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <vector>
@@ -17,10 +18,19 @@ namespace environment {
 
 namespace {
 
-constexpr float kCellSize      = 10.f;   // world units per grid cell
 constexpr int   kNormalMapSize = 512;    // resolution of the procedural normal map
 constexpr int   kFoamTexSize   = 256;    // resolution of the procedural foam texture
-constexpr int   kTileSize  = 8;    // grid cells per tile side for frustum culling
+constexpr int   kTileSize      = 8;      // grid cells per tile side for frustum culling
+
+// LOD ring specs: { cell_size_m, inner_radius_m, outer_radius_m }.
+// outer_radius for LOD 2 is filled at Build() time from terrain dimensions.
+constexpr float kLodSpecs[3][2] = {
+    { 10.f,   0.f },   // LOD 0: near  disc,   0 – 200 m
+    { 20.f, 200.f },   // LOD 1: mid   ring, 200 – 500 m
+    { 40.f, 500.f },   // LOD 2: far   ring, 500 m – terrain margin
+};
+constexpr float kLod0OuterRadius = 200.f;
+constexpr float kLod1OuterRadius = 500.f;
 
 // Returns the height of an overlapping multi-frequency sine field at (u, v).
 // u and v are in [0, kNormalMapSize) and represent normalised tile coordinates.
@@ -60,76 +70,102 @@ void WaterRenderer::Build(abstract::VideoDevice* video,
   terrain_world_height_ = terrain_world_height;
   shader_               = video_->CreateShader("water/water");
 
-  BuildMesh(grid_size);
+  // Compute LOD 2 outer radius from terrain dimensions or grid_size fallback.
+  float lod2_outer = std::max(1000.f,
+      static_cast<float>(grid_size) * kLodSpecs[0][0] * 0.5f);
+  if (terrain_world_width_ > 0.f && terrain_world_height_ > 0.f) {
+    const float terrain_half = std::max(terrain_world_width_,
+                                        terrain_world_height_) * 0.5f;
+    lod2_outer = terrain_half * kTerrainMarginFactor;
+  }
+
+  const float outer_radii[3] = { kLod0OuterRadius, kLod1OuterRadius, lod2_outer };
+
+  for (int i = 0; i < 3; ++i) {
+    LodRing& ring       = lod_rings_[i];
+    ring.cell_size      = kLodSpecs[i][0];
+    ring.inner_radius   = kLodSpecs[i][1];
+    ring.outer_radius   = outer_radii[i];
+    ring.last_snap      = {-1e9f, -1e9f};
+    ring.num_indices    = 0;
+    ring.tiles.clear();
+
+    // Worst-case counts for a square bounding the ring (all quads included).
+    const int side       = static_cast<int>(
+        std::ceil(2.f * ring.outer_radius / ring.cell_size));
+    const int max_verts  = (side + 1) * (side + 1);
+    const int max_idx    = side * side * 6;
+
+    ring.vb = video_->CreateVertexBuffer(
+        core::VertexType::k3D, max_verts, abstract::BufferUsage::kDynamic);
+    ring.ib = video_->CreateIndexBuffer(
+        abstract::IndexType::kUInt32, max_idx, abstract::BufferUsage::kDynamic);
+  }
+
   BuildNormalMap();
   BuildFoamTexture();
 }
 
-void WaterRenderer::BuildMesh(int grid_size) {
-  // When terrain dimensions are supplied, fit the mesh to the terrain:
-  //   centre the grid at the terrain's midpoint and extend it by
-  //   kTerrainMarginFactor so the water visibly exceeds the terrain edges.
-  float center_x = 0.f;
-  float center_z = 0.f;
-  float half      = 0.f;
+void WaterRenderer::BuildRingGeometry(LodRing& ring, core::Vec2f snap_pos) {
+  // Guard band on the inner radius: a quad's centre and the adjacent ring's
+  // quad centre covering the same world point can be up to
+  // (cell_inner + cell_outer)*sqrt(2)/2 ≈ cell_size*sqrt(2) apart.
+  // Shrinking the inner exclusion by 2*cell_size guarantees the two rings
+  // always overlap at boundaries, preventing holes.
+  const float inner_eff  = (ring.inner_radius > ring.cell_size * 2.f)
+                           ? ring.inner_radius - ring.cell_size * 2.f : 0.f;
+  const float inner2     = inner_eff * inner_eff;
+  const float outer2     = ring.outer_radius * ring.outer_radius;
+  const int   half_cells = static_cast<int>(
+      std::ceil(ring.outer_radius / ring.cell_size));
+  const int   side           = half_cells * 2;
+  const int   verts_per_side = side + 1;
 
-  if (terrain_world_width_ > 0.f && terrain_world_height_ > 0.f) {
-    center_x  = terrain_world_width_  * 0.5f;
-    center_z  = terrain_world_height_ * 0.5f;
-    const float terrain_half = std::max(terrain_world_width_,
-                                        terrain_world_height_) * 0.5f;
-    half      = terrain_half * kTerrainMarginFactor;
-    grid_size = static_cast<int>(std::ceil(half * 2.f / kCellSize));
-  } else {
-    half = static_cast<float>(grid_size) * kCellSize * 0.5f;
-  }
-
-  const int verts_per_side = grid_size + 1;
-  const int num_verts      = verts_per_side * verts_per_side;
-  const int num_quads      = grid_size * grid_size;
+  // Vertex grid origin (world space) aligned to snap_pos.
+  const float x0 = snap_pos.x - static_cast<float>(half_cells) * ring.cell_size;
+  const float z0 = snap_pos.y - static_cast<float>(half_cells) * ring.cell_size;
 
   std::vector<core::Vertex3D> verts;
-  verts.reserve(static_cast<size_t>(num_verts));
+  verts.reserve(static_cast<size_t>(verts_per_side * verts_per_side));
 
-  const float mesh_x0 = center_x - half;
-  const float mesh_z0 = center_z - half;
-
-  for (int j = 0; j <= grid_size; ++j) {
-    for (int i = 0; i <= grid_size; ++i) {
-      const float x = mesh_x0 + static_cast<float>(i) * kCellSize;
-      const float z = mesh_z0 + static_cast<float>(j) * kCellSize;
+  for (int j = 0; j <= side; ++j) {
+    for (int i = 0; i <= side; ++i) {
+      const float wx = x0 + static_cast<float>(i) * ring.cell_size;
+      const float wz = z0 + static_cast<float>(j) * ring.cell_size;
+      // UV = world XZ; the vertex shader overrides v_uv with in_position.xz.
       verts.push_back({
-        core::Vec3f(x, 0.f, z),
-        core::Vec3f(0.f, 1.f, 0.f),
-        core::Vec3f(1.f, 0.f, 0.f),
-        core::Vec3f(0.f, 0.f, 1.f),
-        core::Vec2f(static_cast<float>(i) / static_cast<float>(grid_size),
-                    static_cast<float>(j) / static_cast<float>(grid_size)),
+          core::Vec3f(wx, 0.f, wz),
+          core::Vec3f(0.f, 1.f, 0.f),
+          core::Vec3f(1.f, 0.f, 0.f),
+          core::Vec3f(0.f, 0.f, 1.f),
+          core::Vec2f(wx, wz),
       });
     }
   }
 
-  // Each quad → 2 CW triangles (consistent with the geometry pass winding).
-  // uint32 indices are required: large terrains exceed the uint16 limit of 65535
-  // vertices (e.g. a 984-quad grid has 985² = 970 225 vertices).
-  //
-  // Indices are emitted in tile-major order (tile row, tile col, cell row, cell col)
-  // so that each tile's indices occupy a contiguous range — enabling a single
-  // RenderIndexed call per visible tile during frustum culling.
+  // Indices in tile-major order for per-tile frustum culling.
+  // Only quads whose XZ centre lies in [inner_radius, outer_radius] are emitted.
   std::vector<uint32_t> indices;
-  indices.reserve(static_cast<size_t>(num_quads) * 6);
+  indices.reserve(static_cast<size_t>(side * side * 6));
 
-  tiles_.clear();
-  for (int tj = 0; tj < grid_size; tj += kTileSize) {
-    for (int ti = 0; ti < grid_size; ti += kTileSize) {
-      const int cell_x1 = std::min(ti + kTileSize, grid_size);
-      const int cell_z1 = std::min(tj + kTileSize, grid_size);
+  ring.tiles.clear();
+  for (int tj = 0; tj < side; tj += kTileSize) {
+    for (int ti = 0; ti < side; ti += kTileSize) {
+      const int cell_x1 = std::min(ti + kTileSize, side);
+      const int cell_z1 = std::min(tj + kTileSize, side);
 
       TileInfo tile;
       tile.first_index = static_cast<int>(indices.size());
 
       for (int j = tj; j < cell_z1; ++j) {
         for (int i = ti; i < cell_x1; ++i) {
+          const float cx  = x0 + (static_cast<float>(i) + 0.5f) * ring.cell_size;
+          const float cz  = z0 + (static_cast<float>(j) + 0.5f) * ring.cell_size;
+          const float ddx = cx - snap_pos.x;
+          const float ddz = cz - snap_pos.y;
+          const float d2  = ddx * ddx + ddz * ddz;
+          if (d2 < inner2 || d2 > outer2) continue;
+
           const uint32_t tl = static_cast<uint32_t>( j      * verts_per_side + i    );
           const uint32_t tr = static_cast<uint32_t>( j      * verts_per_side + i + 1);
           const uint32_t bl = static_cast<uint32_t>((j + 1) * verts_per_side + i    );
@@ -144,23 +180,21 @@ void WaterRenderer::BuildMesh(int grid_size) {
       }
 
       tile.index_count = static_cast<int>(indices.size()) - tile.first_index;
+      if (tile.index_count == 0) continue;
 
-      tile.x0 = mesh_x0 + static_cast<float>(ti)      * kCellSize;
-      tile.z0 = mesh_z0 + static_cast<float>(tj)      * kCellSize;
-      tile.x1 = mesh_x0 + static_cast<float>(cell_x1) * kCellSize;
-      tile.z1 = mesh_z0 + static_cast<float>(cell_z1) * kCellSize;
-      tiles_.push_back(tile);
+      tile.x0 = x0 + static_cast<float>(ti)      * ring.cell_size;
+      tile.z0 = z0 + static_cast<float>(tj)      * ring.cell_size;
+      tile.x1 = x0 + static_cast<float>(cell_x1) * ring.cell_size;
+      tile.z1 = z0 + static_cast<float>(cell_z1) * ring.cell_size;
+      ring.tiles.push_back(tile);
     }
   }
 
-  num_indices_ = static_cast<int>(indices.size());
-
-  grid_vb_ = video_->CreateVertexBuffer(
-      core::VertexType::k3D, num_verts,
-      abstract::BufferUsage::kImmutable, verts.data());
-  grid_ib_ = video_->CreateIndexBuffer(
-      abstract::IndexType::kUInt32, num_indices_,
-      abstract::BufferUsage::kImmutable, indices.data());
+  ring.num_indices = static_cast<int>(indices.size());
+  if (!verts.empty())
+    ring.vb->Fill(verts.data(), static_cast<int>(verts.size()));
+  if (!indices.empty())
+    ring.ib->Fill(indices.data(), ring.num_indices);
 }
 
 void WaterRenderer::BuildNormalMap() {
@@ -240,8 +274,6 @@ void WaterRenderer::Render(const core::Camera& camera,
   video_->SetIndexType(abstract::IndexType::kUInt32);
 
   shader_->Activate();
-  grid_vb_->Bind();
-  grid_ib_->Bind();
 
   // Project the 6 view-frustum planes onto the water plane (Y = water_level_).
   // A 3D plane (A, B, C, D) — with Ax+By+Cz+D >= 0 meaning "inside" — reduces
@@ -269,20 +301,47 @@ void WaterRenderer::Render(const core::Camera& camera,
   add_plane(vp(3,0)-vp(2,0), vp(3,1)-vp(2,1), vp(3,2)-vp(2,2), vp(3,3)-vp(2,3));  // far
   if (skip_all) return;
 
-  for (const TileInfo& tile : tiles_) {
-    bool visible = true;
-    for (int pi = 0; pi < n_planes2d && visible; ++pi) {
-      const Plane2D& p = planes2d[pi];
-      // Cull tile only when all 4 XZ corners are behind this half-plane.
-      const float v00 = p.a * tile.x0 + p.b * tile.z0 + p.d;
-      const float v10 = p.a * tile.x1 + p.b * tile.z0 + p.d;
-      const float v01 = p.a * tile.x0 + p.b * tile.z1 + p.d;
-      const float v11 = p.a * tile.x1 + p.b * tile.z1 + p.d;
-      if (v00 < 0.f && v10 < 0.f && v01 < 0.f && v11 < 0.f)
-        visible = false;
+  const core::Vec3f cam_pos  = camera.GetPosition();
+  const core::Vec2f cam_xz   = {cam_pos.x, cam_pos.z};
+
+  // All rings share the same snap centre (LOD 0 grid) so every ring's radial
+  // inclusion test measures from an identical world-space point, preventing
+  // gaps at ring boundaries when rings would otherwise snap independently.
+  const float fine_cell = lod_rings_[0].cell_size;
+  const core::Vec2f snap_pos(std::round(cam_xz.x / fine_cell) * fine_cell,
+                              std::round(cam_xz.y / fine_cell) * fine_cell);
+
+  const float moved_x  = snap_pos.x - lod_rings_[0].last_snap.x;
+  const float moved_z  = snap_pos.y - lod_rings_[0].last_snap.y;
+  const float half_cell = fine_cell * 0.5f;
+  if (moved_x * moved_x + moved_z * moved_z >= half_cell * half_cell) {
+    for (LodRing& ring : lod_rings_) {
+      BuildRingGeometry(ring, snap_pos);
+      ring.last_snap = snap_pos;
     }
-    if (visible)
-      video_->RenderIndexed(tile.index_count, tile.first_index);
+  }
+
+  for (LodRing& ring : lod_rings_) {
+    if (ring.num_indices == 0) continue;
+
+    ring.vb->Bind();
+    ring.ib->Bind();
+
+    for (const TileInfo& tile : ring.tiles) {
+      bool visible = true;
+      for (int pi = 0; pi < n_planes2d && visible; ++pi) {
+        const Plane2D& p = planes2d[pi];
+        // Cull tile only when all 4 XZ corners are behind this half-plane.
+        const float v00 = p.a * tile.x0 + p.b * tile.z0 + p.d;
+        const float v10 = p.a * tile.x1 + p.b * tile.z0 + p.d;
+        const float v01 = p.a * tile.x0 + p.b * tile.z1 + p.d;
+        const float v11 = p.a * tile.x1 + p.b * tile.z1 + p.d;
+        if (v00 < 0.f && v10 < 0.f && v01 < 0.f && v11 < 0.f)
+          visible = false;
+      }
+      if (visible)
+        video_->RenderIndexed(tile.index_count, tile.first_index);
+    }
   }
 
   video_->UnbindSampler(1);
@@ -300,13 +359,16 @@ void WaterRenderer::Reset() {
     shader_->Release();
     shader_ = nullptr;
   }
-  grid_vb_.reset();
-  grid_ib_.reset();
+  for (LodRing& ring : lod_rings_) {
+    ring.vb.reset();
+    ring.ib.reset();
+    ring.num_indices = 0;
+    ring.tiles.clear();
+    ring.last_snap = {-1e9f, -1e9f};
+  }
   normal_map_tex_.reset();
   foam_tex_.reset();
-  video_       = nullptr;
-  num_indices_ = 0;
-  tiles_.clear();
+  video_ = nullptr;
 }
 
 }  // namespace environment
