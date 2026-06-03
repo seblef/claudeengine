@@ -17,5 +17,6 @@ layout(std140, binding = 9) uniform WaterInfosBlock {
                               // .z = foam_height_thresh, .w = foam_shoreline_depth
     vec4  foam_params;        // .x = foam_steepness_thresh, .y = foam_speed,
                               // .z = normal_scale1, .w = normal_scale2
-    vec4  scroll_params;      // .x = normal_scroll_speed1, .y = normal_scroll_speed2
+    vec4  scroll_params;      // .x = normal_scroll_speed1, .y = normal_scroll_speed2,
+                              // .z = lod_near_dist, .w = lod_far_dist
 };

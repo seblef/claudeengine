@@ -94,13 +94,22 @@ layout(binding = 3) uniform sampler2D depth_tex;        // slot 3 — scene dept
 layout(location = 0) out vec4 out_color;
 
 void main() {
+    // Per-fragment XZ distance from eye, used to gate expensive features by LOD tier.
+    // is_near: full quality (SSR, foam, second normal, translucency).
+    // is_mid:  partial quality (foam, second normal, translucency; no SSR).
+    // far:     minimal quality (only primary normal map and reflections).
+    float frag_dist = length(eye_pos.xz - v_world_pos.xz);
+    bool  is_near   = frag_dist < scroll_params.z;  // lod_near_dist
+    bool  is_mid    = frag_dist < scroll_params.w;  // lod_far_dist
+
     // Sample two scrolling normal map layers and combine into a world-space normal.
     // foam_params.z/w = normal_scale1/2; scroll_params.x/y = scroll speeds.
+    // Second layer skipped beyond lod_far_dist — reuse n1 instead.
     vec2 uv1 = v_uv * foam_params.z + time * scroll_params.x * vec2(1.0, 0.6);
     vec2 uv2 = v_uv * foam_params.w - time * scroll_params.y * vec2(0.7, 1.0);
 
     vec3 n1   = texture(u_normal_map, uv1).rgb * 2.0 - 1.0;
-    vec3 n2   = texture(u_normal_map, uv2).rgb * 2.0 - 1.0;
+    vec3 n2   = is_mid ? texture(u_normal_map, uv2).rgb * 2.0 - 1.0 : n1;
     vec3 ts_n = normalize(n1 + n2);
 
     // Transform tangent-space normal into world space using analytical Gerstner TBN.
@@ -139,27 +148,33 @@ void main() {
         water_depth = max(v_world_pos.y - (world.y / world.w), 0.0);
     }
 
-    // 1. Wave-height foam: crest exceeds foam_height_thresh.
-    float wave_height = v_world_pos.y - water_params.a;
-    float h_foam      = smoothstep(refraction_params.z,
-                                   refraction_params.z + 0.5,
-                                   wave_height);
+    // Steepness used by both foam and translucency — always computed.
+    float steepness = 1.0 - v_world_normal.y;
 
-    // 2. Steepness foam: Gerstner macro normal tilted far from vertical.
-    float steepness  = 1.0 - v_world_normal.y;
-    float steep_foam = smoothstep(foam_params.x - 0.1, foam_params.x, steepness);
+    // Foam — skipped beyond lod_far_dist (imperceptible at distance).
+    float foam_amount = 0.0;
+    if (is_mid) {
+        // 1. Wave-height foam: crest exceeds foam_height_thresh.
+        float wave_height = v_world_pos.y - water_params.a;
+        float h_foam      = smoothstep(refraction_params.z,
+                                       refraction_params.z + 0.5,
+                                       wave_height);
 
-    // 3. Shoreline foam: shallow water with an animated ring following the wave.
-    float shore_foam = 1.0 - smoothstep(0.0, refraction_params.w, water_depth);
-    float anim       = sin(water_depth * 6.0 - time * foam_params.y) * 0.5 + 0.5;
-    float sl_foam    = shore_foam * anim * 0.8;
+        // 2. Steepness foam: Gerstner macro normal tilted far from vertical.
+        float steep_foam = smoothstep(foam_params.x - 0.1, foam_params.x, steepness);
 
-    float foam_amount = max(max(h_foam, steep_foam), sl_foam);
+        // 3. Shoreline foam: shallow water with an animated ring following the wave.
+        float shore_foam = 1.0 - smoothstep(0.0, refraction_params.w, water_depth);
+        float anim       = sin(water_depth * 6.0 - time * foam_params.y) * 0.5 + 0.5;
+        float sl_foam    = shore_foam * anim * 0.8;
 
-    // Foam texture modulation — two scrolling samples break foam into natural clumps.
-    float ft = texture(u_foam_tex, v_uv * 0.04 + time * 0.015).r
-             * texture(u_foam_tex, v_uv * 0.07 - time * 0.010).r;
-    foam_amount = clamp(foam_amount * ft * 2.5, 0.0, 1.0);
+        foam_amount = max(max(h_foam, steep_foam), sl_foam);
+
+        // Foam texture modulation — two scrolling samples break foam into natural clumps.
+        float ft = texture(u_foam_tex, v_uv * 0.04 + time * 0.015).r
+                 * texture(u_foam_tex, v_uv * 0.07 - time * 0.010).r;
+        foam_amount = clamp(foam_amount * ft * 2.5, 0.0, 1.0);
+    }
 
     // Schlick Fresnel.
     float n_dot_v = max(dot(N, V), 0.0);
@@ -174,11 +189,12 @@ void main() {
     // Screen-space reflections (SSR): hierarchical two-phase ray march against the
     // scene depth buffer (8 coarse × 16 m + 4-iter binary refinement, 128 m max).
     // Falls back to sky zenith where no intersection is found.
+    // Skipped beyond lod_near_dist — sky zenith used directly.
     vec3  R             = reflect(-V, N);
     vec3  reflect_color = sky_zenith_color.rgb;
     float ssr_weight    = 0.0;
 
-    if (R.y >= -0.05 && fresnel > 0.03) {
+    if (is_near && R.y >= -0.05 && fresnel > 0.03) {
         const int   kCoarseSteps = 8;
         const float kCoarseStep  = 16.0;
         const float kMaxReach    = kCoarseStep * float(kCoarseSteps);  // 128 m
@@ -264,14 +280,13 @@ void main() {
     vec3 final_color = surface_col + spec;
 
     // Wave-tip translucency: cyan-teal glow where wave crests are steep and backlit.
-    // back_scatter peaks when the sun shines from behind the wave face; steepness
-    // (from the Gerstner macro normal) selects only near-vertical crests so flat
-    // water is unaffected.  The 0.15 scale keeps it subtle relative to specular.
-    float back_scatter = max(dot(sun_dir, -N), 0.0);
-    float tip_amount   = back_scatter * steepness * sun_vis;
-    const vec3 kTipColor = vec3(0.10, 0.80, 0.70);
-    vec3 translucency    = kTipColor * tip_amount * sun_params.w * 0.15;
-    final_color += translucency;
+    // Skipped beyond lod_far_dist — imperceptible on distant water.
+    if (is_mid) {
+        float back_scatter   = max(dot(sun_dir, -N), 0.0);
+        float tip_amount     = back_scatter * steepness * sun_vis;
+        const vec3 kTipColor = vec3(0.10, 0.80, 0.70);
+        final_color += kTipColor * tip_amount * sun_params.w * 0.15;
+    }
 
     final_color = mix(final_color, vec3(1.0), foam_amount);
 
