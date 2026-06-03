@@ -8,11 +8,10 @@
 #include "abstract/CompareFunc.h"
 #include "abstract/IndexType.h"
 #include "abstract/RenderTarget.h"
-#include "core/BBox3.h"
+#include "core/Mat4f.h"
 #include "core/Vec3f.h"
 #include "core/Vertex3D.h"
 #include "core/VertexType.h"
-#include "core/ViewFrustum.h"
 
 namespace environment {
 
@@ -22,16 +21,6 @@ constexpr float kCellSize      = 10.f;   // world units per grid cell
 constexpr int   kNormalMapSize = 512;    // resolution of the procedural normal map
 constexpr int   kFoamTexSize   = 256;    // resolution of the procedural foam texture
 constexpr int   kTileSize  = 8;    // grid cells per tile side for frustum culling
-// Water is a flat horizontal surface — only XZ position determines visibility.
-// Top/bottom frustum planes must never cull tiles due to camera height, so the
-// Y half-extent must exceed any realistic camera altitude above the water surface.
-constexpr float kAabbYHalfExtent = 2000.f;
-// XZ guard band on tile AABBs.  A conservative over-estimate ensures that tiles
-// at the frustum boundary are never incorrectly culled: the padded corner must
-// reach the "in-front" side of the plane even when the frustum plane cuts near
-// the tile's far edge.  One full tile width (kTileSize * kCellSize = 80 m) is
-// the tightest bound that guarantees this; use 1.5× for extra safety.
-constexpr float kTileXZPad       = 120.f;
 
 // Returns the height of an overlapping multi-frequency sine field at (u, v).
 // u and v are in [0, kNormalMapSize) and represent normalised tile coordinates.
@@ -156,12 +145,10 @@ void WaterRenderer::BuildMesh(int grid_size) {
 
       tile.index_count = static_cast<int>(indices.size()) - tile.first_index;
 
-      const float wx0 = mesh_x0 + static_cast<float>(ti)      * kCellSize - kTileXZPad;
-      const float wz0 = mesh_z0 + static_cast<float>(tj)      * kCellSize - kTileXZPad;
-      const float wx1 = mesh_x0 + static_cast<float>(cell_x1) * kCellSize + kTileXZPad;
-      const float wz1 = mesh_z0 + static_cast<float>(cell_z1) * kCellSize + kTileXZPad;
-      tile.aabb = core::BBox3(wx0, water_level_ - kAabbYHalfExtent, wz0,
-                              wx1, water_level_ + kAabbYHalfExtent, wz1);
+      tile.x0 = mesh_x0 + static_cast<float>(ti)      * kCellSize;
+      tile.z0 = mesh_z0 + static_cast<float>(tj)      * kCellSize;
+      tile.x1 = mesh_x0 + static_cast<float>(cell_x1) * kCellSize;
+      tile.z1 = mesh_z0 + static_cast<float>(cell_z1) * kCellSize;
       tiles_.push_back(tile);
     }
   }
@@ -255,11 +242,46 @@ void WaterRenderer::Render(const core::Camera& camera,
   grid_vb_->Bind();
   grid_ib_->Bind();
 
-  const core::ViewFrustum frustum(camera.GetViewProjectionMatrix());
-  for (const TileInfo& tile : tiles_) {
-    if (frustum.ContainsBBox(tile.aabb)) {
-      video_->RenderIndexed(tile.index_count, tile.first_index);
+  // Project the 6 view-frustum planes onto the water plane (Y = water_level_).
+  // A 3D plane (A, B, C, D) — with Ax+By+Cz+D >= 0 meaning "inside" — reduces
+  // to the 2D half-plane  A*x + C*z + (B*water_level_ + D) >= 0  on the XZ
+  // water surface.  Trivially horizontal planes (A≈0, C≈0) become a boolean.
+  // Uses the same Gribb-Hartmann row combinations as core::ViewFrustum.
+  struct Plane2D { float a, b, d; };  // a*x + b*z + d >= 0 means inside
+  Plane2D planes2d[6];
+  int  n_planes2d = 0;
+  bool skip_all   = false;
+  const core::Mat4f vp = camera.GetViewProjectionMatrix();
+  const auto add_plane = [&](float A, float B, float C, float D) {
+    const float d2d = B * water_level_ + D;
+    if (std::abs(A) < 1e-6f && std::abs(C) < 1e-6f) {
+      if (d2d < 0.f) skip_all = true;
+    } else {
+      planes2d[n_planes2d++] = { A, C, d2d };
     }
+  };
+  add_plane(vp(3,0)+vp(0,0), vp(3,1)+vp(0,1), vp(3,2)+vp(0,2), vp(3,3)+vp(0,3));  // left
+  add_plane(vp(3,0)-vp(0,0), vp(3,1)-vp(0,1), vp(3,2)-vp(0,2), vp(3,3)-vp(0,3));  // right
+  add_plane(vp(3,0)+vp(1,0), vp(3,1)+vp(1,1), vp(3,2)+vp(1,2), vp(3,3)+vp(1,3));  // bottom
+  add_plane(vp(3,0)-vp(1,0), vp(3,1)-vp(1,1), vp(3,2)-vp(1,2), vp(3,3)-vp(1,3));  // top
+  add_plane(vp(3,0)+vp(2,0), vp(3,1)+vp(2,1), vp(3,2)+vp(2,2), vp(3,3)+vp(2,3));  // near
+  add_plane(vp(3,0)-vp(2,0), vp(3,1)-vp(2,1), vp(3,2)-vp(2,2), vp(3,3)-vp(2,3));  // far
+  if (skip_all) return;
+
+  for (const TileInfo& tile : tiles_) {
+    bool visible = true;
+    for (int pi = 0; pi < n_planes2d && visible; ++pi) {
+      const Plane2D& p = planes2d[pi];
+      // Cull tile only when all 4 XZ corners are behind this half-plane.
+      const float v00 = p.a * tile.x0 + p.b * tile.z0 + p.d;
+      const float v10 = p.a * tile.x1 + p.b * tile.z0 + p.d;
+      const float v01 = p.a * tile.x0 + p.b * tile.z1 + p.d;
+      const float v11 = p.a * tile.x1 + p.b * tile.z1 + p.d;
+      if (v00 < 0.f && v10 < 0.f && v01 < 0.f && v11 < 0.f)
+        visible = false;
+    }
+    if (visible)
+      video_->RenderIndexed(tile.index_count, tile.first_index);
   }
 
   video_->UnbindSampler(1);
@@ -269,10 +291,6 @@ void WaterRenderer::Render(const core::Camera& camera,
 
 void WaterRenderer::SetWaterLevel(float y) {
   water_level_ = y;
-  for (TileInfo& tile : tiles_) {
-    tile.aabb.SetMin({tile.aabb.GetMin().x, y - kAabbYHalfExtent, tile.aabb.GetMin().z});
-    tile.aabb.SetMax({tile.aabb.GetMax().x, y + kAabbYHalfExtent, tile.aabb.GetMax().z});
-  }
 }
 
 void WaterRenderer::Reset() {

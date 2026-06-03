@@ -10,7 +10,6 @@
 #include "abstract/Shader.h"
 #include "abstract/VertexBuffer.h"
 #include "abstract/VideoDevice.h"
-#include "core/BBox3.h"
 #include "core/Camera.h"
 #include "core/Singleton.h"
 #include "core/Vec3f.h"
@@ -77,7 +76,6 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
               abstract::RenderTarget* depth);
 
   // Updates the world-space Y of the undisplaced surface (hot-path; no rebuild).
-  // All tile AABBs are updated in-place to match the new level.
   void SetWaterLevel(float y);
 
   // Updates the sky zenith colour used for Fresnel reflection.
@@ -103,14 +101,20 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   [[nodiscard]] bool IsReady() const { return shader_ != nullptr; }
 
  private:
-  // One 16×16-cell tile of the water grid, used for view-frustum culling.
+  // One tile of the water grid, used for view-frustum culling.
   struct TileInfo {
     // cppcheck-suppress unusedStructMember
-    int        first_index;
+    int   first_index;
     // cppcheck-suppress unusedStructMember
-    int        index_count;
+    int   index_count;
     // cppcheck-suppress unusedStructMember
-    core::BBox3 aabb;
+    float x0;   // world-space XZ bounds of this tile
+    // cppcheck-suppress unusedStructMember
+    float z0;
+    // cppcheck-suppress unusedStructMember
+    float x1;
+    // cppcheck-suppress unusedStructMember
+    float z1;
   };
 
   // Fraction by which the water plane extends beyond each terrain edge.
