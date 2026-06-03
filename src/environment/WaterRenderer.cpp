@@ -26,10 +26,12 @@ constexpr int   kTileSize  = 8;    // grid cells per tile side for frustum culli
 // Top/bottom frustum planes must never cull tiles due to camera height, so the
 // Y half-extent must exceed any realistic camera altitude above the water surface.
 constexpr float kAabbYHalfExtent = 2000.f;
-// Gerstner XZ displacement: Q × base_amp × Σamps ≤ 0.5 × 2 × 2.2 = 2.2 m.
-// 5 m pad keeps border tiles from being dropped when displaced vertices exit the
-// tight grid footprint and straddle a side frustum plane.
-constexpr float kTileXZPad       = 5.f;
+// XZ guard band on tile AABBs.  A conservative over-estimate ensures that tiles
+// at the frustum boundary are never incorrectly culled: the padded corner must
+// reach the "in-front" side of the plane even when the frustum plane cuts near
+// the tile's far edge.  One full tile width (kTileSize * kCellSize = 80 m) is
+// the tightest bound that guarantees this; use 1.5× for extra safety.
+constexpr float kTileXZPad       = 120.f;
 
 // Returns the height of an overlapping multi-frequency sine field at (u, v).
 // u and v are in [0, kNormalMapSize) and represent normalised tile coordinates.
