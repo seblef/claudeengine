@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -105,6 +106,11 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   if (auto editor = root["editor"]) {
     if (auto interval = editor["autosave_interval_seconds"])
       autosave_interval_ = interval.as<float>();
+    if (auto recent = editor["recent_maps"]) {
+      std::transform(recent.begin(), recent.end(),
+                     std::back_inserter(recent_maps_),
+                     [](const YAML::Node& n) { return n.as<std::string>(); });
+    }
   }
 }
 
@@ -345,6 +351,18 @@ void EditorWindow::RenderMenuBar() {
     if (ImGui::MenuItem("Load...")) {
       CheckDirtyThenRun([this]{ LoadFromFile(); });
     }
+    if (ImGui::BeginMenu("Recent", !recent_maps_.empty())) {
+      for (int i = 0; i < static_cast<int>(recent_maps_.size()); ++i) {
+        const std::string& p = recent_maps_[i];
+        const std::string  label =
+            std::filesystem::path(p).filename().string() +
+            "##recent" + std::to_string(i);
+        if (ImGui::MenuItem(label.c_str()))
+          CheckDirtyThenRun([this, p]{ LoadMap(std::filesystem::path(p)); });
+        ImGui::SetItemTooltip("%s", p.c_str());
+      }
+      ImGui::EndMenu();
+    }
     ImGui::Separator();
     if (ImGui::MenuItem("Save", "Ctrl+S")) {
       SaveCurrent();
@@ -468,6 +486,7 @@ void EditorWindow::SaveAs() {
   }
   scene_->SetFilePath(path);
   scene_dirty_ = false;
+  AddToRecentMaps(path);
   LOG_F(INFO, "Map saved to '%s'", path.string().c_str());
 }
 
@@ -484,14 +503,17 @@ void EditorWindow::LoadFromFile() {
 
   const std::filesystem::path path(out_path);
   NFD_FreePathU8(out_path);
+  LoadMap(path);
+}
 
+void EditorWindow::LoadMap(const std::filesystem::path& path) {
   auto loaded = MapSerializer::Load(path, video_);
   if (!loaded) {
     LOG_F(ERROR, "Failed to load map from '%s'", path.string().c_str());
     return;
   }
 
-  scene_         = std::move(loaded->scene);
+  scene_          = std::move(loaded->scene);
   map_properties_ = std::make_unique<MapPropertiesWindow>(scene_.get());
   viewport_->SetScene(scene_.get());
   viewport_->SetCameraState(loaded->camera_state);
@@ -502,7 +524,32 @@ void EditorWindow::LoadFromFile() {
   WireTerrainPanel();
   environment_panel_.SetContext(scene_.get(), video_);
   scene_dirty_ = false;
+  AddToRecentMaps(path);
   LOG_F(INFO, "Map loaded from '%s'", path.string().c_str());
+}
+
+void EditorWindow::AddToRecentMaps(const std::filesystem::path& path) {
+  const std::string path_str = path.string();
+  auto it = std::find(recent_maps_.begin(), recent_maps_.end(), path_str);
+  if (it != recent_maps_.end())
+    recent_maps_.erase(it);
+  recent_maps_.insert(recent_maps_.begin(), path_str);
+  if (static_cast<int>(recent_maps_.size()) > kMaxRecentMaps)
+    recent_maps_.resize(kMaxRecentMaps);
+  SaveRecentMaps();
+}
+
+void EditorWindow::SaveRecentMaps() {
+  const auto config_path = core::Config::GetDataFolder() / "config.yaml";
+  YAML::Node root;
+  try {
+    root = core::LoadYamlFile(config_path);
+  } catch (...) {}
+
+  root["editor"]["recent_maps"] = recent_maps_;
+
+  std::ofstream out(config_path);
+  out << root;
 }
 
 void EditorWindow::CheckDirtyThenRun(std::function<void()> on_proceed) {
