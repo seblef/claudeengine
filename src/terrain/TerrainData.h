@@ -61,6 +61,13 @@ class TerrainData {
   void SetMinHeight(float h) { min_height_ = h; UpdateRange(); }
   void SetMaxHeight(float h) { max_height_ = h; UpdateRange(); }
 
+  // ---- Save-dirty tracking ------------------------------------------------
+
+  // True if the raw heightmap samples have changed since the last ClearDirty()
+  // call, meaning the on-disk .r16 file is stale.
+  [[nodiscard]] bool IsDirty() const { return dirty_; }
+  void ClearDirty() const { dirty_ = false; }
+
   // ---- Sculpt accessors ---------------------------------------------------
 
   // Returns the raw uint16_t sample at texel (tx, tz), clamped to valid range.
@@ -97,6 +104,8 @@ class TerrainData {
   float max_height_;
   // cppcheck-suppress unusedStructMember
   float range_;
+  // cppcheck-suppress unusedStructMember
+  mutable bool dirty_ = false;
 };
 
 }  // namespace terrain

@@ -208,42 +208,52 @@ void MapSerializer::SerializeVisitor::EmitTerrain(
   const std::string stem =
       std::filesystem::path(map_path_.stem()).stem().string();
 
-  // Write .r16 heightmap (raw little-endian uint16_t, row-major).
+  // Write .r16 heightmap only when the raw samples have changed.
   const std::filesystem::path r16_path =
       map_path_.parent_path() / (stem + ".r16");
   const int    hw    = td.GetTexelWidth();
   const int    hh    = td.GetTexelHeight();
   const size_t count = static_cast<size_t>(hw) * hh;
-  {
+  if (td.IsDirty()) {
     std::ofstream r16(r16_path, std::ios::binary);
     if (r16) {
       r16.write(reinterpret_cast<const char*>(td.GetRawData()),
                 static_cast<std::streamsize>(count * sizeof(uint16_t)));
       LOG_F(INFO, "MapSerializer: wrote heightmap '%s'",
             r16_path.string().c_str());
+      td.ClearDirty();
     } else {
       LOG_F(ERROR, "MapSerializer: cannot write heightmap '%s'",
             r16_path.string().c_str());
     }
+  } else {
+    LOG_F(INFO, "MapSerializer: heightmap unchanged, skipping '%s'",
+          r16_path.string().c_str());
   }
 
-  // Write splatmap PNG via stb_image_write.
+  // Write splatmap PNG only when the pixel buffer has changed.
   std::string splat_path = tm.GetSplatmapPath();
   if (splat_path.empty()) splat_path = stem + "_splat.png";
   const std::filesystem::path splat_out =
       data_dir_ / "textures" / splat_path;
-  std::filesystem::create_directories(splat_out.parent_path());
   const int sw = tm.GetSplatWidth();
   const int sh = tm.GetSplatHeight();
-  if (sw > 0 && sh > 0 && !tm.GetSplatmapPixels().empty()) {
-    if (stbi_write_png(splat_out.string().c_str(), sw, sh, 4,
-                       tm.GetSplatmapPixels().data(), sw * 4) != 0) {
-      LOG_F(INFO, "MapSerializer: wrote splatmap '%s'",
-            splat_out.string().c_str());
-    } else {
-      LOG_F(ERROR, "MapSerializer: failed to write splatmap '%s'",
-            splat_out.string().c_str());
+  if (tm.IsDirty()) {
+    std::filesystem::create_directories(splat_out.parent_path());
+    if (sw > 0 && sh > 0 && !tm.GetSplatmapPixels().empty()) {
+      if (stbi_write_png(splat_out.string().c_str(), sw, sh, 4,
+                         tm.GetSplatmapPixels().data(), sw * 4) != 0) {
+        LOG_F(INFO, "MapSerializer: wrote splatmap '%s'",
+              splat_out.string().c_str());
+        tm.ClearDirty();
+      } else {
+        LOG_F(ERROR, "MapSerializer: failed to write splatmap '%s'",
+              splat_out.string().c_str());
+      }
     }
+  } else {
+    LOG_F(INFO, "MapSerializer: splatmap unchanged, skipping '%s'",
+          splat_out.string().c_str());
   }
 
   // Emit root-level "terrain:" block.
@@ -276,10 +286,10 @@ void MapSerializer::SerializeVisitor::EmitTerrain(
       const terrain::FoliageLayer* flayer = terrain->GetFoliageLayer(fi);
       const terrain::FoliageLayerDesc& fdesc = flayer->GetDesc();
 
-      // Write density map as raw .r8 file (single channel uint8, row-major).
+      // Write density map only when the painted data has changed.
       const std::string dm_name = stem + "_foliage" + std::to_string(fi) + ".r8";
       const std::filesystem::path dm_out = map_path_.parent_path() / dm_name;
-      {
+      if (flayer->IsSaveDirty()) {
         std::ofstream dm_file(dm_out, std::ios::binary);
         if (dm_file) {
           const auto& dm = flayer->GetDensityMap();
@@ -287,10 +297,14 @@ void MapSerializer::SerializeVisitor::EmitTerrain(
                         static_cast<std::streamsize>(dm.size()));
           LOG_F(INFO, "MapSerializer: wrote foliage density '%s'",
                 dm_out.string().c_str());
+          flayer->ClearSaveDirty();
         } else {
           LOG_F(ERROR, "MapSerializer: cannot write foliage density '%s'",
                 dm_out.string().c_str());
         }
+      } else {
+        LOG_F(INFO, "MapSerializer: foliage density unchanged, skipping '%s'",
+              dm_out.string().c_str());
       }
 
       out_ << YAML::BeginMap;

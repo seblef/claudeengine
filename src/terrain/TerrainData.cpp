@@ -83,12 +83,14 @@ uint16_t TerrainData::GetSample(int tx, int tz) const {
 
 void TerrainData::SetSample(int tx, int tz, uint16_t value) {
   data_[static_cast<std::size_t>(tz) * width_ + tx] = value;
+  dirty_ = true;
 }
 
 void TerrainData::ReplaceHeightmap(const uint16_t* data, int width, int height) {
   width_  = width;
   height_ = height;
   data_.assign(data, data + static_cast<std::size_t>(width) * height);
+  dirty_ = true;
 }
 
 uint16_t TerrainData::HeightToSample(float h) const {

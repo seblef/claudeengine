@@ -57,6 +57,11 @@ class FoliageLayer {
   void MarkDirty() { dirty_ = true; }
   [[nodiscard]] bool IsDirty() const { return dirty_; }
 
+  // True if the density map has been painted since the last ClearSaveDirty()
+  // call, meaning the on-disk .r8 file is stale.
+  [[nodiscard]] bool IsSaveDirty() const { return save_dirty_; }
+  void ClearSaveDirty() const { save_dirty_ = false; }
+
   // ---- Accessors -------------------------------------------------------------
 
   [[nodiscard]] const FoliageLayerDesc&     GetDesc()       const { return desc_; }
@@ -76,7 +81,8 @@ class FoliageLayer {
   int                      map_height_;
   std::vector<uint8_t>     density_map_;
   std::vector<core::Mat4f> instances_;
-  bool                     dirty_ = true;
+  bool                     dirty_            = true;
+  mutable bool             save_dirty_       = false;
 };
 
 }  // namespace terrain

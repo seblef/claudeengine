@@ -118,6 +118,7 @@ void TerrainMaterial::SetSplatWeight(int texel_x, int texel_z,
   splatmap_pixels_[idx] =
       static_cast<uint8_t>(
           std::lround(std::clamp(weight, 0.f, 1.f) * 255.f));
+  dirty_ = true;
 }
 
 void TerrainMaterial::UploadSplatTile(abstract::VideoDevice* /*video*/,
@@ -210,6 +211,7 @@ void TerrainMaterial::ResetSplatmap(abstract::VideoDevice* video,
   for (std::size_t p = 0; p < static_cast<std::size_t>(width) * height; ++p)
     splatmap_pixels_[p * 4] = 255u;
   UploadFullSplatmap(video);
+  dirty_ = true;
   LOG_F(INFO, "TerrainMaterial::ResetSplatmap — %dx%d (layer 0)", width, height);
 }
 

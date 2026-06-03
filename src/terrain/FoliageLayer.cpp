@@ -93,7 +93,8 @@ void FoliageLayer::BrushImpl(float wx, float wz, float radius, float strength,
       }
     }
   }
-  dirty_ = true;
+  dirty_      = true;
+  save_dirty_ = true;
 }
 
 void FoliageLayer::PaintBrush(float wx, float wz, float radius, float strength,
