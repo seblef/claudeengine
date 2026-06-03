@@ -105,6 +105,11 @@ class TerrainMaterial {
   [[nodiscard]] const std::string&          GetSplatmapPath()   const { return splatmap_path_; }
   [[nodiscard]] const std::vector<uint8_t>& GetSplatmapPixels() const { return splatmap_pixels_; }
 
+  // True if the splatmap pixel buffer has changed since the last ClearDirty()
+  // call, meaning the on-disk PNG file is stale.
+  [[nodiscard]] bool IsDirty() const { return dirty_; }
+  void ClearDirty() const { dirty_ = false; }
+
  private:
   // Creates (or re-creates) the GPU splatmap texture from the full CPU buffer.
   void UploadFullSplatmap(abstract::VideoDevice* video);
@@ -122,6 +127,8 @@ class TerrainMaterial {
   int layer_count_  = 0;
   int splat_width_  = 0;
   int splat_height_ = 0;
+  // cppcheck-suppress unusedStructMember
+  mutable bool dirty_ = false;
 };
 
 }  // namespace terrain
