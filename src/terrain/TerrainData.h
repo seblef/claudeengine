@@ -105,7 +105,7 @@ class TerrainData {
   // cppcheck-suppress unusedStructMember
   float range_;
   // cppcheck-suppress unusedStructMember
-  mutable bool dirty_ = false;
+  mutable bool dirty_ = true;
 };
 
 }  // namespace terrain
