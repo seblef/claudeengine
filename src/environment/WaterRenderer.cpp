@@ -237,6 +237,7 @@ void WaterRenderer::Render(const core::Camera& camera,
   video_->SetDepthTestEnabled(true);
   video_->SetDepthFunc(abstract::CompareFunc::kLessEqual);
   video_->SetDepthWriteEnabled(false);
+  video_->SetIndexType(abstract::IndexType::kUInt32);
 
   shader_->Activate();
   grid_vb_->Bind();
@@ -287,6 +288,7 @@ void WaterRenderer::Render(const core::Camera& camera,
   video_->UnbindSampler(1);
   video_->UnbindSampler(2);
   video_->UnbindSampler(3);
+  video_->SetIndexType(abstract::IndexType::kUInt16);
 }
 
 void WaterRenderer::SetWaterLevel(float y) {

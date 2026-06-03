@@ -125,6 +125,10 @@ void Renderer::Update(float time, const core::Camera* camera,
   LightRenderer::Instance().EndRender();
   MeshRenderer::Instance().EndRender();
 
+  if (!camera) {
+    return;
+  }
+
   time_   = time;
   camera_ = camera;
   renderable_infos_cb_->Bind();
@@ -133,26 +137,22 @@ void Renderer::Update(float time, const core::Camera* camera,
   csm_infos_cb_->Bind();
   wind_infos_cb_->Bind();
   water_infos_cb_->Bind();
-  if (camera_) FillSceneInfos();
+  FillSceneInfos();
   FillWindInfos();
   if (water_renderer_) UpdateWaterRenderer();
 
-  if (camera_) {
-    const core::ViewFrustum frustum(camera_->GetViewProjectionMatrix());
-    no_culling_system_->CullAndEnqueue(frustum);
-    octree_system_->CullAndEnqueue(frustum);
-  }
+  const core::ViewFrustum frustum(camera_->GetViewProjectionMatrix());
+  no_culling_system_->CullAndEnqueue(frustum);
+  octree_system_->CullAndEnqueue(frustum);
 
   // 0. Shadow pass — render depth maps for spot lights and CSM cascades.
-  if (camera_) {
-    ShadowRenderer::Instance().RenderShadowMaps(
-        LightRenderer::Instance().GetLights(),
-        no_culling_system_.get(),
-        octree_system_.get(),
-        *camera_);
-    if (ShadowRenderer::Instance().HasCSM())
-      csm_infos_cb_->Fill(&ShadowRenderer::Instance().GetCSMInfos());
-  }
+  ShadowRenderer::Instance().RenderShadowMaps(
+      LightRenderer::Instance().GetLights(),
+      no_culling_system_.get(),
+      octree_system_.get(),
+      *camera_);
+  if (ShadowRenderer::Instance().HasCSM())
+    csm_infos_cb_->Fill(&ShadowRenderer::Instance().GetCSMInfos());
 
   // 1. Geometry pass — fill albedo, normal, specular MRTs and depth+stencil.
   // Shadow passes set their own viewport; restore to the current render target size.
@@ -163,13 +163,13 @@ void Renderer::Update(float time, const core::Camera* camera,
   video_->ClearRenderTargets(core::Color::kBlack);
   MeshRenderer::Instance().PrepareRender();
   MeshRenderer::Instance().Render();
-  if (terrain_renderer_ && terrain_renderer_->IsReady() && camera_)
+  if (terrain_renderer_ && terrain_renderer_->IsReady())
     terrain_renderer_->Render(*camera_);
   if (foliage_enabled_ && FoliageRenderer::IsInstanced() &&
-      FoliageRenderer::Instance().IsReady() && camera_)
+      FoliageRenderer::Instance().IsReady())
     FoliageRenderer::Instance().Render(*camera_);
   if (tree_enabled_ && TreeRenderer::IsInstanced() &&
-      TreeRenderer::Instance().IsReady() && camera_)
+      TreeRenderer::Instance().IsReady())
     TreeRenderer::Instance().Render(*camera_);
   gbuffer_.UnbindForWriting();
 
@@ -212,7 +212,7 @@ void Renderer::Update(float time, const core::Camera* camera,
   // 3. Sky pass — render procedural sky into the HDR RT before emissive geometry.
   //    Depth is read-only (LEQUAL) so the sky fills only background pixels
   //    (those whose G-buffer depth equals the far-plane value 1.0).
-  if (sky_renderer_ && sky_renderer_->IsReady() && camera_) {
+  if (sky_renderer_ && sky_renderer_->IsReady()) {
     emissive_fbo_.BindForWriting();
     sky_renderer_->Render(*camera_, sky_world_time_);
     emissive_fbo_.UnbindForWriting();
@@ -224,7 +224,7 @@ void Renderer::Update(float time, const core::Camera* camera,
   //     Runs after the sky so clouds are composited on top of the Preetham sky.
   //     Depth state is left in the same LEQUAL/write-off configuration as the
   //     sky pass — only background pixels are painted.
-  if (cloud_renderer_ && cloud_renderer_->IsReady() && camera_) {
+  if (cloud_renderer_ && cloud_renderer_->IsReady()) {
     emissive_fbo_.BindForWriting();
     cloud_renderer_->Render(sky_world_time_, cloud_density_);
     emissive_fbo_.UnbindForWriting();
@@ -258,7 +258,7 @@ void Renderer::Update(float time, const core::Camera* camera,
   // 4b. Forward water pass — copy scene colour and depth, then alpha-blend water
   //     on top of the HDR RT.  Runs after emissive so the scene snapshot includes
   //     sky, lighting, and emissive objects.
-  if (water_renderer_ && water_renderer_->IsReady() && camera_) {
+  if (water_renderer_ && water_renderer_->IsReady()) {
     video_->CopyRenderTarget(emissive_fbo_.GetHDRRT(),
                              water_scene_color_rt_.get());
     video_->CopyRenderTarget(gbuffer_.GetDepthRT(),
