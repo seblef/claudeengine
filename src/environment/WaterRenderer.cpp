@@ -8,9 +8,11 @@
 #include "abstract/CompareFunc.h"
 #include "abstract/IndexType.h"
 #include "abstract/RenderTarget.h"
+#include "core/BBox3.h"
 #include "core/Vec3f.h"
 #include "core/Vertex3D.h"
 #include "core/VertexType.h"
+#include "core/ViewFrustum.h"
 
 namespace environment {
 
@@ -19,6 +21,8 @@ namespace {
 constexpr float kCellSize      = 10.f;   // world units per grid cell
 constexpr int   kNormalMapSize = 512;    // resolution of the procedural normal map
 constexpr int   kFoamTexSize   = 256;    // resolution of the procedural foam texture
+constexpr int   kTileSize      = 16;     // grid cells per tile side for frustum culling
+constexpr float kWaveAmplitude = 2.f;    // Y margin added above/below water_level_ for tile AABBs
 
 // Returns the height of an overlapping multi-frequency sine field at (u, v).
 // u and v are in [0, kNormalMapSize) and represent normalised tile coordinates.
@@ -110,21 +114,46 @@ void WaterRenderer::BuildMesh(int grid_size) {
   // Each quad → 2 CW triangles (consistent with the geometry pass winding).
   // uint32 indices are required: large terrains exceed the uint16 limit of 65535
   // vertices (e.g. a 984-quad grid has 985² = 970 225 vertices).
+  //
+  // Indices are emitted in tile-major order (tile row, tile col, cell row, cell col)
+  // so that each tile's indices occupy a contiguous range — enabling a single
+  // RenderIndexed call per visible tile during frustum culling.
   std::vector<uint32_t> indices;
   indices.reserve(static_cast<size_t>(num_quads) * 6);
 
-  for (int j = 0; j < grid_size; ++j) {
-    for (int i = 0; i < grid_size; ++i) {
-      const uint32_t tl = static_cast<uint32_t>( j      * verts_per_side + i    );
-      const uint32_t tr = static_cast<uint32_t>( j      * verts_per_side + i + 1);
-      const uint32_t bl = static_cast<uint32_t>((j + 1) * verts_per_side + i    );
-      const uint32_t br = static_cast<uint32_t>((j + 1) * verts_per_side + i + 1);
-      indices.push_back(tl);
-      indices.push_back(br);
-      indices.push_back(tr);
-      indices.push_back(tl);
-      indices.push_back(bl);
-      indices.push_back(br);
+  tiles_.clear();
+  for (int tj = 0; tj < grid_size; tj += kTileSize) {
+    for (int ti = 0; ti < grid_size; ti += kTileSize) {
+      const int cell_x1 = std::min(ti + kTileSize, grid_size);
+      const int cell_z1 = std::min(tj + kTileSize, grid_size);
+
+      TileInfo tile;
+      tile.first_index = static_cast<int>(indices.size());
+
+      for (int j = tj; j < cell_z1; ++j) {
+        for (int i = ti; i < cell_x1; ++i) {
+          const uint32_t tl = static_cast<uint32_t>( j      * verts_per_side + i    );
+          const uint32_t tr = static_cast<uint32_t>( j      * verts_per_side + i + 1);
+          const uint32_t bl = static_cast<uint32_t>((j + 1) * verts_per_side + i    );
+          const uint32_t br = static_cast<uint32_t>((j + 1) * verts_per_side + i + 1);
+          indices.push_back(tl);
+          indices.push_back(br);
+          indices.push_back(tr);
+          indices.push_back(tl);
+          indices.push_back(bl);
+          indices.push_back(br);
+        }
+      }
+
+      tile.index_count = static_cast<int>(indices.size()) - tile.first_index;
+
+      const float wx0 = mesh_x0 + static_cast<float>(ti)      * kCellSize;
+      const float wz0 = mesh_z0 + static_cast<float>(tj)      * kCellSize;
+      const float wx1 = mesh_x0 + static_cast<float>(cell_x1) * kCellSize;
+      const float wz1 = mesh_z0 + static_cast<float>(cell_z1) * kCellSize;
+      tile.aabb = core::BBox3(wx0, water_level_ - kWaveAmplitude, wz0,
+                              wx1, water_level_ + kWaveAmplitude, wz1);
+      tiles_.push_back(tile);
     }
   }
 
@@ -199,7 +228,7 @@ void WaterRenderer::BuildFoamTexture() {
   foam_tex_ = video_->CreateTileableTexture(size, size, pixels.data());
 }
 
-void WaterRenderer::Render([[maybe_unused]] const core::Camera& camera,
+void WaterRenderer::Render(const core::Camera& camera,
                            abstract::RenderTarget* scene_color,
                            abstract::RenderTarget* depth) {
   if (!shader_) return;
@@ -216,11 +245,25 @@ void WaterRenderer::Render([[maybe_unused]] const core::Camera& camera,
   shader_->Activate();
   grid_vb_->Bind();
   grid_ib_->Bind();
-  video_->RenderIndexed(num_indices_);
+
+  const core::ViewFrustum frustum(camera.GetViewProjectionMatrix());
+  for (const TileInfo& tile : tiles_) {
+    if (frustum.ContainsBBox(tile.aabb)) {
+      video_->RenderIndexed(tile.index_count, tile.first_index);
+    }
+  }
 
   video_->UnbindSampler(1);
   video_->UnbindSampler(2);
   video_->UnbindSampler(3);
+}
+
+void WaterRenderer::SetWaterLevel(float y) {
+  water_level_ = y;
+  for (TileInfo& tile : tiles_) {
+    tile.aabb.SetMin({tile.aabb.GetMin().x, y - kWaveAmplitude, tile.aabb.GetMin().z});
+    tile.aabb.SetMax({tile.aabb.GetMax().x, y + kWaveAmplitude, tile.aabb.GetMax().z});
+  }
 }
 
 void WaterRenderer::Reset() {
@@ -232,8 +275,9 @@ void WaterRenderer::Reset() {
   grid_ib_.reset();
   normal_map_tex_.reset();
   foam_tex_.reset();
-  video_     = nullptr;
+  video_       = nullptr;
   num_indices_ = 0;
+  tiles_.clear();
 }
 
 }  // namespace environment
