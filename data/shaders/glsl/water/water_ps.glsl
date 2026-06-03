@@ -50,11 +50,13 @@
 //
 // Screen-space reflections (SSR):
 //   R           = reflect(-V, N)
-//   Ray marched in world space (32 steps × 4 m = 128 m max reach).
-//   Each step projects sample_pos through view_proj into NDC, samples
-//   depth_tex and tests for intersection (ray_depth > stored_depth within
-//   a 0.02 NDC threshold).  On hit: edge_fade and dist_fade attenuate
-//   ssr_weight; reflect_color comes from scene_color_tex.
+//   Two-phase hierarchical ray march (128 m max reach, ~12 depth samples):
+//     Phase 1 — coarse bracketing: 8 steps × 16 m.  Early-out on clip.w ≤ 0
+//               or |ndc.xy| > 1.05.  Records hit_step on first depth crossing.
+//     Phase 2 — binary refinement: 4 bisection iters over [hit_step-1, hit_step]
+//               coarse interval; final colour sample at refined t_hi.
+//   On hit: edge_fade and dist_fade (= 1 - t_hi/128) attenuate ssr_weight;
+//   reflect_color from scene_color_tex at refined UV.
 //   Fresnel blend: sky_reflect = mix(sky_zenith, reflect_color, ssr_weight)
 //                  surface_col = mix(absorbed, sky_reflect, fresnel)
 //
@@ -169,19 +171,23 @@ void main() {
     float absorption = exp(-water_depth * refraction_params.y);
     vec3  absorbed   = mix(water_params.rgb, refract_color, absorption);
 
-    // Screen-space reflections (SSR): ray march world-space reflect direction against
-    // the scene depth buffer (32 steps, 4 m each → 128 m max reach).
+    // Screen-space reflections (SSR): hierarchical two-phase ray march against the
+    // scene depth buffer (8 coarse × 16 m + 4-iter binary refinement, 128 m max).
     // Falls back to sky zenith where no intersection is found.
     vec3  R             = reflect(-V, N);
     vec3  reflect_color = sky_zenith_color.rgb;
     float ssr_weight    = 0.0;
 
     if (R.y >= -0.05 && fresnel > 0.03) {
-        const int   kSteps    = 32;
-        const float kStepSize = 4.0;
+        const int   kCoarseSteps = 8;
+        const float kCoarseStep  = 16.0;
+        const float kMaxReach    = kCoarseStep * float(kCoarseSteps);  // 128 m
 
-        for (int i = 1; i <= kSteps; ++i) {
-            vec3 sample_pos = v_world_pos + R * kStepSize * float(i);
+        // Phase 1 — coarse bracketing: find first coarse interval containing a hit.
+        int hit_step = -1;
+
+        for (int i = 1; i <= kCoarseSteps; ++i) {
+            vec3 sample_pos = v_world_pos + R * kCoarseStep * float(i);
             vec4 clip       = view_proj * vec4(sample_pos, 1.0);
             if (clip.w <= 0.0) break;
             vec3 ndc = clip.xyz / clip.w;
@@ -191,14 +197,35 @@ void main() {
             float ray_depth    = ndc.z  * 0.5 + 0.5;
             float stored_depth = texture(depth_tex, suv).r;
 
-            // Hit: ray depth just crossed into scene geometry within 0.02 NDC threshold.
-            if (ray_depth > stored_depth && ray_depth - stored_depth < 0.02) {
-                vec2  edge_fade = 1.0 - smoothstep(0.8, 1.0, abs(suv * 2.0 - 1.0));
-                float dist_fade = 1.0 - float(i) / float(kSteps);
-                ssr_weight     = min(edge_fade.x, edge_fade.y) * dist_fade;
-                reflect_color  = texture(scene_color_tex, suv).rgb;
-                break;
+            if (ray_depth > stored_depth) { hit_step = i; break; }
+        }
+
+        // Phase 2 — binary refinement over the bracketed coarse interval.
+        if (hit_step > 0) {
+            float t_lo = kCoarseStep * float(hit_step - 1);
+            float t_hi = kCoarseStep * float(hit_step);
+
+            for (int r = 0; r < 4; ++r) {
+                float t_mid     = (t_lo + t_hi) * 0.5;
+                vec3  spos      = v_world_pos + R * t_mid;
+                vec4  clip      = view_proj * vec4(spos, 1.0);
+                vec3  ndc       = clip.xyz / clip.w;
+                vec2  suv       = ndc.xy * 0.5 + 0.5;
+                float ray_depth = ndc.z  * 0.5 + 0.5;
+
+                if (ray_depth > texture(depth_tex, suv).r)
+                    t_hi = t_mid;
+                else
+                    t_lo = t_mid;
             }
+
+            vec4  clip_hi   = view_proj * vec4(v_world_pos + R * t_hi, 1.0);
+            vec3  ndc_hi    = clip_hi.xyz / clip_hi.w;
+            vec2  suv_hi    = ndc_hi.xy * 0.5 + 0.5;
+            vec2  edge_fade = 1.0 - smoothstep(0.8, 1.0, abs(suv_hi * 2.0 - 1.0));
+            float dist_fade = 1.0 - t_hi / kMaxReach;
+            ssr_weight      = min(edge_fade.x, edge_fade.y) * dist_fade;
+            reflect_color   = texture(scene_color_tex, suv_hi).rgb;
         }
     }
 
