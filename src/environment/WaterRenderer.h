@@ -88,12 +88,22 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   // Updates the world-space sun direction for Blinn-Phong specular.
   void SetSunDirection(const core::Vec3f& dir) { sun_direction_ = dir; }
 
+  // Updates the XZ distance thresholds used by the water shader LOD system.
+  // Fragments closer than lod_near_dist receive full quality (SSR, foam, second
+  // normal map, translucency).  Between lod_near_dist and lod_far_dist, SSR is
+  // skipped but other features remain active.  Beyond lod_far_dist only the
+  // primary normal map and reflections are computed.
+  void SetLodNearDist(float d) { lod_near_dist_ = d; }
+  void SetLodFarDist(float d)  { lod_far_dist_  = d; }
+
   // Returns all water parameters packed into WaterInfos for upload by Renderer.
   [[nodiscard]] float GetWaterLevel()   const { return water_level_; }
   [[nodiscard]] float GetSkyZenithR()   const { return sky_zenith_r_; }
   [[nodiscard]] float GetSkyZenithG()   const { return sky_zenith_g_; }
   [[nodiscard]] float GetSkyZenithB()   const { return sky_zenith_b_; }
   [[nodiscard]] const core::Vec3f& GetSunDirection() const { return sun_direction_; }
+  [[nodiscard]] float GetLodNearDist() const { return lod_near_dist_; }
+  [[nodiscard]] float GetLodFarDist()  const { return lod_far_dist_;  }
 
   // Releases all GPU resources. Called before Shutdown().
   void Reset();
@@ -146,6 +156,10 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   float         sky_zenith_r_  = 0.40f;
   float         sky_zenith_g_  = 0.65f;
   float         sky_zenith_b_  = 0.90f;
+  // cppcheck-suppress unusedStructMember
+  float         lod_near_dist_ = 50.f;
+  // cppcheck-suppress unusedStructMember
+  float         lod_far_dist_  = 100.f;
   // cppcheck-suppress unusedStructMember
   core::Vec3f   sun_direction_ = {0.f, 1.f, 0.f};
 };

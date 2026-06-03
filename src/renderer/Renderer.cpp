@@ -398,6 +398,8 @@ void Renderer::UpdateWaterRenderer() {
   wi.sun_dir_x    = nd.x;
   wi.sun_dir_y    = nd.y;
   wi.sun_dir_z    = nd.z;
+  wi.lod_near_dist = water_renderer_->GetLodNearDist();
+  wi.lod_far_dist  = water_renderer_->GetLodFarDist();
   water_infos_cb_->Fill(&wi);
 }
 

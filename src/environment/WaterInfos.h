@@ -30,8 +30,8 @@ namespace environment {
 //   [ 76] normal_scale2         float
 //   [ 80] normal_scroll_speed1  float
 //   [ 84] normal_scroll_speed2  float
-//   [ 88] wi_pad0_              float
-//   [ 92] wi_pad1_              float
+//   [ 88] lod_near_dist         float  full quality below this XZ distance (metres)
+//   [ 92] lod_far_dist          float  minimal quality above this XZ distance (metres)
 // Total: 96 bytes (6 float4s).
 struct WaterInfos {
     // float4 0
@@ -90,9 +90,9 @@ struct WaterInfos {
     // cppcheck-suppress unusedStructMember
     float normal_scroll_speed2 = 0.20f;  // scroll speed for second normal layer
     // cppcheck-suppress unusedStructMember
-    float wi_pad0_             = 0.f;
+    float lod_near_dist        = 50.f;   // full quality below this XZ distance (metres)
     // cppcheck-suppress unusedStructMember
-    float wi_pad1_             = 0.f;
+    float lod_far_dist         = 100.f;  // minimal quality above this XZ distance (metres)
 };
 
 static_assert(sizeof(WaterInfos) == 96);
