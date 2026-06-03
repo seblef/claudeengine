@@ -107,7 +107,14 @@ void WaterRenderer::Build(abstract::VideoDevice* video,
 }
 
 void WaterRenderer::BuildRingGeometry(LodRing& ring, core::Vec2f snap_pos) {
-  const float inner2     = ring.inner_radius * ring.inner_radius;
+  // Guard band on the inner radius: a quad's centre and the adjacent ring's
+  // quad centre covering the same world point can be up to
+  // (cell_inner + cell_outer)*sqrt(2)/2 ≈ cell_size*sqrt(2) apart.
+  // Shrinking the inner exclusion by 2*cell_size guarantees the two rings
+  // always overlap at boundaries, preventing holes.
+  const float inner_eff  = (ring.inner_radius > ring.cell_size * 2.f)
+                           ? ring.inner_radius - ring.cell_size * 2.f : 0.f;
+  const float inner2     = inner_eff * inner_eff;
   const float outer2     = ring.outer_radius * ring.outer_radius;
   const int   half_cells = static_cast<int>(
       std::ceil(ring.outer_radius / ring.cell_size));
