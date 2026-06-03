@@ -12,8 +12,6 @@
 #include "environment/EnvironmentDesc.h"
 #include "environment/SkyRenderer.h"
 #include "environment/WaterRenderer.h"
-#include <loguru.hpp>
-
 #include "game/GameLightDesc.h"
 #include "game/GameObjectType.h"
 #include "game/GameTerrain.h"
@@ -136,9 +134,6 @@ void EnvironmentEditorPanel::EnableWater(const environment::EnvironmentDesc& des
         const auto* gt = static_cast<const game::GameTerrain*>(*it);
         tw = gt->GetData().GetWorldWidth();
         th = gt->GetData().GetWorldHeight();
-        LOG_F(INFO, "EnableWater: terrain found %.0fx%.0f m", tw, th);
-      } else {
-        LOG_F(INFO, "EnableWater: no terrain in scene — using fixed water grid");
       }
     }
     new environment::WaterRenderer();
