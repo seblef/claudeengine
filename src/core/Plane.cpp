@@ -19,25 +19,20 @@ Plane::Plane(float dist, const Vec3f& normal)
       dist_(dist) {}
 
 Plane::Side Plane::Classify(const BBox3& box) const {
-  const Vec3f& mn = box.GetMin();
-  const Vec3f& mx = box.GetMax();
-  const Vec3f corners[8] = {
-    {mn.x, mn.y, mn.z}, {mx.x, mn.y, mn.z},
-    {mn.x, mx.y, mn.z}, {mx.x, mx.y, mn.z},
-    {mn.x, mn.y, mx.z}, {mx.x, mn.y, mx.z},
-    {mn.x, mx.y, mx.z}, {mx.x, mx.y, mx.z},
-  };
-  bool any_front = false;
-  bool any_back  = false;
-  for (const Vec3f& c : corners) {
-    const float d = normal_.Dot(c) - dist_;
-    if (d > kEps)       any_front = true;
-    else if (d < -kEps) any_back  = true;
-    if (any_front && any_back) return Side::kClip;
-  }
-  if (any_front) return Side::kFront;
-  if (any_back)  return Side::kBack;
-  return Side::kOn;
+  Vec3f near_(box.GetMax());
+  Vec3f far_(box.GetMin());
+
+  if(normal_.x > 0.0f)  std::swap(near_.x, far_.x);
+  if(normal_.y > 0.0f)  std::swap(near_.y,far_.y);
+  if(normal_.z > 0.0f)  std::swap(near_.z,far_.z);
+
+  const float dnear = normal_.Dot(near_) - dist_;
+  if (dnear > 0.0f) return Side::kFront;
+
+  const float dfar = normal_.Dot(far_) - dist_;
+  if (dfar > 0.0f) return Side::kClip;
+
+  return Side::kBack;
 }
 
 bool Plane::IntersectsLine(const Vec3f& origin, const Vec3f& dir,
