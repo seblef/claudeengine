@@ -237,6 +237,8 @@ std::unique_ptr<GameObject> ParseTerrain(const YAML::Node& node,
 
   auto terrain_data = std::make_unique<terrain::TerrainData>(
       hm_data.data(), width, height, mpt, min_h, max_h);
+  // Data was just read from the on-disk .r16; the file is already up-to-date.
+  terrain_data->ClearDirty();
 
   auto terrain_material = std::make_unique<terrain::TerrainMaterial>();
   if (node["material"])
