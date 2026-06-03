@@ -29,6 +29,7 @@
 #include "game/GamePlayerStart.h"
 #include "game/GameSystem.h"
 #include "game/GameTerrain.h"
+#include "terrain/TerrainData.h"
 #include "game/MapLoader.h"
 #include "game/MeshTemplate.h"
 #include "gldevices/GLDevices.h"
@@ -37,6 +38,7 @@
 #include "renderer/MaterialDesc.h"
 #include "renderer/Renderer.h"
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <string>
@@ -145,8 +147,23 @@ int main(int argc, char* argv[]) {
       }
 
       if (env.water_enabled) {
+        // Pre-scan objects to obtain terrain world dimensions for alignment.
+        float terrain_w = 0.f;
+        float terrain_h = 0.f;
+        const auto terrain_it = std::find_if(
+            map_data.objects.begin(), map_data.objects.end(),
+            [](const std::unique_ptr<game::GameObject>& o) {
+              return o->GetType() == game::GameObjectType::kTerrain;
+            });
+        if (terrain_it != map_data.objects.end()) {
+          const auto* gt =
+              static_cast<const game::GameTerrain*>(terrain_it->get());
+          terrain_w = gt->GetData().GetWorldWidth();
+          terrain_h = gt->GetData().GetWorldHeight();
+        }
         new environment::WaterRenderer();
-        environment::WaterRenderer::Instance().Build(video, env.water_level);
+        environment::WaterRenderer::Instance().Build(
+            video, env.water_level, terrain_w, terrain_h);
         renderer::Renderer::Instance().SetWaterRenderer(
             &environment::WaterRenderer::Instance());
       }

@@ -48,10 +48,15 @@ float FoamValue(float u, float v) {
 }  // namespace
 
 void WaterRenderer::Build(abstract::VideoDevice* video,
-                          float water_level, int grid_size) {
-  video_       = video;
-  water_level_ = water_level;
-  shader_      = video_->CreateShader("water/water");
+                          float water_level,
+                          float terrain_world_width,
+                          float terrain_world_height,
+                          int grid_size) {
+  video_                = video;
+  water_level_          = water_level;
+  terrain_world_width_  = terrain_world_width;
+  terrain_world_height_ = terrain_world_height;
+  shader_               = video_->CreateShader("water/water");
 
   BuildMesh(grid_size);
   BuildNormalMap();
@@ -59,18 +64,38 @@ void WaterRenderer::Build(abstract::VideoDevice* video,
 }
 
 void WaterRenderer::BuildMesh(int grid_size) {
-  const int   verts_per_side = grid_size + 1;
-  const int   num_verts      = verts_per_side * verts_per_side;
-  const int   num_quads      = grid_size * grid_size;
-  const float half           = grid_size * kCellSize * 0.5f;
+  // When terrain dimensions are supplied, fit the mesh to the terrain:
+  //   centre the grid at the terrain's midpoint and extend it by
+  //   kTerrainMarginFactor so the water visibly exceeds the terrain edges.
+  float center_x = 0.f;
+  float center_z = 0.f;
+  float half      = 0.f;
+
+  if (terrain_world_width_ > 0.f && terrain_world_height_ > 0.f) {
+    center_x  = terrain_world_width_  * 0.5f;
+    center_z  = terrain_world_height_ * 0.5f;
+    const float terrain_half = std::max(terrain_world_width_,
+                                        terrain_world_height_) * 0.5f;
+    half      = terrain_half * kTerrainMarginFactor;
+    grid_size = static_cast<int>(std::ceil(half * 2.f / kCellSize));
+  } else {
+    half = static_cast<float>(grid_size) * kCellSize * 0.5f;
+  }
+
+  const int verts_per_side = grid_size + 1;
+  const int num_verts      = verts_per_side * verts_per_side;
+  const int num_quads      = grid_size * grid_size;
 
   std::vector<core::Vertex3D> verts;
   verts.reserve(static_cast<size_t>(num_verts));
 
+  const float mesh_x0 = center_x - half;
+  const float mesh_z0 = center_z - half;
+
   for (int j = 0; j <= grid_size; ++j) {
     for (int i = 0; i <= grid_size; ++i) {
-      const float x = -half + static_cast<float>(i) * kCellSize;
-      const float z = -half + static_cast<float>(j) * kCellSize;
+      const float x = mesh_x0 + static_cast<float>(i) * kCellSize;
+      const float z = mesh_z0 + static_cast<float>(j) * kCellSize;
       verts.push_back({
         core::Vec3f(x, 0.f, z),
         core::Vec3f(0.f, 1.f, 0.f),
@@ -83,15 +108,17 @@ void WaterRenderer::BuildMesh(int grid_size) {
   }
 
   // Each quad → 2 CW triangles (consistent with the geometry pass winding).
-  std::vector<uint16_t> indices;
+  // uint32 indices are required: large terrains exceed the uint16 limit of 65535
+  // vertices (e.g. a 984-quad grid has 985² = 970 225 vertices).
+  std::vector<uint32_t> indices;
   indices.reserve(static_cast<size_t>(num_quads) * 6);
 
   for (int j = 0; j < grid_size; ++j) {
     for (int i = 0; i < grid_size; ++i) {
-      const uint16_t tl = static_cast<uint16_t>( j      * verts_per_side + i    );
-      const uint16_t tr = static_cast<uint16_t>( j      * verts_per_side + i + 1);
-      const uint16_t bl = static_cast<uint16_t>((j + 1) * verts_per_side + i    );
-      const uint16_t br = static_cast<uint16_t>((j + 1) * verts_per_side + i + 1);
+      const uint32_t tl = static_cast<uint32_t>( j      * verts_per_side + i    );
+      const uint32_t tr = static_cast<uint32_t>( j      * verts_per_side + i + 1);
+      const uint32_t bl = static_cast<uint32_t>((j + 1) * verts_per_side + i    );
+      const uint32_t br = static_cast<uint32_t>((j + 1) * verts_per_side + i + 1);
       indices.push_back(tl);
       indices.push_back(br);
       indices.push_back(tr);
@@ -107,7 +134,7 @@ void WaterRenderer::BuildMesh(int grid_size) {
       core::VertexType::k3D, num_verts,
       abstract::BufferUsage::kImmutable, verts.data());
   grid_ib_ = video_->CreateIndexBuffer(
-      abstract::IndexType::kUInt16, num_indices_,
+      abstract::IndexType::kUInt32, num_indices_,
       abstract::BufferUsage::kImmutable, indices.data());
 }
 
