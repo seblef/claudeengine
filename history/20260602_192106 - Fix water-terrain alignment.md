@@ -53,6 +53,20 @@ Water is built after a pre-scan of `map_data.objects` that locates the
 `GameTerrain` (if any) and extracts terrain dimensions before `WaterRenderer`
 is constructed. This avoids reordering the full object-loading loop.
 
+## Additional fix: uint32 index buffer
+
+The recomputed `grid_size` for a large terrain (e.g. 4096 texels × 2 m/texel =
+8192 m world) becomes 984, giving 985² = 970 225 vertices — well above the
+uint16 limit of 65 535. The original uint16 index buffer silently wrapped,
+producing corrupted geometry near the origin. Switched to `kUInt32` throughout
+`BuildMesh()`.
+
+## `EnvironmentEditorPanel`: terrain lookup via `GetType()` not `dynamic_cast`
+
+Replaced `dynamic_cast<game::GameTerrain*>` with
+`obj->GetType() == game::GameObjectType::kTerrain` + `static_cast`, matching
+the pattern already used in `EditorWindow::FindTerrain()`.
+
 ## Decisions
 
 - **Margin factor 1.2** (20 % extension): large enough to hide the terrain edge
@@ -62,6 +76,9 @@ is constructed. This avoids reordering the full object-loading loop.
 - **No rebuild on terrain resize**: if the terrain is resized post-load the
   water renderer keeps the dimensions from construction time. This is acceptable
   because both water and terrain require a map reload to change dimensions.
+- **Terrain origin is (0, 0)**: the CDLODQuadTree places all patches with
+  `patch_origin` starting at (0, 0), so centering the water at
+  `(world_width/2, world_height/2)` is correct for all maps.
 
 ## Skills / CLAUDE.md rules applied
 
