@@ -297,22 +297,24 @@ void WaterRenderer::Render(const core::Camera& camera,
   const core::Vec3f cam_pos  = camera.GetPosition();
   const core::Vec2f cam_xz   = {cam_pos.x, cam_pos.z};
 
-  for (LodRing& ring : lod_rings_) {
-    if (!ring.vb) continue;
+  // All rings share the same snap centre (LOD 0 grid) so every ring's radial
+  // inclusion test measures from an identical world-space point, preventing
+  // gaps at ring boundaries when rings would otherwise snap independently.
+  const float fine_cell = lod_rings_[0].cell_size;
+  const core::Vec2f snap_pos(std::round(cam_xz.x / fine_cell) * fine_cell,
+                              std::round(cam_xz.y / fine_cell) * fine_cell);
 
-    // Snap camera XZ to the ring's grid and rebuild geometry if it moved enough.
-    const float snap_x = std::round(cam_xz.x / ring.cell_size) * ring.cell_size;
-    const float snap_z = std::round(cam_xz.y / ring.cell_size) * ring.cell_size;
-    const core::Vec2f snap_pos(snap_x, snap_z);
-
-    const float moved_x = snap_pos.x - ring.last_snap.x;
-    const float moved_z = snap_pos.y - ring.last_snap.y;
-    const float half_cell = ring.cell_size * 0.5f;
-    if (moved_x * moved_x + moved_z * moved_z >= half_cell * half_cell) {
+  const float moved_x  = snap_pos.x - lod_rings_[0].last_snap.x;
+  const float moved_z  = snap_pos.y - lod_rings_[0].last_snap.y;
+  const float half_cell = fine_cell * 0.5f;
+  if (moved_x * moved_x + moved_z * moved_z >= half_cell * half_cell) {
+    for (LodRing& ring : lod_rings_) {
       BuildRingGeometry(ring, snap_pos);
       ring.last_snap = snap_pos;
     }
+  }
 
+  for (LodRing& ring : lod_rings_) {
     if (ring.num_indices == 0) continue;
 
     ring.vb->Bind();
