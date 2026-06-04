@@ -33,4 +33,8 @@ abstract::RenderTarget* EmissiveFBO::GetHDRRT() const {
   return hdr_rt_.get();
 }
 
+abstract::RenderTargetGroup* EmissiveFBO::GetRenderTargetGroup() const {
+  return fbo_.get();
+}
+
 }  // namespace renderer
