@@ -59,12 +59,22 @@ class SkyRenderer : public core::Singleton<SkyRenderer> {
   // Sets atmospheric turbidity: 1.7 = very clear, 2.0 = default, 10 = very hazy.
   void SetTurbidity(float t) { turbidity_ = t; }
 
+  // Geographic latitude in degrees.  Positive = north hemisphere.
+  // Lower latitudes raise the noon sun, producing a bluer midday sky.
+  // Must match WorldTime::SetLatitude() so sky and scene lighting agree.
+  void SetLatitude(float degrees)    { latitude_deg_    = degrees; }
+
+  // Solar declination in degrees.  0° = equinox, +23.45° = northern summer
+  // solstice.  Higher values raise the noon sun for northern latitudes.
+  // Must match WorldTime::SetDeclination() so sky and scene lighting agree.
+  void SetDeclination(float degrees) { declination_deg_ = degrees; }
+
   [[nodiscard]] bool IsReady() const { return shader_ != nullptr; }
 
  private:
-  // Derives the world-space sun direction from the time of day.
-  // Uses the same spherical arc formula as WorldTime::GetSunDirection().
-  [[nodiscard]] static core::Vec3f ComputeSunDirection(float time_of_day);
+  // Derives the world-space sun direction from the time of day using the same
+  // astronomical formula as WorldTime::GetSunDirection().
+  [[nodiscard]] core::Vec3f ComputeSunDirection(float time_of_day) const;
 
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice*                    video_   = nullptr;
@@ -73,7 +83,9 @@ class SkyRenderer : public core::Singleton<SkyRenderer> {
   std::unique_ptr<abstract::ConstantBuffer> sky_cb_;
   std::unique_ptr<abstract::VertexBuffer>   quad_vb_;
   std::unique_ptr<abstract::IndexBuffer>    quad_ib_;
-  float                                     turbidity_ = 2.f;
+  float turbidity_      = 2.f;
+  float latitude_deg_   = 45.f;  // geographic latitude; lower = bluer noon sky
+  float declination_deg_ = 0.f;  // solar declination; +23.45 = northern summer
 };
 
 }  // namespace environment

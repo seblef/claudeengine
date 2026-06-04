@@ -6,10 +6,17 @@ namespace environment {
 
 // Tracks in-game time of day (0–86400 s) with a configurable time scale.
 //
-// Celestial body directions assume latitude 45° N. The sun arcs from east
-// (06:00) through zenith (12:00, elevation ≈ 60°) to west (18:00), and is
-// below the horizon from 18:00 to 06:00. The moon is approximated as the
-// antipodal sun with a small fixed tilt offset.
+// Sun and moon directions are computed from the geographic position using the
+// standard astronomical hour-angle formula:
+//   sin(α) = sin(φ)·sin(δ) + cos(φ)·cos(δ)·cos(H)
+// where α = elevation, φ = latitude, δ = solar declination, H = hour angle.
+//
+// Defaults: latitude 45° N, equinox (declination 0°).  Adjust via
+// SetLatitude() / SetDeclination() to tune the noon sun height and sky colour.
+// Tip: summer solstice (declination +23.45°) raises the noon sun significantly
+// and produces a noticeably bluer midday sky.
+//
+// The moon is approximated as the antipodal sun with a small fixed tilt.
 class WorldTime {
  public:
     // time_scale: simulation multiplier (1.0 = real time).
@@ -28,7 +35,20 @@ class WorldTime {
     // Returns the time of day in hours [0, 24).
     [[nodiscard]] float GetTimeOfDay() const;
 
+    // Geographic latitude in degrees.  Positive = north hemisphere.
+    // Lower latitudes (closer to 0°) raise the noon sun and produce a bluer sky.
+    void SetLatitude(float degrees)    { latitude_deg_    = degrees; }
+
+    // Solar declination in degrees.  0° = equinox, +23.45° = northern summer
+    // solstice, −23.45° = southern summer solstice.  Higher declination raises
+    // the noon sun for northern-hemisphere latitudes.
+    void SetDeclination(float degrees) { declination_deg_ = degrees; }
+
+    [[nodiscard]] float GetLatitude()    const { return latitude_deg_; }
+    [[nodiscard]] float GetDeclination() const { return declination_deg_; }
+
     // Returns the world-space unit vector pointing toward the sun.
+    // Engine coordinates: +X east, +Y up, +Z south.
     [[nodiscard]] core::Vec3f GetSunDirection() const;
 
     // Returns the world-space unit vector pointing toward the moon.
@@ -40,8 +60,10 @@ class WorldTime {
 
  private:
     // cppcheck-suppress unusedStructMember
-    float world_time_;          // seconds, [0, 86400)
-    float time_scale_ = 1.f;
+    float world_time_;                    // seconds, [0, 86400)
+    float time_scale_     = 1.f;
+    float latitude_deg_   = 45.f;        // geographic latitude
+    float declination_deg_ = 0.f;        // solar declination (season)
 };
 
 }  // namespace environment

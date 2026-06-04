@@ -198,9 +198,16 @@ void main() {
         float sun_disc = smoothstep(0.99970, 0.99990, cos_sun);
         // Outer halo: Mie forward-scattering glow.
         float sun_halo = smoothstep(0.99000, 0.99970, cos_sun) * 0.25;
+
+        // Sun colour depends on elevation: orange-red at sunrise/sunset where
+        // slant atmospheric path scatters blue away; near-white at noon.
+        // t transitions 0→1 over the first 15° of elevation (sin 15° ≈ 0.259).
+        float sun_elev_t  = clamp(sun_direction.y / 0.259, 0.0, 1.0);
         // HDR values; composite pass clamps to white naturally.
-        sky_rgb += vec3(60.0, 48.0, 24.0) * sun_disc * sun_vis;
-        sky_rgb += vec3(2.0,  1.6,  0.9)  * sun_halo * sun_vis;
+        sky_rgb += mix(vec3(60.0, 36.0, 10.0), vec3(60.0, 58.0, 54.0),
+                       sun_elev_t) * sun_disc * sun_vis;
+        sky_rgb += mix(vec3(2.0, 1.0, 0.3), vec3(1.6, 1.5, 1.4),
+                       sun_elev_t) * sun_halo * sun_vis;
     }
 
     // --- Moon disc ----------------------------------------------------------
