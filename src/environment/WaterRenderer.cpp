@@ -1,14 +1,19 @@
 #include "environment/WaterRenderer.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <vector>
 
+#include "abstract/BlendFactor.h"
 #include "abstract/BufferUsage.h"
 #include "abstract/CompareFunc.h"
 #include "abstract/IndexType.h"
 #include "abstract/RenderTarget.h"
+#include "abstract/RenderTargetGroup.h"
+#include "abstract/TextureFormat.h"
+#include "core/Color.h"
 #include "core/Mat4f.h"
 #include "core/Vec3f.h"
 #include "core/Vertex3D.h"
@@ -68,7 +73,10 @@ void WaterRenderer::Build(abstract::VideoDevice* video,
   water_level_          = water_level;
   terrain_world_width_  = terrain_world_width;
   terrain_world_height_ = terrain_world_height;
+  screen_w_             = video_->GetWidth();
+  screen_h_             = video_->GetHeight();
   shader_               = video_->CreateShader("water/water");
+  ssr_shader_           = video_->CreateShader("water/water_ssr");
 
   // Compute LOD 2 outer radius from terrain dimensions or grid_size fallback.
   float lod2_outer = std::max(1000.f,
@@ -104,6 +112,25 @@ void WaterRenderer::Build(abstract::VideoDevice* video,
 
   BuildNormalMap();
   BuildFoamTexture();
+  BuildSsrTarget();
+}
+
+void WaterRenderer::BuildSsrTarget() {
+  ssr_fbo_.reset();
+  ssr_rt_.reset();
+
+  const int hw = std::max(1, screen_w_ / 2);
+  const int hh = std::max(1, screen_h_ / 2);
+  ssr_rt_ = video_->CreateRenderTarget(hw, hh, abstract::TextureFormat::kRGBA16F);
+
+  std::array<abstract::RenderTarget*, 1> colors = {ssr_rt_.get()};
+  ssr_fbo_ = video_->CreateRenderTargetGroup(colors, nullptr);
+}
+
+void WaterRenderer::Resize(int w, int h) {
+  screen_w_ = w;
+  screen_h_ = h;
+  if (video_) BuildSsrTarget();
 }
 
 void WaterRenderer::BuildRingGeometry(LodRing& ring, core::Vec2f snap_pos) {
@@ -260,25 +287,13 @@ void WaterRenderer::BuildFoamTexture() {
 
 void WaterRenderer::Render(const core::Camera& camera,
                            abstract::RenderTarget* scene_color,
-                           abstract::RenderTarget* depth) {
-  if (!shader_) return;
+                           abstract::RenderTarget* depth,
+                           abstract::RenderTargetGroup* output_fbo) {
+  if (!shader_ || !ssr_rt_) return;
 
-  normal_map_tex_->Bind(0);
-  foam_tex_->Bind(1);
-  scene_color->BindAsSampler(2);
-  depth->BindAsSampler(3);
-
-  video_->SetDepthTestEnabled(true);
-  video_->SetDepthFunc(abstract::CompareFunc::kLessEqual);
-  video_->SetDepthWriteEnabled(false);
-  video_->SetIndexType(abstract::IndexType::kUInt32);
-
-  shader_->Activate();
-
-  // Project the 6 view-frustum planes onto the water plane (Y = water_level_).
+  // ── Frustum culling: project view frustum planes onto the water plane ──────
   // A 3D plane (A, B, C, D) — with Ax+By+Cz+D >= 0 meaning "inside" — reduces
-  // to the 2D half-plane  A*x + C*z + (B*water_level_ + D) >= 0  on the XZ
-  // water surface.  Trivially horizontal planes (A≈0, C≈0) become a boolean.
+  // to the 2D half-plane  A*x + C*z + (B*water_level_ + D) >= 0  on XZ.
   // Uses the same Gribb-Hartmann row combinations as core::ViewFrustum.
   struct Plane2D { float a, b, d; };  // a*x + b*z + d >= 0 means inside
   Plane2D planes2d[6];
@@ -301,6 +316,7 @@ void WaterRenderer::Render(const core::Camera& camera,
   add_plane(vp(3,0)-vp(2,0), vp(3,1)-vp(2,1), vp(3,2)-vp(2,2), vp(3,3)-vp(2,3));  // far
   if (skip_all) return;
 
+  // ── Ring snap + rebuild (once per frame; shared by both passes) ───────────
   const core::Vec3f cam_pos  = camera.GetPosition();
   const core::Vec2f cam_xz   = {cam_pos.x, cam_pos.z};
 
@@ -321,32 +337,70 @@ void WaterRenderer::Render(const core::Camera& camera,
     }
   }
 
-  for (LodRing& ring : lod_rings_) {
-    if (ring.num_indices == 0) continue;
+  // Shared draw loop used by both passes.
+  const auto DrawRings = [&]() {
+    for (LodRing& ring : lod_rings_) {
+      if (ring.num_indices == 0) continue;
 
-    ring.vb->Bind();
-    ring.ib->Bind();
+      ring.vb->Bind();
+      ring.ib->Bind();
 
-    for (const TileInfo& tile : ring.tiles) {
-      bool visible = true;
-      for (int pi = 0; pi < n_planes2d && visible; ++pi) {
-        const Plane2D& p = planes2d[pi];
-        // Cull tile only when all 4 XZ corners are behind this half-plane.
-        const float v00 = p.a * tile.x0 + p.b * tile.z0 + p.d;
-        const float v10 = p.a * tile.x1 + p.b * tile.z0 + p.d;
-        const float v01 = p.a * tile.x0 + p.b * tile.z1 + p.d;
-        const float v11 = p.a * tile.x1 + p.b * tile.z1 + p.d;
-        if (v00 < 0.f && v10 < 0.f && v01 < 0.f && v11 < 0.f)
-          visible = false;
+      for (const TileInfo& tile : ring.tiles) {
+        bool visible = true;
+        for (int pi = 0; pi < n_planes2d && visible; ++pi) {
+          const Plane2D& p = planes2d[pi];
+          // Cull tile only when all 4 XZ corners are behind this half-plane.
+          const float v00 = p.a * tile.x0 + p.b * tile.z0 + p.d;
+          const float v10 = p.a * tile.x1 + p.b * tile.z0 + p.d;
+          const float v01 = p.a * tile.x0 + p.b * tile.z1 + p.d;
+          const float v11 = p.a * tile.x1 + p.b * tile.z1 + p.d;
+          if (v00 < 0.f && v10 < 0.f && v01 < 0.f && v11 < 0.f)
+            visible = false;
+        }
+        if (visible)
+          video_->RenderIndexed(tile.index_count, tile.first_index);
       }
-      if (visible)
-        video_->RenderIndexed(tile.index_count, tile.first_index);
     }
-  }
+  };
+
+  // ── Pass 1: half-resolution SSR ──────────────────────────────────────────
+  ssr_fbo_->BindForWriting();
+  video_->SetViewport(0, 0, screen_w_ / 2, screen_h_ / 2);
+  video_->ClearRenderTargets(core::Color(0.f, 0.f, 0.f, 0.f));
+  video_->SetDepthTestEnabled(false);
+  video_->SetDepthWriteEnabled(false);
+  video_->SetBlendEnabled(false);
+  video_->SetIndexType(abstract::IndexType::kUInt32);
+
+  scene_color->BindAsSampler(2);
+  depth->BindAsSampler(3);
+  ssr_shader_->Activate();
+  DrawRings();
+
+  video_->UnbindSampler(2);
+  video_->UnbindSampler(3);
+
+  // ── Pass 2: full-resolution main water pass ───────────────────────────────
+  output_fbo->BindForWriting();
+  video_->SetViewport(0, 0, screen_w_, screen_h_);
+  video_->SetDepthTestEnabled(true);
+  video_->SetDepthFunc(abstract::CompareFunc::kLessEqual);
+  video_->SetDepthWriteEnabled(false);
+  video_->SetBlendEnabled(true, abstract::BlendFactor::kSrcAlpha,
+                          abstract::BlendFactor::kOneMinusSrcAlpha);
+
+  normal_map_tex_->Bind(0);
+  foam_tex_->Bind(1);
+  scene_color->BindAsSampler(2);
+  depth->BindAsSampler(3);
+  ssr_rt_->BindAsSampler(kSsrSlot);
+  shader_->Activate();
+  DrawRings();
 
   video_->UnbindSampler(1);
   video_->UnbindSampler(2);
   video_->UnbindSampler(3);
+  video_->UnbindSampler(kSsrSlot);
   video_->SetIndexType(abstract::IndexType::kUInt16);
 }
 
@@ -359,6 +413,12 @@ void WaterRenderer::Reset() {
     shader_->Release();
     shader_ = nullptr;
   }
+  if (ssr_shader_) {
+    ssr_shader_->Release();
+    ssr_shader_ = nullptr;
+  }
+  ssr_fbo_.reset();
+  ssr_rt_.reset();
   for (LodRing& ring : lod_rings_) {
     ring.vb.reset();
     ring.ib.reset();

@@ -27,11 +27,13 @@ Plane::Side Plane::Classify(const BBox3& box) const {
   if(normal_.z > 0.0f)  std::swap(near_.z,far_.z);
 
   const float dnear = normal_.Dot(near_) - dist_;
-  if (dnear > 0.0f) return Side::kFront;
+  if (dnear > kEps) return Side::kFront;
 
   const float dfar = normal_.Dot(far_) - dist_;
-  if (dfar > 0.0f) return Side::kClip;
+  if (dfar > kEps) return Side::kClip;
 
+  // Both extremes within epsilon of the plane: box lies entirely on it.
+  if (dfar >= -kEps && dnear >= -kEps) return Side::kOn;
   return Side::kBack;
 }
 

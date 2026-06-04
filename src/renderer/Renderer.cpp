@@ -112,6 +112,14 @@ void Renderer::RemoveRenderable(Renderable* r) {
     octree_system_->RemoveRenderable(r);
 }
 
+void Renderer::SetWaterRenderer(environment::WaterRenderer* water) {
+  water_renderer_ = water;
+  // Sync the half-res SSR target to the current render dimensions so that the
+  // water renderer is correctly sized even when Build() was called with window
+  // dimensions that differ from the viewport (e.g. in the editor).
+  if (water_renderer_) water_renderer_->Resize(render_w_, render_h_);
+}
+
 void Renderer::SetCamera(const core::Camera* camera) {
   camera_ = camera;
   if (camera_) FillSceneInfos();
@@ -255,23 +263,20 @@ void Renderer::Update(float time, const core::Camera* camera,
   video_->SetDepthTestEnabled(false);
   emissive_fbo_.UnbindForWriting();
 
-  // 4b. Forward water pass — copy scene colour and depth, then alpha-blend water
-  //     on top of the HDR RT.  Runs after emissive so the scene snapshot includes
-  //     sky, lighting, and emissive objects.
+  // 4b. Forward water pass — two-pass: half-res SSR pre-pass then full-res
+  //     alpha-blend into the HDR RT.  Runs after emissive so the scene snapshot
+  //     includes sky, lighting, and emissive objects.
+  //     WaterRenderer::Render() manages FBO switching internally; output_fbo is
+  //     the emissive FBO that must be rebound after the SSR pre-pass.
   if (water_renderer_ && water_renderer_->IsReady()) {
     video_->CopyRenderTarget(emissive_fbo_.GetHDRRT(),
                              water_scene_color_rt_.get());
     video_->CopyRenderTarget(gbuffer_.GetDepthRT(),
                              water_depth_copy_rt_.get());
-    emissive_fbo_.BindForWriting();
-    video_->SetDepthTestEnabled(true);
-    video_->SetDepthFunc(abstract::CompareFunc::kLessEqual);
-    video_->SetDepthWriteEnabled(false);
-    video_->SetBlendEnabled(true, abstract::BlendFactor::kSrcAlpha,
-                            abstract::BlendFactor::kOneMinusSrcAlpha);
     water_renderer_->Render(*camera_,
                             water_scene_color_rt_.get(),
-                            water_depth_copy_rt_.get());
+                            water_depth_copy_rt_.get(),
+                            emissive_fbo_.GetRenderTargetGroup());
     video_->SetBlendEnabled(false);
     video_->SetDepthFunc(abstract::CompareFunc::kLess);
     video_->SetDepthWriteEnabled(true);
@@ -314,6 +319,7 @@ void Renderer::OnResize(int w, int h) {
       w, h, abstract::TextureFormat::kRGBA16F);
   water_depth_copy_rt_  = video_->CreateRenderTarget(
       w, h, abstract::TextureFormat::kDepth24Stencil8);
+  if (water_renderer_) water_renderer_->Resize(w, h);
 }
 
 void Renderer::ResizeTargets(int w, int h) {
@@ -325,6 +331,7 @@ void Renderer::ResizeTargets(int w, int h) {
       w, h, abstract::TextureFormat::kRGBA16F);
   water_depth_copy_rt_  = video_->CreateRenderTarget(
       w, h, abstract::TextureFormat::kDepth24Stencil8);
+  if (water_renderer_) water_renderer_->Resize(w, h);
 }
 
 void Renderer::RenderTerrainWireframe(const core::Camera& camera,

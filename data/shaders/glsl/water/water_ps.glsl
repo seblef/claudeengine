@@ -48,17 +48,24 @@
 //   absorption   = exp(-water_depth * absorption_scale)           // transmission factor
 //   refract_col  = mix(water_color, refract_col, absorption)      // tint towards water_color at depth
 //
-// Screen-space reflections (SSR):
-//   R           = reflect(-V, N)
-//   Two-phase hierarchical ray march (128 m max reach, ~12 depth samples):
-//     Phase 1 — coarse bracketing: 8 steps × 16 m.  Early-out on clip.w ≤ 0
-//               or |ndc.xy| > 1.05.  Records hit_step on first depth crossing.
-//     Phase 2 — binary refinement: 4 bisection iters over [hit_step-1, hit_step]
-//               coarse interval; final colour sample at refined t_hi.
-//   On hit: edge_fade and dist_fade (= 1 - t_hi/128) attenuate ssr_weight;
-//   reflect_color from scene_color_tex at refined UV.
-//   Fresnel blend: sky_reflect = mix(sky_zenith, reflect_color, ssr_weight)
-//                  surface_col = mix(absorbed, sky_reflect, fresnel)
+// Screen-space reflections (SSR) — half-resolution bilateral upsample:
+//   The SSR contribution is pre-computed at half resolution in water_ssr_ps.glsl
+//   and stored in u_ssr_rt as premultiplied alpha (rgb = reflect*weight, a = weight).
+//   A cross-bilateral 2×2 gather from the half-res RT, weighted by depth similarity
+//   between each tap and the full-res depth at the current fragment, suppresses
+//   colour bleed across depth discontinuities (e.g., water meeting a cliff).
+//
+//   BilateralUpsample(u_ssr_rt, depth_tex, screen_uv, inv_screen_size):
+//     half_step = 2 * inv_screen_size                // half-res pixel in full-res UV
+//     for each of 4 taps at (±0.5, ±0.5) * half_step around screen_uv:
+//       w = exp(-|tap_depth - ref_depth| * kDepthSigma)
+//       sum += tap_rgba * w;  total += w
+//     return sum / total
+//
+//   ssr_weight    = ssr_up.a
+//   reflect_color = (ssr_weight > 0.001) ? ssr_up.rgb / ssr_weight : sky_zenith
+//   sky_reflect   = mix(sky_zenith, reflect_color, ssr_weight)
+//   surface_col   = mix(absorbed, sky_reflect, fresnel)
 //
 // Wave-tip translucency (subsurface-scattering approximation):
 //   back_scatter  = max(dot(sun_dir, -N), 0)    // sun behind the wave face
@@ -73,6 +80,7 @@
 // Sampler 1:     u_foam_tex       — procedural tileable foam blob texture
 // Sampler 2:     scene_color_tex  — HDR copy before water pass
 // Sampler 3:     depth_tex        — depth copy before water pass
+// Sampler 4:     u_ssr_rt         — half-res SSR render target (premultiplied alpha)
 
 #version 460 core
 #include <uniforms/scene_infos.glsl>
@@ -86,10 +94,11 @@ in  vec3 v_tangent;
 in  vec3 v_bitangent;
 in  vec2 v_uv;
 
-layout(binding = 0) uniform sampler2D u_normal_map;      // slot 0 — procedural normal map
-layout(binding = 1) uniform sampler2D u_foam_tex;        // slot 1 — procedural foam texture
+layout(binding = 0) uniform sampler2D u_normal_map;     // slot 0 — procedural normal map
+layout(binding = 1) uniform sampler2D u_foam_tex;       // slot 1 — procedural foam texture
 layout(binding = 2) uniform sampler2D scene_color_tex;  // slot 2 — scene colour snapshot
 layout(binding = 3) uniform sampler2D depth_tex;        // slot 3 — scene depth snapshot
+layout(binding = 4) uniform sampler2D u_ssr_rt;         // slot 4 — half-res SSR (premultiplied alpha)
 
 layout(location = 0) out vec4 out_color;
 
@@ -186,64 +195,36 @@ void main() {
     float absorption = exp(-water_depth * refraction_params.y);
     vec3  absorbed   = mix(water_params.rgb, refract_color, absorption);
 
-    // Screen-space reflections (SSR): hierarchical two-phase ray march against the
-    // scene depth buffer (8 coarse × 16 m + 4-iter binary refinement, 128 m max).
-    // Falls back to sky zenith where no intersection is found.
-    // Skipped beyond lod_near_dist — sky zenith used directly.
-    vec3  R             = reflect(-V, N);
-    vec3  reflect_color = sky_zenith_color.rgb;
-    float ssr_weight    = 0.0;
+    // Screen-space reflections (SSR) — bilateral upsample from half-res SSR RT.
+    // The ray march ran in water_ssr_ps at half resolution and stored a premultiplied
+    // alpha result: rgb = reflect_color * ssr_weight, a = ssr_weight.
+    // A cross-bilateral 2×2 gather guided by the full-res depth prevents colour
+    // bleed across depth edges (e.g., water surface meeting a cliff face).
+    //
+    // kDepthSigma controls edge sharpness: higher values reject taps more aggressively
+    // when depth differs, resulting in sharper but potentially noisier edges.
+    const float kDepthSigma = 200.0;
 
-    if (is_near && R.y >= -0.05 && fresnel > 0.03) {
-        const int   kCoarseSteps = 8;
-        const float kCoarseStep  = 16.0;
-        const float kMaxReach    = kCoarseStep * float(kCoarseSteps);  // 128 m
+    vec2  half_step = inv_screen_size * 2.0;  // one half-res pixel in full-res UV space
+    float ref_d     = texture(depth_tex, screen_uv).r;
 
-        // Phase 1 — coarse bracketing: find first coarse interval containing a hit.
-        int hit_step = -1;
-
-        for (int i = 1; i <= kCoarseSteps; ++i) {
-            vec3 sample_pos = v_world_pos + R * kCoarseStep * float(i);
-            vec4 clip       = view_proj * vec4(sample_pos, 1.0);
-            if (clip.w <= 0.0) break;
-            vec3 ndc = clip.xyz / clip.w;
-            if (any(greaterThan(abs(ndc.xy), vec2(1.05)))) break;
-
-            vec2  suv          = ndc.xy * 0.5 + 0.5;
-            float ray_depth    = ndc.z  * 0.5 + 0.5;
-            float stored_depth = texture(depth_tex, suv).r;
-
-            if (ray_depth > stored_depth) { hit_step = i; break; }
-        }
-
-        // Phase 2 — binary refinement over the bracketed coarse interval.
-        if (hit_step > 0) {
-            float t_lo = kCoarseStep * float(hit_step - 1);
-            float t_hi = kCoarseStep * float(hit_step);
-
-            for (int r = 0; r < 4; ++r) {
-                float t_mid     = (t_lo + t_hi) * 0.5;
-                vec3  spos      = v_world_pos + R * t_mid;
-                vec4  clip      = view_proj * vec4(spos, 1.0);
-                vec3  ndc       = clip.xyz / clip.w;
-                vec2  suv       = ndc.xy * 0.5 + 0.5;
-                float ray_depth = ndc.z  * 0.5 + 0.5;
-
-                if (ray_depth > texture(depth_tex, suv).r)
-                    t_hi = t_mid;
-                else
-                    t_lo = t_mid;
-            }
-
-            vec4  clip_hi   = view_proj * vec4(v_world_pos + R * t_hi, 1.0);
-            vec3  ndc_hi    = clip_hi.xyz / clip_hi.w;
-            vec2  suv_hi    = ndc_hi.xy * 0.5 + 0.5;
-            vec2  edge_fade = 1.0 - smoothstep(0.8, 1.0, abs(suv_hi * 2.0 - 1.0));
-            float dist_fade = 1.0 - t_hi / kMaxReach;
-            ssr_weight      = min(edge_fade.x, edge_fade.y) * dist_fade;
-            reflect_color   = texture(scene_color_tex, suv_hi).rgb;
+    vec4  ssr_sum   = vec4(0.0);
+    float ssr_total = 0.0;
+    for (int dy = 0; dy <= 1; ++dy) {
+        for (int dx = 0; dx <= 1; ++dx) {
+            vec2  tap_uv  = screen_uv + (vec2(float(dx), float(dy)) - 0.5) * half_step;
+            tap_uv        = clamp(tap_uv, vec2(0.001), vec2(0.999));
+            float tap_d   = texture(depth_tex, tap_uv).r;
+            float w       = exp(-abs(tap_d - ref_d) * kDepthSigma);
+            ssr_sum      += texture(u_ssr_rt, tap_uv) * w;
+            ssr_total    += w;
         }
     }
+    vec4  ssr_up        = (ssr_total > 0.0001) ? ssr_sum / ssr_total : vec4(0.0);
+    float ssr_weight    = ssr_up.a;
+    vec3  reflect_color = (ssr_weight > 0.001)
+                        ? ssr_up.rgb / ssr_weight
+                        : sky_zenith_color.rgb;
 
     // Fresnel blend: SSR result (or sky fallback) mixed into the reflection term.
     vec3 sky_reflect = mix(sky_zenith_color.rgb, reflect_color, ssr_weight);

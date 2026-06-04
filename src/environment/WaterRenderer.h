@@ -8,6 +8,7 @@
 #include "abstract/IndexBuffer.h"
 #include "abstract/RawTexture.h"
 #include "abstract/RenderTarget.h"
+#include "abstract/RenderTargetGroup.h"
 #include "abstract/Shader.h"
 #include "abstract/VertexBuffer.h"
 #include "abstract/VideoDevice.h"
@@ -30,11 +31,21 @@ namespace environment {
 // SrcAlpha / OneMinusSrcAlpha blending.  The WaterInfos constant buffer at
 // slot 9 is owned by Renderer and must be bound before Render() is called.
 //
+// Rendering is a two-pass process:
+//   Pass 1 — half-resolution SSR: screen-space reflections are rendered into a
+//     half-size RGBA16F render target using only the hierarchical ray march.
+//     Output is premultiplied alpha (rgb = reflect * weight, a = weight).
+//   Pass 2 — full-resolution water: the main water surface is rendered with all
+//     visual features.  A cross-bilateral filter guided by the full-res depth
+//     buffer upsamples the half-res SSR result to suppress colour bleed across
+//     depth discontinuities.
+//
 // Constant buffer slot 9 (WaterInfos): bound globally by Renderer.
 // Sampler slot 0: procedural water normal map (RGBA8, tileable).
 // Sampler slot 1: procedural foam texture    (RGBA8, tileable).
 // Sampler slot 2: scene_color snapshot (RGBA16F).
 // Sampler slot 3: depth snapshot (DEPTH24STENCIL8).
+// Sampler slot 4: half-res SSR render target (RGBA16F, premultiplied alpha).
 //
 // The water surface is partitioned into 3 clipmap LOD rings centered on the
 // camera and snapped to a coarse grid.  Only ring geometry within the view
@@ -44,10 +55,12 @@ namespace environment {
 // Usage:
 //   new WaterRenderer();
 //   WaterRenderer::Instance().Build(video, water_level);
-//   // each frame (after emissive pass, inside emissive FBO):
+//   // each frame (pass emissive FBO so Render() can rebind it after the SSR pass):
 //   WaterRenderer::Instance().SetSkyZenithColor(r, g, b);
 //   WaterRenderer::Instance().SetSunDirection(dir);
-//   WaterRenderer::Instance().Render(camera, scene_color_rt, depth_rt);
+//   WaterRenderer::Instance().Render(camera, scene_color_rt, depth_rt, output_fbo);
+//   // on viewport resize:
+//   WaterRenderer::Instance().Resize(new_w, new_h);
 //   WaterRenderer::Instance().Reset();  // release GPU resources
 //   WaterRenderer::Shutdown();          // delete instance
 class WaterRenderer : public core::Singleton<WaterRenderer> {
@@ -70,18 +83,27 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   // kTerrainMarginFactor times beyond the terrain's longest half-edge.
   // grid_size: used to derive the LOD 2 outer radius when terrain dimensions are
   //            not supplied (outer = grid_size * 10 m / 2, at least 1000 m).
-  // video must outlive this renderer.
+  // video must outlive this renderer. Screen dimensions are read from video at
+  // build time; call Resize() if the viewport changes after Build().
   void Build(abstract::VideoDevice* video, float water_level,
              float terrain_world_width = 0.f, float terrain_world_height = 0.f,
              int grid_size = 128);
 
-  // Draws the water surface into the currently bound FBO (emissive FBO).
+  // Executes the two-pass water render: half-res SSR into ssr_rt_, then
+  // full-res main water pass into output_fbo.
   // scene_color: HDR snapshot taken just before this call (sampler slot 2).
   // depth:       depth snapshot taken just before this call (sampler slot 3).
+  // output_fbo:  the FBO that receives the final water contribution; rebound
+  //              internally after the SSR pre-pass.
   // The WaterInfos CB (slot 9) and SceneInfos CB (slot 2) must already be bound.
   void Render(const core::Camera& camera,
               abstract::RenderTarget* scene_color,
-              abstract::RenderTarget* depth);
+              abstract::RenderTarget* depth,
+              abstract::RenderTargetGroup* output_fbo);
+
+  // Recreates the half-res SSR render target at the new viewport size.
+  // Must be called by the Renderer whenever the screen resolution changes.
+  void Resize(int w, int h);
 
   // Updates the world-space Y of the undisplaced surface (hot-path; no rebuild).
   void SetWaterLevel(float y);
@@ -119,6 +141,10 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   [[nodiscard]] bool IsReady() const { return shader_ != nullptr; }
 
  private:
+  // Sampler slot used for the half-res SSR render target in the main water pass.
+  // cppcheck-suppress unusedStructMember
+  static constexpr int kSsrSlot = 4;
+
   // One tile of a LOD ring, used for per-ring view-frustum culling.
   struct TileInfo {
     // cppcheck-suppress unusedStructMember
@@ -169,12 +195,21 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   void BuildNormalMap();
   void BuildFoamTexture();
 
+  // (Re-)creates ssr_rt_ and ssr_fbo_ at screen_w_/2 × screen_h_/2.
+  void BuildSsrTarget();
+
   // cppcheck-suppress unusedStructMember
-  abstract::VideoDevice*                  video_   = nullptr;
+  abstract::VideoDevice*                  video_      = nullptr;
   // cppcheck-suppress unusedStructMember
-  abstract::Shader*                       shader_  = nullptr;
+  abstract::Shader*                       shader_     = nullptr;
+  // cppcheck-suppress unusedStructMember
+  abstract::Shader*                       ssr_shader_ = nullptr;
   std::unique_ptr<abstract::RawTexture>   normal_map_tex_;
   std::unique_ptr<abstract::RawTexture>   foam_tex_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<abstract::RenderTarget>      ssr_rt_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<abstract::RenderTargetGroup> ssr_fbo_;
   // cppcheck-suppress unusedStructMember
   std::array<LodRing, 3>                  lod_rings_;
 
@@ -192,6 +227,10 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   float         lod_far_dist_  = 100.f;
   // cppcheck-suppress unusedStructMember
   core::Vec3f   sun_direction_ = {0.f, 1.f, 0.f};
+  // cppcheck-suppress unusedStructMember
+  int           screen_w_      = 0;
+  // cppcheck-suppress unusedStructMember
+  int           screen_h_      = 0;
 };
 
 }  // namespace environment

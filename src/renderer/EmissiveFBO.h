@@ -34,6 +34,9 @@ class EmissiveFBO {
   // Returns the HDR accumulation render target.
   [[nodiscard]] abstract::RenderTarget* GetHDRRT() const;
 
+  // Returns the underlying FBO (needed by WaterRenderer to rebind after its SSR pre-pass).
+  [[nodiscard]] abstract::RenderTargetGroup* GetRenderTargetGroup() const;
+
  private:
   // hdr_rt_ declared before fbo_ so the FBO is destroyed first on cleanup.
   std::unique_ptr<abstract::RenderTarget>      hdr_rt_;
