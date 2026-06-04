@@ -1,5 +1,6 @@
 #include "environment/SkyRenderer.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 
@@ -15,12 +16,8 @@ namespace environment {
 
 namespace {
 constexpr int   kSkyInfosSlot    = 8;
-constexpr int   kSkyInfosFloat4s = sizeof(SkyInfos) / 16;  // 32 / 16 = 2
+constexpr int   kSkyInfosFloat4s = sizeof(SkyInfos) / 16;
 constexpr float kPi              = 3.14159265f;
-constexpr float kSunriseHour     = 6.f;
-constexpr float kSunsetHour      = 18.f;
-// Maximum solar elevation at latitude 45° N on equinox.
-constexpr float kMaxElevationRad = 45.f * (kPi / 180.f);
 }  // namespace
 
 void SkyRenderer::Build(abstract::VideoDevice* video) {
@@ -82,16 +79,36 @@ void SkyRenderer::Reset() {
   video_ = nullptr;
 }
 
-core::Vec3f SkyRenderer::ComputeSunDirection(float time_of_day) {
-  // Matches WorldTime::GetSunDirection(): sun arcs from east at 06:00,
-  // peaks at latitude 45° N elevation at 12:00, sets in the west at 18:00.
-  const float azimuth   = ((time_of_day - kSunriseHour) / 24.f) * 2.f * kPi;
-  const float elevation = std::sin(((time_of_day - kSunriseHour) / 12.f) * kPi)
-                          * kMaxElevationRad;
-  const float cos_el = std::cos(elevation);
-  const float x = -std::cos(azimuth) * cos_el;
+core::Vec3f SkyRenderer::ComputeSunDirection(float time_of_day) const {
+  const float phi   = latitude_deg_    * (kPi / 180.f);  // latitude (rad)
+  const float delta = declination_deg_ * (kPi / 180.f);  // declination (rad)
+
+  // Hour angle: 0 at solar noon, negative in the morning.
+  const float H = (time_of_day - 12.f) * (kPi / 12.f);
+
+  // Solar elevation   sin(α) = sin(φ)·sin(δ) + cos(φ)·cos(δ)·cos(H)
+  const float sin_elev = std::sin(phi) * std::sin(delta)
+                       + std::cos(phi) * std::cos(delta) * std::cos(H);
+  const float elevation = std::asin(std::clamp(sin_elev, -1.f, 1.f));
+  const float cos_el    = std::cos(elevation);
+
+  // Solar azimuth from north (clockwise viewed from above):
+  //   cos(A) = (sin(δ) − sin(φ)·sin(α)) / (cos(φ)·cos(α))
+  // Morning (H < 0): A < π (east side); afternoon (H > 0): A > π (west side).
+  float azimuth = 0.f;
+  if (cos_el > 1e-4f) {
+    const float cos_az = std::clamp(
+        (std::sin(delta) - std::sin(phi) * sin_elev)
+            / (std::cos(phi) * cos_el),
+        -1.f, 1.f);
+    azimuth = (H <= 0.f) ? std::acos(cos_az) : 2.f * kPi - std::acos(cos_az);
+  }
+
+  // Engine coordinates (+X east, +Y up, +Z south):
+  // A=0→north(−Z), A=π/2→east(+X), A=π→south(+Z), A=3π/2→west(−X).
+  const float x =  std::sin(azimuth) * cos_el;
   const float y =  std::sin(elevation);
-  const float z = -std::sin(azimuth) * cos_el;
+  const float z = -std::cos(azimuth) * cos_el;
   return core::Vec3f(x, y, z).Normalized();
 }
 
