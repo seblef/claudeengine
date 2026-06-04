@@ -160,10 +160,10 @@ class Renderer : public core::Singleton<Renderer> {
 
   // Registers a WaterRenderer to be drawn in the forward water pass (after the
   // emissive pass, before composite). Pass nullptr to detach. The caller retains
-  // ownership.
-  void SetWaterRenderer(environment::WaterRenderer* water) {
-    water_renderer_ = water;
-  }
+  // ownership. Immediately syncs the renderer's half-res SSR target to the current
+  // render dimensions (render_w_ × render_h_), which may differ from the video
+  // device window size in the editor.
+  void SetWaterRenderer(environment::WaterRenderer* water);
 
   // Sets the sky world time forwarded to WaterRenderer for sun direction and
   // sky zenith colour each frame. Must be kept in sync with SetSkyWorldTime().

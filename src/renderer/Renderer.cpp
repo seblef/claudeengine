@@ -112,6 +112,14 @@ void Renderer::RemoveRenderable(Renderable* r) {
     octree_system_->RemoveRenderable(r);
 }
 
+void Renderer::SetWaterRenderer(environment::WaterRenderer* water) {
+  water_renderer_ = water;
+  // Sync the half-res SSR target to the current render dimensions so that the
+  // water renderer is correctly sized even when Build() was called with window
+  // dimensions that differ from the viewport (e.g. in the editor).
+  if (water_renderer_) water_renderer_->Resize(render_w_, render_h_);
+}
+
 void Renderer::SetCamera(const core::Camera* camera) {
   camera_ = camera;
   if (camera_) FillSceneInfos();
