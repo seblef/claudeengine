@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -17,6 +18,7 @@ class TerrainNormalMap;
 namespace editor {
 
 class EditorCommandHistory;
+class TerrainPainterWindow;
 
 // Dockable ImGui panel for terrain sculpting and texture painting.
 //
@@ -45,7 +47,8 @@ class EditorCommandHistory;
 //   Smooth — w = smoothstep(0, 1, 1 - t)
 class TerrainEditorPanel {
  public:
-  TerrainEditorPanel() = default;
+  TerrainEditorPanel();
+  ~TerrainEditorPanel();
 
   // Renders the panel body (tab bar + active tab controls).
   // Must be called inside an ImGui::Begin/End block.
@@ -58,6 +61,10 @@ class TerrainEditorPanel {
   // Renders the terrain import floating window when open.
   // Must be called outside any ImGui::Begin/End block each frame.
   void RenderImportWindow();
+
+  // Renders the auto-paint floating window when open.
+  // Must be called outside any ImGui::Begin/End block each frame.
+  void RenderPainterWindow();
 
   // Provides the editing context. Call when a terrain is added/loaded;
   // pass nullptr data to reset. history must outlive this panel.
@@ -239,6 +246,10 @@ class TerrainEditorPanel {
   int                  paint_z1_            = 0;
   // cppcheck-suppress unusedStructMember
   std::vector<uint8_t> paint_pre_snapshot_;
+
+  // ---- Auto-paint floating window -------------------------------------------
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<TerrainPainterWindow> painter_window_;
 };
 
 }  // namespace editor

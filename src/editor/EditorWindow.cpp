@@ -247,6 +247,9 @@ void EditorWindow::Render() {
   // 11a. Terrain import window — floating, opened via Terrain > Import.
   terrain_panel_.RenderImportWindow();
 
+  // 11a'. Terrain auto-paint window — floating, opened from the Paint tab.
+  terrain_panel_.RenderPainterWindow();
+
   // 11b. Confirm remove terrain modal — triggered by Terrain > Remove.
   if (confirm_remove_terrain_) {
     ImGui::OpenPopup("Remove Terrain?##modal");
