@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <imgui.h>
 #include <loguru.hpp>
@@ -20,6 +21,7 @@
 #include "abstract/VideoDevice.h"
 #include "core/Config.h"
 #include "editor/EditorCommandHistory.h"
+#include "editor/TerrainPainterWindow.h"
 #include "editor/commands/PaintBrushCommand.h"
 #include "editor/commands/SculptBrushCommand.h"
 #include "game/GameTerrain.h"
@@ -47,6 +49,9 @@ constexpr ImVec4 kLayerSwatchColors[terrain::kMaxTerrainLayers] = {
 
 namespace editor {
 
+TerrainEditorPanel::TerrainEditorPanel() = default;
+TerrainEditorPanel::~TerrainEditorPanel() = default;
+
 void TerrainEditorPanel::SetContext(terrain::TerrainData* data,
                                     terrain::TerrainMaterial* material,
                                     terrain::TerrainNormalMap* normal_map,
@@ -64,6 +69,10 @@ void TerrainEditorPanel::SetContext(terrain::TerrainData* data,
 
   if (material_ && active_layer_ >= material_->GetLayerCount())
     active_layer_ = 0;
+
+  if (!painter_window_)
+    painter_window_ = std::make_unique<TerrainPainterWindow>();
+  painter_window_->SetContext(data, material, video, history);
 }
 
 // ---- Render -----------------------------------------------------------------
@@ -193,6 +202,18 @@ void TerrainEditorPanel::RenderPaintTab() {
 
   ImGui::Spacing();
   ImGui::TextDisabled("Left-drag in viewport to paint.");
+
+  ImGui::Spacing();
+  ImGui::Separator();
+  ImGui::Spacing();
+  if (ImGui::Button("Auto-Paint by Height...")) {
+    if (!painter_window_)
+      painter_window_ = std::make_unique<TerrainPainterWindow>();
+    painter_window_->SetContext(data_, material_, video_, history_);
+    painter_window_->Open();
+  }
+  ImGui::SameLine();
+  ImGui::TextDisabled("Paint whole terrain by height range.");
 }
 
 // ---- Brush dispatch ---------------------------------------------------------
@@ -631,6 +652,11 @@ void TerrainEditorPanel::OnPaintEnd() {
   paint_stroke_active_ = false;
   LOG_F(9, "TerrainEditorPanel::OnPaintEnd — paint region [%d,%d)+[%d,%d]",
         paint_x0_, paint_z0_, pw, ph);
+}
+
+void TerrainEditorPanel::RenderPainterWindow() {
+  if (painter_window_)
+    painter_window_->Render();
 }
 
 // ---- Material tab -----------------------------------------------------------

@@ -20,6 +20,14 @@ GameTerrain::GameTerrain(std::unique_ptr<terrain::TerrainData> data,
       video_(video) {}
 
 void GameTerrain::OnAddedToScene() {
+  // Create the TerrainRenderer singleton when no external owner has done so
+  // (game app path). The editor_app pre-creates it before any scene is loaded.
+  owns_terrain_renderer_ = !terrain::TerrainRenderer::IsInstanced();
+  if (owns_terrain_renderer_) {
+    new terrain::TerrainRenderer();
+    renderer::Renderer::Instance().SetTerrainRenderer(
+        &terrain::TerrainRenderer::Instance());
+  }
   terrain::TerrainRenderer::Instance().Init(video_, *data_);
   terrain::TerrainRenderer::Instance().SetMaterial(material_.get());
 
@@ -40,6 +48,11 @@ void GameTerrain::OnAddedToScene() {
 
 void GameTerrain::OnRemovedFromScene() {
   terrain::TerrainRenderer::Instance().Deinit();
+  if (owns_terrain_renderer_) {
+    renderer::Renderer::Instance().SetTerrainRenderer(nullptr);
+    terrain::TerrainRenderer::Shutdown();
+    owns_terrain_renderer_ = false;
+  }
   if (renderer::FoliageRenderer::IsInstanced())
     renderer::FoliageRenderer::Shutdown();
   renderer::Renderer::Instance().SetFoliageEnabled(false);

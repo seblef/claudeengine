@@ -65,6 +65,11 @@ class GameTerrain : public GameObject {
   std::vector<std::unique_ptr<terrain::FoliageLayer>>  foliage_layers_;
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice*                               video_;
+  // True when OnAddedToScene() created the TerrainRenderer singleton because
+  // no external owner had already done so (game app vs. editor app).
+  // The paired OnRemovedFromScene() then owns the Shutdown() call.
+  // cppcheck-suppress unusedStructMember
+  bool owns_terrain_renderer_ = false;
 };
 
 }  // namespace game
