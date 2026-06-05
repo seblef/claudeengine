@@ -59,6 +59,38 @@ void EmitEnvironment(YAML::Emitter& out,
     out << YAML::Key << "water_enabled" << YAML::Value << env.water_enabled;
   if (env.water_level   != def.water_level)
     out << YAML::Key << "water_level"   << YAML::Value << env.water_level;
+  if (env.water_color_r != def.water_color_r ||
+      env.water_color_g != def.water_color_g ||
+      env.water_color_b != def.water_color_b) {
+    out << YAML::Key << "water_color" << YAML::Value
+        << YAML::Flow << YAML::BeginSeq
+        << env.water_color_r << env.water_color_g << env.water_color_b
+        << YAML::EndSeq;
+  }
+  if (env.roughness            != def.roughness)
+    out << YAML::Key << "roughness"            << YAML::Value << env.roughness;
+  if (env.sun_intensity        != def.sun_intensity)
+    out << YAML::Key << "sun_intensity"        << YAML::Value << env.sun_intensity;
+  if (env.refraction_strength  != def.refraction_strength)
+    out << YAML::Key << "refraction_strength"  << YAML::Value << env.refraction_strength;
+  if (env.absorption_scale     != def.absorption_scale)
+    out << YAML::Key << "absorption_scale"     << YAML::Value << env.absorption_scale;
+  if (env.foam_height_thresh   != def.foam_height_thresh)
+    out << YAML::Key << "foam_height_thresh"   << YAML::Value << env.foam_height_thresh;
+  if (env.foam_shoreline_depth != def.foam_shoreline_depth)
+    out << YAML::Key << "foam_shoreline_depth" << YAML::Value << env.foam_shoreline_depth;
+  if (env.foam_steepness_thresh != def.foam_steepness_thresh)
+    out << YAML::Key << "foam_steepness_thresh" << YAML::Value << env.foam_steepness_thresh;
+  if (env.foam_speed           != def.foam_speed)
+    out << YAML::Key << "foam_speed"           << YAML::Value << env.foam_speed;
+  if (env.normal_scale1        != def.normal_scale1)
+    out << YAML::Key << "normal_scale1"        << YAML::Value << env.normal_scale1;
+  if (env.normal_scale2        != def.normal_scale2)
+    out << YAML::Key << "normal_scale2"        << YAML::Value << env.normal_scale2;
+  if (env.normal_scroll_speed1 != def.normal_scroll_speed1)
+    out << YAML::Key << "normal_scroll_speed1" << YAML::Value << env.normal_scroll_speed1;
+  if (env.normal_scroll_speed2 != def.normal_scroll_speed2)
+    out << YAML::Key << "normal_scroll_speed2" << YAML::Value << env.normal_scroll_speed2;
   if (env.cloud_enabled != def.cloud_enabled)
     out << YAML::Key << "cloud_enabled" << YAML::Value << env.cloud_enabled;
   if (env.cloud_density != def.cloud_density)

@@ -46,6 +46,43 @@ environment::EnvironmentDesc ParseEnvironmentDesc(const YAML::Node& node) {
     desc.trees_enabled = node["trees_enabled"].as<bool>(desc.trees_enabled);
   if (node["water_level"])
     desc.water_level = node["water_level"].as<float>(desc.water_level);
+  if (node["water_color"] && node["water_color"].IsSequence() &&
+      node["water_color"].size() >= 3) {
+    desc.water_color_r = node["water_color"][0].as<float>(desc.water_color_r);
+    desc.water_color_g = node["water_color"][1].as<float>(desc.water_color_g);
+    desc.water_color_b = node["water_color"][2].as<float>(desc.water_color_b);
+  }
+  if (node["roughness"])
+    desc.roughness = node["roughness"].as<float>(desc.roughness);
+  if (node["sun_intensity"])
+    desc.sun_intensity = node["sun_intensity"].as<float>(desc.sun_intensity);
+  if (node["refraction_strength"])
+    desc.refraction_strength =
+        node["refraction_strength"].as<float>(desc.refraction_strength);
+  if (node["absorption_scale"])
+    desc.absorption_scale =
+        node["absorption_scale"].as<float>(desc.absorption_scale);
+  if (node["foam_height_thresh"])
+    desc.foam_height_thresh =
+        node["foam_height_thresh"].as<float>(desc.foam_height_thresh);
+  if (node["foam_shoreline_depth"])
+    desc.foam_shoreline_depth =
+        node["foam_shoreline_depth"].as<float>(desc.foam_shoreline_depth);
+  if (node["foam_steepness_thresh"])
+    desc.foam_steepness_thresh =
+        node["foam_steepness_thresh"].as<float>(desc.foam_steepness_thresh);
+  if (node["foam_speed"])
+    desc.foam_speed = node["foam_speed"].as<float>(desc.foam_speed);
+  if (node["normal_scale1"])
+    desc.normal_scale1 = node["normal_scale1"].as<float>(desc.normal_scale1);
+  if (node["normal_scale2"])
+    desc.normal_scale2 = node["normal_scale2"].as<float>(desc.normal_scale2);
+  if (node["normal_scroll_speed1"])
+    desc.normal_scroll_speed1 =
+        node["normal_scroll_speed1"].as<float>(desc.normal_scroll_speed1);
+  if (node["normal_scroll_speed2"])
+    desc.normal_scroll_speed2 =
+        node["normal_scroll_speed2"].as<float>(desc.normal_scroll_speed2);
   if (node["start_time_of_day"])
     desc.start_time_of_day = node["start_time_of_day"].as<float>(desc.start_time_of_day);
   if (node["time_scale"])

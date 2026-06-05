@@ -34,20 +34,16 @@ struct SceneInfos {
   core::Mat4f view;
   core::Vec3f eye_pos;          // world-space camera position
   float       time;             // elapsed time in seconds
-  float       pad0_ = 0.f;     // std140 alignment gap before inv_screen_size
   core::Vec2f inv_screen_size;  // (1/width, 1/height)
   float       z_near_ = 0.f;   // camera near plane distance
   float       z_far_  = 1.f;   // camera far plane distance
-  float       pad1_   = 0.f;
-  float       pad2_   = 0.f;
 };
 
-static_assert(sizeof(SceneInfos) == 368);
+static_assert(sizeof(SceneInfos) == 352);
 static_assert(offsetof(SceneInfos, eye_pos)         == 320);
-static_assert(offsetof(SceneInfos, time)            == 336);
-static_assert(offsetof(SceneInfos, pad0_)           == 340);
-static_assert(offsetof(SceneInfos, inv_screen_size) == 344);
-static_assert(offsetof(SceneInfos, z_near_)         == 352);
-static_assert(offsetof(SceneInfos, z_far_)          == 356);
+static_assert(offsetof(SceneInfos, time)            == 332);
+static_assert(offsetof(SceneInfos, inv_screen_size) == 336);
+static_assert(offsetof(SceneInfos, z_near_)         == 344);
+static_assert(offsetof(SceneInfos, z_far_)          == 348);
 
 }  // namespace renderer

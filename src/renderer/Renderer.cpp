@@ -375,7 +375,6 @@ void Renderer::FillSceneInfos() {
   si.view            = camera_->GetViewMatrix();
   si.eye_pos         = camera_->GetPosition();
   si.time            = time_;
-  si.pad0_           = 0.f;
   si.inv_screen_size = {1.f / (2.f * sc.x), 1.f / (2.f * sc.y)};
   si.z_near_         = camera_->GetMinDepth();
   si.z_far_          = camera_->GetMaxDepth();
@@ -411,15 +410,30 @@ void Renderer::UpdateWaterRenderer() {
   // Remaining fields use their WaterInfos default values.
   const core::Vec3f nd = sun_dir.Normalized();
   environment::WaterInfos wi;
-  wi.water_level  = water_renderer_->GetWaterLevel();
-  wi.sky_zenith_r = water_renderer_->GetSkyZenithR();
-  wi.sky_zenith_g = water_renderer_->GetSkyZenithG();
-  wi.sky_zenith_b = water_renderer_->GetSkyZenithB();
-  wi.sun_dir_x    = nd.x;
-  wi.sun_dir_y    = nd.y;
-  wi.sun_dir_z    = nd.z;
-  wi.lod_near_dist = water_renderer_->GetLodNearDist();
-  wi.lod_far_dist  = water_renderer_->GetLodFarDist();
+  wi.water_color_r        = water_renderer_->GetWaterColorR();
+  wi.water_color_g        = water_renderer_->GetWaterColorG();
+  wi.water_color_b        = water_renderer_->GetWaterColorB();
+  wi.water_level          = water_renderer_->GetWaterLevel();
+  wi.sky_zenith_r         = water_renderer_->GetSkyZenithR();
+  wi.sky_zenith_g         = water_renderer_->GetSkyZenithG();
+  wi.sky_zenith_b         = water_renderer_->GetSkyZenithB();
+  wi.roughness            = water_renderer_->GetRoughness();
+  wi.sun_dir_x            = nd.x;
+  wi.sun_dir_y            = nd.y;
+  wi.sun_dir_z            = nd.z;
+  wi.sun_intensity        = water_renderer_->GetSunIntensity();
+  wi.refraction_strength  = water_renderer_->GetRefractionStrength();
+  wi.absorption_scale     = water_renderer_->GetAbsorptionScale();
+  wi.foam_height_thresh   = water_renderer_->GetFoamHeightThresh();
+  wi.foam_shoreline_depth = water_renderer_->GetFoamShorelineDepth();
+  wi.foam_steepness_thresh   = water_renderer_->GetFoamSteepnessThresh();
+  wi.foam_speed              = water_renderer_->GetFoamSpeed();
+  wi.normal_scale1           = water_renderer_->GetNormalScale1();
+  wi.normal_scale2           = water_renderer_->GetNormalScale2();
+  wi.normal_scroll_speed1    = water_renderer_->GetNormalScrollSpeed1();
+  wi.normal_scroll_speed2    = water_renderer_->GetNormalScrollSpeed2();
+  wi.lod_near_dist           = water_renderer_->GetLodNearDist();
+  wi.lod_far_dist            = water_renderer_->GetLodFarDist();
   water_infos_cb_->Fill(&wi);
 }
 

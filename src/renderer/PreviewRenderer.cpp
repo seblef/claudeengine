@@ -109,7 +109,6 @@ void PreviewRenderer::FillSceneInfos(const core::Camera& camera, float time) {
   si.view            = camera.GetViewMatrix();
   si.eye_pos         = camera.GetPosition();
   si.time            = time;
-  si.pad0_           = 0.f;
   si.inv_screen_size = {1.f / (2.f * sc.x), 1.f / (2.f * sc.y)};
   si.z_near_         = camera.GetMinDepth();
   si.z_far_          = camera.GetMaxDepth();
