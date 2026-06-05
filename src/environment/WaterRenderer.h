@@ -135,6 +135,12 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   [[nodiscard]] float GetLodNearDist() const { return lod_near_dist_; }
   [[nodiscard]] float GetLodFarDist()  const { return lod_far_dist_;  }
 
+  // Returns the procedural caustic texture, or nullptr if Build() has not been called.
+  // The TerrainRenderer binds this at slot 11 to project caustics on submerged terrain.
+  [[nodiscard]] abstract::RawTexture* GetCausticTexture() const {
+    return caustic_tex_.get();
+  }
+
   // Releases all GPU resources. Called before Shutdown().
   void Reset();
 
@@ -194,6 +200,9 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
 
   void BuildNormalMap();
   void BuildFoamTexture();
+  // Generates a 256×256 tileable caustic interference texture from overlapping
+  // circular wavefronts.  Result is stored in caustic_tex_.
+  void BuildCausticTexture();
 
   // (Re-)creates ssr_rt_ and ssr_fbo_ at screen_w_/2 × screen_h_/2.
   void BuildSsrTarget();
@@ -206,6 +215,7 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   abstract::Shader*                       ssr_shader_ = nullptr;
   std::unique_ptr<abstract::RawTexture>   normal_map_tex_;
   std::unique_ptr<abstract::RawTexture>   foam_tex_;
+  std::unique_ptr<abstract::RawTexture>   caustic_tex_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<abstract::RenderTarget>      ssr_rt_;
   // cppcheck-suppress unusedStructMember

@@ -131,9 +131,9 @@ class Renderer : public core::Singleton<Renderer> {
 
   // Registers a TerrainRenderer to be called in the geometry pass.
   // Pass nullptr to detach the current terrain. The caller retains ownership.
-  void SetTerrainRenderer(terrain::TerrainRenderer* terrain) {
-    terrain_renderer_ = terrain;
-  }
+  // If a WaterRenderer is already registered, its caustic texture is forwarded
+  // to the terrain renderer automatically.
+  void SetTerrainRenderer(terrain::TerrainRenderer* terrain);
 
   // Registers a SkyRenderer to be drawn into the emissive FBO before emissive
   // geometry. Pass nullptr to detach. The caller retains ownership.

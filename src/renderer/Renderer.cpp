@@ -118,6 +118,19 @@ void Renderer::SetWaterRenderer(environment::WaterRenderer* water) {
   // water renderer is correctly sized even when Build() was called with window
   // dimensions that differ from the viewport (e.g. in the editor).
   if (water_renderer_) water_renderer_->Resize(render_w_, render_h_);
+  // Wire caustic texture to terrain renderer if both are available.
+  if (terrain_renderer_) {
+    terrain_renderer_->SetCausticTexture(
+        water_renderer_ ? water_renderer_->GetCausticTexture() : nullptr);
+  }
+}
+
+void Renderer::SetTerrainRenderer(terrain::TerrainRenderer* terrain) {
+  terrain_renderer_ = terrain;
+  // Wire caustic texture from water renderer if already available.
+  if (terrain_renderer_ && water_renderer_) {
+    terrain_renderer_->SetCausticTexture(water_renderer_->GetCausticTexture());
+  }
 }
 
 void Renderer::SetCamera(const core::Camera* camera) {

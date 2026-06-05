@@ -11,6 +11,7 @@
 //   2–5 — layer albedos (layers 0–3)
 //   6–9 — layer normals (layers 0–3, tangent-space RG-encoded)
 //  10  — macro texture (optional, coarse large-scale detail)
+//  11  — caustic texture (RGBA8, tileable, animated caustic projection)
 //
 // Splatmap blending:
 //   albedo = R*albedo0 + G*albedo1 + B*albedo2 + A*albedo3
@@ -32,7 +33,9 @@
 
 #version 460 core
 
+#include <uniforms/scene_infos.glsl>
 #include <uniforms/terrain_patch_infos.glsl>
+#include <uniforms/water_infos.glsl>
 
 // Splatmap and layer textures.
 layout(binding = 1)  uniform sampler2D u_splatmap;
@@ -45,6 +48,7 @@ layout(binding = 7)  uniform sampler2D u_normal1;
 layout(binding = 8)  uniform sampler2D u_normal2;
 layout(binding = 9)  uniform sampler2D u_normal3;
 layout(binding = 10) uniform sampler2D u_macro_texture;
+layout(binding = 11) uniform sampler2D u_caustic_tex;
 
 in vec3 v_world_pos;
 in vec3 v_world_normal;
@@ -181,6 +185,29 @@ void main() {
     if (use_macro_texture == 1) {
         vec3 macro = texture(u_macro_texture, v_world_uv * kMacroScale).rgb;
         albedo *= macro;
+    }
+
+    // Caustic projection: brighten submerged terrain where focused sunlight veins appear.
+    // water_params.a   — world-space Y of the undisplaced water surface.
+    // refraction_params.y — absorption_scale, reused as caustic depth falloff rate.
+    //
+    // Two scrolling UV layers are multiplied to create a time-varying interference
+    // pattern (product emphasises bright peaks and suppresses uniform areas).
+    // Falloff: exp(-depth * absorption_scale) so caustics fade with depth.
+    float world_y   = v_world_pos.y;
+    float water_lvl = water_params.a;
+    if (world_y < water_lvl) {
+        float water_depth = water_lvl - world_y;
+        vec2  world_xz    = v_world_pos.xz;
+
+        vec2 c_uv1 = world_xz * 0.05 + time * vec2(0.03, 0.02);
+        vec2 c_uv2 = world_xz * 0.05 - time * vec2(0.02, 0.03);
+        float caustic = texture(u_caustic_tex, c_uv1).r
+                      * texture(u_caustic_tex, c_uv2).r;
+
+        // Eq: falloff = exp(-depth * k); caustics brighten albedo proportionally.
+        float falloff = exp(-water_depth * refraction_params.y);
+        albedo *= 1.0 + caustic * falloff * 2.0;
     }
 
     out_albedo   = vec4(albedo, 0.0);
