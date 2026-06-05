@@ -39,6 +39,7 @@
 #include "terrain/TerrainData.h"
 #include "terrain/TerrainMaterial.h"
 #include "terrain/TerrainNormalMap.h"
+#include "terrain/TerrainRenderer.h"
 
 namespace editor {
 
@@ -676,8 +677,11 @@ void EditorWindow::CreateTerrain() {
   terrain_obj->SetName("terrain");
   scene_->AddDynamicObject(std::move(terrain_obj));
 
-  // 5. Upload the normal map GPU texture.
+  // 5. Upload the normal map GPU texture and bind it to the renderer.
   terrain_normal_map_->Upload(video_);
+  if (terrain::TerrainRenderer::IsInstanced())
+    terrain::TerrainRenderer::Instance().SetNormalMap(
+        terrain_normal_map_->GetTexture());
 
   // 6. Wire the terrain sculpt panel.
   WireTerrainPanel();
@@ -713,6 +717,9 @@ void EditorWindow::CreateTerrainFromImport(std::vector<uint16_t> samples,
   scene_->AddDynamicObject(std::move(terrain_obj));
 
   terrain_normal_map_->Upload(video_);
+  if (terrain::TerrainRenderer::IsInstanced())
+    terrain::TerrainRenderer::Instance().SetNormalMap(
+        terrain_normal_map_->GetTexture());
   WireTerrainPanel();
   scene_dirty_ = true;
   LOG_F(INFO, "Terrain created from import: %dx%d texels, 1.0 m/texel, "
@@ -724,6 +731,8 @@ void EditorWindow::RemoveTerrain() {
   if (!gt) return;
 
   scene_->RemoveDynamicObject(gt);
+  if (terrain::TerrainRenderer::IsInstanced())
+    terrain::TerrainRenderer::Instance().SetNormalMap(nullptr);
   terrain_normal_map_.reset();
   show_terrain_panel_ = false;
   history_.Clear();

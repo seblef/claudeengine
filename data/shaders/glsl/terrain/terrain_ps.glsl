@@ -49,6 +49,7 @@ layout(binding = 8)  uniform sampler2D u_normal2;
 layout(binding = 9)  uniform sampler2D u_normal3;
 layout(binding = 10) uniform sampler2D u_macro_texture;
 layout(binding = 11) uniform sampler2D u_caustic_tex;
+layout(binding = 12) uniform sampler2D u_terrain_normal;
 
 in vec3 v_world_pos;
 in vec3 v_world_normal;
@@ -136,7 +137,11 @@ vec3 SampleNormal(sampler2D tex, float layer_tiling, bool use_triplanar,
 }
 
 void main() {
-    vec3 N = normalize(v_world_normal);
+    // Use the precomputed per-texel normal map when available; fall back to the
+    // interpolated per-vertex normal from the VS/TESE when it is not bound.
+    vec3 N = (use_terrain_normal_map == 1)
+           ? normalize(texture(u_terrain_normal, v_world_uv).rgb * 2.0 - 1.0)
+           : normalize(v_world_normal);
 
     // Triplanar: activate on slopes where the surface normal has low Y component.
     bool use_triplanar = abs(N.y) < triplanar_threshold;

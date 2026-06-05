@@ -785,6 +785,8 @@ void TerrainEditorPanel::RenderPropertiesTab() {
   if ((min_deact || max_deact) && normal_map_ && video_) {
     normal_map_->Build(*data_);
     normal_map_->Upload(video_);
+    if (terrain::TerrainRenderer::IsInstanced())
+      terrain::TerrainRenderer::Instance().SetNormalMap(normal_map_->GetTexture());
     LOG_F(INFO, "TerrainEditorPanel: height range changed [%.1f, %.1f] — "
           "normal map rebuilt", min_h, max_h);
   }
@@ -1106,6 +1108,8 @@ void TerrainEditorPanel::ApplyImportedHeightmap(const std::vector<uint16_t>& dat
 
   normal_map_->Build(*data_);
   normal_map_->Upload(video_);
+  if (terrain::TerrainRenderer::IsInstanced())
+    terrain::TerrainRenderer::Instance().SetNormalMap(normal_map_->GetTexture());
 
   if (needs_resize) {
     if (terrain::TerrainRenderer::IsInstanced())

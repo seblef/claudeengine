@@ -39,10 +39,10 @@ struct TerrainPatchInfos {
   float       tess_falloff_dist  = 500.f;  // distance in metres where tess factor reaches 1
   float       max_tess           = 8.f;    // tessellation factor at camera distance = 0
   core::Vec4f tiling             = {1.f, 1.f, 1.f, 1.f};  // per-layer UV tiling factors
-  float       triplanar_threshold = 0.5f;  // |normal.y| threshold for triplanar activation
-  int         use_macro_texture  = 0;      // 1 if macro texture is bound to slot 10
-  float       tpi_pad1_          = 0.f;
-  float       tpi_pad2_          = 0.f;
+  float       triplanar_threshold    = 0.5f;  // |normal.y| threshold for triplanar activation
+  int         use_macro_texture     = 0;      // 1 if macro texture is bound to slot 10
+  int         use_terrain_normal_map = 0;     // 1 if terrain normal map is bound to slot 12
+  float       tpi_pad2_             = 0.f;
 };
 
 static_assert(sizeof(TerrainPatchInfos) == 80);

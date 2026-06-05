@@ -94,6 +94,12 @@ class TerrainRenderer : public core::Singleton<TerrainRenderer> {
   // The renderer does not take ownership. Pass nullptr to detach.
   void SetMacroTexture(abstract::Texture* tex) { macro_texture_ = tex; }
 
+  // Attaches the precomputed world-space terrain normal map (slot 12).
+  // When set, the fragment shader samples it per pixel instead of using the
+  // interpolated per-vertex normal. Pass nullptr to fall back to per-vertex.
+  // The renderer does not take ownership.
+  void SetNormalMap(abstract::RawTexture* tex) { terrain_normal_ = tex; }
+
   // Attaches the water caustic texture bound to slot 11 during rendering.
   // When set, the terrain shader projects animated caustic patterns onto
   // submerged fragments using water_params from the WaterInfos CB (slot 9).
@@ -158,9 +164,11 @@ class TerrainRenderer : public core::Singleton<TerrainRenderer> {
   // cppcheck-suppress unusedStructMember
   std::vector<TerrainPatch>                 patches_;
 
-  const TerrainMaterial*  material_            = nullptr;
-  abstract::Texture*      macro_texture_       = nullptr;
-  abstract::RawTexture*   caustic_tex_         = nullptr;
+  const TerrainMaterial*      material_            = nullptr;
+  abstract::Texture*          macro_texture_       = nullptr;
+  abstract::RawTexture*       caustic_tex_         = nullptr;
+  // cppcheck-suppress unusedStructMember
+  abstract::RawTexture*       terrain_normal_      = nullptr;
 
   int         triangle_budget_       = 500'000;
   int         patch_size_            = 64;
