@@ -115,15 +115,20 @@ vec3 SampleNormal(sampler2D tex, float layer_tiling, bool use_triplanar,
 
         // Whiteout blend: add tangent-space offset to the matching world-space
         // normal components so each sample "leans" toward the surface normal.
+        //
+        // Each projection has its own tangent→world remapping:
+        //   XZ (top)  : T=+X, B=+Z, N=+Y → n.xy=(X,Z) perturb, n.z=Y outward
+        //   XY (front): T=+X, B=+Y, N=+Z → n.xy=(X,Y) perturb, n.z=Z outward
+        //   ZY (side) : T=+Z, B=+Y, N=+X → n.xy=(Z,Y) perturb, n.z=X outward
         vec3 w_xz = normalize(vec3(n_xz.x + surface_N.x,
-                                   n_xz.y + surface_N.y,
-                                   n_xz.z + surface_N.z));
+                                   n_xz.z + surface_N.y,
+                                   n_xz.y + surface_N.z));
         vec3 w_xy = normalize(vec3(n_xy.x + surface_N.x,
                                    n_xy.y + surface_N.y,
-                                   n_xy.z));
-        vec3 w_zy = normalize(vec3(n_zy.x,
+                                   n_xy.z + surface_N.z));
+        vec3 w_zy = normalize(vec3(n_zy.z + surface_N.x,
                                    n_zy.y + surface_N.y,
-                                   n_zy.z + surface_N.z));
+                                   n_zy.x + surface_N.z));
 
         return normalize(w_xz * tri_w.y + w_xy * tri_w.z + w_zy * tri_w.x);
     }
