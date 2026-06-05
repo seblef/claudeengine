@@ -167,10 +167,11 @@ class TerrainEditorPanel {
   // immediately or sets the pending-resize state. Returns false on error.
   bool LoadAndApplyHDR(const std::string& path);
 
-  // Applies an already-decoded heightmap to the terrain. If needs_resize is
-  // true the terrain is resized and the splatmap reset.
+  // Applies an already-decoded heightmap to the terrain and updates the height
+  // range to [min_h, max_h]. If needs_resize is true the terrain is resized
+  // and the splatmap reset.
   void ApplyImportedHeightmap(const std::vector<uint16_t>& data, int w, int h,
-                              bool needs_resize);
+                              bool needs_resize, float min_h, float max_h);
 
   // Writes the current heightmap as an 8-bit grayscale PNG.
   void DoExportPNG(const std::string& path);
@@ -202,8 +203,12 @@ class TerrainEditorPanel {
   std::function<void(std::vector<uint16_t>, int, int, float, float)>
       on_create_from_import_;
   IoState io_state_           = IoState::kIdle;
-  int     io_pending_w_ = 0;
-  int     io_pending_h_ = 0;
+  int     io_pending_w_     = 0;
+  int     io_pending_h_     = 0;
+  // cppcheck-suppress unusedStructMember
+  float   io_pending_min_h_ = 0.f;
+  // cppcheck-suppress unusedStructMember
+  float   io_pending_max_h_ = 100.f;
   // cppcheck-suppress unusedStructMember
   std::vector<uint16_t> io_pending_data_;
   // cppcheck-suppress unusedStructMember

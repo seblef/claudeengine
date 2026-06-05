@@ -826,7 +826,8 @@ void TerrainEditorPanel::RenderImportStatusAndModal() {
     ImGui::Spacing();
     if (ImGui::Button("Yes, resize", {120.f, 0.f})) {
       ApplyImportedHeightmap(std::move(io_pending_data_),
-                             io_pending_w_, io_pending_h_, true);
+                             io_pending_w_, io_pending_h_, true,
+                             io_pending_min_h_, io_pending_max_h_);
       io_state_ = IoState::kIdle;
       ImGui::CloseCurrentPopup();
     }
@@ -983,12 +984,13 @@ bool TerrainEditorPanel::LoadAndApplyPNG(const std::string& path) {
   const float px_range = (max_px > min_px)
       ? static_cast<float>(max_px - min_px) : 1.f;
 
+  for (std::size_t i = 0; i < n; ++i) {
+    const float t = (pixels[i] - min_px) / px_range;
+    samples[i] = static_cast<uint16_t>(t * 65535.f + 0.5f);
+  }
+  stbi_image_free(pixels);
+
   if (!data_) {
-    for (std::size_t i = 0; i < n; ++i) {
-      const float t = (pixels[i] - min_px) / px_range;
-      samples[i] = static_cast<uint16_t>(t * 65535.f + 0.5f);
-    }
-    stbi_image_free(pixels);
     if (on_create_from_import_)
       on_create_from_import_(std::move(samples), w, h, import_min_h_, import_max_h_);
     io_status_msg_ = "Import successful.";
@@ -996,25 +998,19 @@ bool TerrainEditorPanel::LoadAndApplyPNG(const std::string& path) {
     return true;
   }
 
-  const float range = import_max_h_ - import_min_h_;
-  for (std::size_t i = 0; i < n; ++i) {
-    const float t = (pixels[i] - min_px) / px_range;
-    const float world_h = import_min_h_ + t * range;
-    samples[i] = data_->HeightToSample(world_h);
-  }
-  stbi_image_free(pixels);
-
   const bool needs_resize =
       (w != data_->GetTexelWidth() || h != data_->GetTexelHeight());
   if (needs_resize) {
-    io_pending_data_ = std::move(samples);
-    io_pending_w_    = w;
-    io_pending_h_    = h;
-    io_state_        = IoState::kConfirmResize;
+    io_pending_data_  = std::move(samples);
+    io_pending_w_     = w;
+    io_pending_h_     = h;
+    io_pending_min_h_ = import_min_h_;
+    io_pending_max_h_ = import_max_h_;
+    io_state_         = IoState::kConfirmResize;
     return true;
   }
 
-  ApplyImportedHeightmap(samples, w, h, false);
+  ApplyImportedHeightmap(samples, w, h, false, import_min_h_, import_max_h_);
   return true;
 }
 
@@ -1070,14 +1066,13 @@ bool TerrainEditorPanel::LoadAndApplyHDR(const std::string& path) {
   }
   const float val_range = (max_val > min_val) ? (max_val - min_val) : 1.f;
 
-  const float range = import_max_h_ - import_min_h_;
   std::vector<uint16_t> samples(n);
+  for (std::size_t i = 0; i < n; ++i) {
+    const float t = (pixels[i] - min_val) / val_range;
+    samples[i] = static_cast<uint16_t>(t * 65535.f + 0.5f);
+  }
 
   if (!data_) {
-    for (std::size_t i = 0; i < n; ++i) {
-      const float t = (pixels[i] - min_val) / val_range;
-      samples[i] = static_cast<uint16_t>(t * 65535.f + 0.5f);
-    }
     if (on_create_from_import_)
       on_create_from_import_(std::move(samples), w, h, import_min_h_, import_max_h_);
     io_status_msg_ = "Import successful.";
@@ -1085,29 +1080,28 @@ bool TerrainEditorPanel::LoadAndApplyHDR(const std::string& path) {
     return true;
   }
 
-  for (std::size_t i = 0; i < n; ++i) {
-    const float t = (pixels[i] - min_val) / val_range;
-    const float world_h = import_min_h_ + t * range;
-    samples[i] = data_->HeightToSample(world_h);
-  }
-
   const bool needs_resize =
       (w != data_->GetTexelWidth() || h != data_->GetTexelHeight());
   if (needs_resize) {
-    io_pending_data_ = std::move(samples);
-    io_pending_w_    = w;
-    io_pending_h_    = h;
-    io_state_        = IoState::kConfirmResize;
+    io_pending_data_  = std::move(samples);
+    io_pending_w_     = w;
+    io_pending_h_     = h;
+    io_pending_min_h_ = import_min_h_;
+    io_pending_max_h_ = import_max_h_;
+    io_state_         = IoState::kConfirmResize;
     return true;
   }
 
-  ApplyImportedHeightmap(samples, w, h, false);
+  ApplyImportedHeightmap(samples, w, h, false, import_min_h_, import_max_h_);
   return true;
 }
 
 void TerrainEditorPanel::ApplyImportedHeightmap(const std::vector<uint16_t>& data,
                                                 int w, int h,
-                                                bool needs_resize) {
+                                                bool needs_resize,
+                                                float min_h, float max_h) {
+  data_->SetMinHeight(min_h);
+  data_->SetMaxHeight(max_h);
   data_->ReplaceHeightmap(data.data(), w, h);
 
   normal_map_->Build(*data_);
@@ -1121,9 +1115,11 @@ void TerrainEditorPanel::ApplyImportedHeightmap(const std::vector<uint16_t>& dat
     LOG_F(INFO, "TerrainEditorPanel: heightmap imported and terrain resized to %dx%d",
           w, h);
   } else {
-    if (terrain::TerrainRenderer::IsInstanced())
+    if (terrain::TerrainRenderer::IsInstanced()) {
+      terrain::TerrainRenderer::Instance().SetHeightRange(min_h, max_h);
       terrain::TerrainRenderer::Instance().UpdateHeightmapTile(
           0, 0, w, h, *data_);
+    }
     LOG_F(INFO, "TerrainEditorPanel: heightmap imported %dx%d", w, h);
   }
 
