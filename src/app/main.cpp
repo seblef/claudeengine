@@ -95,14 +95,12 @@ int main(int argc, char* argv[]) {
   game::GameTerrain*     map_terrain      = nullptr;
 
   // ---- Attempt map load ----------------------------------------------------
-  bool map_loaded = false;
   if (!map_path.empty()) {
     game::MapData map_data = game::MapLoader::Load(map_path, video);
     if (map_data.name.empty() && map_data.objects.empty()) {
       LOG_F(ERROR, "Failed to load map '%s', falling back to demo scene",
             map_path.c_str());
     } else {
-      map_loaded = true;
       LOG_F(INFO, "Loaded map '%s'", map_data.name.c_str());
 
       // Global directional light from map descriptor.

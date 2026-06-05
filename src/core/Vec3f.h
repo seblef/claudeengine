@@ -2,10 +2,6 @@
 
 #include <cmath>
 
-#if CORE_SIMD_ENABLED
-#  include <immintrin.h>
-#endif
-
 namespace core {
 
 // Forward declarations — method bodies live in the respective Mat headers.
@@ -127,7 +123,6 @@ class Vec3f {
   // Applies M to this vector as a homogeneous point (implicit w=1); translation is included.
   [[nodiscard]] Vec3f operator*(const Mat4f& m) const;
   Vec3f& operator*=(const Mat4f& m);
-
 };
 
 // Constant definitions — class is complete here so Vec3f constructors resolve.
