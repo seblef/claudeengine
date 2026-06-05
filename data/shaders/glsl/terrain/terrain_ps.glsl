@@ -3,7 +3,7 @@
 // Writes to 3 render targets:
 //   location 0 (Albedo,  RGBA8)   — splatmap-blended layer albedo × optional macro
 //   location 1 (Normal,  RGBA16F) — world-space normal encoded as N * 0.5 + 0.5
-//   location 2 (Specular, RGBA8)  — matte terrain (zero specular)
+//   location 2 (Specular, RGBA8)  — R=specular intensity (wet boost), G=shininess/256
 //
 // Texture slot layout:
 //   0  — heightmap    (VS / TESE, not used here)
@@ -210,7 +210,23 @@ void main() {
         albedo *= 1.0 + caustic * falloff * 2.0;
     }
 
+    // Wet shoreline: darken albedo and boost specular near the waterline.
+    // Submerged fragments (height_above_water < 0) are always fully wet.
+    // Above water, the effect fades linearly over kWetMargin metres.
+    // Eq: wet ∈ [0,1] — 1 = fully wet, 0 = dry.
+    const float kWetMargin   = 1.0;   // metres above water_level where fade ends
+    const float kWetDarken   = 0.5;   // albedo scale at full wetness
+    const float kWetSpecular = 0.4;   // specular intensity at full wetness
+
+    float height_above_water = world_y - water_lvl;
+    float wet = (height_above_water < 0.0)
+              ? 1.0
+              : 1.0 - smoothstep(0.0, kWetMargin, height_above_water);
+
+    albedo = mix(albedo, albedo * kWetDarken, wet);
+    float specular_intensity = mix(0.0, kWetSpecular, wet);
+
     out_albedo   = vec4(albedo, 0.0);
     out_normal   = vec4(world_n * 0.5 + 0.5, 0.0);
-    out_specular = vec4(0.0, 0.02, 0.0, 0.0);
+    out_specular = vec4(specular_intensity, 0.02, 0.0, 0.0);
 }
