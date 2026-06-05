@@ -118,6 +118,43 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   // Updates the world-space sun direction for Blinn-Phong specular.
   void SetSunDirection(const core::Vec3f& dir) { sun_direction_ = dir; }
 
+  // Updates the deep water colour.
+  void SetWaterColor(float r, float g, float b) {
+    water_color_r_ = r;
+    water_color_g_ = g;
+    water_color_b_ = b;
+  }
+
+  // Updates the surface micro-roughness for the specular lobe.
+  void SetRoughness(float roughness) { roughness_ = roughness; }
+
+  // Updates the HDR sun power multiplier.
+  void SetSunIntensity(float intensity) { sun_intensity_ = intensity; }
+
+  // Updates the UV distortion scale for refraction.
+  void SetRefractionStrength(float strength) { refraction_strength_ = strength; }
+
+  // Updates the depth-based colour absorption strength.
+  void SetAbsorptionScale(float scale) { absorption_scale_ = scale; }
+
+  // Updates all foam parameters at once.
+  void SetFoamParams(float height_thresh, float shoreline_depth,
+                     float steepness_thresh, float speed) {
+    foam_height_thresh_    = height_thresh;
+    foam_shoreline_depth_  = shoreline_depth;
+    foam_steepness_thresh_ = steepness_thresh;
+    foam_speed_            = speed;
+  }
+
+  // Updates scale and scroll speed for both normal map layers.
+  void SetNormalMapParams(float scale1, float scale2,
+                          float scroll_speed1, float scroll_speed2) {
+    normal_scale1_        = scale1;
+    normal_scale2_        = scale2;
+    normal_scroll_speed1_ = scroll_speed1;
+    normal_scroll_speed2_ = scroll_speed2;
+  }
+
   // Updates the XZ distance thresholds used by the water shader LOD system.
   // Fragments closer than lod_near_dist receive full quality (SSR, foam, second
   // normal map, translucency).  Between lod_near_dist and lod_far_dist, SSR is
@@ -132,6 +169,21 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   [[nodiscard]] float GetSkyZenithG()   const { return sky_zenith_g_; }
   [[nodiscard]] float GetSkyZenithB()   const { return sky_zenith_b_; }
   [[nodiscard]] const core::Vec3f& GetSunDirection() const { return sun_direction_; }
+  [[nodiscard]] float GetWaterColorR()         const { return water_color_r_; }
+  [[nodiscard]] float GetWaterColorG()         const { return water_color_g_; }
+  [[nodiscard]] float GetWaterColorB()         const { return water_color_b_; }
+  [[nodiscard]] float GetRoughness()           const { return roughness_; }
+  [[nodiscard]] float GetSunIntensity()        const { return sun_intensity_; }
+  [[nodiscard]] float GetRefractionStrength()  const { return refraction_strength_; }
+  [[nodiscard]] float GetAbsorptionScale()     const { return absorption_scale_; }
+  [[nodiscard]] float GetFoamHeightThresh()    const { return foam_height_thresh_; }
+  [[nodiscard]] float GetFoamShorelineDepth()  const { return foam_shoreline_depth_; }
+  [[nodiscard]] float GetFoamSteepnessThresh() const { return foam_steepness_thresh_; }
+  [[nodiscard]] float GetFoamSpeed()           const { return foam_speed_; }
+  [[nodiscard]] float GetNormalScale1()        const { return normal_scale1_; }
+  [[nodiscard]] float GetNormalScale2()        const { return normal_scale2_; }
+  [[nodiscard]] float GetNormalScrollSpeed1()  const { return normal_scroll_speed1_; }
+  [[nodiscard]] float GetNormalScrollSpeed2()  const { return normal_scroll_speed2_; }
   [[nodiscard]] float GetLodNearDist() const { return lod_near_dist_; }
   [[nodiscard]] float GetLodFarDist()  const { return lod_far_dist_;  }
 
@@ -231,6 +283,21 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   float         sky_zenith_r_  = 0.40f;
   float         sky_zenith_g_  = 0.65f;
   float         sky_zenith_b_  = 0.90f;
+  float         water_color_r_ = 0.02f;
+  float         water_color_g_ = 0.08f;
+  float         water_color_b_ = 0.15f;
+  float         roughness_            = 0.05f;
+  float         sun_intensity_        = 20.f;
+  float         refraction_strength_  = 0.03f;
+  float         absorption_scale_     = 0.20f;
+  float         foam_height_thresh_   = 0.60f;
+  float         foam_shoreline_depth_ = 2.0f;
+  float         foam_steepness_thresh_ = 0.70f;
+  float         foam_speed_           = 1.5f;
+  float         normal_scale1_        = 0.03f;
+  float         normal_scale2_        = 0.07f;
+  float         normal_scroll_speed1_ = 0.30f;
+  float         normal_scroll_speed2_ = 0.20f;
   // cppcheck-suppress unusedStructMember
   float         lod_near_dist_ = 50.f;
   // cppcheck-suppress unusedStructMember

@@ -141,8 +141,17 @@ void EnvironmentEditorPanel::EnableWater(const environment::EnvironmentDesc& des
   } else {
     environment::WaterRenderer::Instance().SetWaterLevel(desc.water_level);
   }
-  renderer::Renderer::Instance().SetWaterRenderer(
-      &environment::WaterRenderer::Instance());
+  environment::WaterRenderer& wr = environment::WaterRenderer::Instance();
+  wr.SetWaterColor(desc.water_color_r, desc.water_color_g, desc.water_color_b);
+  wr.SetRoughness(desc.roughness);
+  wr.SetSunIntensity(desc.sun_intensity);
+  wr.SetRefractionStrength(desc.refraction_strength);
+  wr.SetAbsorptionScale(desc.absorption_scale);
+  wr.SetFoamParams(desc.foam_height_thresh, desc.foam_shoreline_depth,
+                   desc.foam_steepness_thresh, desc.foam_speed);
+  wr.SetNormalMapParams(desc.normal_scale1, desc.normal_scale2,
+                        desc.normal_scroll_speed1, desc.normal_scroll_speed2);
+  renderer::Renderer::Instance().SetWaterRenderer(&wr);
 }
 
 // cppcheck-suppress functionStatic
@@ -373,12 +382,124 @@ bool EnvironmentEditorPanel::RenderWaterSection(
   }
 
   ImGui::BeginDisabled(!env.water_enabled);
+
   if (ImGui::DragFloat("Water level", &env.water_level, 0.1f, -500.f, 500.f,
                         "%.1f m")) {
     if (environment::WaterRenderer::IsInstanced())
       environment::WaterRenderer::Instance().SetWaterLevel(env.water_level);
     changed = true;
   }
+
+  float water_color[3] = { env.water_color_r, env.water_color_g, env.water_color_b };
+  if (ImGui::ColorEdit3("Water color", water_color)) {
+    env.water_color_r = water_color[0];
+    env.water_color_g = water_color[1];
+    env.water_color_b = water_color[2];
+    if (environment::WaterRenderer::IsInstanced())
+      environment::WaterRenderer::Instance().SetWaterColor(
+          env.water_color_r, env.water_color_g, env.water_color_b);
+    changed = true;
+  }
+
+  if (ImGui::SliderFloat("Roughness", &env.roughness, 0.01f, 0.5f, "%.3f")) {
+    if (environment::WaterRenderer::IsInstanced())
+      environment::WaterRenderer::Instance().SetRoughness(env.roughness);
+    changed = true;
+  }
+
+  if (ImGui::SliderFloat("Sun intensity", &env.sun_intensity, 0.f, 50.f, "%.1f")) {
+    if (environment::WaterRenderer::IsInstanced())
+      environment::WaterRenderer::Instance().SetSunIntensity(env.sun_intensity);
+    changed = true;
+  }
+
+  if (ImGui::SliderFloat("Refraction strength", &env.refraction_strength,
+                          0.f, 0.15f, "%.3f")) {
+    if (environment::WaterRenderer::IsInstanced())
+      environment::WaterRenderer::Instance().SetRefractionStrength(
+          env.refraction_strength);
+    changed = true;
+  }
+
+  if (ImGui::SliderFloat("Absorption scale", &env.absorption_scale,
+                          0.f, 1.f, "%.2f")) {
+    if (environment::WaterRenderer::IsInstanced())
+      environment::WaterRenderer::Instance().SetAbsorptionScale(
+          env.absorption_scale);
+    changed = true;
+  }
+
+  if (ImGui::SliderFloat("Foam height thresh", &env.foam_height_thresh,
+                          0.f, 2.f, "%.2f")) {
+    if (environment::WaterRenderer::IsInstanced())
+      environment::WaterRenderer::Instance().SetFoamParams(
+          env.foam_height_thresh, env.foam_shoreline_depth,
+          env.foam_steepness_thresh, env.foam_speed);
+    changed = true;
+  }
+
+  if (ImGui::SliderFloat("Foam shoreline depth", &env.foam_shoreline_depth,
+                          0.f, 10.f, "%.1f")) {
+    if (environment::WaterRenderer::IsInstanced())
+      environment::WaterRenderer::Instance().SetFoamParams(
+          env.foam_height_thresh, env.foam_shoreline_depth,
+          env.foam_steepness_thresh, env.foam_speed);
+    changed = true;
+  }
+
+  if (ImGui::SliderFloat("Foam steepness thresh", &env.foam_steepness_thresh,
+                          0.f, 1.f, "%.2f")) {
+    if (environment::WaterRenderer::IsInstanced())
+      environment::WaterRenderer::Instance().SetFoamParams(
+          env.foam_height_thresh, env.foam_shoreline_depth,
+          env.foam_steepness_thresh, env.foam_speed);
+    changed = true;
+  }
+
+  if (ImGui::SliderFloat("Foam speed", &env.foam_speed, 0.f, 5.f, "%.2f")) {
+    if (environment::WaterRenderer::IsInstanced())
+      environment::WaterRenderer::Instance().SetFoamParams(
+          env.foam_height_thresh, env.foam_shoreline_depth,
+          env.foam_steepness_thresh, env.foam_speed);
+    changed = true;
+  }
+
+  if (ImGui::SliderFloat("Normal scale 1", &env.normal_scale1,
+                          0.005f, 0.2f, "%.3f")) {
+    if (environment::WaterRenderer::IsInstanced())
+      environment::WaterRenderer::Instance().SetNormalMapParams(
+          env.normal_scale1, env.normal_scale2,
+          env.normal_scroll_speed1, env.normal_scroll_speed2);
+    changed = true;
+  }
+
+  if (ImGui::SliderFloat("Normal scale 2", &env.normal_scale2,
+                          0.005f, 0.2f, "%.3f")) {
+    if (environment::WaterRenderer::IsInstanced())
+      environment::WaterRenderer::Instance().SetNormalMapParams(
+          env.normal_scale1, env.normal_scale2,
+          env.normal_scroll_speed1, env.normal_scroll_speed2);
+    changed = true;
+  }
+
+  if (ImGui::SliderFloat("Normal scroll speed 1", &env.normal_scroll_speed1,
+                          0.f, 2.f, "%.2f")) {
+    if (environment::WaterRenderer::IsInstanced())
+      environment::WaterRenderer::Instance().SetNormalMapParams(
+          env.normal_scale1, env.normal_scale2,
+          env.normal_scroll_speed1, env.normal_scroll_speed2);
+    changed = true;
+  }
+
+  if (ImGui::SliderFloat("Normal scroll speed 2", &env.normal_scroll_speed2,
+                          0.f, 2.f, "%.2f")) {
+    if (environment::WaterRenderer::IsInstanced())
+      environment::WaterRenderer::Instance().SetNormalMapParams(
+          env.normal_scale1, env.normal_scale2,
+          env.normal_scroll_speed1, env.normal_scroll_speed2);
+    changed = true;
+  }
+
   ImGui::EndDisabled();
   return changed;
 }
