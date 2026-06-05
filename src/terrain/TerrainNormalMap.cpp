@@ -20,8 +20,8 @@ float HeightAt(const TerrainData& data, int tx, int tz) {
   tx = std::clamp(tx, 0, data.GetTexelWidth()  - 1);
   tz = std::clamp(tz, 0, data.GetTexelHeight() - 1);
   const float mpt = data.GetMetersPerTexel();
-  return data.GetHeight((static_cast<float>(tx) + 0.5f) * mpt,
-                        (static_cast<float>(tz) + 0.5f) * mpt);
+  return data.GetHeight(static_cast<float>(tx) * mpt,
+                        static_cast<float>(tz) * mpt);
 }
 
 uint8_t EncodeChannel(float v) {
