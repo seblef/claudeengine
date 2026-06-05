@@ -867,8 +867,9 @@ void TerrainEditorPanel::RenderImportWindow() {
     }
 
     ImGui::TextWrapped(
-        "PNG: maps brightness [0\xe2\x80\x93""255] to height [min, max] (configurable).\n"
-        "HDR/EXR: maps float values [0\xe2\x80\x93""1] to height [min, max] (configurable).");
+        "PNG/HDR/EXR: pixel values are normalised to [0\xe2\x80\x93""1] "
+        "(min pixel \xe2\x86\x92 0, max pixel \xe2\x86\x92 1), "
+        "then mapped to height [min, max] (configurable).");
     ImGui::Spacing();
 
     ImGui::DragFloat("Min Height##import", &import_min_h_, 0.5f,
@@ -971,13 +972,22 @@ bool TerrainEditorPanel::LoadAndApplyPNG(const std::string& path) {
 
   const std::size_t n = static_cast<std::size_t>(w) * h;
   std::vector<uint16_t> samples(n);
-  const float range = import_max_h_ - import_min_h_;
+
+  // Normalise to [0, 1] before mapping to the editor height range.
+  uint8_t min_px = pixels[0];
+  uint8_t max_px = pixels[0];
+  for (std::size_t i = 1; i < n; ++i) {
+    if (pixels[i] < min_px) min_px = pixels[i];
+    if (pixels[i] > max_px) max_px = pixels[i];
+  }
+  const float px_range = (max_px > min_px)
+      ? static_cast<float>(max_px - min_px) : 1.f;
 
   if (!data_) {
-    // No existing terrain: pixel [0,255] maps linearly to sample [0,65535].
-    // The new terrain will use [import_min_h_, import_max_h_] as its range.
-    for (std::size_t i = 0; i < n; ++i)
-      samples[i] = static_cast<uint16_t>(pixels[i] / 255.f * 65535.f + 0.5f);
+    for (std::size_t i = 0; i < n; ++i) {
+      const float t = (pixels[i] - min_px) / px_range;
+      samples[i] = static_cast<uint16_t>(t * 65535.f + 0.5f);
+    }
     stbi_image_free(pixels);
     if (on_create_from_import_)
       on_create_from_import_(std::move(samples), w, h, import_min_h_, import_max_h_);
@@ -986,8 +996,10 @@ bool TerrainEditorPanel::LoadAndApplyPNG(const std::string& path) {
     return true;
   }
 
+  const float range = import_max_h_ - import_min_h_;
   for (std::size_t i = 0; i < n; ++i) {
-    const float world_h = import_min_h_ + (pixels[i] / 255.f) * range;
+    const float t = (pixels[i] - min_px) / px_range;
+    const float world_h = import_min_h_ + t * range;
     samples[i] = data_->HeightToSample(world_h);
   }
   stbi_image_free(pixels);
@@ -1048,14 +1060,22 @@ bool TerrainEditorPanel::LoadAndApplyHDR(const std::string& path) {
     stbi_image_free(raw);
   }
 
-  // Float pixel values are in [0, 1]; map them to [import_min_h_, import_max_h_].
+  // Normalise to [0, 1] before mapping to the editor height range.
   const std::size_t n = pixels.size();
+  float min_val = pixels[0];
+  float max_val = pixels[0];
+  for (std::size_t i = 1; i < n; ++i) {
+    if (pixels[i] < min_val) min_val = pixels[i];
+    if (pixels[i] > max_val) max_val = pixels[i];
+  }
+  const float val_range = (max_val > min_val) ? (max_val - min_val) : 1.f;
+
   const float range = import_max_h_ - import_min_h_;
   std::vector<uint16_t> samples(n);
 
   if (!data_) {
     for (std::size_t i = 0; i < n; ++i) {
-      const float t = std::clamp(pixels[i], 0.f, 1.f);
+      const float t = (pixels[i] - min_val) / val_range;
       samples[i] = static_cast<uint16_t>(t * 65535.f + 0.5f);
     }
     if (on_create_from_import_)
@@ -1066,7 +1086,7 @@ bool TerrainEditorPanel::LoadAndApplyHDR(const std::string& path) {
   }
 
   for (std::size_t i = 0; i < n; ++i) {
-    const float t = std::clamp(pixels[i], 0.f, 1.f);
+    const float t = (pixels[i] - min_val) / val_range;
     const float world_h = import_min_h_ + t * range;
     samples[i] = data_->HeightToSample(world_h);
   }
