@@ -217,19 +217,9 @@ inline const Mat3f Mat3f::kIdentity{};
 
 // Out-of-line definitions for Vec3f × Mat3f operators declared in Vec3f.h.
 inline Vec3f Vec3f::operator*(const Mat3f& m) const {
-#if CORE_SIMD_ENABLED
-  const float* d = m.Data();
-  __m128 vr = Reg();
-  return Vec3f(
-    _mm_cvtss_f32(_mm_dp_ps(_mm_load_ps(&d[0]), vr, 0x71)),
-    _mm_cvtss_f32(_mm_dp_ps(_mm_load_ps(&d[4]), vr, 0x71)),
-    _mm_cvtss_f32(_mm_dp_ps(_mm_load_ps(&d[8]), vr, 0x71))
-  );
-#else
   return {m(0,0)*x + m(0,1)*y + m(0,2)*z,
           m(1,0)*x + m(1,1)*y + m(1,2)*z,
           m(2,0)*x + m(2,1)*y + m(2,2)*z};
-#endif
 }
 inline Vec3f& Vec3f::operator*=(const Mat3f& m) { *this = *this * m; return *this; }
 

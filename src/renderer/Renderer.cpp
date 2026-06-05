@@ -375,7 +375,6 @@ void Renderer::FillSceneInfos() {
   si.view            = camera_->GetViewMatrix();
   si.eye_pos         = camera_->GetPosition();
   si.time            = time_;
-  si.pad0_           = 0.f;
   si.inv_screen_size = {1.f / (2.f * sc.x), 1.f / (2.f * sc.y)};
   si.z_near_         = camera_->GetMinDepth();
   si.z_far_          = camera_->GetMaxDepth();
