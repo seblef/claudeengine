@@ -23,9 +23,10 @@ namespace environment {
 
 namespace {
 
-constexpr int   kNormalMapSize = 512;    // resolution of the procedural normal map
-constexpr int   kFoamTexSize   = 256;    // resolution of the procedural foam texture
-constexpr int   kTileSize      = 8;      // grid cells per tile side for frustum culling
+constexpr int   kNormalMapSize  = 512;    // resolution of the procedural normal map
+constexpr int   kFoamTexSize    = 256;    // resolution of the procedural foam texture
+constexpr int   kCausticTexSize = 256;    // resolution of the procedural caustic texture
+constexpr int   kTileSize       = 8;      // grid cells per tile side for frustum culling
 
 // LOD ring specs: { cell_size_m, inner_radius_m, outer_radius_m }.
 // outer_radius for LOD 2 is filled at Build() time from terrain dimensions.
@@ -47,6 +48,40 @@ float NormalMapHeight(float u, float v) {
         + 0.25f * std::sin(u * s * 7.f - v * s * 5.f)
         + 0.20f * std::sin(u * s * 2.f + v * s * 11.f)
         + 0.15f * std::sin(u * s * 13.f + v * s * 3.f);
+}
+
+// Returns a caustic intensity in [0,1] at texel (u,v) by summing cosine rings
+// emanating from several source points (toroidal distance for tileability).
+// Values above the threshold become bright veins; below is dark background.
+float CausticValue(float u, float v) {
+  struct Source { float cx; float cy; float freq; float phase; };
+  // Six sources at irregular positions scaled to kCausticTexSize.
+  static constexpr Source kSources[] = {
+      {  51.2f,  51.2f, 0.15f, 0.00f },
+      { 204.8f,  76.8f, 0.17f, 1.20f },
+      { 128.0f, 204.8f, 0.13f, 2.40f },
+      {  76.8f, 153.6f, 0.19f, 0.80f },
+      { 179.2f, 153.6f, 0.12f, 3.00f },
+      {  38.4f, 217.6f, 0.16f, 1.80f },
+  };
+  constexpr float kHalf = kCausticTexSize * 0.5f;
+  float sum = 0.f;
+  for (const auto& src : kSources) {
+    float dx = u - src.cx;
+    float dz = v - src.cy;
+    // Toroidal wrap: keep dx/dz in (-half, +half] so the pattern tiles.
+    if (dx >  kHalf) dx -= kCausticTexSize;
+    if (dx < -kHalf) dx += kCausticTexSize;
+    if (dz >  kHalf) dz -= kCausticTexSize;
+    if (dz < -kHalf) dz += kCausticTexSize;
+    const float dist = std::sqrt(dx * dx + dz * dz);
+    sum += std::cos(dist * src.freq + src.phase);
+  }
+  // Threshold: only the upper fraction of the interference peak becomes bright.
+  // sum range ≈ [-6, 6]; values > 4 mapped to [0, 1].
+  constexpr float kThresh = 4.0f;
+  constexpr float kScale  = 1.0f / (6.0f - kThresh);
+  return std::max(0.f, (sum - kThresh) * kScale);
 }
 
 // Returns a foam intensity in [0,1] at texel (u,v) by taking the product of four
@@ -112,6 +147,7 @@ void WaterRenderer::Build(abstract::VideoDevice* video,
 
   BuildNormalMap();
   BuildFoamTexture();
+  BuildCausticTexture();
   BuildSsrTarget();
 }
 
@@ -285,6 +321,25 @@ void WaterRenderer::BuildFoamTexture() {
   foam_tex_ = video_->CreateTileableTexture(size, size, pixels.data());
 }
 
+void WaterRenderer::BuildCausticTexture() {
+  constexpr int size = kCausticTexSize;
+
+  std::vector<uint8_t> pixels(static_cast<size_t>(size * size * 4));
+  for (int y = 0; y < size; ++y) {
+    for (int x = 0; x < size; ++x) {
+      const float val = CausticValue(static_cast<float>(x), static_cast<float>(y));
+      const auto  b8  = static_cast<uint8_t>(val * 255.0f);
+      const int   idx = (y * size + x) * 4;
+      pixels[static_cast<size_t>(idx + 0)] = b8;
+      pixels[static_cast<size_t>(idx + 1)] = b8;
+      pixels[static_cast<size_t>(idx + 2)] = b8;
+      pixels[static_cast<size_t>(idx + 3)] = 255;
+    }
+  }
+
+  caustic_tex_ = video_->CreateTileableTexture(size, size, pixels.data());
+}
+
 void WaterRenderer::Render(const core::Camera& camera,
                            abstract::RenderTarget* scene_color,
                            abstract::RenderTarget* depth,
@@ -428,6 +483,7 @@ void WaterRenderer::Reset() {
   }
   normal_map_tex_.reset();
   foam_tex_.reset();
+  caustic_tex_.reset();
   video_ = nullptr;
 }
 

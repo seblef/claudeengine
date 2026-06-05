@@ -94,6 +94,12 @@ class TerrainRenderer : public core::Singleton<TerrainRenderer> {
   // The renderer does not take ownership. Pass nullptr to detach.
   void SetMacroTexture(abstract::Texture* tex) { macro_texture_ = tex; }
 
+  // Attaches the water caustic texture bound to slot 11 during rendering.
+  // When set, the terrain shader projects animated caustic patterns onto
+  // submerged fragments using water_params from the WaterInfos CB (slot 9).
+  // The renderer does not take ownership. Pass nullptr to detach.
+  void SetCausticTexture(abstract::RawTexture* tex) { caustic_tex_ = tex; }
+
   // Sets the |world_normal.y| threshold below which triplanar mapping activates.
   void SetTriplanarThreshold(float threshold) { triplanar_threshold_ = threshold; }
 
@@ -154,6 +160,7 @@ class TerrainRenderer : public core::Singleton<TerrainRenderer> {
 
   const TerrainMaterial*  material_            = nullptr;
   abstract::Texture*      macro_texture_       = nullptr;
+  abstract::RawTexture*   caustic_tex_         = nullptr;
 
   int         triangle_budget_       = 500'000;
   int         patch_size_            = 64;
