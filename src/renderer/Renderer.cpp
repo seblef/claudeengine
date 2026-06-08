@@ -351,6 +351,10 @@ void Renderer::Update(float time, const core::Camera* camera,
   // Upload PostProcessInfos UBO after eye adaptation may have updated exposure.
   post_process_infos_cb_->Fill(&post_process_infos_);
 
+  // Restore full-resolution viewport — bloom and eye-adaptation passes set the
+  // viewport to each mip level's size and do not reset it on return.
+  video_->SetViewport(0, 0, render_w_, render_h_);
+
   // 5. Composite pass — tone-map and gamma-correct the HDR RT to the default framebuffer.
   emissive_fbo_.GetHDRRT()->BindAsSampler(0);
   // Bind bloom texture at slot 11 (1×1 black fallback when bloom is disabled).
