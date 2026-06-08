@@ -216,6 +216,9 @@ int main(int argc, char* argv[]) {
       renderer::Renderer::Instance().CycleShadowDebug();
   });
 
+  // Capture the cursor so mouse deltas are delivered even at window/screen edges.
+  devices.SetCursorCapture(true);
+
   // ---- Main loop ------------------------------------------------------------
   float prev_elapsed = 0.f;
   while (game.IsRunning()) {

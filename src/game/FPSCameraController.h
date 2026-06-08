@@ -9,9 +9,11 @@ namespace game {
 
 // FPS-style camera controller: mouse look with keyboard movement.
 //
-// Movement keys: arrow up/down = forward/back, left/right = strafe,
+// Movement keys: arrow up/down = forward/back, left/right = strafe left/right,
 //                A = ascend, Z = descend (free-fly only), Space = jump.
 // Mouse: horizontal delta → yaw, vertical delta → pitch (clamped to ±1.5 rad).
+// Requires the platform cursor to be captured (SetCursorCapture(true) on
+// abstract::Devices) so look-direction updates at window and screen edges.
 //
 // When a terrain is bound via SetTerrain(), vertical position is gravity-driven:
 // Space triggers a jump impulse and gravity pulls the player back to the ground.

@@ -30,6 +30,10 @@ class GLDevices : public abstract::Devices {
   // Returns the underlying GLFWwindow* as void*. Cast at the call site.
   [[nodiscard]] void* GetWindow() override;
 
+  // Hides and locks the cursor (GLFW_CURSOR_DISABLED) so that mouse deltas
+  // keep accumulating past window and screen edges, or restores normal mode.
+  void SetCursorCapture(bool capture) override;
+
  private:
   GLFWwindow* window_ = nullptr;
   std::unique_ptr<GLVideoDevice> gl_video_device_;

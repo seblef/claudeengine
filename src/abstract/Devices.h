@@ -28,6 +28,12 @@ class Devices {
   // Returns the GPU backend owned by this device manager.
   [[nodiscard]] VideoDevice* GetVideoDevice() const { return video_device_; }
 
+  // Captures or releases the OS cursor. When captured the cursor is hidden and
+  // confined, and the platform delivers unbounded relative mouse events — this
+  // keeps camera look-direction updating even at window/screen boundaries.
+  // Default implementation is a no-op; override in concrete platform drivers.
+  virtual void SetCursorCapture(bool /*capture*/) {}
+
  protected:
   VideoDevice* video_device_ = nullptr;
 };

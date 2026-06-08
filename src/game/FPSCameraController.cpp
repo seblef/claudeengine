@@ -54,6 +54,11 @@ void FPSCameraController::OnEvent(const core::Event& event) {
       prev_mouse_x_ = event.mouse_x;
       prev_mouse_y_ = event.mouse_y;
       break;
+    case core::EventType::kWindowLostFocus:
+      // Reset tracking so the first move after re-focus doesn't jump.
+      prev_mouse_x_ = -1.f;
+      prev_mouse_y_ = -1.f;
+      break;
     default:
       break;
   }
@@ -67,7 +72,7 @@ void FPSCameraController::Update(float dt) {
       -std::sin(pitch_),
       -std::cos(yaw_) * std::cos(pitch_)
   };
-  const core::Vec3f right = core::Vec3f::kAxisY.Cross(look).Normalized();
+  const core::Vec3f right = look.Cross(core::Vec3f::kAxisY).Normalized();
 
   const float spd = kMoveSpeed * dt;
   if (k_forward_) position_ += look                * spd;
