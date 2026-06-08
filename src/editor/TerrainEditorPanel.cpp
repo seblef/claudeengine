@@ -29,6 +29,7 @@
 #include "renderer/Renderer.h"
 #include "terrain/FoliageLayer.h"
 #include "terrain/TerrainData.h"
+#include "terrain/TerrainGenerator.h"
 #include "terrain/TerrainMaterial.h"
 #include "terrain/TerrainRenderer.h"
 
@@ -796,6 +797,118 @@ void TerrainEditorPanel::SetOnCreateFromImport(
 void TerrainEditorPanel::OpenImportWindow() {
   show_import_window_ = true;
   io_status_msg_.clear();
+}
+
+void TerrainEditorPanel::OpenGenerateWindow() {
+  show_generate_window_ = true;
+}
+
+void TerrainEditorPanel::RenderGenerateWindow() {
+  if (!show_generate_window_) return;
+
+  ImGui::SetNextWindowSize({420.f, 0.f}, ImGuiCond_FirstUseEver);
+  if (!ImGui::Begin("Generate Terrain", &show_generate_window_,
+                    ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImGui::End();
+    return;
+  }
+
+  // ---- Terrain size ----------------------------------------------------------
+  ImGui::SeparatorText("Terrain Size");
+  ImGui::DragFloat("World width (m)",  &gen_world_width_,      1.f,  1.f, 100000.f, "%.1f");
+  ImGui::DragFloat("World depth (m)",  &gen_world_depth_,      1.f,  1.f, 100000.f, "%.1f");
+  ImGui::DragFloat("Metres per texel", &gen_meters_per_texel_, 0.1f, 0.1f,    10.f, "%.2f");
+  gen_world_width_       = std::max(gen_world_width_,       1.f);
+  gen_world_depth_       = std::max(gen_world_depth_,       1.f);
+  gen_meters_per_texel_  = std::max(gen_meters_per_texel_,  0.1f);
+
+  const int texel_w = static_cast<int>(gen_world_width_  / gen_meters_per_texel_);
+  const int texel_h = static_cast<int>(gen_world_depth_ / gen_meters_per_texel_);
+  ImGui::TextDisabled("→  %d × %d texels", texel_w, texel_h);
+
+  // ---- Height range ----------------------------------------------------------
+  ImGui::SeparatorText("Height Range");
+  ImGui::DragFloat("Min height (m)", &gen_min_h_, 0.5f, -10000.f,
+                   gen_max_h_ - 0.1f, "%.1f");
+  ImGui::DragFloat("Max height (m)", &gen_max_h_, 0.5f,
+                   gen_min_h_ + 0.1f,  10000.f, "%.1f");
+  gen_max_h_ = std::max(gen_max_h_, gen_min_h_ + 0.1f);
+
+  // ---- Algorithm -------------------------------------------------------------
+  ImGui::SeparatorText("Algorithm");
+  const char* algo_names[] = {"fBm (Fractal Brownian Motion)"};
+  int algo_idx = static_cast<int>(gen_algorithm_);
+  if (ImGui::BeginCombo("##algo", algo_names[algo_idx])) {
+    for (int i = 0; i < 1; ++i) {
+      const bool selected = (algo_idx == i);
+      if (ImGui::Selectable(algo_names[i], selected))
+        gen_algorithm_ = static_cast<GenAlgorithm>(i);
+      if (selected)
+        ImGui::SetItemDefaultFocus();
+    }
+    ImGui::EndCombo();
+  }
+
+  // ---- fBm parameters --------------------------------------------------------
+  ImGui::SeparatorText("fBm Parameters");
+  ImGui::DragInt  ("Seed",        &gen_fbm_params_.seed,        1.f);
+  ImGui::DragFloat("Scale (m)",   &gen_fbm_params_.scale,       1.f,   1.f, 10000.f, "%.1f");
+  ImGui::DragInt  ("Octaves",     &gen_fbm_params_.octaves,     1.f,   1,       16);
+  ImGui::DragFloat("Persistence", &gen_fbm_params_.persistence, 0.01f, 0.01f,   1.f, "%.2f");
+  ImGui::DragFloat("Lacunarity",  &gen_fbm_params_.lacunarity,  0.01f, 1.f,     8.f, "%.2f");
+  gen_fbm_params_.octaves     = std::max(1,     gen_fbm_params_.octaves);
+  gen_fbm_params_.scale       = std::max(1.f,   gen_fbm_params_.scale);
+  gen_fbm_params_.persistence = std::clamp(gen_fbm_params_.persistence, 0.01f, 1.f);
+  gen_fbm_params_.lacunarity  = std::max(1.f,   gen_fbm_params_.lacunarity);
+
+  ImGui::Spacing();
+  if (ImGui::Button("Randomize seed")) {
+    gen_fbm_params_.seed = std::rand();  // NOLINT(cert-msc50-cpp)
+  }
+  ImGui::SameLine();
+  ImGui::TextDisabled("then hit Generate to audition");
+
+  // ---- Generate --------------------------------------------------------------
+  ImGui::Spacing();
+  ImGui::Separator();
+  ImGui::Spacing();
+
+  const bool can_generate = (texel_w > 0 && texel_h > 0);
+  ImGui::BeginDisabled(!can_generate);
+  if (ImGui::Button("Generate", {-1.f, 0.f})) {
+    std::vector<uint16_t> hmap = terrain::TerrainGenerator::GenerateFbm(
+        texel_w, texel_h,
+        gen_meters_per_texel_,
+        gen_min_h_, gen_max_h_,
+        gen_fbm_params_);
+
+    if (!data_) {
+      if (on_create_from_import_)
+        on_create_from_import_(std::move(hmap), texel_w, texel_h,
+                               gen_min_h_, gen_max_h_);
+    } else {
+      const bool needs_resize =
+          (texel_w != data_->GetTexelWidth() || texel_h != data_->GetTexelHeight());
+      if (needs_resize) {
+        io_pending_data_  = std::move(hmap);
+        io_pending_w_     = texel_w;
+        io_pending_h_     = texel_h;
+        io_pending_min_h_ = gen_min_h_;
+        io_pending_max_h_ = gen_max_h_;
+        io_state_         = IoState::kConfirmResize;
+      } else {
+        ApplyImportedHeightmap(hmap, texel_w, texel_h, false,
+                               gen_min_h_, gen_max_h_);
+      }
+    }
+  }
+  ImGui::EndDisabled();
+
+  // Resize-confirmation modal is only shown when a terrain already exists.
+  if (data_)
+    RenderImportStatusAndModal();
+
+  ImGui::End();
 }
 
 void TerrainEditorPanel::RenderImportStatusAndModal() {
