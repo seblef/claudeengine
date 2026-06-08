@@ -16,6 +16,7 @@
 #include "environment/WindInfos.h"
 #include "environment/WindSystem.h"
 #include "renderer/CSMInfos.h"
+#include "renderer/PostProcessInfos.h"
 #include "renderer/GeometryUtils.h"
 #include "renderer/LightRenderer.h"
 #include "renderer/MaterialInfos.h"
@@ -36,8 +37,10 @@ constexpr int kCSMInfosSlot           = 5;
 constexpr int kCSMInfosFloat4s        = sizeof(CSMInfos) / 16;          // 272 / 16 = 17
 constexpr int kWindInfosSlot          = 7;
 constexpr int kWindInfosFloat4s       = sizeof(environment::WindInfos) / 16;  // 16 / 16 = 1
-constexpr int kWaterInfosSlot         = 9;
-constexpr int kWaterInfosFloat4s      = sizeof(environment::WaterInfos) / 16;  // 96 / 16 = 6
+constexpr int kWaterInfosSlot            = 9;
+constexpr int kWaterInfosFloat4s         = sizeof(environment::WaterInfos) / 16;   // 96 / 16 = 6
+constexpr int kPostProcessInfosSlot      = 10;
+constexpr int kPostProcessInfosFloat4s   = sizeof(PostProcessInfos) / 16;           // 16 / 16 = 1
 }  // namespace
 
 Renderer::Renderer(abstract::VideoDevice* video)
@@ -57,6 +60,8 @@ Renderer::Renderer(abstract::VideoDevice* video)
       kWindInfosFloat4s, kWindInfosSlot, abstract::BufferUsage::kDynamic);
   water_infos_cb_ = video_->CreateConstantBuffer(
       kWaterInfosFloat4s, kWaterInfosSlot, abstract::BufferUsage::kDynamic);
+  post_process_infos_cb_ = video_->CreateConstantBuffer(
+      kPostProcessInfosFloat4s, kPostProcessInfosSlot, abstract::BufferUsage::kDynamic);
 
   render_w_ = video_->GetWidth();
   render_h_ = video_->GetHeight();
@@ -158,6 +163,8 @@ void Renderer::Update(float time, const core::Camera* camera,
   csm_infos_cb_->Bind();
   wind_infos_cb_->Bind();
   water_infos_cb_->Bind();
+  post_process_infos_cb_->Bind();
+  post_process_infos_cb_->Fill(&post_process_infos_);
   FillSceneInfos();
   FillWindInfos();
   if (water_renderer_) UpdateWaterRenderer();

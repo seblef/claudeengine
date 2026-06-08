@@ -12,6 +12,7 @@
 #include "core/Mat4f.h"
 #include "core/Singleton.h"
 #include "renderer/EmissiveFBO.h"
+#include "renderer/PostProcessInfos.h"
 #include "renderer/FoliageRenderer.h"
 #include "renderer/TreeRenderer.h"
 #include "renderer/GBuffer.h"
@@ -43,13 +44,14 @@ enum class DebugMode : int {
 // Singleton renderer. Owns all per-frame constant buffers and render targets.
 //
 // Constant buffer slots:
-//   Slot 1 (RenderableInfos): per-object world matrix.
-//   Slot 2 (SceneInfos): per-frame camera matrices, eye position, time, z_near/z_far.
-//   Slot 3 (MaterialInfos): per-material colors and shininess.
-//   Slot 5 (CSMInfos): cascade VP matrices and split depths for GlobalLight CSM.
-//   Slot 7 (WindInfos): wind_xz, wind_strength, wind_time (global; all passes).
-//   Slot 8 (SkyInfos): sun direction, time of day, turbidity (sky pass only).
-//   Slot 9 (WaterInfos): water level, colours, sun, foam params (global; all passes).
+//   Slot  1 (RenderableInfos):  per-object world matrix.
+//   Slot  2 (SceneInfos):       per-frame camera matrices, eye position, time, z_near/z_far.
+//   Slot  3 (MaterialInfos):    per-material colors and shininess.
+//   Slot  5 (CSMInfos):         cascade VP matrices and split depths for GlobalLight CSM.
+//   Slot  7 (WindInfos):        wind_xz, wind_strength, wind_time (global; all passes).
+//   Slot  8 (SkyInfos):         sun direction, time of day, turbidity (sky pass only).
+//   Slot  9 (WaterInfos):       water level, colours, sun, foam params (global; all passes).
+//   Slot 10 (PostProcessInfos): exposure, bloom_intensity, bloom_threshold, adapt_speed.
 //
 // Render targets (created at video resolution, recreated on resize):
 //   gbuffer_              — 3-MRT FBO: albedo (RGBA8), normal (RGBA16F), specular (RGBA8)
@@ -227,6 +229,7 @@ class Renderer : public core::Singleton<Renderer> {
   std::unique_ptr<abstract::ConstantBuffer> wind_infos_cb_;
   // WaterInfos CB — bound globally so terrain shaders can read water_level.
   std::unique_ptr<abstract::ConstantBuffer> water_infos_cb_;
+  std::unique_ptr<abstract::ConstantBuffer> post_process_infos_cb_;
 
   std::unique_ptr<NoCullingVisibilitySystem> no_culling_system_;
   std::unique_ptr<OctreeVisibilitySystem>    octree_system_;
@@ -269,7 +272,10 @@ class Renderer : public core::Singleton<Renderer> {
   bool foliage_enabled_ = false;
   bool tree_enabled_    = false;
 
-  // Composite pass resources — gamma-correct the HDR RT to the default framebuffer.
+  // cppcheck-suppress unusedStructMember
+  PostProcessInfos post_process_infos_;
+
+  // Composite pass resources — tone-map and gamma-correct the HDR RT to the default framebuffer.
   // cppcheck-suppress unusedStructMember
   abstract::Shader*             composite_shader_;
   // cppcheck-suppress unusedStructMember
