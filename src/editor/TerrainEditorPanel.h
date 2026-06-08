@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include "terrain/TerrainGenerator.h"
+
 namespace abstract { class VideoDevice; }
 namespace game { class GameTerrain; }
 namespace terrain {
@@ -60,6 +62,14 @@ class TerrainEditorPanel {
   // Renders the terrain import floating window when open.
   // Must be called outside any ImGui::Begin/End block each frame.
   void RenderImportWindow();
+
+  // Opens the procedural terrain generation floating window.
+  // Must be called outside any ImGui::Begin/End block.
+  void OpenGenerateWindow();
+
+  // Renders the procedural terrain generation floating window when open.
+  // Must be called outside any ImGui::Begin/End block each frame.
+  void RenderGenerateWindow();
 
   // Renders the auto-paint floating window when open.
   // Must be called outside any ImGui::Begin/End block each frame.
@@ -196,7 +206,20 @@ class TerrainEditorPanel {
   float  import_min_h_  = 0.f;
   float  import_max_h_  = 100.f;
 
-  bool    show_import_window_ = false;
+  bool    show_import_window_   = false;
+
+  // ---- Generate window state ------------------------------------------------
+  enum class GenAlgorithm { kFbm };
+
+  bool         show_generate_window_  = false;
+  GenAlgorithm gen_algorithm_         = GenAlgorithm::kFbm;
+  float        gen_world_width_       = 1024.f;
+  float        gen_world_depth_       = 1024.f;
+  float        gen_meters_per_texel_  = 1.f;
+  float        gen_min_h_             = 0.f;
+  float        gen_max_h_             = 100.f;
+  // cppcheck-suppress unusedStructMember
+  terrain::FbmParams gen_fbm_params_;
   // cppcheck-suppress unusedStructMember
   std::function<void(std::vector<uint16_t>, int, int, float, float)>
       on_create_from_import_;

@@ -246,6 +246,9 @@ void EditorWindow::Render() {
   // 11a. Terrain import window — floating, opened via Terrain > Import.
   terrain_panel_.RenderImportWindow();
 
+  // 11a''. Terrain generate window — floating, opened via Terrain > Generate.
+  terrain_panel_.RenderGenerateWindow();
+
   // 11a'. Terrain auto-paint window — floating, opened from the Paint tab.
   terrain_panel_.RenderPainterWindow();
 
@@ -413,6 +416,8 @@ void EditorWindow::RenderMenuBar() {
 
     if (ImGui::MenuItem("Import"))
       terrain_panel_.OpenImportWindow();
+    if (ImGui::MenuItem("Generate..."))
+      terrain_panel_.OpenGenerateWindow();
 
     ImGui::Separator();
 
