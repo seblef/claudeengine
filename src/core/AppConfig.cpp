@@ -6,8 +6,9 @@
 
 namespace core {
 
-GraphicsConfig AppConfig::graphics_;
-ShadowConfig   AppConfig::shadows_;
+GraphicsConfig    AppConfig::graphics_;
+ShadowConfig      AppConfig::shadows_;
+PostProcessConfig AppConfig::post_process_;
 
 void GraphicsConfig::Parse(const YAML::Node& node) {
   if (node["width"])    width_    = node["width"].as<int>();
@@ -19,8 +20,9 @@ void GraphicsConfig::Parse(const YAML::Node& node) {
 
 void AppConfig::Init(const std::filesystem::path& config_path) {
   YAML::Node root = core::LoadYamlFile(config_path);
-  if (auto gfx     = root["graphics"]) graphics_.Parse(gfx);
-  if (auto shadows = root["shadows"])  shadows_.Parse(shadows);
+  if (auto gfx = root["graphics"])    graphics_.Parse(gfx);
+  if (auto shadows = root["shadows"]) shadows_.Parse(shadows);
+  if (auto pp = root["post_process"]) post_process_.Parse(pp);
 }
 
 }  // namespace core

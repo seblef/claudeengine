@@ -1,6 +1,7 @@
 add_library(core STATIC
     AppConfig.cpp
     Camera.cpp
+    PostProcessConfig.cpp
     ShadowConfig.cpp
     Config.cpp
     Logger.cpp
