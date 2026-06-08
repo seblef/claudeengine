@@ -896,6 +896,35 @@ void TerrainEditorPanel::RenderGenerateWindow() {
     ImGui::TextDisabled("then hit Generate to audition");
   }
 
+  // ---- Erosion ---------------------------------------------------------------
+  ImGui::Spacing();
+  if (ImGui::CollapsingHeader("Erosion")) {
+    ImGui::Checkbox("Enable erosion", &gen_erosion_enabled_);
+
+    ImGui::BeginDisabled(!gen_erosion_enabled_);
+    ImGui::DragInt  ("Iterations##ero",       &gen_erosion_params_.iterations,
+                     500.f, 1000, 500000);
+    ImGui::DragInt  ("Seed##ero",             &gen_erosion_params_.seed,       1.f);
+    ImGui::DragFloat("Inertia##ero",          &gen_erosion_params_.inertia,
+                     0.005f, 0.f, 1.f, "%.3f");
+    ImGui::DragFloat("Capacity##ero",         &gen_erosion_params_.capacity,
+                     0.1f, 0.1f, 20.f, "%.2f");
+    ImGui::DragFloat("Deposition rate##ero",  &gen_erosion_params_.deposition,
+                     0.01f, 0.01f, 1.f, "%.2f");
+    ImGui::DragFloat("Erosion rate##ero",     &gen_erosion_params_.erosion,
+                     0.01f, 0.01f, 1.f, "%.2f");
+    ImGui::DragFloat("Evaporation rate##ero", &gen_erosion_params_.evaporation,
+                     0.001f, 0.001f, 0.1f, "%.3f");
+
+    gen_erosion_params_.iterations  = std::max(1,    gen_erosion_params_.iterations);
+    gen_erosion_params_.inertia     = std::clamp(gen_erosion_params_.inertia,    0.f, 1.f);
+    gen_erosion_params_.capacity    = std::max(0.1f, gen_erosion_params_.capacity);
+    gen_erosion_params_.deposition  = std::clamp(gen_erosion_params_.deposition, 0.01f, 1.f);
+    gen_erosion_params_.erosion     = std::clamp(gen_erosion_params_.erosion,    0.01f, 1.f);
+    gen_erosion_params_.evaporation = std::clamp(gen_erosion_params_.evaporation, 0.001f, 0.1f);
+    ImGui::EndDisabled();
+  }
+
   // ---- Generate --------------------------------------------------------------
   ImGui::Spacing();
   ImGui::Separator();
@@ -917,6 +946,12 @@ void TerrainEditorPanel::RenderGenerateWindow() {
           gen_meters_per_texel_,
           gen_min_h_, gen_max_h_,
           gen_ridged_params_);
+    }
+
+    if (gen_erosion_enabled_) {
+      terrain::TerrainGenerator::Erode(hmap, texel_w, texel_h,
+                                       gen_meters_per_texel_,
+                                       gen_erosion_params_);
     }
 
     if (!data_) {
