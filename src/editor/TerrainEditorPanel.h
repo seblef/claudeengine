@@ -209,7 +209,7 @@ class TerrainEditorPanel {
   bool    show_import_window_   = false;
 
   // ---- Generate window state ------------------------------------------------
-  enum class GenAlgorithm { kFbm };
+  enum class GenAlgorithm { kFbm, kRidged };
 
   bool         show_generate_window_  = false;
   GenAlgorithm gen_algorithm_         = GenAlgorithm::kFbm;
@@ -219,7 +219,9 @@ class TerrainEditorPanel {
   float        gen_min_h_             = 0.f;
   float        gen_max_h_             = 100.f;
   // cppcheck-suppress unusedStructMember
-  terrain::FbmParams gen_fbm_params_;
+  terrain::FbmParams    gen_fbm_params_;
+  // cppcheck-suppress unusedStructMember
+  terrain::RidgedParams gen_ridged_params_;
   // cppcheck-suppress unusedStructMember
   std::function<void(std::vector<uint16_t>, int, int, float, float)>
       on_create_from_import_;

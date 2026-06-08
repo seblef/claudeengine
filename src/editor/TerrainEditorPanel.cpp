@@ -836,10 +836,13 @@ void TerrainEditorPanel::RenderGenerateWindow() {
 
   // ---- Algorithm -------------------------------------------------------------
   ImGui::SeparatorText("Algorithm");
-  const char* algo_names[] = {"fBm (Fractal Brownian Motion)"};
+  const char* algo_names[] = {
+      "fBm (Fractal Brownian Motion)",
+      "Ridged Multi-fractal",
+  };
   int algo_idx = static_cast<int>(gen_algorithm_);
   if (ImGui::BeginCombo("##algo", algo_names[algo_idx])) {
-    for (int i = 0; i < 1; ++i) {
+    for (int i = 0; i < 2; ++i) {
       const bool selected = (algo_idx == i);
       if (ImGui::Selectable(algo_names[i], selected))
         gen_algorithm_ = static_cast<GenAlgorithm>(i);
@@ -850,23 +853,48 @@ void TerrainEditorPanel::RenderGenerateWindow() {
   }
 
   // ---- fBm parameters --------------------------------------------------------
-  ImGui::SeparatorText("fBm Parameters");
-  ImGui::DragInt  ("Seed",        &gen_fbm_params_.seed,        1.f);
-  ImGui::DragFloat("Scale (m)",   &gen_fbm_params_.scale,       1.f,   1.f, 10000.f, "%.1f");
-  ImGui::DragInt  ("Octaves",     &gen_fbm_params_.octaves,     1.f,   1,       16);
-  ImGui::DragFloat("Persistence", &gen_fbm_params_.persistence, 0.01f, 0.01f,   1.f, "%.2f");
-  ImGui::DragFloat("Lacunarity",  &gen_fbm_params_.lacunarity,  0.01f, 1.f,     8.f, "%.2f");
-  gen_fbm_params_.octaves     = std::max(1,     gen_fbm_params_.octaves);
-  gen_fbm_params_.scale       = std::max(1.f,   gen_fbm_params_.scale);
-  gen_fbm_params_.persistence = std::clamp(gen_fbm_params_.persistence, 0.01f, 1.f);
-  gen_fbm_params_.lacunarity  = std::max(1.f,   gen_fbm_params_.lacunarity);
+  if (gen_algorithm_ == GenAlgorithm::kFbm) {
+    ImGui::SeparatorText("fBm Parameters");
+    ImGui::DragInt  ("Seed",        &gen_fbm_params_.seed,        1.f);
+    ImGui::DragFloat("Scale (m)",   &gen_fbm_params_.scale,       1.f,   1.f, 10000.f, "%.1f");
+    ImGui::DragInt  ("Octaves",     &gen_fbm_params_.octaves,     1.f,   1,       16);
+    ImGui::DragFloat("Persistence", &gen_fbm_params_.persistence, 0.01f, 0.01f,   1.f, "%.2f");
+    ImGui::DragFloat("Lacunarity",  &gen_fbm_params_.lacunarity,  0.01f, 1.f,     8.f, "%.2f");
+    gen_fbm_params_.octaves     = std::max(1,     gen_fbm_params_.octaves);
+    gen_fbm_params_.scale       = std::max(1.f,   gen_fbm_params_.scale);
+    gen_fbm_params_.persistence = std::clamp(gen_fbm_params_.persistence, 0.01f, 1.f);
+    gen_fbm_params_.lacunarity  = std::max(1.f,   gen_fbm_params_.lacunarity);
 
-  ImGui::Spacing();
-  if (ImGui::Button("Randomize seed")) {
-    gen_fbm_params_.seed = std::rand();  // NOLINT(cert-msc50-cpp)
+    ImGui::Spacing();
+    if (ImGui::Button("Randomize seed")) {
+      gen_fbm_params_.seed = std::rand();  // NOLINT(cert-msc50-cpp)
+    }
+    ImGui::SameLine();
+    ImGui::TextDisabled("then hit Generate to audition");
   }
-  ImGui::SameLine();
-  ImGui::TextDisabled("then hit Generate to audition");
+
+  // ---- Ridged parameters -----------------------------------------------------
+  if (gen_algorithm_ == GenAlgorithm::kRidged) {
+    ImGui::SeparatorText("Ridged Parameters");
+    ImGui::DragInt  ("Seed",       &gen_ridged_params_.seed,       1.f);
+    ImGui::DragFloat("Scale (m)",  &gen_ridged_params_.scale,      1.f,   1.f, 10000.f, "%.1f");
+    ImGui::DragInt  ("Octaves",    &gen_ridged_params_.octaves,    1.f,   1,       16);
+    ImGui::DragFloat("Lacunarity", &gen_ridged_params_.lacunarity, 0.01f, 1.f,     8.f, "%.2f");
+    ImGui::DragFloat("Gain",       &gen_ridged_params_.gain,       0.01f, 0.01f,  10.f, "%.2f");
+    ImGui::DragFloat("Offset",     &gen_ridged_params_.offset,     0.01f, 0.01f,   4.f, "%.2f");
+    gen_ridged_params_.octaves    = std::max(1,    gen_ridged_params_.octaves);
+    gen_ridged_params_.scale      = std::max(1.f,  gen_ridged_params_.scale);
+    gen_ridged_params_.lacunarity = std::max(1.f,  gen_ridged_params_.lacunarity);
+    gen_ridged_params_.gain       = std::max(0.01f, gen_ridged_params_.gain);
+    gen_ridged_params_.offset     = std::max(0.01f, gen_ridged_params_.offset);
+
+    ImGui::Spacing();
+    if (ImGui::Button("Randomize seed")) {
+      gen_ridged_params_.seed = std::rand();  // NOLINT(cert-msc50-cpp)
+    }
+    ImGui::SameLine();
+    ImGui::TextDisabled("then hit Generate to audition");
+  }
 
   // ---- Generate --------------------------------------------------------------
   ImGui::Spacing();
@@ -876,11 +904,20 @@ void TerrainEditorPanel::RenderGenerateWindow() {
   const bool can_generate = (texel_w > 0 && texel_h > 0);
   ImGui::BeginDisabled(!can_generate);
   if (ImGui::Button("Generate", {-1.f, 0.f})) {
-    std::vector<uint16_t> hmap = terrain::TerrainGenerator::GenerateFbm(
-        texel_w, texel_h,
-        gen_meters_per_texel_,
-        gen_min_h_, gen_max_h_,
-        gen_fbm_params_);
+    std::vector<uint16_t> hmap;
+    if (gen_algorithm_ == GenAlgorithm::kFbm) {
+      hmap = terrain::TerrainGenerator::GenerateFbm(
+          texel_w, texel_h,
+          gen_meters_per_texel_,
+          gen_min_h_, gen_max_h_,
+          gen_fbm_params_);
+    } else {
+      hmap = terrain::TerrainGenerator::GenerateRidged(
+          texel_w, texel_h,
+          gen_meters_per_texel_,
+          gen_min_h_, gen_max_h_,
+          gen_ridged_params_);
+    }
 
     if (!data_) {
       if (on_create_from_import_)
