@@ -48,6 +48,12 @@ class LightRenderer : public core::Singleton<LightRenderer> {
   // bypassing shadow-map lookups entirely (used by preview renders).
   void Render(bool disable_shadows = false);
 
+  // Refills and binds light_infos_cb_ with the first GlobalLight so that
+  // forward-pass shaders (e.g. foliage billboards) can sample the correct
+  // directional light data after local lights have overwritten the buffer.
+  // No-op when no GlobalLight is enqueued.
+  void BindGlobalLight();
+
   // Clears the instance queue after drawing.
   void EndRender();
 
