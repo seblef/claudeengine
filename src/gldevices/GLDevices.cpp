@@ -45,6 +45,11 @@ void* GLDevices::GetWindow() {
   return window_;
 }
 
+void GLDevices::SetCursorCapture(bool capture) {
+  glfwSetInputMode(window_, GLFW_CURSOR,
+                   capture ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+}
+
 // ---- Callbacks -------------------------------------------------------------
 
 void GLDevices::OnWindowClose(GLFWwindow*) {
