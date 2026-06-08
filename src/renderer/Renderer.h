@@ -12,6 +12,7 @@
 #include "core/Mat4f.h"
 #include "core/Singleton.h"
 #include "renderer/EmissiveFBO.h"
+#include "renderer/EyeAdaptationRenderer.h"
 #include "renderer/PostProcessInfos.h"
 #include "renderer/FoliageRenderer.h"
 #include "renderer/TreeRenderer.h"
@@ -216,10 +217,11 @@ class Renderer : public core::Singleton<Renderer> {
 
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice* video_;
-  const core::Camera*    camera_ = nullptr;
-  float                  time_   = 0.f;
-  int                    render_w_ = 0;
-  int                    render_h_ = 0;
+  const core::Camera*    camera_    = nullptr;
+  float                  time_      = 0.f;
+  float                  prev_time_ = 0.f;
+  int                    render_w_  = 0;
+  int                    render_h_  = 0;
 
   std::unique_ptr<abstract::ConstantBuffer> renderable_infos_cb_;
   std::unique_ptr<abstract::ConstantBuffer> scene_infos_cb_;
@@ -274,6 +276,8 @@ class Renderer : public core::Singleton<Renderer> {
 
   // cppcheck-suppress unusedStructMember
   PostProcessInfos post_process_infos_;
+
+  EyeAdaptationRenderer eye_adaptation_;
 
   // Composite pass resources — tone-map and gamma-correct the HDR RT to the default framebuffer.
   // cppcheck-suppress unusedStructMember

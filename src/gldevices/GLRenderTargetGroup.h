@@ -34,6 +34,9 @@ class GLRenderTargetGroup : public abstract::RenderTargetGroup {
   [[nodiscard]] abstract::RenderTarget* GetColorTarget(int index) override;
   [[nodiscard]] abstract::RenderTarget* GetDepthTarget() override;
 
+  // Returns the underlying GL FBO name for backend-side pixel reads.
+  [[nodiscard]] GLuint GetFboId() const { return fbo_; }
+
  private:
   GLuint fbo_ = 0;
   // cppcheck-suppress unusedStructMember
