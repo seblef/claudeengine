@@ -11,6 +11,7 @@
 #include "core/Camera.h"
 #include "core/Mat4f.h"
 #include "core/Singleton.h"
+#include "renderer/BloomRenderer.h"
 #include "renderer/EmissiveFBO.h"
 #include "renderer/EyeAdaptationRenderer.h"
 #include "renderer/PostProcessInfos.h"
@@ -208,6 +209,13 @@ class Renderer : public core::Singleton<Renderer> {
     return emissive_fbo_.GetHDRRT();
   }
 
+  // Returns a mutable reference to the post-process parameters.
+  // The editor writes directly to this struct; the UBO is uploaded each frame
+  // before the composite pass so changes take effect on the next frame.
+  [[nodiscard]] PostProcessInfos& GetPostProcessInfos() {
+    return post_process_infos_;
+  }
+
  private:
   void FillSceneInfos();
   void FillWindInfos();
@@ -277,7 +285,16 @@ class Renderer : public core::Singleton<Renderer> {
   // cppcheck-suppress unusedStructMember
   PostProcessInfos post_process_infos_;
 
-  EyeAdaptationRenderer eye_adaptation_;
+  // Conditionally allocated from PostProcessConfig flags.
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<BloomRenderer>          bloom_renderer_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<EyeAdaptationRenderer>  eye_adapt_renderer_;
+
+  // 1×1 black R11F_G11F_B10F RT bound at sampler slot 11 when bloom is disabled,
+  // keeping the composite shader uniform with or without bloom.
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<abstract::RenderTarget> null_bloom_rt_;
 
   // Composite pass resources — tone-map and gamma-correct the HDR RT to the default framebuffer.
   // cppcheck-suppress unusedStructMember

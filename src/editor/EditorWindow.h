@@ -187,6 +187,10 @@ class EditorWindow {
   // cppcheck-suppress unusedStructMember
   bool                   show_environment_panel_ = false;
 
+  // Post-process panel — shown via the View menu.
+  // cppcheck-suppress unusedStructMember
+  bool show_post_process_panel_ = false;
+
   // Maximum number of entries kept in the recent maps list.
   // cppcheck-suppress unusedStructMember
   static constexpr int kMaxRecentMaps = 5;

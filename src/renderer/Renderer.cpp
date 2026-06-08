@@ -6,6 +6,8 @@
 #include "abstract/BlendFactor.h"
 #include "abstract/BufferUsage.h"
 #include "abstract/CompareFunc.h"
+#include "abstract/TextureFormat.h"
+#include "core/AppConfig.h"
 #include "core/BBox3.h"
 #include "core/Color.h"
 #include "core/ViewFrustum.h"
@@ -15,13 +17,12 @@
 #include "environment/WaterRenderer.h"
 #include "environment/WindInfos.h"
 #include "environment/WindSystem.h"
-#include "core/AppConfig.h"
 #include "renderer/CSMInfos.h"
-#include "renderer/PostProcessInfos.h"
 #include "renderer/GeometryUtils.h"
 #include "renderer/LightRenderer.h"
 #include "renderer/MaterialInfos.h"
 #include "renderer/MeshRenderer.h"
+#include "renderer/PostProcessInfos.h"
 #include "renderer/RenderableInfos.h"
 #include "renderer/SceneInfos.h"
 
@@ -68,11 +69,32 @@ Renderer::Renderer(abstract::VideoDevice* video)
   render_h_ = video_->GetHeight();
   gbuffer_.Create(video_, render_w_, render_h_);
   emissive_fbo_.Create(video_, render_w_, render_h_, gbuffer_.GetDepthRT());
-  eye_adaptation_.Create(video_, render_w_, render_h_);
   water_scene_color_rt_ = video_->CreateRenderTarget(
       render_w_, render_h_, abstract::TextureFormat::kRGBA16F);
   water_depth_copy_rt_  = video_->CreateRenderTarget(
       render_w_, render_h_, abstract::TextureFormat::kDepth24Stencil8);
+
+  const auto& pp = core::AppConfig::GetPostProcess();
+  if (pp.IsBloomEnabled()) {
+    bloom_renderer_ = std::make_unique<BloomRenderer>();
+    bloom_renderer_->Create(video_, render_w_, render_h_);
+  }
+  if (pp.IsEyeAdaptationEnabled()) {
+    eye_adapt_renderer_ = std::make_unique<EyeAdaptationRenderer>();
+    eye_adapt_renderer_->Create(video_, render_w_, render_h_);
+  }
+
+  // 1×1 black RT bound at slot 11 when bloom is disabled to keep the composite
+  // shader uniforms consistent regardless of which features are active.
+  null_bloom_rt_ = video_->CreateRenderTarget(
+      1, 1, abstract::TextureFormat::kG11R11B10F);
+  {
+    std::array<abstract::RenderTarget*, 1> null_colors = {null_bloom_rt_.get()};
+    auto null_fbo = video_->CreateRenderTargetGroup(null_colors, nullptr);
+    null_fbo->BindForWriting();
+    video_->ClearRenderTargets(core::Color::kBlack);
+    null_fbo->UnbindForWriting();
+  }
 
   new MeshRenderer(video_);
   new LightRenderer(video_);
@@ -84,7 +106,8 @@ Renderer::Renderer(abstract::VideoDevice* video)
 }
 
 Renderer::~Renderer() {
-  eye_adaptation_.Destroy();
+  if (eye_adapt_renderer_) eye_adapt_renderer_->Destroy();
+  if (bloom_renderer_)     bloom_renderer_->Destroy();
   composite_shader_->Release();
   debug_shader_->Release();
   ShadowRenderer::Shutdown();
@@ -169,7 +192,6 @@ void Renderer::Update(float time, const core::Camera* camera,
   wind_infos_cb_->Bind();
   water_infos_cb_->Bind();
   post_process_infos_cb_->Bind();
-  post_process_infos_cb_->Fill(&post_process_infos_);
   FillSceneInfos();
   FillWindInfos();
   if (water_renderer_) UpdateWaterRenderer();
@@ -314,14 +336,32 @@ void Renderer::Update(float time, const core::Camera* camera,
   }
 
   // 5a. Eye adaptation — update exposure before tone mapping.
-  if (core::AppConfig::GetPostProcess().IsEyeAdaptationEnabled()) {
-    post_process_infos_.exposure = eye_adaptation_.Update(
+  if (eye_adapt_renderer_) {
+    post_process_infos_.exposure = eye_adapt_renderer_->Update(
         emissive_fbo_.GetHDRRT(), dt, post_process_infos_.adapt_speed);
-    post_process_infos_cb_->Fill(&post_process_infos_);
   }
 
-  // 5. Composite pass — gamma-correct the HDR RT to the default framebuffer.
+  // 5b. Bloom pass — downsample/upsample bright areas.
+  if (bloom_renderer_) {
+    bloom_renderer_->Render(emissive_fbo_.GetHDRRT(),
+                            post_process_infos_.bloom_threshold,
+                            post_process_infos_.bloom_intensity);
+  }
+
+  // Upload PostProcessInfos UBO after eye adaptation may have updated exposure.
+  post_process_infos_cb_->Fill(&post_process_infos_);
+
+  // Restore full-resolution viewport — bloom and eye-adaptation passes set the
+  // viewport to each mip level's size and do not reset it on return.
+  video_->SetViewport(0, 0, render_w_, render_h_);
+
+  // 5. Composite pass — tone-map and gamma-correct the HDR RT to the default framebuffer.
   emissive_fbo_.GetHDRRT()->BindAsSampler(0);
+  // Bind bloom texture at slot 11 (1×1 black fallback when bloom is disabled).
+  if (bloom_renderer_)
+    bloom_renderer_->GetBloomTexture()->BindAsSampler(11);
+  else
+    null_bloom_rt_->BindAsSampler(11);
   composite_shader_->Activate();
   composite_quad_->Set();
   if (output_fbo) output_fbo->BindForWriting();
@@ -351,7 +391,8 @@ void Renderer::OnResize(int w, int h) {
   render_h_ = h;
   gbuffer_.Resize(video_, w, h);
   emissive_fbo_.Resize(video_, w, h, gbuffer_.GetDepthRT());
-  eye_adaptation_.Resize(w, h);
+  if (eye_adapt_renderer_) eye_adapt_renderer_->Resize(w, h);
+  if (bloom_renderer_)     bloom_renderer_->Resize(w, h);
   water_scene_color_rt_ = video_->CreateRenderTarget(
       w, h, abstract::TextureFormat::kRGBA16F);
   water_depth_copy_rt_  = video_->CreateRenderTarget(
@@ -364,7 +405,8 @@ void Renderer::ResizeTargets(int w, int h) {
   render_h_ = h;
   gbuffer_.Resize(video_, w, h);
   emissive_fbo_.Resize(video_, w, h, gbuffer_.GetDepthRT());
-  eye_adaptation_.Resize(w, h);
+  if (eye_adapt_renderer_) eye_adapt_renderer_->Resize(w, h);
+  if (bloom_renderer_)     bloom_renderer_->Resize(w, h);
   water_scene_color_rt_ = video_->CreateRenderTarget(
       w, h, abstract::TextureFormat::kRGBA16F);
   water_depth_copy_rt_  = video_->CreateRenderTarget(

@@ -14,6 +14,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include "abstract/VideoDevice.h"
+#include "core/AppConfig.h"
 #include "core/Config.h"
 #include "core/Event.h"
 #include "core/YamlUtils.h"
@@ -36,6 +37,8 @@
 #include "game/MeshTemplate.h"
 #include "renderer/Light.h"
 #include "renderer/MaterialDesc.h"
+#include "renderer/PostProcessInfos.h"
+#include "renderer/Renderer.h"
 #include "terrain/TerrainData.h"
 #include "terrain/TerrainMaterial.h"
 #include "terrain/TerrainRenderer.h"
@@ -292,6 +295,28 @@ void EditorWindow::Render() {
     ImGui::End();
   }
 
+  // 11f. Post-process panel — dockable, shown via View > Post-process.
+  if (show_post_process_panel_) {
+    if (ImGui::Begin("Post-process##panel", &show_post_process_panel_)) {
+      renderer::PostProcessInfos& pp =
+          renderer::Renderer::Instance().GetPostProcessInfos();
+      const auto& cfg = core::AppConfig::GetPostProcess();
+      if (ImGui::CollapsingHeader("Post-process", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (!cfg.IsEyeAdaptationEnabled()) {
+          ImGui::SliderFloat("Exposure", &pp.exposure, 0.1f, 10.f, "%.2f");
+        }
+        if (cfg.IsBloomEnabled()) {
+          ImGui::SliderFloat("Bloom intensity",  &pp.bloom_intensity,  0.f, 2.f, "%.2f");
+          ImGui::SliderFloat("Bloom threshold",  &pp.bloom_threshold,  0.f, 3.f, "%.2f");
+        }
+        if (cfg.IsEyeAdaptationEnabled()) {
+          ImGui::SliderFloat("Adapt speed", &pp.adapt_speed, 0.1f, 5.f, "%.2f");
+        }
+      }
+    }
+    ImGui::End();
+  }
+
   // 12. Unsaved changes modal — OpenPopup is triggered by CheckDirtyThenRun().
   if (open_unsaved_changes_modal_) {
     ImGui::OpenPopup("Unsaved Changes##modal");
@@ -438,6 +463,12 @@ void EditorWindow::RenderMenuBar() {
     if (ImGui::MenuItem("Mesh")) {
       ImportMesh();
     }
+    ImGui::EndMenu();
+  }
+
+  if (ImGui::BeginMenu("View")) {
+    if (ImGui::MenuItem("Post-process", nullptr, show_post_process_panel_))
+      show_post_process_panel_ = !show_post_process_panel_;
     ImGui::EndMenu();
   }
 
