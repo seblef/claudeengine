@@ -56,8 +56,7 @@ class TerrainData {
 
   // Updates the world-space height interpretation without modifying the raw
   // uint16_t samples. The renderer must be notified separately via
-  // TerrainRenderer::SetHeightRange(); the normal map must be rebuilt via
-  // TerrainNormalMap::Build().
+  // TerrainRenderer::SetHeightRange()
   void SetMinHeight(float h) { min_height_ = h; UpdateRange(); }
   void SetMaxHeight(float h) { max_height_ = h; UpdateRange(); }
 

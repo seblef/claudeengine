@@ -11,7 +11,6 @@ namespace game { class GameTerrain; }
 namespace terrain {
 class TerrainData;
 class TerrainMaterial;
-class TerrainNormalMap;
 }  // namespace terrain
 
 
@@ -71,7 +70,6 @@ class TerrainEditorPanel {
   // terrain_obj is used by the Foliage tab to manage foliage layers.
   void SetContext(terrain::TerrainData* data,
                   terrain::TerrainMaterial* material,
-                  terrain::TerrainNormalMap* normal_map,
                   abstract::VideoDevice* video,
                   EditorCommandHistory* history,
                   game::GameTerrain* terrain_obj = nullptr);
@@ -226,7 +224,6 @@ class TerrainEditorPanel {
   // ---- Context --------------------------------------------------------------
   terrain::TerrainData*      data_         = nullptr;
   terrain::TerrainMaterial*  material_     = nullptr;
-  terrain::TerrainNormalMap* normal_map_   = nullptr;
   abstract::VideoDevice*     video_        = nullptr;
   EditorCommandHistory*      history_      = nullptr;
   // cppcheck-suppress unusedStructMember

@@ -31,6 +31,6 @@ layout(std140, binding = 6) uniform TerrainPatchInfosBlock {
     vec4  tiling;              // per-layer UV tiling: x=layer0, y=layer1, z=layer2, w=layer3
     float triplanar_threshold; // |world_normal.y| below which triplanar mapping activates
     int   use_macro_texture;        // 1 if u_macro_texture (slot 10) is valid
-    int   use_terrain_normal_map;   // 1 if u_terrain_normal (slot 12) is valid
+    int   tpi_pad1_;
     float tpi_pad2_;
 };

@@ -9,7 +9,6 @@
 namespace abstract { class VideoDevice; }
 namespace terrain {
 class TerrainData;
-class TerrainNormalMap;
 }  // namespace terrain
 
 namespace editor {
@@ -29,7 +28,6 @@ class SculptBrushCommand : public EditorCommand {
   // pre_snapshot  — row-major uint16_t tile captured before the stroke.
   // post_snapshot — row-major uint16_t tile captured after the stroke.
   SculptBrushCommand(terrain::TerrainData* data,
-                     terrain::TerrainNormalMap* normal_map,
                      abstract::VideoDevice* video,
                      int tx, int tz, int tw, int th,
                      std::vector<uint16_t> pre_snapshot,
@@ -44,8 +42,6 @@ class SculptBrushCommand : public EditorCommand {
 
   // cppcheck-suppress unusedStructMember
   terrain::TerrainData*      data_;
-  // cppcheck-suppress unusedStructMember
-  terrain::TerrainNormalMap* normal_map_;
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice*     video_;
   // cppcheck-suppress unusedStructMember

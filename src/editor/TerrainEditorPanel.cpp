@@ -30,7 +30,6 @@
 #include "terrain/FoliageLayer.h"
 #include "terrain/TerrainData.h"
 #include "terrain/TerrainMaterial.h"
-#include "terrain/TerrainNormalMap.h"
 #include "terrain/TerrainRenderer.h"
 
 namespace {
@@ -54,13 +53,11 @@ TerrainEditorPanel::~TerrainEditorPanel() = default;
 
 void TerrainEditorPanel::SetContext(terrain::TerrainData* data,
                                     terrain::TerrainMaterial* material,
-                                    terrain::TerrainNormalMap* normal_map,
                                     abstract::VideoDevice* video,
                                     EditorCommandHistory* history,
                                     game::GameTerrain* terrain_obj) {
   data_         = data;
   material_     = material;
-  normal_map_   = normal_map;
   video_        = video;
   history_      = history;
   terrain_obj_  = terrain_obj;
@@ -384,14 +381,11 @@ void TerrainEditorPanel::ApplyBrushFootprint(float cx_world, float cz_world,
   if (terrain::TerrainRenderer::IsInstanced())
     terrain::TerrainRenderer::Instance().UpdateHeightmapTile(
         x0, z0, x1 - x0, z1 - z0, *data_);
-
-  if (normal_map_ && video_)
-    normal_map_->UploadTile(video_, x0, z0, x1 - x0, z1 - z0);
 }
 
 void TerrainEditorPanel::OnSculptAt(float wx, float wz, bool first_touch,
                                      float dt) {
-  if (!data_ || !normal_map_ || !video_) return;
+  if (!data_ || !video_) return;
 
   const float mpt     = data_->GetMetersPerTexel();
   const int r_texels  = static_cast<int>(std::ceil(radius_ / mpt)) + 1;
@@ -442,7 +436,7 @@ void TerrainEditorPanel::OnSculptEnd() {
 
   if (post != stroke_pre_snapshot_) {
     history_->Push(std::make_unique<SculptBrushCommand>(
-        data_, normal_map_, video_,
+        data_, video_,
         stroke_x0_, stroke_z0_, sw, sh,
         std::move(stroke_pre_snapshot_),
         std::move(post)));
@@ -768,11 +762,11 @@ void TerrainEditorPanel::RenderPropertiesTab() {
 
   const bool min_changed = ImGui::DragFloat("Min Height (m)", &min_h,
                                              0.5f, -10000.f, max_h - 0.1f, "%.1f");
-  const bool min_deact   = ImGui::IsItemDeactivatedAfterEdit();
+  ImGui::IsItemDeactivatedAfterEdit();
 
   const bool max_changed = ImGui::DragFloat("Max Height (m)", &max_h,
                                              0.5f, min_h + 0.1f, 10000.f, "%.1f");
-  const bool max_deact   = ImGui::IsItemDeactivatedAfterEdit();
+  ImGui::IsItemDeactivatedAfterEdit();
 
   if (min_changed || max_changed) {
     max_h = std::max(max_h, min_h + 0.1f);
@@ -780,15 +774,6 @@ void TerrainEditorPanel::RenderPropertiesTab() {
     data_->SetMaxHeight(max_h);
     if (terrain::TerrainRenderer::IsInstanced())
       terrain::TerrainRenderer::Instance().SetHeightRange(min_h, max_h);
-  }
-
-  if ((min_deact || max_deact) && normal_map_ && video_) {
-    normal_map_->Build(*data_);
-    normal_map_->Upload(video_);
-    if (terrain::TerrainRenderer::IsInstanced())
-      terrain::TerrainRenderer::Instance().SetNormalMap(normal_map_->GetTexture());
-    LOG_F(INFO, "TerrainEditorPanel: height range changed [%.1f, %.1f] — "
-          "normal map rebuilt", min_h, max_h);
   }
 
   ImGui::Spacing();
@@ -1105,11 +1090,6 @@ void TerrainEditorPanel::ApplyImportedHeightmap(const std::vector<uint16_t>& dat
   data_->SetMinHeight(min_h);
   data_->SetMaxHeight(max_h);
   data_->ReplaceHeightmap(data.data(), w, h);
-
-  normal_map_->Build(*data_);
-  normal_map_->Upload(video_);
-  if (terrain::TerrainRenderer::IsInstanced())
-    terrain::TerrainRenderer::Instance().SetNormalMap(normal_map_->GetTexture());
 
   if (needs_resize) {
     if (terrain::TerrainRenderer::IsInstanced())

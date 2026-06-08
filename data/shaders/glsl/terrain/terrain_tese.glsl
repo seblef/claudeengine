@@ -74,10 +74,19 @@ void main() {
     }
     v_world_pos = mix(linear_pos, linear_pos - phong_correction, kPhongAlpha);
 
-    // Interpolate and renormalise world-space normal.
-    v_world_normal = normalize(
-        tc_world_normal[0] * w0 + tc_world_normal[1] * w1 +
-        tc_world_normal[2] * w2 + tc_world_normal[3] * w3);
+    // Central-difference normal in world space.
+    // mpt = metres per texel at the current LOD level.
+    float mpt  = patch_scale / float(1 << lod_level);
+    vec2  step = inv_terrain_world * mpt;
+
+    float h_r = SampleHeight(v_world_uv + vec2(step.x, 0.0));
+    float h_l = SampleHeight(v_world_uv - vec2(step.x, 0.0));
+    float h_f = SampleHeight(v_world_uv + vec2(0.0, step.y));
+    float h_b = SampleHeight(v_world_uv - vec2(0.0, step.y));
+
+    // Equation: N = normalize(-(dH/dX), 2*mpt, -(dH/dZ)) in Y-up space.
+    // dH/dX ≈ (h_r - h_l) / (2*mpt), similarly for Z.
+    v_world_normal = normalize(vec3(h_l - h_r, 2.0 * mpt, h_b - h_f));
 
     gl_Position = view_proj * vec4(v_world_pos, 1.0);
 }

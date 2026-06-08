@@ -38,7 +38,6 @@
 #include "renderer/MaterialDesc.h"
 #include "terrain/TerrainData.h"
 #include "terrain/TerrainMaterial.h"
-#include "terrain/TerrainNormalMap.h"
 #include "terrain/TerrainRenderer.h"
 
 namespace editor {
@@ -233,7 +232,6 @@ void EditorWindow::Render() {
     map_properties_ = std::make_unique<MapPropertiesWindow>(scene_.get());
     viewport_->SetScene(scene_.get());
     history_.Clear();
-    terrain_normal_map_.reset();
     WireTerrainPanel();
     environment_panel_.SetContext(scene_.get(), video_);
     scene_dirty_ = false;
@@ -524,7 +522,6 @@ void EditorWindow::LoadMap(const std::filesystem::path& path) {
   if (scene_->GetSelectedObject())
     viewport_->SetSelectedObject(scene_->GetSelectedObject());
   history_.Clear();
-  terrain_normal_map_.reset();
   WireTerrainPanel();
   environment_panel_.SetContext(scene_.get(), video_);
   scene_dirty_ = false;
@@ -665,11 +662,7 @@ void EditorWindow::CreateTerrain() {
   auto material = std::make_unique<terrain::TerrainMaterial>();
   material->Load(mat_node, video_, width, height);
 
-  // 3. Compute initial normal map.
-  terrain_normal_map_ = std::make_unique<terrain::TerrainNormalMap>();
-  terrain_normal_map_->Build(*data);
-
-  // 4. Construct GameTerrain and add it to the scene.
+  // 3. Construct GameTerrain and add it to the scene.
   //    OnAddedToScene() calls TerrainRenderer::Init() (heightmap GPU upload)
   //    and SetMaterial() (splatmap binding).
   auto terrain_obj = std::make_unique<game::GameTerrain>(
@@ -677,13 +670,7 @@ void EditorWindow::CreateTerrain() {
   terrain_obj->SetName("terrain");
   scene_->AddDynamicObject(std::move(terrain_obj));
 
-  // 5. Upload the normal map GPU texture and bind it to the renderer.
-  terrain_normal_map_->Upload(video_);
-  if (terrain::TerrainRenderer::IsInstanced())
-    terrain::TerrainRenderer::Instance().SetNormalMap(
-        terrain_normal_map_->GetTexture());
-
-  // 6. Wire the terrain sculpt panel.
+  // 5. Wire the terrain sculpt panel.
   WireTerrainPanel();
 
   scene_dirty_ = true;
@@ -708,18 +695,11 @@ void EditorWindow::CreateTerrainFromImport(std::vector<uint16_t> samples,
   auto material = std::make_unique<terrain::TerrainMaterial>();
   material->Load(mat_node, video_, w, h);
 
-  terrain_normal_map_ = std::make_unique<terrain::TerrainNormalMap>();
-  terrain_normal_map_->Build(*data);
-
   auto terrain_obj = std::make_unique<game::GameTerrain>(
       std::move(data), std::move(material), video_);
   terrain_obj->SetName("terrain");
   scene_->AddDynamicObject(std::move(terrain_obj));
 
-  terrain_normal_map_->Upload(video_);
-  if (terrain::TerrainRenderer::IsInstanced())
-    terrain::TerrainRenderer::Instance().SetNormalMap(
-        terrain_normal_map_->GetTexture());
   WireTerrainPanel();
   scene_dirty_ = true;
   LOG_F(INFO, "Terrain created from import: %dx%d texels, 1.0 m/texel, "
@@ -731,9 +711,6 @@ void EditorWindow::RemoveTerrain() {
   if (!gt) return;
 
   scene_->RemoveDynamicObject(gt);
-  if (terrain::TerrainRenderer::IsInstanced())
-    terrain::TerrainRenderer::Instance().SetNormalMap(nullptr);
-  terrain_normal_map_.reset();
   show_terrain_panel_ = false;
   history_.Clear();
   WireTerrainPanel();
@@ -754,7 +731,7 @@ void EditorWindow::WireTerrainPanel() {
   // const_cast is safe because the objects are non-const.
   auto* data     = const_cast<terrain::TerrainData*>(&gt->GetData());
   auto* material = const_cast<terrain::TerrainMaterial*>(&gt->GetMaterial());
-  terrain_panel_.SetContext(data, material, terrain_normal_map_.get(), video_, &history_, gt);
+  terrain_panel_.SetContext(data, material, video_, &history_, gt);
   viewport_->SetTerrainData(data);
   viewport_->SetOnSculptBrush([this](float wx, float wz, bool first, float dt) {
     terrain_panel_.OnBrushAt(wx, wz, first, dt);
