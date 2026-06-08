@@ -24,7 +24,7 @@ const float kCloudAltitude = 800.0;
 // World-unit scale of the noise field — larger = bigger clouds.
 const float kCloudScale    = 400.0;
 // UV drift speed in UV-units per second at 1 m/s wind.
-const float kCloudSpeed    = 0.00003;
+const float kCloudSpeed    = 0.0001;
 
 // ---- Value noise helpers ---------------------------------------------------
 
