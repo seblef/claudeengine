@@ -219,9 +219,12 @@ class TerrainEditorPanel {
   float        gen_min_h_             = 0.f;
   float        gen_max_h_             = 100.f;
   // cppcheck-suppress unusedStructMember
-  terrain::FbmParams    gen_fbm_params_;
+  terrain::FbmParams      gen_fbm_params_;
   // cppcheck-suppress unusedStructMember
-  terrain::RidgedParams gen_ridged_params_;
+  terrain::RidgedParams   gen_ridged_params_;
+  bool                    gen_erosion_enabled_  = false;
+  // cppcheck-suppress unusedStructMember
+  terrain::ErosionParams  gen_erosion_params_;
   // cppcheck-suppress unusedStructMember
   std::function<void(std::vector<uint16_t>, int, int, float, float)>
       on_create_from_import_;
