@@ -1,6 +1,7 @@
 add_library(renderer STATIC
     BloomRenderer.cpp
     CircleSpotLight.cpp
+    EyeAdaptationRenderer.cpp
     EmissiveFBO.cpp
     FoliageRenderer.cpp
     GBuffer.cpp

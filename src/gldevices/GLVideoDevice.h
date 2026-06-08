@@ -167,6 +167,11 @@ class GLVideoDevice : public abstract::VideoDevice {
       int* out_width, int* out_height,
       std::vector<uint8_t>& out_pixels) override;
 
+  // Reads one float from the red channel of fbo at pixel (x, y).
+  // Binds fbo as GL_READ_FRAMEBUFFER, calls glReadPixels, then restores FBO 0.
+  [[nodiscard]] float ReadPixelF(abstract::RenderTargetGroup* fbo,
+                                  int x, int y) override;
+
  private:
   // cppcheck-suppress unusedStructMember
   GLFWwindow* window_;

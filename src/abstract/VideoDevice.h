@@ -204,6 +204,12 @@ class VideoDevice {
   // Implemented with glCopyImageSubData (OpenGL 4.3+); no framebuffer rebinding.
   virtual void CopyRenderTarget(RenderTarget* src, RenderTarget* dst) = 0;
 
+  // Reads one floating-point red channel from the given FBO at pixel (x, y).
+  // fbo must have exactly one single-channel (e.g. R16F) color attachment.
+  // Intended for reading the 1×1 eye-adaptation luminance target.
+  [[nodiscard]] virtual float ReadPixelF(RenderTargetGroup* fbo,
+                                         int x, int y) = 0;
+
   // Creates an RGBA8 tileable texture from raw CPU data.
   // Uses GL_REPEAT wrapping and GL_LINEAR_MIPMAP_LINEAR filtering with
   // auto-generated mipmaps. Intended for tiling procedural textures such as

@@ -15,6 +15,7 @@
 #include "environment/WaterRenderer.h"
 #include "environment/WindInfos.h"
 #include "environment/WindSystem.h"
+#include "core/AppConfig.h"
 #include "renderer/CSMInfos.h"
 #include "renderer/PostProcessInfos.h"
 #include "renderer/GeometryUtils.h"
@@ -67,6 +68,7 @@ Renderer::Renderer(abstract::VideoDevice* video)
   render_h_ = video_->GetHeight();
   gbuffer_.Create(video_, render_w_, render_h_);
   emissive_fbo_.Create(video_, render_w_, render_h_, gbuffer_.GetDepthRT());
+  eye_adaptation_.Create(video_, render_w_, render_h_);
   water_scene_color_rt_ = video_->CreateRenderTarget(
       render_w_, render_h_, abstract::TextureFormat::kRGBA16F);
   water_depth_copy_rt_  = video_->CreateRenderTarget(
@@ -82,6 +84,7 @@ Renderer::Renderer(abstract::VideoDevice* video)
 }
 
 Renderer::~Renderer() {
+  eye_adaptation_.Destroy();
   composite_shader_->Release();
   debug_shader_->Release();
   ShadowRenderer::Shutdown();
@@ -155,8 +158,10 @@ void Renderer::Update(float time, const core::Camera* camera,
     return;
   }
 
-  time_   = time;
-  camera_ = camera;
+  const float dt = time - prev_time_;
+  prev_time_ = time;
+  time_      = time;
+  camera_    = camera;
   renderable_infos_cb_->Bind();
   scene_infos_cb_->Bind();
   material_infos_cb_->Bind();
@@ -308,6 +313,13 @@ void Renderer::Update(float time, const core::Camera* camera,
     emissive_fbo_.UnbindForWriting();
   }
 
+  // 5a. Eye adaptation — update exposure before tone mapping.
+  if (core::AppConfig::GetPostProcess().IsEyeAdaptationEnabled()) {
+    post_process_infos_.exposure = eye_adaptation_.Update(
+        emissive_fbo_.GetHDRRT(), dt, post_process_infos_.adapt_speed);
+    post_process_infos_cb_->Fill(&post_process_infos_);
+  }
+
   // 5. Composite pass — gamma-correct the HDR RT to the default framebuffer.
   emissive_fbo_.GetHDRRT()->BindAsSampler(0);
   composite_shader_->Activate();
@@ -339,6 +351,7 @@ void Renderer::OnResize(int w, int h) {
   render_h_ = h;
   gbuffer_.Resize(video_, w, h);
   emissive_fbo_.Resize(video_, w, h, gbuffer_.GetDepthRT());
+  eye_adaptation_.Resize(w, h);
   water_scene_color_rt_ = video_->CreateRenderTarget(
       w, h, abstract::TextureFormat::kRGBA16F);
   water_depth_copy_rt_  = video_->CreateRenderTarget(
@@ -351,6 +364,7 @@ void Renderer::ResizeTargets(int w, int h) {
   render_h_ = h;
   gbuffer_.Resize(video_, w, h);
   emissive_fbo_.Resize(video_, w, h, gbuffer_.GetDepthRT());
+  eye_adaptation_.Resize(w, h);
   water_scene_color_rt_ = video_->CreateRenderTarget(
       w, h, abstract::TextureFormat::kRGBA16F);
   water_depth_copy_rt_  = video_->CreateRenderTarget(

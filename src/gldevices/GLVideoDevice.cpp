@@ -325,6 +325,17 @@ std::unique_ptr<abstract::RenderTargetCube> GLVideoDevice::CreateRenderTargetCub
   return std::make_unique<GLRenderTargetCube>(size);
 }
 
+float GLVideoDevice::ReadPixelF(abstract::RenderTargetGroup* fbo,
+                                 int x, int y) {
+  const auto* gl_fbo = static_cast<GLRenderTargetGroup*>(fbo);
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_fbo->GetFboId());
+  glReadBuffer(GL_COLOR_ATTACHMENT0);
+  float value = 0.f;
+  glReadPixels(x, y, 1, 1, GL_RED, GL_FLOAT, &value);
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+  return value;
+}
+
 bool GLVideoDevice::LoadRGBA8File(const std::filesystem::path& path,
                                    int* out_width, int* out_height,
                                    std::vector<uint8_t>& out_pixels) {
