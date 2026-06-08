@@ -135,10 +135,18 @@ int main(int argc, char* argv[]) {
           terrain_h = gt->GetData().GetWorldHeight();
         }
         new environment::WaterRenderer();
-        environment::WaterRenderer::Instance().Build(
-            video, env.water_level, terrain_w, terrain_h);
-        renderer::Renderer::Instance().SetWaterRenderer(
-            &environment::WaterRenderer::Instance());
+        environment::WaterRenderer& wr = environment::WaterRenderer::Instance();
+        wr.Build(video, env.water_level, terrain_w, terrain_h);
+        wr.SetWaterColor(env.water_color_r, env.water_color_g, env.water_color_b);
+        wr.SetRoughness(env.roughness);
+        wr.SetSunIntensity(env.sun_intensity);
+        wr.SetRefractionStrength(env.refraction_strength);
+        wr.SetAbsorptionScale(env.absorption_scale);
+        wr.SetFoamParams(env.foam_height_thresh, env.foam_shoreline_depth,
+                         env.foam_steepness_thresh, env.foam_speed);
+        wr.SetNormalMapParams(env.normal_scale1, env.normal_scale2,
+                              env.normal_scroll_speed1, env.normal_scroll_speed2);
+        renderer::Renderer::Instance().SetWaterRenderer(&wr);
       }
 
       if (env.cloud_enabled) {
