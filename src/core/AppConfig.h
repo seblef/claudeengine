@@ -4,6 +4,7 @@
 
 #include <yaml-cpp/yaml.h>
 
+#include "core/PostProcessConfig.h"
 #include "core/ShadowConfig.h"
 
 namespace core {
@@ -32,12 +33,14 @@ class AppConfig {
 
   static void Init(const std::filesystem::path& config_path);
 
-  [[nodiscard]] static const GraphicsConfig& GetGraphics() { return graphics_; }
-  [[nodiscard]] static const ShadowConfig&   GetShadows()  { return shadows_; }
+  [[nodiscard]] static const GraphicsConfig&    GetGraphics()    { return graphics_; }
+  [[nodiscard]] static const ShadowConfig&      GetShadows()     { return shadows_; }
+  [[nodiscard]] static const PostProcessConfig& GetPostProcess() { return post_process_; }
 
  private:
-  static GraphicsConfig graphics_;
-  static ShadowConfig   shadows_;
+  static GraphicsConfig    graphics_;
+  static ShadowConfig      shadows_;
+  static PostProcessConfig post_process_;
 };
 
 }  // namespace core
