@@ -1,5 +1,6 @@
 #include "terrain/FoliageLayer.h"
 
+#include <algorithm>
 #include <cmath>
 #include <random>
 
@@ -28,34 +29,49 @@ void FoliageLayer::RebuildInstances(const TerrainData& data) {
   std::uniform_real_distribution<float> yaw_dist(0.f, 6.283185f);
   std::uniform_real_distribution<float> scale_dist(desc_.scale_min, desc_.scale_max);
 
-  const int cols = static_cast<int>(world_w / cell) + 1;
-  const int rows = static_cast<int>(world_d / cell) + 1;
+  // World-space extent of one density-map texel (nearest-neighbour Voronoi cell).
+  const float texel_w  = world_w / static_cast<float>(map_width_  - 1);
+  const float texel_d  = world_d / static_cast<float>(map_height_ - 1);
+  const float inv_cell = 1.f / cell;
 
-  for (int row = 0; row < rows; ++row) {
-    for (int col = 0; col < cols; ++col) {
-      const float wx = col * cell + jitter(rng) * cell;
-      const float wz = row * cell + jitter(rng) * cell;
-
-      if (wx >= world_w || wz >= world_d) continue;
-
-      const float u  = wx / world_w;
-      const float v  = wz / world_d;
-      const int   tx = static_cast<int>(u * static_cast<float>(map_width_  - 1) + 0.5f);
-      const int   tz = static_cast<int>(v * static_cast<float>(map_height_ - 1) + 0.5f);
+  // Iterate non-zero density texels only and scatter the grid cells that fall
+  // within each texel's world region.  This avoids iterating the entire
+  // (world / cell)^2 grid when spacing_max is small but the painted area is sparse.
+  for (int tz = 0; tz < map_height_; ++tz) {
+    for (int tx = 0; tx < map_width_; ++tx) {
       const uint8_t density = density_map_[tz * map_width_ + tx];
-
       if (density == 0u) continue;
 
-      if (jitter(rng) * 255.f > static_cast<float>(density)) continue;
+      // World-space bounds of this texel's Voronoi region.
+      const float wx_min = std::max(0.f, (static_cast<float>(tx) - 0.5f) * texel_w);
+      const float wx_max = std::min(world_w, (static_cast<float>(tx) + 0.5f) * texel_w);
+      const float wz_min = std::max(0.f, (static_cast<float>(tz) - 0.5f) * texel_d);
+      const float wz_max = std::min(world_d, (static_cast<float>(tz) + 0.5f) * texel_d);
 
-      const float y     = data.GetHeight(wx, wz);
-      const float yaw   = yaw_dist(rng);
-      const float scale = scale_dist(rng);
+      const int col_min = static_cast<int>(wx_min * inv_cell);
+      const int col_max = static_cast<int>(wx_max * inv_cell);
+      const int row_min = static_cast<int>(wz_min * inv_cell);
+      const int row_max = static_cast<int>(wz_max * inv_cell);
 
-      core::Mat4f m = core::Mat4f::Translation({wx, y, wz}) *
-                      core::Mat4f::RotationY(yaw) *
-                      core::Mat4f::Scale3D({scale, scale, scale});
-      instances_.push_back(m);
+      for (int row = row_min; row <= row_max; ++row) {
+        for (int col = col_min; col <= col_max; ++col) {
+          const float wx = col * cell + jitter(rng) * cell;
+          const float wz = row * cell + jitter(rng) * cell;
+
+          if (wx >= world_w || wz >= world_d) continue;
+
+          if (jitter(rng) * 255.f > static_cast<float>(density)) continue;
+
+          const float y     = data.GetHeight(wx, wz);
+          const float yaw   = yaw_dist(rng);
+          const float scale = scale_dist(rng);
+
+          core::Mat4f m = core::Mat4f::Translation({wx, y, wz}) *
+                          core::Mat4f::RotationY(yaw) *
+                          core::Mat4f::Scale3D({scale, scale, scale});
+          instances_.push_back(m);
+        }
+      }
     }
   }
 }

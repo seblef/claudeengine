@@ -1,4 +1,4 @@
-# Foliage Bent Normals
+# Foliage Improvements: Bent Normals + RebuildInstances Optimisation
 
 ## Problem
 
@@ -30,6 +30,7 @@ it transparently.
 | File | Change |
 |------|--------|
 | `data/shaders/glsl/foliage/foliage_vs.glsl` | Blend geometric normal toward world-up with `BENT_FACTOR = 0.6` |
+| `src/terrain/FoliageLayer.cpp` | Invert scatter loop to iterate non-zero density texels only |
 
 ## Decisions & Rationale
 
@@ -41,6 +42,45 @@ it transparently.
 - **Billboard pass unchanged**: Billboards render in the emissive pass with a
   fixed 0.7 dimming factor, bypassing deferred lighting entirely — no change
   needed there.
+
+---
+
+## RebuildInstances Optimisation
+
+### Problem
+
+`FoliageLayer::RebuildInstances` iterated a dense `(world_w / spacing_max) ×
+(world_d / spacing_max)` grid. With `spacing_max = 0.1 m` on a `512 × 512 m`
+world that is ~26 M iterations per call, even when almost the entire density map
+is zero.
+
+### Solution
+
+Inverted the loop order:
+
+1. Outer loop iterates density-map texels (`map_width_ × map_height_`).
+2. Zero-density texels are skipped immediately.
+3. For each non-zero texel, compute its world-space Voronoi region and derive
+   the subset of grid columns/rows that fall within it.
+4. Only those grid cells are scattered.
+
+Complexity drops from `O(world² / cell²)` to
+`O(non_zero_texels × (texel_size / cell)²)`. When painted area is sparse
+(typical in level editing), this is orders of magnitude faster.
+
+### Decisions & Rationale
+
+- **RNG sequence changes**: The global `mt19937(42)` now advances in texel-major
+  order rather than row-major order over the full grid, so instance jitter
+  positions differ from the original. This is acceptable — the distribution is
+  still visually random and deterministic for a given density map.
+- **Boundary cells**: A grid cell whose start position lies exactly on a texel
+  boundary may be visited by both adjacent non-zero texels, adding at most one
+  extra instance per boundary. This is imperceptible and not worth the added
+  complexity of strict half-open intervals.
+- **No API changes**: `RebuildInstances` signature and all callers are unchanged.
+
+---
 
 ## Future Improvements
 
