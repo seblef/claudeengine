@@ -80,4 +80,54 @@ std::vector<uint16_t> TerrainGenerator::GenerateFbm(
   return result;
 }
 
+std::vector<uint16_t> TerrainGenerator::GenerateRidged(
+    int width, int height,
+    float meters_per_texel,
+    float min_height, float max_height,
+    const RidgedParams& params) {
+  const std::size_t n = static_cast<std::size_t>(width) * height;
+  std::vector<float> raw(n);
+
+  const float ox = static_cast<float>(params.seed) * kSeedScaleX;
+  const float oz = static_cast<float>(params.seed) * kSeedScaleZ;
+
+  const float inv_scale = 1.f / std::max(params.scale, 1e-6f);
+  const int   oct       = std::max(1, params.octaves);
+
+  for (int z = 0; z < height; ++z) {
+    for (int x = 0; x < width; ++x) {
+      const float wx = (static_cast<float>(x) + 0.5f) * meters_per_texel;
+      const float wz = (static_cast<float>(z) + 0.5f) * meters_per_texel;
+
+      const float nx = wx * inv_scale + ox;
+      const float nz = wz * inv_scale + oz;
+
+      raw[static_cast<std::size_t>(z * width + x)] =
+          stb_perlin_ridge_noise3(nx, 0.f, nz,
+                                  params.lacunarity, params.gain,
+                                  params.offset, oct);
+    }
+  }
+
+  float min_val = raw[0];
+  float max_val = raw[0];
+  for (std::size_t i = 1; i < n; ++i) {
+    if (raw[i] < min_val) min_val = raw[i];
+    if (raw[i] > max_val) max_val = raw[i];
+  }
+
+  const float range = (max_val > min_val) ? (max_val - min_val) : 1.f;
+
+  std::vector<uint16_t> result(n);
+  for (std::size_t i = 0; i < n; ++i) {
+    const float t = (raw[i] - min_val) / range;
+    result[i] = static_cast<uint16_t>(t * 65535.f + 0.5f);
+  }
+
+  (void)min_height;
+  (void)max_height;
+
+  return result;
+}
+
 }  // namespace terrain
