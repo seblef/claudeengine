@@ -25,5 +25,5 @@ void main() {
 
     out_albedo   = vec4(albedo.rgb, 0.0);
     out_normal   = vec4(v_normal_world * 0.5 + 0.5, 0.0);
-    out_specular = vec4(0.0);
+    out_specular = vec4(0.0, 0.02, 0.0, 0.0);
 }
