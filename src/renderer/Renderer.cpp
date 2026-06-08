@@ -264,6 +264,10 @@ void Renderer::Update(float time, const core::Camera* camera,
   video_->SetBlendEnabled(true, abstract::BlendFactor::kOne, abstract::BlendFactor::kOne);
   MeshRenderer::Instance().RenderEmissive();
   MeshRenderer::Instance().EndRender();
+  // Restore global light data in the shared LightInfosBlock (binding 4) so
+  // forward-pass billboard shaders can sample the correct directional light.
+  // Local-light draws during the lighting pass overwrite the buffer last.
+  LightRenderer::Instance().BindGlobalLight();
   if (foliage_enabled_ && FoliageRenderer::IsInstanced() &&
       FoliageRenderer::Instance().IsReady() && camera_)
     FoliageRenderer::Instance().RenderBillboards(*camera_);

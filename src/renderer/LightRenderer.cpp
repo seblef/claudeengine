@@ -263,6 +263,16 @@ void LightRenderer::RenderLocalLights(bool disable_shadows) {
   video_->SetDepthTestEnabled(true);
 }
 
+void LightRenderer::BindGlobalLight() {
+  for (const Light* light : instances_) {
+    if (light->GetType() != LightType::kGlobal) continue;
+    LightInfos infos;
+    FillInfos(*light, &infos);
+    light_infos_cb_->Fill(&infos);
+    return;
+  }
+}
+
 void LightRenderer::EndRender() {
   instances_.clear();
 }
