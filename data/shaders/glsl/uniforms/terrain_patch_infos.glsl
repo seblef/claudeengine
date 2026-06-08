@@ -13,7 +13,7 @@
 //   [ 48] tiling               vec4  (16 B — per-layer UV tiling, x=layer0 … w=layer3)
 //   [ 64] triplanar_threshold  float ( 4 B — |normal.y| below which triplanar activates)
 //   [ 68] use_macro_texture    int   ( 4 B — 1 if slot 10 carries a macro texture)
-//   [ 72] tpi_pad1_            float ( 4 B)
+//   [ 72] use_terrain_normal_map int  ( 4 B — 1 if slot 12 carries the terrain normal map)
 //   [ 76] tpi_pad2_            float ( 4 B)
 // Note: tpi_pad0_/tpi_pad1_/tpi_pad2_ prefixes avoid clashing with SceneInfosBlock's
 // pad0_/pad1_/pad2_ — nameless UBO members share the global GLSL namespace.
@@ -30,7 +30,7 @@ layout(std140, binding = 6) uniform TerrainPatchInfosBlock {
     float max_tess;
     vec4  tiling;              // per-layer UV tiling: x=layer0, y=layer1, z=layer2, w=layer3
     float triplanar_threshold; // |world_normal.y| below which triplanar mapping activates
-    int   use_macro_texture;   // 1 if u_macro_texture (slot 10) is valid
-    float tpi_pad1_;
+    int   use_macro_texture;        // 1 if u_macro_texture (slot 10) is valid
+    int   tpi_pad1_;
     float tpi_pad2_;
 };

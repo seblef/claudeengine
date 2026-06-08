@@ -3,7 +3,6 @@ add_library(terrain STATIC
     FoliageLayer.cpp
     TerrainData.cpp
     TerrainMaterial.cpp
-    TerrainNormalMap.cpp
     TerrainPatchMesh.cpp
     TerrainRenderer.cpp
 )

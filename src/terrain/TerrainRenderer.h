@@ -158,9 +158,9 @@ class TerrainRenderer : public core::Singleton<TerrainRenderer> {
   // cppcheck-suppress unusedStructMember
   std::vector<TerrainPatch>                 patches_;
 
-  const TerrainMaterial*  material_            = nullptr;
-  abstract::Texture*      macro_texture_       = nullptr;
-  abstract::RawTexture*   caustic_tex_         = nullptr;
+  const TerrainMaterial*      material_            = nullptr;
+  abstract::Texture*          macro_texture_       = nullptr;
+  abstract::RawTexture*       caustic_tex_         = nullptr;
 
   int         triangle_budget_       = 500'000;
   int         patch_size_            = 64;

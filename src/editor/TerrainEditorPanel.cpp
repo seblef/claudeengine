@@ -30,7 +30,6 @@
 #include "terrain/FoliageLayer.h"
 #include "terrain/TerrainData.h"
 #include "terrain/TerrainMaterial.h"
-#include "terrain/TerrainNormalMap.h"
 #include "terrain/TerrainRenderer.h"
 
 namespace {
@@ -54,13 +53,11 @@ TerrainEditorPanel::~TerrainEditorPanel() = default;
 
 void TerrainEditorPanel::SetContext(terrain::TerrainData* data,
                                     terrain::TerrainMaterial* material,
-                                    terrain::TerrainNormalMap* normal_map,
                                     abstract::VideoDevice* video,
                                     EditorCommandHistory* history,
                                     game::GameTerrain* terrain_obj) {
   data_         = data;
   material_     = material;
-  normal_map_   = normal_map;
   video_        = video;
   history_      = history;
   terrain_obj_  = terrain_obj;
@@ -384,14 +381,11 @@ void TerrainEditorPanel::ApplyBrushFootprint(float cx_world, float cz_world,
   if (terrain::TerrainRenderer::IsInstanced())
     terrain::TerrainRenderer::Instance().UpdateHeightmapTile(
         x0, z0, x1 - x0, z1 - z0, *data_);
-
-  if (normal_map_ && video_)
-    normal_map_->UploadTile(video_, x0, z0, x1 - x0, z1 - z0);
 }
 
 void TerrainEditorPanel::OnSculptAt(float wx, float wz, bool first_touch,
                                      float dt) {
-  if (!data_ || !normal_map_ || !video_) return;
+  if (!data_ || !video_) return;
 
   const float mpt     = data_->GetMetersPerTexel();
   const int r_texels  = static_cast<int>(std::ceil(radius_ / mpt)) + 1;
@@ -442,7 +436,7 @@ void TerrainEditorPanel::OnSculptEnd() {
 
   if (post != stroke_pre_snapshot_) {
     history_->Push(std::make_unique<SculptBrushCommand>(
-        data_, normal_map_, video_,
+        data_, video_,
         stroke_x0_, stroke_z0_, sw, sh,
         std::move(stroke_pre_snapshot_),
         std::move(post)));
@@ -768,11 +762,11 @@ void TerrainEditorPanel::RenderPropertiesTab() {
 
   const bool min_changed = ImGui::DragFloat("Min Height (m)", &min_h,
                                              0.5f, -10000.f, max_h - 0.1f, "%.1f");
-  const bool min_deact   = ImGui::IsItemDeactivatedAfterEdit();
+  ImGui::IsItemDeactivatedAfterEdit();
 
   const bool max_changed = ImGui::DragFloat("Max Height (m)", &max_h,
                                              0.5f, min_h + 0.1f, 10000.f, "%.1f");
-  const bool max_deact   = ImGui::IsItemDeactivatedAfterEdit();
+  ImGui::IsItemDeactivatedAfterEdit();
 
   if (min_changed || max_changed) {
     max_h = std::max(max_h, min_h + 0.1f);
@@ -780,13 +774,6 @@ void TerrainEditorPanel::RenderPropertiesTab() {
     data_->SetMaxHeight(max_h);
     if (terrain::TerrainRenderer::IsInstanced())
       terrain::TerrainRenderer::Instance().SetHeightRange(min_h, max_h);
-  }
-
-  if ((min_deact || max_deact) && normal_map_ && video_) {
-    normal_map_->Build(*data_);
-    normal_map_->Upload(video_);
-    LOG_F(INFO, "TerrainEditorPanel: height range changed [%.1f, %.1f] — "
-          "normal map rebuilt", min_h, max_h);
   }
 
   ImGui::Spacing();
@@ -826,7 +813,8 @@ void TerrainEditorPanel::RenderImportStatusAndModal() {
     ImGui::Spacing();
     if (ImGui::Button("Yes, resize", {120.f, 0.f})) {
       ApplyImportedHeightmap(std::move(io_pending_data_),
-                             io_pending_w_, io_pending_h_, true);
+                             io_pending_w_, io_pending_h_, true,
+                             io_pending_min_h_, io_pending_max_h_);
       io_state_ = IoState::kIdle;
       ImGui::CloseCurrentPopup();
     }
@@ -867,8 +855,9 @@ void TerrainEditorPanel::RenderImportWindow() {
     }
 
     ImGui::TextWrapped(
-        "PNG: maps brightness [0\xe2\x80\x93""255] to height [min, max] (configurable).\n"
-        "HDR/EXR: maps float values [0\xe2\x80\x93""1] to height [min, max] (configurable).");
+        "PNG/HDR/EXR: pixel values are normalised to [0\xe2\x80\x93""1] "
+        "(min pixel \xe2\x86\x92 0, max pixel \xe2\x86\x92 1), "
+        "then mapped to height [min, max] (configurable).");
     ImGui::Spacing();
 
     ImGui::DragFloat("Min Height##import", &import_min_h_, 0.5f,
@@ -971,14 +960,24 @@ bool TerrainEditorPanel::LoadAndApplyPNG(const std::string& path) {
 
   const std::size_t n = static_cast<std::size_t>(w) * h;
   std::vector<uint16_t> samples(n);
-  const float range = import_max_h_ - import_min_h_;
+
+  // Normalise to [0, 1] before mapping to the editor height range.
+  uint8_t min_px = pixels[0];
+  uint8_t max_px = pixels[0];
+  for (std::size_t i = 1; i < n; ++i) {
+    if (pixels[i] < min_px) min_px = pixels[i];
+    if (pixels[i] > max_px) max_px = pixels[i];
+  }
+  const float px_range = (max_px > min_px)
+      ? static_cast<float>(max_px - min_px) : 1.f;
+
+  for (std::size_t i = 0; i < n; ++i) {
+    const float t = (pixels[i] - min_px) / px_range;
+    samples[i] = static_cast<uint16_t>(t * 65535.f + 0.5f);
+  }
+  stbi_image_free(pixels);
 
   if (!data_) {
-    // No existing terrain: pixel [0,255] maps linearly to sample [0,65535].
-    // The new terrain will use [import_min_h_, import_max_h_] as its range.
-    for (std::size_t i = 0; i < n; ++i)
-      samples[i] = static_cast<uint16_t>(pixels[i] / 255.f * 65535.f + 0.5f);
-    stbi_image_free(pixels);
     if (on_create_from_import_)
       on_create_from_import_(std::move(samples), w, h, import_min_h_, import_max_h_);
     io_status_msg_ = "Import successful.";
@@ -986,23 +985,19 @@ bool TerrainEditorPanel::LoadAndApplyPNG(const std::string& path) {
     return true;
   }
 
-  for (std::size_t i = 0; i < n; ++i) {
-    const float world_h = import_min_h_ + (pixels[i] / 255.f) * range;
-    samples[i] = data_->HeightToSample(world_h);
-  }
-  stbi_image_free(pixels);
-
   const bool needs_resize =
       (w != data_->GetTexelWidth() || h != data_->GetTexelHeight());
   if (needs_resize) {
-    io_pending_data_ = std::move(samples);
-    io_pending_w_    = w;
-    io_pending_h_    = h;
-    io_state_        = IoState::kConfirmResize;
+    io_pending_data_  = std::move(samples);
+    io_pending_w_     = w;
+    io_pending_h_     = h;
+    io_pending_min_h_ = import_min_h_;
+    io_pending_max_h_ = import_max_h_;
+    io_state_         = IoState::kConfirmResize;
     return true;
   }
 
-  ApplyImportedHeightmap(samples, w, h, false);
+  ApplyImportedHeightmap(samples, w, h, false, import_min_h_, import_max_h_);
   return true;
 }
 
@@ -1048,16 +1043,23 @@ bool TerrainEditorPanel::LoadAndApplyHDR(const std::string& path) {
     stbi_image_free(raw);
   }
 
-  // Float pixel values are in [0, 1]; map them to [import_min_h_, import_max_h_].
+  // Normalise to [0, 1] before mapping to the editor height range.
   const std::size_t n = pixels.size();
-  const float range = import_max_h_ - import_min_h_;
+  float min_val = pixels[0];
+  float max_val = pixels[0];
+  for (std::size_t i = 1; i < n; ++i) {
+    if (pixels[i] < min_val) min_val = pixels[i];
+    if (pixels[i] > max_val) max_val = pixels[i];
+  }
+  const float val_range = (max_val > min_val) ? (max_val - min_val) : 1.f;
+
   std::vector<uint16_t> samples(n);
+  for (std::size_t i = 0; i < n; ++i) {
+    const float t = (pixels[i] - min_val) / val_range;
+    samples[i] = static_cast<uint16_t>(t * 65535.f + 0.5f);
+  }
 
   if (!data_) {
-    for (std::size_t i = 0; i < n; ++i) {
-      const float t = std::clamp(pixels[i], 0.f, 1.f);
-      samples[i] = static_cast<uint16_t>(t * 65535.f + 0.5f);
-    }
     if (on_create_from_import_)
       on_create_from_import_(std::move(samples), w, h, import_min_h_, import_max_h_);
     io_status_msg_ = "Import successful.";
@@ -1065,33 +1067,29 @@ bool TerrainEditorPanel::LoadAndApplyHDR(const std::string& path) {
     return true;
   }
 
-  for (std::size_t i = 0; i < n; ++i) {
-    const float t = std::clamp(pixels[i], 0.f, 1.f);
-    const float world_h = import_min_h_ + t * range;
-    samples[i] = data_->HeightToSample(world_h);
-  }
-
   const bool needs_resize =
       (w != data_->GetTexelWidth() || h != data_->GetTexelHeight());
   if (needs_resize) {
-    io_pending_data_ = std::move(samples);
-    io_pending_w_    = w;
-    io_pending_h_    = h;
-    io_state_        = IoState::kConfirmResize;
+    io_pending_data_  = std::move(samples);
+    io_pending_w_     = w;
+    io_pending_h_     = h;
+    io_pending_min_h_ = import_min_h_;
+    io_pending_max_h_ = import_max_h_;
+    io_state_         = IoState::kConfirmResize;
     return true;
   }
 
-  ApplyImportedHeightmap(samples, w, h, false);
+  ApplyImportedHeightmap(samples, w, h, false, import_min_h_, import_max_h_);
   return true;
 }
 
 void TerrainEditorPanel::ApplyImportedHeightmap(const std::vector<uint16_t>& data,
                                                 int w, int h,
-                                                bool needs_resize) {
+                                                bool needs_resize,
+                                                float min_h, float max_h) {
+  data_->SetMinHeight(min_h);
+  data_->SetMaxHeight(max_h);
   data_->ReplaceHeightmap(data.data(), w, h);
-
-  normal_map_->Build(*data_);
-  normal_map_->Upload(video_);
 
   if (needs_resize) {
     if (terrain::TerrainRenderer::IsInstanced())
@@ -1101,9 +1099,11 @@ void TerrainEditorPanel::ApplyImportedHeightmap(const std::vector<uint16_t>& dat
     LOG_F(INFO, "TerrainEditorPanel: heightmap imported and terrain resized to %dx%d",
           w, h);
   } else {
-    if (terrain::TerrainRenderer::IsInstanced())
+    if (terrain::TerrainRenderer::IsInstanced()) {
+      terrain::TerrainRenderer::Instance().SetHeightRange(min_h, max_h);
       terrain::TerrainRenderer::Instance().UpdateHeightmapTile(
           0, 0, w, h, *data_);
+    }
     LOG_F(INFO, "TerrainEditorPanel: heightmap imported %dx%d", w, h);
   }
 

@@ -23,8 +23,8 @@ constexpr int kHeightmapSlot     = 0;
 constexpr int kSplatmapSlot      = 1;
 constexpr int kAlbedoBaseSlot    = 2;   // slots 2-5 for 4 layer albedos
 constexpr int kNormalBaseSlot    = 6;   // slots 6-9 for 4 layer normals
-constexpr int kMacroTextureSlot  = 10;
-constexpr int kCausticSlot       = 11;  // animated caustic projection on submerged terrain
+constexpr int kMacroTextureSlot     = 10;
+constexpr int kCausticSlot          = 11;  // animated caustic projection on submerged terrain
 }  // namespace
 
 TerrainRenderer::~TerrainRenderer() {
@@ -98,7 +98,7 @@ void TerrainRenderer::Render(const core::Camera& camera) {
 
   heightmap_->Bind(kHeightmapSlot);
   BindMaterialTextures();
-  if (caustic_tex_) caustic_tex_->Bind(kCausticSlot);
+  if (caustic_tex_)    caustic_tex_->Bind(kCausticSlot);
   patch_cb_->Bind();
 
   const bool use_tess = tess_enabled_ && shader_->HasTessellation();
@@ -144,7 +144,7 @@ void TerrainRenderer::FillPatchInfos(const TerrainPatch& patch) {
   infos.tess_falloff_dist  = tess_falloff_dist_;
   infos.max_tess           = max_tess_;
   infos.triplanar_threshold = triplanar_threshold_;
-  infos.use_macro_texture  = (macro_texture_ != nullptr) ? 1 : 0;
+  infos.use_macro_texture      = (macro_texture_    != nullptr) ? 1 : 0;
 
   if (material_) {
     const int n = material_->GetLayerCount();

@@ -16,8 +16,6 @@
 #include "editor/TerrainCreationDialog.h"
 #include "editor/TerrainEditorPanel.h"
 
-namespace terrain { class TerrainNormalMap; }
-
 namespace editor {
 
 class EditorScene;
@@ -88,7 +86,7 @@ class EditorWindow {
   // Fires pending_after_save_ on Save/Discard, clears it on Cancel.
   void RenderUnsavedChangesModal();
 
-  // Builds TerrainData/TerrainMaterial/TerrainNormalMap from dialog params
+  // Builds TerrainData/TerrainMaterial from dialog params
   // and adds a GameTerrain to the scene.
   void CreateTerrain();
 
@@ -173,9 +171,6 @@ class EditorWindow {
   // Terrain creation dialog — opened from the Add menu.
   // cppcheck-suppress unusedStructMember
   TerrainCreationDialog                  terrain_dialog_;
-  // Normal map produced during terrain creation; lives with the editor window.
-  // cppcheck-suppress unusedStructMember
-  std::unique_ptr<terrain::TerrainNormalMap> terrain_normal_map_;
 
   // Sculpt panel — shown via the Terrain menu when a terrain is in the scene.
   // cppcheck-suppress unusedStructMember
