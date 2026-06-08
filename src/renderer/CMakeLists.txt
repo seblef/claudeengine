@@ -1,4 +1,5 @@
 add_library(renderer STATIC
+    BloomRenderer.cpp
     CircleSpotLight.cpp
     EmissiveFBO.cpp
     FoliageRenderer.cpp
