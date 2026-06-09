@@ -11,6 +11,7 @@
 #include "mesh/LodData.h"
 #include "mesh/MeshData.h"
 #include "mesh/MeshUtils.h"
+#include "mesh/SubMeshRange.h"
 
 #include <ufbx.h>
 #include <loguru.hpp>
@@ -25,6 +26,15 @@ void ComputeAabb(LodData* lod) {
   for (const auto& v : lod->vertices) lod->aabb << v.position;
 }
 
+// Returns the material name for the given material-part index, or an empty
+// string when the mesh carries no material assignments.
+std::string MaterialName(const ufbx_mesh* m, uint32_t part_index) {
+  if (part_index < static_cast<uint32_t>(m->materials.count))
+    return std::string(m->materials.data[part_index]->name.data,
+                       m->materials.data[part_index]->name.length);
+  return {};
+}
+
 }  // namespace
 
 bool FbxImporter::Import(const std::string& path, MeshData* mesh) const {
@@ -37,13 +47,11 @@ bool FbxImporter::Import(const std::string& path, MeshData* mesh) const {
     return false;
   }
 
-  // Triangulation scratch buffer.
-  std::vector<uint32_t> tri_buf;
+  mesh->unit_meters = static_cast<float>(scene->settings.unit_meters);
 
-  // Merge all mesh objects and all their faces into a single LodData.
-  // Material parts are ignored — materials are a game-level concept.
   LodData& lod = mesh->lod;
   bool all_have_normals = true;
+  std::vector<uint32_t> tri_buf;
 
   for (size_t mi = 0; mi < scene->meshes.count; ++mi) {
     const ufbx_mesh* m = scene->meshes.data[mi];
@@ -55,33 +63,101 @@ bool FbxImporter::Import(const std::string& path, MeshData* mesh) const {
 
     tri_buf.resize(m->max_face_triangles * 3);
 
-    for (uint32_t fi = 0; fi < static_cast<uint32_t>(m->num_faces); ++fi) {
-      const ufbx_face face = m->faces.data[fi];
-      const uint32_t num_tris = ufbx_triangulate_face(
-          tri_buf.data(), tri_buf.size(), m, face);
+    // material_parts is always populated by ufbx (even for meshes with no
+    // material assignments), so each part maps directly to a SubMeshRange.
+    const size_t part_count = m->material_parts.count;
+    const bool has_parts = part_count > 0;
 
-      for (uint32_t ti = 0; ti < num_tris; ++ti) {
-        for (uint32_t vi = 0; vi < 3; ++vi) {
-          const uint32_t ix = tri_buf[ti * 3 + vi];
+    if (has_parts) {
+      for (size_t pi = 0; pi < part_count; ++pi) {
+        const ufbx_mesh_part& part = m->material_parts.data[pi];
 
-          const ufbx_vec3 p = ufbx_get_vertex_vec3(&m->vertex_position, ix);
-          const ufbx_vec3 n = has_normals
-              ? ufbx_get_vertex_vec3(&m->vertex_normal, ix)
-              : ufbx_vec3{0.0, 1.0, 0.0};
-          const ufbx_vec2 uv = has_uvs
-              ? ufbx_get_vertex_vec2(&m->vertex_uv, ix)
-              : ufbx_vec2{0.0, 0.0};
+        const uint32_t index_offset =
+            static_cast<uint32_t>(lod.indices.size());
 
-          const uint32_t new_idx = static_cast<uint32_t>(lod.vertices.size());
-          lod.vertices.push_back(core::Vertex3D{
-              {static_cast<float>(p.x),  static_cast<float>(p.y),  static_cast<float>(p.z)},
-              {static_cast<float>(n.x),  static_cast<float>(n.y),  static_cast<float>(n.z)},
-              core::Vec3f::kZero,
-              core::Vec3f::kZero,
-              {static_cast<float>(uv.x), static_cast<float>(uv.y)},
-          });
-          lod.indices.push_back(new_idx);
+        for (size_t fi = 0; fi < part.face_indices.count; ++fi) {
+          const ufbx_face face = m->faces.data[part.face_indices.data[fi]];
+          const uint32_t num_tris = ufbx_triangulate_face(
+              tri_buf.data(), tri_buf.size(), m, face);
+
+          for (uint32_t ti = 0; ti < num_tris; ++ti) {
+            for (uint32_t vi = 0; vi < 3; ++vi) {
+              const uint32_t ix = tri_buf[ti * 3 + vi];
+
+              const ufbx_vec3 p = ufbx_get_vertex_vec3(&m->vertex_position, ix);
+              const ufbx_vec3 n = has_normals
+                  ? ufbx_get_vertex_vec3(&m->vertex_normal, ix)
+                  : ufbx_vec3{0.0, 1.0, 0.0};
+              const ufbx_vec2 uv = has_uvs
+                  ? ufbx_get_vertex_vec2(&m->vertex_uv, ix)
+                  : ufbx_vec2{0.0, 0.0};
+
+              lod.indices.push_back(
+                  static_cast<uint32_t>(lod.vertices.size()));
+              lod.vertices.push_back(core::Vertex3D{
+                  {static_cast<float>(p.x), static_cast<float>(p.y),
+                   static_cast<float>(p.z)},
+                  {static_cast<float>(n.x), static_cast<float>(n.y),
+                   static_cast<float>(n.z)},
+                  core::Vec3f::kZero,
+                  core::Vec3f::kZero,
+                  {static_cast<float>(uv.x), static_cast<float>(uv.y)},
+              });
+            }
+          }
         }
+
+        const uint32_t index_count =
+            static_cast<uint32_t>(lod.indices.size()) - index_offset;
+        if (index_count > 0) {
+          lod.submeshes.push_back(SubMeshRange{
+              index_offset,
+              index_count,
+              MaterialName(m, part.index),
+          });
+        }
+      }
+    } else {
+      // Fallback: no material_parts — treat entire mesh as one submesh.
+      const uint32_t index_offset =
+          static_cast<uint32_t>(lod.indices.size());
+
+      for (uint32_t fi = 0; fi < static_cast<uint32_t>(m->num_faces); ++fi) {
+        const ufbx_face face = m->faces.data[fi];
+        const uint32_t num_tris = ufbx_triangulate_face(
+            tri_buf.data(), tri_buf.size(), m, face);
+
+        for (uint32_t ti = 0; ti < num_tris; ++ti) {
+          for (uint32_t vi = 0; vi < 3; ++vi) {
+            const uint32_t ix = tri_buf[ti * 3 + vi];
+
+            const ufbx_vec3 p = ufbx_get_vertex_vec3(&m->vertex_position, ix);
+            const ufbx_vec3 n = has_normals
+                ? ufbx_get_vertex_vec3(&m->vertex_normal, ix)
+                : ufbx_vec3{0.0, 1.0, 0.0};
+            const ufbx_vec2 uv = has_uvs
+                ? ufbx_get_vertex_vec2(&m->vertex_uv, ix)
+                : ufbx_vec2{0.0, 0.0};
+
+            lod.indices.push_back(
+                static_cast<uint32_t>(lod.vertices.size()));
+            lod.vertices.push_back(core::Vertex3D{
+                {static_cast<float>(p.x), static_cast<float>(p.y),
+                 static_cast<float>(p.z)},
+                {static_cast<float>(n.x), static_cast<float>(n.y),
+                 static_cast<float>(n.z)},
+                core::Vec3f::kZero,
+                core::Vec3f::kZero,
+                {static_cast<float>(uv.x), static_cast<float>(uv.y)},
+            });
+          }
+        }
+      }
+
+      const uint32_t index_count =
+          static_cast<uint32_t>(lod.indices.size()) - index_offset;
+      if (index_count > 0) {
+        lod.submeshes.push_back(SubMeshRange{index_offset, index_count, {}});
       }
     }
   }
@@ -98,8 +174,8 @@ bool FbxImporter::Import(const std::string& path, MeshData* mesh) const {
   ComputeTangents(&lod);
   ComputeAabb(&lod);
 
-  LOG_F(INFO, "FbxImporter: loaded %zu vertices from '%s'",
-        lod.vertices.size(), path.c_str());
+  LOG_F(INFO, "FbxImporter: loaded %zu vertices, %zu submeshes from '%s'",
+        lod.vertices.size(), lod.submeshes.size(), path.c_str());
   return true;
 }
 
