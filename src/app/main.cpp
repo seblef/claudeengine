@@ -102,6 +102,7 @@ int main(int argc, char* argv[]) {
             map_path.c_str());
     } else {
       LOG_F(INFO, "Loaded map '%s'", map_data.name.c_str());
+      renderer::Renderer::Instance().InitVisibilitySystems(map_data.map_size);
 
       // Global directional light from map descriptor.
       map_global_light = std::make_unique<game::GameLight>(

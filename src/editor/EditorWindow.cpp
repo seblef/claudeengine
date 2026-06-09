@@ -230,6 +230,8 @@ void EditorWindow::Render() {
     const std::string         new_name  = map_properties_->GetNewMapName();
     const float               new_size  = map_properties_->GetNewMapSize();
     const game::GameLightDesc new_light = map_properties_->GetNewMapLightDesc();
+    scene_.reset();
+    renderer::Renderer::Instance().InitVisibilitySystems(new_size);
     scene_ = std::make_unique<EditorScene>(video_, new_name, new_size,
                                            new_light);
     map_properties_ = std::make_unique<MapPropertiesWindow>(scene_.get());
@@ -545,9 +547,24 @@ void EditorWindow::LoadFromFile() {
 }
 
 void EditorWindow::LoadMap(const std::filesystem::path& path) {
+  // Peek the map size so the octree can be correctly sized before objects are
+  // inserted.  MapLoader will re-parse the full file; this first read is cheap.
+  float map_size = 120.f;
+  try {
+    const YAML::Node root = YAML::LoadFile(path.string());
+    map_size = root["map_size"].as<float>(120.f);
+  } catch (...) {}
+
+  // Destroy the old scene so the octree is empty before rebuilding it.
+  scene_.reset();
+  renderer::Renderer::Instance().InitVisibilitySystems(map_size);
+
   auto loaded = MapSerializer::Load(path, video_);
   if (!loaded) {
     LOG_F(ERROR, "Failed to load map from '%s'", path.string().c_str());
+    scene_ = std::make_unique<EditorScene>(video_);
+    map_properties_ = std::make_unique<MapPropertiesWindow>(scene_.get());
+    viewport_->SetScene(scene_.get());
     return;
   }
 

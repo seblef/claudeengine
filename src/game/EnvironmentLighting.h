@@ -31,7 +31,9 @@ inline void UpdateGlobalLight(renderer::GlobalLight& light,
                                const environment::WorldTime& time) {
     if (time.IsDaytime()) {
         const core::Vec3f sun_dir = time.GetSunDirection();
-        light.SetDirection(sun_dir);
+        // sun_dir points toward the sun; light direction is the ray from source
+        // to surface (downward for a sun above the horizon), so negate.
+        light.SetDirection(-sun_dir);
 
         // sun_dir.y == sin(elevation); blend dawn/dusk→noon over [0, sin(15°)].
         const float t = std::min(sun_dir.y / kDawnDuskElevationY, 1.f);
@@ -51,7 +53,7 @@ inline void UpdateGlobalLight(renderer::GlobalLight& light,
             dawn_ambient.y + t * (noon_ambient.y - dawn_ambient.y),
             dawn_ambient.z + t * (noon_ambient.z - dawn_ambient.z)));
     } else {
-        light.SetDirection(time.GetMoonDirection());
+        light.SetDirection(-time.GetMoonDirection());
         light.SetColor(core::Color(0.5f, 0.55f, 0.7f));
         light.SetIntensity(0.05f);
         light.SetAmbientColor(core::Vec3f(0.05f, 0.05f, 0.12f));
