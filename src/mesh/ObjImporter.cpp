@@ -11,6 +11,7 @@
 #include "mesh/LodData.h"
 #include "mesh/MeshData.h"
 #include "mesh/MeshUtils.h"
+#include "mesh/SubMeshRange.h"
 
 // fast_obj: define implementation in this translation unit only.
 #define FAST_OBJ_IMPLEMENTATION
@@ -22,56 +23,12 @@ namespace mesh {
 
 namespace {
 
-// Builds the global index offset into obj->indices for the first vertex of
-// faces[face_offset].
-unsigned int GlobalVertexOffset(const fastObjMesh* obj, unsigned int face_offset) {
-  unsigned int offset = 0;
-  for (unsigned int fi = 0; fi < face_offset; ++fi)
-    offset += obj->face_vertices[fi];
-  return offset;
-}
-
-// Appends the triangulated geometry of one OBJ group into lod.
-// Vertices are pushed sequentially (indices 0, 1, 2, …) to be welded later.
-void AppendGroupGeometry(const fastObjMesh* obj, const fastObjGroup& grp,
-                         bool has_normals, bool has_uvs, LodData* lod) {
-  const unsigned int global_vertex_start = GlobalVertexOffset(obj, grp.face_offset);
-  unsigned int local_offset = 0;
-
-  for (unsigned int fi = 0; fi < grp.face_count; ++fi) {
-    const unsigned int face_idx   = grp.face_offset + fi;
-    const unsigned int vert_count = obj->face_vertices[face_idx];
-
-    // Fan triangulation: (0,1,2), (0,2,3), …
-    for (unsigned int ti = 1; ti + 1 < vert_count; ++ti) {
-      const unsigned int corners[3] = {0u, ti, ti + 1u};
-      for (unsigned int corner : corners) {
-        const fastObjIndex& idx =
-            obj->indices[global_vertex_start + local_offset + corner];
-
-        const core::Vec3f pos{
-          obj->positions[3 * idx.p + 0],
-          obj->positions[3 * idx.p + 1],
-          obj->positions[3 * idx.p + 2],
-        };
-        const core::Vec3f norm = (has_normals && idx.n > 0)
-            ? core::Vec3f{obj->normals[3 * idx.n + 0],
-                          obj->normals[3 * idx.n + 1],
-                          obj->normals[3 * idx.n + 2]}
-            : core::Vec3f::kAxisY;
-        const core::Vec2f uv = (has_uvs && idx.t > 0)
-            ? core::Vec2f{obj->texcoords[2 * idx.t + 0],
-                          obj->texcoords[2 * idx.t + 1]}
-            : core::Vec2f::kZero;
-
-        const uint32_t new_idx = static_cast<uint32_t>(lod->vertices.size());
-        lod->vertices.push_back(
-            core::Vertex3D{pos, norm, core::Vec3f::kZero, core::Vec3f::kZero, uv});
-        lod->indices.push_back(new_idx);
-      }
-    }
-    local_offset += vert_count;
-  }
+// Returns the material name for the given material index, or an empty string
+// when the mesh has no materials or the name is null.
+std::string MaterialName(const fastObjMesh* obj, unsigned int mat_idx) {
+  if (mat_idx < obj->material_count && obj->materials[mat_idx].name)
+    return obj->materials[mat_idx].name;
+  return {};
 }
 
 void ComputeAabb(LodData* lod) {
@@ -93,20 +50,77 @@ bool ObjImporter::Import(const std::string& path, MeshData* mesh) const {
   const bool has_normals = obj->normal_count > 1;
   const bool has_uvs     = obj->texcoord_count > 1;
 
-  // Merge all groups into a single LodData; material slots are ignored.
   LodData& lod = mesh->lod;
-  bool has_any_faces = false;
 
-  for (unsigned int g = 0; g < obj->group_count; ++g) {
-    const fastObjGroup& grp = obj->groups[g];
-    if (grp.face_count == 0) continue;
-    AppendGroupGeometry(obj, grp, has_normals, has_uvs, &lod);
-    has_any_faces = true;
+  // Iterate all faces globally, grouping contiguous runs by material index
+  // (face_materials[fi] gives the index for face fi).  Each run becomes one
+  // SubMeshRange so that the renderer can bind the correct material per range.
+  unsigned int global_index = 0;   // running offset into obj->indices
+  int          cur_mat      = -1;  // current material index (-1 = none yet)
+  uint32_t     sub_offset   = 0;   // index start of the current submesh
+
+  for (unsigned int fi = 0; fi < obj->face_count; ++fi) {
+    const unsigned int vert_count = obj->face_vertices[fi];
+    const unsigned int mat_idx    = obj->face_materials[fi];
+
+    if (static_cast<int>(mat_idx) != cur_mat) {
+      // Close the previous submesh.
+      if (cur_mat >= 0) {
+        const uint32_t cnt =
+            static_cast<uint32_t>(lod.indices.size()) - sub_offset;
+        if (cnt > 0) {
+          lod.submeshes.push_back(SubMeshRange{
+              sub_offset, cnt,
+              MaterialName(obj, static_cast<unsigned int>(cur_mat))});
+        }
+      }
+      cur_mat    = static_cast<int>(mat_idx);
+      sub_offset = static_cast<uint32_t>(lod.indices.size());
+    }
+
+    // Fan triangulation: (0,1,2), (0,2,3), …
+    for (unsigned int ti = 1; ti + 1 < vert_count; ++ti) {
+      const unsigned int corners[3] = {0u, ti, ti + 1u};
+      for (unsigned int corner : corners) {
+        const fastObjIndex& idx = obj->indices[global_index + corner];
+
+        const core::Vec3f pos{
+          obj->positions[3 * idx.p + 0],
+          obj->positions[3 * idx.p + 1],
+          obj->positions[3 * idx.p + 2],
+        };
+        const core::Vec3f norm = (has_normals && idx.n > 0)
+            ? core::Vec3f{obj->normals[3 * idx.n + 0],
+                          obj->normals[3 * idx.n + 1],
+                          obj->normals[3 * idx.n + 2]}
+            : core::Vec3f::kAxisY;
+        const core::Vec2f uv = (has_uvs && idx.t > 0)
+            ? core::Vec2f{obj->texcoords[2 * idx.t + 0],
+                          obj->texcoords[2 * idx.t + 1]}
+            : core::Vec2f::kZero;
+
+        lod.indices.push_back(static_cast<uint32_t>(lod.vertices.size()));
+        lod.vertices.push_back(
+            core::Vertex3D{pos, norm, core::Vec3f::kZero, core::Vec3f::kZero, uv});
+      }
+    }
+    global_index += vert_count;
+  }
+
+  // Close the last submesh.
+  if (cur_mat >= 0) {
+    const uint32_t cnt =
+        static_cast<uint32_t>(lod.indices.size()) - sub_offset;
+    if (cnt > 0) {
+      lod.submeshes.push_back(SubMeshRange{
+          sub_offset, cnt,
+          MaterialName(obj, static_cast<unsigned int>(cur_mat))});
+    }
   }
 
   fast_obj_destroy(obj);
 
-  if (!has_any_faces) {
+  if (lod.vertices.empty()) {
     LOG_F(WARNING, "ObjImporter: no geometry found in '%s'", path.c_str());
     return false;
   }
@@ -116,8 +130,8 @@ bool ObjImporter::Import(const std::string& path, MeshData* mesh) const {
   ComputeTangents(&lod);
   ComputeAabb(&lod);
 
-  LOG_F(INFO, "ObjImporter: loaded %zu vertices from '%s'",
-        lod.vertices.size(), path.c_str());
+  LOG_F(INFO, "ObjImporter: loaded %zu vertices, %zu submeshes from '%s'",
+        lod.vertices.size(), lod.submeshes.size(), path.c_str());
   return true;
 }
 
