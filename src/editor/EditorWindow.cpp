@@ -26,6 +26,7 @@
 #include "editor/MapPropertiesWindow.h"
 #include "editor/MapSerializer.h"
 #include "editor/MaterialEditorWindow.h"
+#include "editor/MeshEditorWindow.h"
 #include "editor/MeshSelectionModal.h"
 #include "editor/ObjectsPanel.h"
 #include "editor/PropertiesPanel.h"
@@ -68,6 +69,8 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       toolbar_(std::make_unique<EditorToolbar>()),
       viewport_(std::make_unique<EditorViewport>(video)),
       material_editor_(std::make_unique<MaterialEditorWindow>(video)),
+      mesh_editor_(std::make_unique<MeshEditorWindow>(video,
+                                                       material_editor_.get())),
       mesh_modal_(std::make_unique<MeshSelectionModal>()),
       properties_panel_(std::make_unique<PropertiesPanel>()),
       resources_panel_(std::make_unique<ResourcesPanel>()),
@@ -89,6 +92,9 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       [this](game::GameMaterial* mat) { material_editor_->Open(mat); });
   resources_panel_->SetOnImportMaterial([this] { ImportMaterial(); });
   resources_panel_->SetOnImportMesh([this] { ImportMesh(); });
+  resources_panel_->SetOnMeshEdit([this](const game::MeshTemplate* tmpl) {
+    if (tmpl) mesh_editor_->OpenEdit(tmpl->GetId());
+  });
   resources_panel_->SetOnNewMaterial([this](std::string_view name) {
     auto* mat = new game::GameMaterial(std::string(name),
                                        renderer::MaterialDesc(), video_);
@@ -211,6 +217,9 @@ void EditorWindow::Render() {
 
   // 8. Material editor — floating window, shown when a material is open.
   material_editor_->Render(*scene_);
+
+  // 8a. Mesh editor — floating window, shown when a mesh import/edit is active.
+  mesh_editor_->Render(scene_.get());
 
   // 9. Map properties panel — toggled via the Map menu.
   if (show_map_props_) {
@@ -665,18 +674,27 @@ void EditorWindow::ImportMesh() {
   nfdu8char_t* out_path = nullptr;
   const nfdu8filteritem_t filter = {"Mesh", "obj,fbx,emesh"};
   const nfdresult_t result = NFD_OpenDialogU8(&out_path, &filter, 1, nullptr);
-  if (result == NFD_OKAY) {
-    game::MeshTemplate* tmpl =
-        game::MeshTemplate::GetOrLoad(out_path, video_);
-    if (tmpl) {
-      scene_->AddMeshTemplate(tmpl);
-      LOG_F(INFO, "Imported mesh '%s'", out_path);
-    } else {
-      LOG_F(ERROR, "Failed to import mesh '%s'", out_path);
-    }
-    NFD_FreePathU8(out_path);
-  } else if (result == NFD_ERROR) {
-    LOG_F(ERROR, "NFD error opening mesh dialog");
+  if (result != NFD_OKAY) {
+    if (result == NFD_ERROR)
+      LOG_F(ERROR, "NFD error opening mesh dialog");
+    return;
+  }
+
+  const std::filesystem::path path(out_path);
+  NFD_FreePathU8(out_path);
+
+  const std::string ext = path.extension().string();
+  // Lowercase extension.
+  std::string ext_lower = ext;
+  std::transform(ext_lower.begin(), ext_lower.end(), ext_lower.begin(),
+                 [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+  if (ext_lower == ".fbx" || ext_lower == ".obj") {
+    mesh_editor_->OpenImport(path);
+  } else if (ext_lower == ".emesh") {
+    mesh_editor_->OpenEdit(path);
+  } else {
+    LOG_F(ERROR, "ImportMesh: unsupported extension '%s'", ext.c_str());
   }
 }
 

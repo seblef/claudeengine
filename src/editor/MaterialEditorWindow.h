@@ -1,5 +1,9 @@
 #pragma once
 
+#include <array>
+#include <functional>
+#include <string>
+
 #include "abstract/VideoDevice.h"
 #include "editor/MeshPreview.h"
 #include "editor/commands/MaterialPropertyCommand.h"
@@ -15,6 +19,19 @@ namespace editor {
 class EditorCommandHistory;
 class EditorScene;
 
+// Describes a material slot passed from the import/edit workflow.
+// Carries the slot name and texture paths already resolved against data/textures/.
+// on_saved is fired after the material is written to disk; receives the saved
+// material name (basename without extension, relative to data/materials/).
+struct ImportedMaterialDesc {
+  // cppcheck-suppress unusedStructMember
+  std::string slot_name;
+  // cppcheck-suppress unusedStructMember
+  std::array<std::string, renderer::kTextureSlotCount> texture_paths{};
+  // cppcheck-suppress unusedStructMember
+  std::function<void(const std::string&)> on_saved;
+};
+
 // Floating window for inspecting and editing a game::GameMaterial.
 //
 // Layout:
@@ -28,6 +45,8 @@ class EditorScene;
 // Usage:
 //   Call Open(mat) when the user double-clicks a material in the resource
 //   panel. Call Render(scene) every ImGui frame.
+//   Call OpenWithDesc(desc) from the mesh import/edit workflow to pre-fill a
+//   new material from an ImportedMaterialDesc.
 class MaterialEditorWindow {
  public:
   explicit MaterialEditorWindow(abstract::VideoDevice* video);
@@ -38,6 +57,13 @@ class MaterialEditorWindow {
 
   // Opens (or re-focuses) the window for mat. Pass nullptr to hide.
   void Open(game::GameMaterial* mat);
+
+  // Opens the window for a new material described by desc.
+  // Creates a procedural GameMaterial named desc.slot_name, pre-fills its
+  // texture slots from desc.texture_paths, and calls desc.on_saved (if set)
+  // when the user saves.  The GameMaterial is registered in the resource
+  // registry under its name so it survives as a non-procedural asset.
+  void OpenWithDesc(const ImportedMaterialDesc& desc);
 
   // Renders the window if a material is currently open.
   void Render(const EditorScene& scene);
@@ -65,6 +91,15 @@ class MaterialEditorWindow {
   // cppcheck-suppress unusedStructMember
   bool                    open_            = false;
   PreviewGeometry         preview_geo_     = PreviewGeometry::kCube;
+
+  // Callback fired by Save() when this window was opened via OpenWithDesc().
+  // cppcheck-suppress unusedStructMember
+  std::function<void(const std::string&)> on_saved_;
+
+  // True when material_ was created inside OpenWithDesc() and must be
+  // released by this window (not by the scene or another owner).
+  // cppcheck-suppress unusedStructMember
+  bool desc_material_owned_ = false;
   // cppcheck-suppress unusedStructMember
   MaterialSnapshot        before_snapshot_ = {};
   // True while any color or shininess widget is actively being edited.
