@@ -76,13 +76,24 @@ MeshTemplate::MeshTemplate(const std::string& id,
                            GameMaterial* mat)
     : Resource(id),
       geometry_(std::move(geo)) {
-  mat->AddRef();
-  materials_.push_back(mat);
-  if (geometry_) {
+  if (!geometry_) return;
+
+  const int sub_count = geometry_->GetSubMeshCount();
+  if (sub_count > 0) {
+    // Allocate one slot per submesh; all start pointing at mat.
+    materials_.resize(sub_count, mat);
+    for (auto* m : materials_) m->AddRef();
+
+    std::vector<renderer::Material*> mat_ptrs(sub_count, mat->GetMaterial());
+    mesh_ = std::make_unique<renderer::Mesh>(geometry_.get(),
+                                             std::move(mat_ptrs));
+  } else {
+    mat->AddRef();
+    materials_.push_back(mat);
     mesh_ = std::make_unique<renderer::Mesh>(geometry_.get(),
                                              mat->GetMaterial());
-    initialized_ = true;
   }
+  initialized_ = true;
 }
 
 MeshTemplate::~MeshTemplate() {
