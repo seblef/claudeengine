@@ -6,17 +6,21 @@
 
 namespace mesh {
 
-// Serialises a MeshData to the binary .emesh format.
+// Serialises a MeshData to the binary .emesh format (version 3).
 //
 // .emesh layout (little-endian, no padding):
-//   Header : magic[4] | version u32
-//   Geometry:
-//     vertex_count u32 | index_count u32
-//     aabb_min float[3] | aabb_max float[3]
-//     vertices  VertexOnDisk[vertex_count]   (56 bytes each)
-//     indices   u32[index_count]
+//   Header   : magic[4] | version u32 (= 3)
+//   Geometry : vertex_count u32 | index_count u32
+//              aabb_min float[3] | aabb_max float[3]
+//              vertices  VertexOnDisk[vertex_count]   (56 bytes each)
+//              indices   u32[index_count]
+//   SubMeshes: submesh_count u32
+//              [index_offset u32 | index_count u32 | material_path char[256]]
+//              × submesh_count
 //
 // VertexOnDisk: px py pz  nx ny nz  bx by bz  tx ty tz  u v  (56 bytes)
+// material_path: null-terminated UTF-8, padded with zeros to 256 bytes,
+//                relative to the data/ directory (e.g. materials/body.yaml)
 class EmeshWriter {
  public:
   // Writes mesh to path. Returns true on success.
