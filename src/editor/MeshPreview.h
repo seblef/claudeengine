@@ -45,6 +45,13 @@ class MeshPreview {
   // Mouse controls are updated when the image is hovered.
   void Render(float time);
 
+  // No-op: material changes on MeshTemplate propagate to the underlying Mesh
+  // automatically, so the next Render() call will reflect them.  Provided so
+  // import-window code can call Refresh() after editing a material slot without
+  // needing to know the implementation detail.
+  // cppcheck-suppress functionStatic
+  void Refresh() {}
+
  private:
   void UpdateCamera();
 
