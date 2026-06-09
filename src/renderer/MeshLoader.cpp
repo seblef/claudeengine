@@ -30,7 +30,8 @@ std::unique_ptr<GeometryData> MakeGeometry(abstract::VideoDevice* video,
   return std::make_unique<GeometryData>(
       video,
       static_cast<int>(lod.vertices.size()), lod.vertices.data(),
-      static_cast<int>(lod.indices.size()) / 3, lod.indices.data());
+      static_cast<int>(lod.indices.size()) / 3, lod.indices.data(),
+      lod.submeshes);
 }
 
 }  // namespace

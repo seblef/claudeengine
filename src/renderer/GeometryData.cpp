@@ -1,8 +1,12 @@
 #include "renderer/GeometryData.h"
 
+#include <utility>
+#include <vector>
+
 #include "abstract/BufferUsage.h"
 #include "abstract/IndexType.h"
 #include "core/VertexType.h"
+#include "mesh/SubMeshRange.h"
 
 namespace renderer {
 
@@ -20,7 +24,8 @@ core::BBox3 ComputeBBox(const core::Vertex3D* vertices, int num_vertices) {
 
 GeometryData::GeometryData(abstract::VideoDevice* video,
                            int num_vertices, const core::Vertex3D* vertices,
-                           int num_triangles, const uint32_t* indices)
+                           int num_triangles, const uint32_t* indices,
+                           std::vector<mesh::SubMeshRange> submeshes)
     : vertex_buffer_(video->CreateVertexBuffer(
           core::VertexType::k3D, num_vertices,
           abstract::BufferUsage::kImmutable, vertices)),
@@ -28,7 +33,8 @@ GeometryData::GeometryData(abstract::VideoDevice* video,
           abstract::IndexType::kUInt32, num_triangles * 3,
           abstract::BufferUsage::kImmutable, indices)),
       bbox_(ComputeBBox(vertices, num_vertices)),
-      num_triangles_(num_triangles) {}
+      num_triangles_(num_triangles),
+      submeshes_(std::move(submeshes)) {}
 
 void GeometryData::Set() const {
   vertex_buffer_->Bind();
