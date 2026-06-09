@@ -14,7 +14,7 @@ std::unique_ptr<GeometryData> CreateQuad(abstract::VideoDevice* video) {
     {{ 1.f,  1.f, 0.f}, {}, {}, {}, {}},
     {{-1.f,  1.f, 0.f}, {}, {}, {}, {}},
   };
-  const uint16_t idx[6] = {0, 1, 2, 0, 2, 3};
+  const uint32_t idx[6] = {0, 1, 2, 0, 2, 3};
   return std::make_unique<GeometryData>(video, 4, verts, 2, idx);
 }
 
@@ -39,14 +39,14 @@ std::unique_ptr<GeometryData> CreateSphere(abstract::VideoDevice* video,
     }
   }
 
-  std::vector<uint16_t> idx;
+  std::vector<uint32_t> idx;
   idx.reserve(num_tris * 3);
   for (int s = 0; s < stacks; ++s) {
     for (int r = 0; r < rings; ++r) {
-      const uint16_t a = static_cast<uint16_t>(s * (rings + 1) + r);
-      const uint16_t b = static_cast<uint16_t>(a + 1);
-      const uint16_t c = static_cast<uint16_t>(a + rings + 1);
-      const uint16_t d = static_cast<uint16_t>(c + 1);
+      const uint32_t a = static_cast<uint32_t>(s * (rings + 1) + r);
+      const uint32_t b = a + 1;
+      const uint32_t c = a + static_cast<uint32_t>(rings + 1);
+      const uint32_t d = c + 1;
       idx.insert(idx.end(), {a, c, b, b, c, d});
     }
   }
@@ -70,13 +70,13 @@ std::unique_ptr<GeometryData> CreateCone(abstract::VideoDevice* video, int n) {
   }
   verts.push_back({{0.f, 0.f, 1.f}, {}, {}, {}, {}});  // base center
 
-  std::vector<uint16_t> idx;
+  std::vector<uint32_t> idx;
   idx.reserve(num_tris * 3);
   for (int i = 0; i < n; ++i) {
-    const uint16_t cur  = static_cast<uint16_t>(1 + i);
-    const uint16_t next = static_cast<uint16_t>(1 + (i + 1) % n);
-    idx.insert(idx.end(), {0, cur, next});                                   // side
-    idx.insert(idx.end(), {static_cast<uint16_t>(n + 1), next, cur});        // base cap
+    const uint32_t cur  = static_cast<uint32_t>(1 + i);
+    const uint32_t next = static_cast<uint32_t>(1 + (i + 1) % n);
+    idx.insert(idx.end(), {0u, cur, next});                                  // side
+    idx.insert(idx.end(), {static_cast<uint32_t>(n + 1), next, cur});        // base cap
   }
 
   return std::make_unique<GeometryData>(
@@ -91,7 +91,7 @@ std::unique_ptr<GeometryData> CreatePyramid(abstract::VideoDevice* video) {
     {{ 0.5f,  0.5f, 1.f}, {}, {}, {}, {}},  // 3: base TR
     {{-0.5f,  0.5f, 1.f}, {}, {}, {}, {}},  // 4: base TL
   };
-  const uint16_t idx[18] = {
+  const uint32_t idx[18] = {
     0, 1, 2,  // side bottom
     0, 2, 3,  // side right
     0, 3, 4,  // side top
@@ -111,7 +111,7 @@ std::unique_ptr<GeometryData> CreatePlaneMesh(abstract::VideoDevice* video,
     {{ half_size, 0.f,  half_size}, {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 0.f, 0.f}, {tiles, tiles}},
     {{-half_size, 0.f,  half_size}, {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 0.f, 0.f}, {0.f,   tiles}},
   };
-  const uint16_t idx[6] = {0, 2, 1, 0, 3, 2};
+  const uint32_t idx[6] = {0, 2, 1, 0, 3, 2};
   return std::make_unique<GeometryData>(video, 4, verts, 2, idx);
 }
 
@@ -153,7 +153,7 @@ std::unique_ptr<GeometryData> CreateCubeMesh(abstract::VideoDevice* video) {
     {{-0.5f,  0.5f, -0.5f}, {0, 0,-1}, {0, 1, 0}, {-1, 0, 0}, {1, 1}},
     {{ 0.5f,  0.5f, -0.5f}, {0, 0,-1}, {0, 1, 0}, {-1, 0, 0}, {0, 1}},
   };
-  const uint16_t idx[36] = {
+  const uint32_t idx[36] = {
      0,  2,  1,   0,  3,  2,   // +Y: (b,b+2,b+1) winding
      4,  6,  5,   4,  7,  6,   // -Y: (b,b+2,b+1) winding
      8,  9, 10,   8, 10, 11,   // +X

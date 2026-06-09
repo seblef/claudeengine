@@ -65,7 +65,7 @@ std::unique_ptr<GeometryData> FoliageRenderer::MakeBillboardQuad() const {
     { { 0.5f, 1.f, 0.f}, n, b, t, {1.f, 0.f} },
     { {-0.5f, 1.f, 0.f}, n, b, t, {0.f, 0.f} },
   };
-  const uint16_t idx[6] = { 0, 1, 2, 0, 2, 3 };
+  const uint32_t idx[6] = { 0, 1, 2, 0, 2, 3 };
   return std::make_unique<GeometryData>(video_, 4, verts, 2, idx);
 }
 

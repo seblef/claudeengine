@@ -20,12 +20,12 @@ core::BBox3 ComputeBBox(const core::Vertex3D* vertices, int num_vertices) {
 
 GeometryData::GeometryData(abstract::VideoDevice* video,
                            int num_vertices, const core::Vertex3D* vertices,
-                           int num_triangles, const uint16_t* indices)
+                           int num_triangles, const uint32_t* indices)
     : vertex_buffer_(video->CreateVertexBuffer(
           core::VertexType::k3D, num_vertices,
           abstract::BufferUsage::kImmutable, vertices)),
       index_buffer_(video->CreateIndexBuffer(
-          abstract::IndexType::kUInt16, num_triangles * 3,
+          abstract::IndexType::kUInt32, num_triangles * 3,
           abstract::BufferUsage::kImmutable, indices)),
       bbox_(ComputeBBox(vertices, num_vertices)),
       num_triangles_(num_triangles) {}
