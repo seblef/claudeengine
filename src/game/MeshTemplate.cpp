@@ -1,5 +1,7 @@
 #include "game/MeshTemplate.h"
 
+#include <algorithm>
+
 #include <loguru.hpp>
 
 #include "game/GameMaterial.h"
@@ -8,21 +10,61 @@
 
 namespace game {
 
-MeshTemplate::MeshTemplate(const std::string& mesh_path, abstract::VideoDevice* video,
+// static helper: create a default untextured material for a given id.
+static GameMaterial* MakeDefaultMat(const std::string& id,
+                                    abstract::VideoDevice* video) {
+  return new GameMaterial(id, renderer::MaterialDesc(), video);
+}
+
+void MeshTemplate::InitMaterials(int sub_count, const std::string& mesh_path,
+                                 abstract::VideoDevice* video,
+                                 GameMaterial* override_mat) {
+  if (sub_count > 0) {
+    materials_.resize(sub_count);
+    for (int i = 0; i < sub_count; ++i) {
+      const std::string& name = geometry_->GetSubMesh(i).material_name;
+      if (!name.empty()) {
+        materials_[i] = GameMaterial::GetOrLoad(name, video);
+      } else {
+        materials_[i] = MakeDefaultMat(
+            "__mat_" + mesh_path + "_" + std::to_string(i), video);
+      }
+    }
+    if (override_mat) {
+      materials_[0]->Release();
+      materials_[0] = override_mat;
+      override_mat->AddRef();
+    }
+  } else {
+    // Legacy single-material path.
+    if (override_mat) {
+      materials_.push_back(override_mat);
+      override_mat->AddRef();
+    } else {
+      materials_.push_back(MakeDefaultMat("__mat_" + mesh_path, video));
+    }
+  }
+}
+
+MeshTemplate::MeshTemplate(const std::string& mesh_path,
+                           abstract::VideoDevice* video,
                            GameMaterial* mat)
     : Resource(mesh_path) {
   auto result = renderer::MeshLoader::Load(mesh_path, video);
   if (result) {
-    geometry_     = std::move(result->geometry);
+    geometry_      = std::move(result->geometry);
     cpu_positions_ = std::move(result->cpu.positions);
     cpu_indices_   = std::move(result->cpu.indices);
-    if (mat) {
-      material_ = mat;
-      material_->AddRef();
-    } else {
-      material_ = new GameMaterial("__mat_" + mesh_path, renderer::MaterialDesc(), video);
-    }
-    mesh_ = std::make_unique<renderer::Mesh>(geometry_.get(), material_->GetMaterial());
+
+    InitMaterials(geometry_->GetSubMeshCount(), mesh_path, video, mat);
+
+    // Build the material pointer list for the Mesh.
+    std::vector<renderer::Material*> mat_ptrs(materials_.size());
+    std::transform(materials_.begin(), materials_.end(), mat_ptrs.begin(),
+                   [](const GameMaterial* gm) { return gm->GetMaterial(); });
+
+    mesh_ = std::make_unique<renderer::Mesh>(geometry_.get(),
+                                             std::move(mat_ptrs));
     initialized_ = true;
   } else {
     LOG_F(ERROR, "MeshTemplate: failed to load mesh '%s'", mesh_path.c_str());
@@ -33,24 +75,31 @@ MeshTemplate::MeshTemplate(const std::string& id,
                            std::unique_ptr<renderer::GeometryData> geo,
                            GameMaterial* mat)
     : Resource(id),
-      geometry_(std::move(geo)),
-      material_(mat) {
-  material_->AddRef();
+      geometry_(std::move(geo)) {
+  mat->AddRef();
+  materials_.push_back(mat);
   if (geometry_) {
-    mesh_ = std::make_unique<renderer::Mesh>(geometry_.get(), material_->GetMaterial());
+    mesh_ = std::make_unique<renderer::Mesh>(geometry_.get(),
+                                             mat->GetMaterial());
     initialized_ = true;
   }
 }
 
 MeshTemplate::~MeshTemplate() {
-  if (material_) material_->Release();
+  for (GameMaterial* m : materials_) {
+    if (m) m->Release();
+  }
 }
 
 void MeshTemplate::SetMaterial(GameMaterial* mat) {
-  if (material_) material_->Release();
-  material_ = mat;
-  material_->AddRef();
-  mesh_->SetMaterial(material_->GetMaterial());
+  SetMaterial(0, mat);
+}
+
+void MeshTemplate::SetMaterial(int slot, GameMaterial* mat) {
+  if (materials_[slot]) materials_[slot]->Release();
+  materials_[slot] = mat;
+  mat->AddRef();
+  mesh_->SetMaterial(slot, mat->GetMaterial());
 }
 
 renderer::Mesh* MeshTemplate::GetMesh() const {
@@ -62,7 +111,15 @@ renderer::GeometryData* MeshTemplate::GetGeometry() const {
 }
 
 GameMaterial* MeshTemplate::GetMaterial() const {
-  return material_;
+  return materials_[0];
+}
+
+GameMaterial* MeshTemplate::GetMaterial(int slot) const {
+  return materials_[slot];
+}
+
+int MeshTemplate::GetMaterialCount() const {
+  return static_cast<int>(materials_.size());
 }
 
 const core::BBox3& MeshTemplate::GetLocalBBox() const {
