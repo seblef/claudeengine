@@ -3,7 +3,11 @@
 #include "abstract/BlendFactor.h"
 #include "abstract/BufferUsage.h"
 #include "abstract/CompareFunc.h"
+#include "abstract/CullFace.h"
+#include "abstract/PrimitiveType.h"
 #include "core/Color.h"
+#include "core/VertexBase.h"
+#include "core/VertexType.h"
 #include "renderer/GeometryUtils.h"
 #include "renderer/GlobalLight.h"
 #include "renderer/LightRenderer.h"
@@ -17,6 +21,16 @@ namespace renderer {
 namespace {
 constexpr int kSceneInfosSlot    = 2;
 constexpr int kSceneInfosFloat4s = sizeof(SceneInfos) / 16;
+constexpr int kAxesVertexCount   = 6;  // 3 axes × 2 endpoints
+
+const core::VertexBase kAxesVertices[kAxesVertexCount] = {
+    {{0.f, 0.f, 0.f}, {1.f, 0.f, 0.f, 1.f}, {}},  // X origin
+    {{1.f, 0.f, 0.f}, {1.f, 0.f, 0.f, 1.f}, {}},  // X tip  (red)
+    {{0.f, 0.f, 0.f}, {0.f, 1.f, 0.f, 1.f}, {}},  // Y origin
+    {{0.f, 1.f, 0.f}, {0.f, 1.f, 0.f, 1.f}, {}},  // Y tip  (green)
+    {{0.f, 0.f, 0.f}, {0.f, 0.f, 1.f, 1.f}, {}},  // Z origin
+    {{0.f, 0.f, 1.f}, {0.f, 0.f, 1.f, 1.f}, {}},  // Z tip  (blue)
+};
 }  // namespace
 
 PreviewRenderer::PreviewRenderer(abstract::VideoDevice* video, int width, int height)
@@ -24,15 +38,21 @@ PreviewRenderer::PreviewRenderer(abstract::VideoDevice* video, int width, int he
       w_(width),
       h_(height),
       composite_shader_(video->CreateShader("composite")),
-      composite_quad_(CreateQuad(video)) {
+      composite_quad_(CreateQuad(video)),
+      axes_shader_(video->CreateShader("light_wireframe")) {
   scene_infos_cb_ = video_->CreateConstantBuffer(
       kSceneInfosFloat4s, kSceneInfosSlot, abstract::BufferUsage::kDynamic);
   gbuffer_.Create(video_, w_, h_);
   emissive_fbo_.Create(video_, w_, h_, gbuffer_.GetDepthRT());
+
+  axes_vb_ = video_->CreateVertexBuffer(
+      core::VertexType::kBase, kAxesVertexCount, abstract::BufferUsage::kImmutable,
+      kAxesVertices);
 }
 
 PreviewRenderer::~PreviewRenderer() {
   composite_shader_->Release();
+  axes_shader_->Release();
 }
 
 void PreviewRenderer::Render(float time, const core::Camera& camera,
@@ -94,8 +114,29 @@ void PreviewRenderer::Render(float time, const core::Camera& camera,
   video_->RenderIndexed(composite_quad_->GetNumIndices());
   if (output_rtg) output_rtg->UnbindForWriting();
 
+  // 5. Axes gizmo — overlaid on top of the composited output.
+  DrawAxes(output_rtg);
+
   video_->SetDepthTestEnabled(true);
   video_->SetDepthWriteEnabled(true);
+}
+
+void PreviewRenderer::DrawAxes(abstract::RenderTargetGroup* output_rtg) {
+  if (output_rtg) output_rtg->BindForWriting();
+
+  video_->SetDepthTestEnabled(false);
+  video_->SetDepthWriteEnabled(false);
+  video_->SetFaceCulling(abstract::CullFace::kNone);
+  video_->SetPrimitiveType(abstract::PrimitiveType::kLineList);
+
+  axes_shader_->Activate();
+  axes_vb_->Bind();
+  video_->Render(kAxesVertexCount);
+
+  if (output_rtg) output_rtg->UnbindForWriting();
+
+  video_->SetFaceCulling(abstract::CullFace::kBack);
+  video_->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
 }
 
 void PreviewRenderer::FillSceneInfos(const core::Camera& camera, float time) {

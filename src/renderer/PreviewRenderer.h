@@ -5,6 +5,7 @@
 #include "abstract/ConstantBuffer.h"
 #include "abstract/RenderTargetGroup.h"
 #include "abstract/VideoDevice.h"
+#include "abstract/VertexBuffer.h"
 #include "core/Camera.h"
 #include "renderer/EmissiveFBO.h"
 #include "renderer/GBuffer.h"
@@ -27,6 +28,9 @@ class MeshInstance;
 // Intended usage: call Render() once per ImGui frame after
 // renderer::Renderer::Update() has already completed, so the singleton
 // MeshRenderer and LightRenderer queues are clean.
+//
+// After compositing, a world-space axes gizmo (X=red, Y=green, Z=blue,
+// 1 unit each) is drawn on top of the output with depth testing disabled.
 class PreviewRenderer {
  public:
   // Creates GBuffer, EmissiveFBO, scene CB, and loads the composite shader.
@@ -36,7 +40,8 @@ class PreviewRenderer {
   PreviewRenderer(const PreviewRenderer&)            = delete;
   PreviewRenderer& operator=(const PreviewRenderer&) = delete;
 
-  // Renders mesh_instance lit by light into output_rtg.
+  // Renders mesh_instance lit by light into output_rtg, then overlays the
+  // axes gizmo.
   // Binds the preview scene CB to UBO slot 2 so shaders see preview camera
   // matrices; rebinds the main Renderer's CB are restored at the next
   // Renderer::Update() call.
@@ -47,6 +52,10 @@ class PreviewRenderer {
 
  private:
   void FillSceneInfos(const core::Camera& camera, float time);
+
+  // Draws the three world-space axis segments into output_rtg on top of the
+  // composited scene (depth test disabled so axes are always visible).
+  void DrawAxes(abstract::RenderTargetGroup* output_rtg);
 
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice* video_;
@@ -67,6 +76,13 @@ class PreviewRenderer {
   // cppcheck-suppress unusedStructMember
   abstract::Shader*             composite_shader_;
   std::unique_ptr<GeometryData> composite_quad_;
+
+  // Axes gizmo — three colored line segments drawn on top of the composited
+  // scene with depth testing disabled.
+  // cppcheck-suppress unusedStructMember
+  abstract::Shader*                        axes_shader_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<abstract::VertexBuffer>  axes_vb_;
 };
 
 }  // namespace renderer
