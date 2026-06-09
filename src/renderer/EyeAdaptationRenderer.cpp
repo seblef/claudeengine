@@ -65,6 +65,7 @@ float EyeAdaptationRenderer::Update(abstract::RenderTarget* hdr_rt,
   video_->SetDepthTestEnabled(false);
   video_->SetDepthWriteEnabled(false);
   video_->SetBlendEnabled(false);
+  video_->SetIndexType(abstract::IndexType::kUInt32);
 
   // Pass 0: HDR → log-luminance (levels_[0], W/2 × H/2).
   lum_init_shader_->Activate();

@@ -11,10 +11,10 @@
 
 namespace renderer {
 
-// Immutable bundle of 3D geometry: a vertex buffer (k3D layout), a 16-bit
+// Immutable bundle of 3D geometry: a vertex buffer (k3D layout), a 32-bit
 // index buffer, and the axis-aligned bounding box of the vertex positions.
 //
-// Vertex type is fixed to core::VertexType::k3D; index type to kUInt16.
+// Vertex type is fixed to core::VertexType::k3D; index type to kUInt32.
 // Both buffers are created as kImmutable at construction time.
 // The bounding box is computed automatically from the supplied vertex data.
 class GeometryData {
@@ -25,7 +25,7 @@ class GeometryData {
   // num_triangles * 3 entries.
   GeometryData(abstract::VideoDevice* video,
                int num_vertices, const core::Vertex3D* vertices,
-               int num_triangles, const uint16_t* indices);
+               int num_triangles, const uint32_t* indices);
 
   GeometryData(const GeometryData&)            = delete;
   GeometryData& operator=(const GeometryData&) = delete;

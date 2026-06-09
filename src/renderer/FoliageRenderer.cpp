@@ -65,7 +65,7 @@ std::unique_ptr<GeometryData> FoliageRenderer::MakeBillboardQuad() const {
     { { 0.5f, 1.f, 0.f}, n, b, t, {1.f, 0.f} },
     { {-0.5f, 1.f, 0.f}, n, b, t, {0.f, 0.f} },
   };
-  const uint16_t idx[6] = { 0, 1, 2, 0, 2, 3 };
+  const uint32_t idx[6] = { 0, 1, 2, 0, 2, 3 };
   return std::make_unique<GeometryData>(video_, 4, verts, 2, idx);
 }
 
@@ -165,6 +165,7 @@ void FoliageRenderer::Render(const core::Camera& camera) {
   if (!video_ || !mesh_shader_ || layers_.empty()) return;
 
   mesh_shader_->Activate();
+  video_->SetIndexType(abstract::IndexType::kUInt32);
 
   for (auto& gpu : layers_) {
     if (!gpu.geometry) continue;
@@ -179,7 +180,6 @@ void FoliageRenderer::Render(const core::Camera& camera) {
     gpu.near_ssbo->Bind();
     gpu.geometry->Set();
     video_->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
-    video_->SetIndexType(abstract::IndexType::kUInt16);
     video_->RenderIndexedInstanced(gpu.geometry->GetNumIndices(), gpu.near_count);
   }
 }
@@ -190,7 +190,7 @@ void FoliageRenderer::RenderBillboards(const core::Camera& camera) {
   billboard_shader_->Activate();
   billboard_quad_->Set();
   video_->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
-  video_->SetIndexType(abstract::IndexType::kUInt16);
+  video_->SetIndexType(abstract::IndexType::kUInt32);
 
   for (auto& gpu : layers_) {
     if (gpu.bill_count == 0) continue;

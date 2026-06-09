@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
   abstract::VideoDevice* video = devices.GetVideoDevice();
   video->SetDepthTestEnabled(true);
   video->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
-  video->SetIndexType(abstract::IndexType::kUInt16);
+  video->SetIndexType(abstract::IndexType::kUInt32);
 
   new renderer::Renderer(video);
   renderer::Renderer::Instance().InitVisibilitySystems(200.f);

@@ -22,13 +22,14 @@ MeshRenderer::~MeshRenderer() {
 
 void MeshRenderer::Render() {
   shader_->Activate();
+  video_->SetIndexType(abstract::IndexType::kUInt32);
 
   const Material* current_material = nullptr;
   const Mesh*     current_mesh     = nullptr;
 
   for (const MeshInstance* instance : instances_) {
-    Mesh*     mesh = instance->GetModel();
-    Material* mat  = mesh->GetMaterial();
+    const Mesh*     mesh = instance->GetModel();
+    const Material* mat  = mesh->GetMaterial();
 
     if (mat != current_material) {
       mat->Set(Renderer::Instance().GetMaterialInfosCB());
@@ -52,8 +53,8 @@ void MeshRenderer::RenderEmissive() {
   const Mesh*     current_mesh     = nullptr;
 
   for (const MeshInstance* instance : instances_) {
-    Mesh*     mesh = instance->GetModel();
-    Material* mat  = mesh->GetMaterial();
+    const Mesh*     mesh = instance->GetModel();
+    const Material* mat  = mesh->GetMaterial();
 
     if (!mat->IsEmissive()) continue;
 

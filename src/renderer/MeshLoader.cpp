@@ -27,18 +27,10 @@ std::string Extension(const std::string& path) {
 
 std::unique_ptr<GeometryData> MakeGeometry(abstract::VideoDevice* video,
                                            const mesh::LodData& lod) {
-  if (lod.vertices.size() > 65535u) {
-    LOG_F(ERROR, "MeshLoader: mesh exceeds 16-bit index limit (%zu vertices)",
-          lod.vertices.size());
-    return nullptr;
-  }
-  std::vector<uint16_t> idx16(lod.indices.size());
-  std::transform(lod.indices.begin(), lod.indices.end(), idx16.begin(),
-                 [](uint32_t i) { return static_cast<uint16_t>(i); });
   return std::make_unique<GeometryData>(
       video,
       static_cast<int>(lod.vertices.size()), lod.vertices.data(),
-      static_cast<int>(lod.indices.size()) / 3, idx16.data());
+      static_cast<int>(lod.indices.size()) / 3, lod.indices.data());
 }
 
 }  // namespace
@@ -63,11 +55,8 @@ std::optional<MeshLoadResult> MeshLoader::Load(const std::string& path,
 
   if (!ok) return std::nullopt;
 
-  auto geo = MakeGeometry(video, data.lod);
-  if (!geo) return std::nullopt;
-
   MeshLoadResult result;
-  result.geometry = std::move(geo);
+  result.geometry = MakeGeometry(video, data.lod);
   result.cpu.indices = data.lod.indices;
   result.cpu.positions.reserve(data.lod.vertices.size());
   for (const auto& v : data.lod.vertices)
