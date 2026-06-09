@@ -11,6 +11,7 @@
 #include "core/Vertex3D.h"
 #include "mesh/LodData.h"
 #include "mesh/MeshData.h"
+#include "mesh/SubMeshRange.h"
 
 #include <loguru.hpp>
 
@@ -19,7 +20,9 @@ namespace mesh {
 namespace {
 
 constexpr uint8_t kMagic[4] = {'E', 'M', 'S', 'H'};
-constexpr uint32_t kSupportedVersion = 2;
+constexpr uint32_t kVersionV2 = 2;
+constexpr uint32_t kVersionV3 = 3;
+constexpr uint32_t kMaterialPathSize = 256;
 
 struct VertexOnDisk {
   float px, py, pz;
@@ -38,6 +41,7 @@ bool ReadField(std::ifstream& in, T* value) {
 
 }  // namespace
 
+// cppcheck-suppress functionStatic
 bool EmeshReader::Read(const std::string& path, MeshData* mesh) const {
   std::ifstream in(path, std::ios::binary);
   if (!in) {
@@ -55,7 +59,8 @@ bool EmeshReader::Read(const std::string& path, MeshData* mesh) const {
 
   // Version.
   uint32_t version = 0;
-  if (!ReadField(in, &version) || version != kSupportedVersion) {
+  if (!ReadField(in, &version) ||
+      (version != kVersionV2 && version != kVersionV3)) {
     LOG_F(ERROR, "EmeshReader: unsupported version %u in '%s'", version, path.c_str());
     return false;
   }
@@ -104,8 +109,33 @@ bool EmeshReader::Read(const std::string& path, MeshData* mesh) const {
     }
   }
 
-  LOG_F(INFO, "EmeshReader: loaded %u vertices, %u indices from '%s'",
-        vertex_count, index_count, path.c_str());
+  // SubMesh table (v3 only; v2 leaves submeshes empty for legacy behaviour).
+  if (version == kVersionV3) {
+    uint32_t submesh_count = 0;
+    if (!ReadField(in, &submesh_count)) {
+      LOG_F(ERROR, "EmeshReader: truncated submesh count in '%s'", path.c_str());
+      return false;
+    }
+    mesh->lod.submeshes.resize(submesh_count);
+    for (auto& sm : mesh->lod.submeshes) {
+      if (!ReadField(in, &sm.index_offset) || !ReadField(in, &sm.index_count)) {
+        LOG_F(ERROR, "EmeshReader: truncated submesh range in '%s'", path.c_str());
+        return false;
+      }
+      char mat_path[kMaterialPathSize] = {};
+      in.read(mat_path, kMaterialPathSize);
+      if (!in) {
+        LOG_F(ERROR, "EmeshReader: truncated material path in '%s'", path.c_str());
+        return false;
+      }
+      mat_path[kMaterialPathSize - 1] = '\0';
+      sm.material_name = mat_path;
+    }
+  }
+
+  LOG_F(INFO, "EmeshReader: loaded %u vertices, %u indices, %u submeshes from '%s'",
+        vertex_count, index_count,
+        static_cast<uint32_t>(mesh->lod.submeshes.size()), path.c_str());
   return true;
 }
 

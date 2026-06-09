@@ -1,6 +1,8 @@
 #include "mesh/EmeshWriter.h"
 
+#include <algorithm>
 #include <cstdint>
+#include <cstring>
 #include <fstream>
 #include <string>
 
@@ -14,7 +16,8 @@ namespace {
 
 // Magic bytes identifying a .emesh file.
 constexpr uint8_t kMagic[4] = {'E', 'M', 'S', 'H'};
-constexpr uint32_t kVersion = 2;
+constexpr uint32_t kVersion = 3;
+constexpr uint32_t kMaterialPathSize = 256;
 
 // On-disk vertex: 3 floats per Vec3f field (no 16-byte alignment padding).
 struct VertexOnDisk {
@@ -33,6 +36,7 @@ void WriteField(std::ofstream& out, const T& value) {
 
 }  // namespace
 
+// cppcheck-suppress functionStatic
 bool EmeshWriter::Write(const MeshData& mesh, const std::string& path) const {
   const auto& lod = mesh.lod;
   if (lod.vertices.empty()) {
@@ -80,13 +84,26 @@ bool EmeshWriter::Write(const MeshData& mesh, const std::string& path) const {
     out.write(reinterpret_cast<const char*>(lod.indices.data()),
               index_count * sizeof(uint32_t));
 
+  // SubMesh table.
+  const uint32_t submesh_count = static_cast<uint32_t>(lod.submeshes.size());
+  WriteField(out, submesh_count);
+  for (const auto& sm : lod.submeshes) {
+    WriteField(out, sm.index_offset);
+    WriteField(out, sm.index_count);
+    char mat_path[kMaterialPathSize] = {};
+    const std::size_t copy_len =
+        std::min(sm.material_name.size(), static_cast<std::size_t>(kMaterialPathSize - 1));
+    std::memcpy(mat_path, sm.material_name.c_str(), copy_len);
+    out.write(mat_path, kMaterialPathSize);
+  }
+
   if (!out) {
     LOG_F(ERROR, "EmeshWriter: write error on '%s'", path.c_str());
     return false;
   }
 
-  LOG_F(INFO, "EmeshWriter: wrote %u vertices, %u indices to '%s'",
-        vertex_count, index_count, path.c_str());
+  LOG_F(INFO, "EmeshWriter: wrote %u vertices, %u indices, %u submeshes to '%s'",
+        vertex_count, index_count, submesh_count, path.c_str());
   return true;
 }
 
