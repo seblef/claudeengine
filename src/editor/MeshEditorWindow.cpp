@@ -357,10 +357,15 @@ void MeshEditorWindow::RenderMaterialSlots() {
     ImGui::TableNextColumn();
     if (ImGui::SmallButton(ICON_FA_PEN " Edit")) {
       ImportedMaterialDesc desc;
-      desc.slot_name      = slot.original_name.empty()
+      desc.slot_name     = slot.original_name.empty()
           ? ("slot_" + std::to_string(i))
           : slot.original_name;
-      desc.texture_paths  = slot.hint_textures;
+      desc.texture_paths = slot.hint_textures;
+      // For each unresolved slot, pass the original name as a dim hint.
+      for (int ti = 0; ti < renderer::kTextureSlotCount; ++ti) {
+        if (desc.texture_paths[ti].empty() && !slot.original_name.empty())
+          desc.hint_paths[ti] = slot.original_name;
+      }
       desc.on_saved       = [this, i](const std::string& mat_name) {
         if (i < static_cast<int>(mat_slots_.size())) {
           mat_slots_[i].saved_material_path = "materials/" + mat_name + ".yaml";

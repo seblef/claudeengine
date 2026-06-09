@@ -87,10 +87,11 @@ void MaterialEditorWindow::Open(game::GameMaterial* mat) {
     desc_material_owned_ = false;
   }
 
-  material_  = mat;
-  open_      = (mat != nullptr);
-  editing_   = false;
-  on_saved_  = nullptr;
+  material_   = mat;
+  open_       = (mat != nullptr);
+  editing_    = false;
+  on_saved_   = nullptr;
+  hint_paths_ = {};
   if (!mat) return;
 
   cube_tmpl_->SetMaterial(mat);
@@ -134,6 +135,7 @@ void MaterialEditorWindow::OpenWithDesc(const ImportedMaterialDesc& desc) {
   open_                = true;
   editing_             = false;
   on_saved_            = desc.on_saved;
+  hint_paths_          = desc.hint_paths;
   desc_material_owned_ = true;  // we own this ref; Release on close or next Open
 }
 
@@ -308,7 +310,10 @@ void MaterialEditorWindow::RenderTextureSlot(renderer::TextureSlot slot,
   auto* mat              = material_->GetMaterial();
   const auto* tex        = mat->GetTexture(slot);
   const bool def         = IsDefaultTexture(tex);
-  const char* disp       = def ? "None" : tex->GetId().c_str();
+  const int  slot_idx    = static_cast<int>(slot);
+  const std::string& hint = hint_paths_[slot_idx];
+  const char* disp = def ? (hint.empty() ? "None" : hint.c_str())
+                         : tex->GetId().c_str();
 
   ImGui::TableNextRow();
 
@@ -316,8 +321,12 @@ void MaterialEditorWindow::RenderTextureSlot(renderer::TextureSlot slot,
   ImGui::TextUnformatted(label);
 
   ImGui::TableNextColumn();
-  ImGui::PushID(static_cast<int>(slot));
+  ImGui::PushID(slot_idx);
   const float btn_w = ImGui::GetContentRegionAvail().x;
+  const bool is_hint = def && !hint.empty();
+  if (is_hint)
+    ImGui::PushStyleColor(ImGuiCol_Text,
+                          ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
   if (ImGui::Button(disp, ImVec2(btn_w, 0.f))) {
     const auto tex_dir = core::Config::GetDataFolder() / "textures";
     nfdu8char_t* path  = nullptr;
@@ -345,6 +354,7 @@ void MaterialEditorWindow::RenderTextureSlot(renderer::TextureSlot slot,
       LOG_F(ERROR, "NFD error opening texture dialog");
     }
   }
+  if (is_hint) ImGui::PopStyleColor();
 
   ImGui::TableNextColumn();
   if (ImGui::Button("x", ImVec2(kClearBtnWidth, 0.f))) {
