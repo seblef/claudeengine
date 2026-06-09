@@ -131,6 +131,7 @@ void LightRenderer::Render(bool disable_shadows) {
                    });
 
   light_infos_cb_->Bind();
+  video_->SetIndexType(abstract::IndexType::kUInt32);
 
   RenderGlobalLights(disable_shadows);
   RenderLocalLights(disable_shadows);

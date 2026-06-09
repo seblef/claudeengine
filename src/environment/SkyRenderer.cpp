@@ -59,6 +59,7 @@ void SkyRenderer::Render([[maybe_unused]] const core::Camera& camera,
   video_->SetDepthWriteEnabled(false);
   video_->SetDepthTestEnabled(true);
   video_->SetDepthFunc(abstract::CompareFunc::kLessEqual);
+  video_->SetIndexType(abstract::IndexType::kUInt16);
 
   shader_->Activate();
   quad_vb_->Bind();

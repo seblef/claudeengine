@@ -38,6 +38,7 @@ void CloudRenderer::Render(float /*world_time*/, float cloud_density) {
   video_->SetDepthWriteEnabled(false);
   video_->SetDepthTestEnabled(true);
   video_->SetDepthFunc(abstract::CompareFunc::kLessEqual);
+  video_->SetIndexType(abstract::IndexType::kUInt16);
 
   // Alpha-blend clouds over the sky colour without adding luminance.
   video_->SetBlendEnabled(true,

@@ -47,6 +47,7 @@ void ShadowRenderer::RenderShadowMaps(const std::vector<Light*>& lights,
   // Back-face culling keeps front faces for single-sided meshes; shadow acne is
   // mitigated by the per-light shadow_bias rather than reverse culling.
   video_->SetFaceCulling(abstract::CullFace::kBack);
+  video_->SetIndexType(abstract::IndexType::kUInt32);
 
   // Render CSM cascades for the scene's GlobalLight (if any, and cast_shadow=true).
   has_csm_ = false;

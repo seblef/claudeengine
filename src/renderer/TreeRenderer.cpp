@@ -199,6 +199,7 @@ void TreeRenderer::Render(const core::Camera& camera) {
   if (!video_ || !mesh_shader_ || layers_.empty()) return;
 
   mesh_shader_->Activate();
+  video_->SetIndexType(abstract::IndexType::kUInt32);
 
   for (auto& gpu : layers_) {
     if (!gpu.geometry) continue;
@@ -219,7 +220,6 @@ void TreeRenderer::Render(const core::Camera& camera) {
     gpu.near_ssbo->Bind();
     gpu.geometry->Set();
     video_->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
-    video_->SetIndexType(abstract::IndexType::kUInt16);
     video_->RenderIndexedInstanced(gpu.geometry->GetNumIndices(), gpu.near_count);
   }
 }
@@ -230,7 +230,7 @@ void TreeRenderer::RenderBillboards(const core::Camera& camera) {
   billboard_shader_->Activate();
   billboard_quad_->Set();
   video_->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
-  video_->SetIndexType(abstract::IndexType::kUInt16);
+  video_->SetIndexType(abstract::IndexType::kUInt32);
 
   for (auto& gpu : layers_) {
     if (gpu.bill_count == 0) continue;

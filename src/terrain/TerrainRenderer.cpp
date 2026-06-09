@@ -101,6 +101,8 @@ void TerrainRenderer::Render(const core::Camera& camera) {
   if (caustic_tex_)    caustic_tex_->Bind(kCausticSlot);
   patch_cb_->Bind();
 
+  video_->SetIndexType(abstract::IndexType::kUInt16);
+
   const bool use_tess = tess_enabled_ && shader_->HasTessellation();
 
   // Tessellated pass: low-LOD patches rendered as GL_PATCHES.
@@ -172,6 +174,7 @@ void TerrainRenderer::RenderWireframe(abstract::VideoDevice* video,
   video->SetFaceCulling(abstract::CullFace::kBack);
   video->SetWireframeEnabled(true);
   video->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
+  video_->SetIndexType(abstract::IndexType::kUInt16);
 
   wireframe_shader_->Activate();
   heightmap_->Bind(kHeightmapSlot);

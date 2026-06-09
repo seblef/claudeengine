@@ -51,7 +51,7 @@ class ShadowDebugRenderer {
   };
 
   // Collects the current frame's valid shadow-map entries.
-  std::vector<Entry> CollectEntries(const std::vector<Light*>& lights) const;
+  static std::vector<Entry> CollectEntries(const std::vector<Light*>& lights);
 
   // Renders one 2D depth tile at the given NDC bounds.
   void RenderTile2D(abstract::RenderTarget* rt,

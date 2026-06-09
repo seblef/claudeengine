@@ -21,7 +21,7 @@ ShadowDebugRenderer::~ShadowDebugRenderer() {
 }
 
 std::vector<ShadowDebugRenderer::Entry> ShadowDebugRenderer::CollectEntries(
-    const std::vector<Light*>& lights) const {
+    const std::vector<Light*>& lights) {
   std::vector<Entry> entries;
 
   if (ShadowRenderer::Instance().HasCSM())
@@ -57,6 +57,7 @@ void ShadowDebugRenderer::Render(const std::vector<Light*>& lights) {
 
   video_->SetDepthTestEnabled(false);
   video_->SetDepthWriteEnabled(false);
+  video_->SetIndexType(abstract::IndexType::kUInt32);
   quad_->Set();
 
   const float tw = TileW();

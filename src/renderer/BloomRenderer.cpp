@@ -83,6 +83,7 @@ abstract::RenderTarget* BloomRenderer::Render(abstract::RenderTarget* hdr_rt,
   video_->SetDepthTestEnabled(false);
   video_->SetDepthWriteEnabled(false);
   video_->SetBlendEnabled(false);
+  video_->SetIndexType(abstract::IndexType::kUInt32);
 
   // --- Downsample pass --------------------------------------------------------
   // Level 0: threshold extraction from HDR RT → levels_[0] (W/2 × H/2).

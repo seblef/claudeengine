@@ -456,7 +456,6 @@ void WaterRenderer::Render(const core::Camera& camera,
   video_->UnbindSampler(2);
   video_->UnbindSampler(3);
   video_->UnbindSampler(kSsrSlot);
-  video_->SetIndexType(abstract::IndexType::kUInt16);
 }
 
 void WaterRenderer::SetWaterLevel(float y) {
