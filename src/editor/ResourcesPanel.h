@@ -3,7 +3,10 @@
 #include <functional>
 #include <string_view>
 
-namespace game { class GameMaterial; }
+namespace game {
+class GameMaterial;
+class MeshTemplate;
+}
 
 namespace editor {
 
@@ -37,6 +40,12 @@ class ResourcesPanel {
     on_import_mesh_ = std::move(cb);
   }
 
+  // Sets the callback invoked when the user right-clicks a mesh and selects "Edit…".
+  // Receives the MeshTemplate to edit (const; caller uses its id/path for OpenEdit).
+  void SetOnMeshEdit(std::function<void(const game::MeshTemplate*)> cb) {
+    on_mesh_edit_ = std::move(cb);
+  }
+
   // Renders the resources tree inside the current ImGui tab item.
   void Render();
 
@@ -45,6 +54,7 @@ class ResourcesPanel {
   std::function<void(std::string_view)>    on_new_material_;
   std::function<void()>                    on_import_material_;
   std::function<void()>                    on_import_mesh_;
+  std::function<void(const game::MeshTemplate*)> on_mesh_edit_;
 
   // cppcheck-suppress unusedStructMember
   bool show_new_mat_modal_    = false;

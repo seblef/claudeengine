@@ -77,12 +77,20 @@ MaterialEditorWindow::~MaterialEditorWindow() {
   preview_.SetTemplate(nullptr);
   if (cube_tmpl_)   cube_tmpl_->Release();
   if (sphere_tmpl_) sphere_tmpl_->Release();
+  if (desc_material_owned_ && material_) material_->Release();
 }
 
 void MaterialEditorWindow::Open(game::GameMaterial* mat) {
-  material_ = mat;
-  open_     = (mat != nullptr);
-  editing_  = false;
+  // Release any previously owned material from OpenWithDesc.
+  if (desc_material_owned_ && material_) {
+    material_->Release();
+    desc_material_owned_ = false;
+  }
+
+  material_  = mat;
+  open_      = (mat != nullptr);
+  editing_   = false;
+  on_saved_  = nullptr;
   if (!mat) return;
 
   cube_tmpl_->SetMaterial(mat);
@@ -91,7 +99,52 @@ void MaterialEditorWindow::Open(game::GameMaterial* mat) {
       preview_geo_ == PreviewGeometry::kCube ? cube_tmpl_ : sphere_tmpl_);
 }
 
+void MaterialEditorWindow::OpenWithDesc(const ImportedMaterialDesc& desc) {
+  // Release any previously owned material.
+  if (desc_material_owned_ && material_) {
+    material_->Release();
+    desc_material_owned_ = false;
+  }
+
+  // Create a fresh GameMaterial keyed by slot name.
+  // Use a unique procedural id to avoid registry collisions with file-backed
+  // materials; the name is set from the slot name for the Save() path logic.
+  game::GameMaterial* mat = new game::GameMaterial(
+      desc.slot_name, renderer::MaterialDesc(), video_);
+
+  // Pre-fill texture slots from the resolved paths.
+  auto* rmat = mat->GetMaterial();
+  for (int i = 0; i < renderer::kTextureSlotCount; ++i) {
+    if (!desc.texture_paths[i].empty()) {
+      abstract::Texture* tex = video_->CreateTexture(desc.texture_paths[i]);
+      if (tex) {
+        rmat->SetTexture(static_cast<renderer::TextureSlot>(i), tex);
+        tex->Release();
+      }
+    }
+  }
+
+  // Update preview templates to use this material.
+  cube_tmpl_->SetMaterial(mat);
+  sphere_tmpl_->SetMaterial(mat);
+  preview_.SetTemplate(
+      preview_geo_ == PreviewGeometry::kCube ? cube_tmpl_ : sphere_tmpl_);
+
+  material_            = mat;
+  open_                = true;
+  editing_             = false;
+  on_saved_            = desc.on_saved;
+  desc_material_owned_ = true;  // we own this ref; Release on close or next Open
+}
+
 void MaterialEditorWindow::Render(const EditorScene& scene) {
+  // Release owned material when the window is closed.
+  if (!open_ && desc_material_owned_ && material_) {
+    material_->Release();
+    material_            = nullptr;
+    desc_material_owned_ = false;
+    on_saved_            = nullptr;
+  }
   if (!open_ || !material_) return;
 
   const std::string title = "Material: " + material_->GetId();
@@ -252,10 +305,10 @@ void MaterialEditorWindow::RenderRenderingSection() {
 
 void MaterialEditorWindow::RenderTextureSlot(renderer::TextureSlot slot,
                                              const char* label) {
-  auto* mat       = material_->GetMaterial();
-  auto* tex       = mat->GetTexture(slot);
-  const bool def  = IsDefaultTexture(tex);
-  const char* disp = def ? "None" : tex->GetId().c_str();
+  auto* mat              = material_->GetMaterial();
+  const auto* tex        = mat->GetTexture(slot);
+  const bool def         = IsDefaultTexture(tex);
+  const char* disp       = def ? "None" : tex->GetId().c_str();
 
   ImGui::TableNextRow();
 
@@ -372,6 +425,10 @@ void MaterialEditorWindow::Save() {
   if (file) {
     file << out.c_str();
     LOG_F(INFO, "Saved material '%s'", material_->GetId().c_str());
+    if (on_saved_) {
+      on_saved_(material_->GetId());
+      on_saved_ = nullptr;
+    }
   } else {
     LOG_F(ERROR, "Failed to save material '%s' to '%s'",
           material_->GetId().c_str(), path.c_str());

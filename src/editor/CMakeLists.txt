@@ -18,6 +18,7 @@ add_library(editor STATIC
     EditorWindow.cpp
     LogPanel.cpp
     MaterialEditorWindow.cpp
+    MeshEditorWindow.cpp
     MeshPreview.cpp
     MeshSelectionModal.cpp
     ObjectsPanel.cpp
@@ -39,4 +40,4 @@ target_include_directories(editor PUBLIC
     PRIVATE ${tinyexr_SOURCE_DIR}/deps/miniz
 )
 
-target_link_libraries(editor PUBLIC game renderer gldevices core imgui imguizmo nfd)
+target_link_libraries(editor PUBLIC game renderer gldevices core mesh imgui imguizmo nfd)
