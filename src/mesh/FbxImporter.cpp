@@ -53,9 +53,18 @@ bool FbxImporter::Import(const std::string& path, MeshData* mesh) const {
   bool all_have_normals = true;
   std::vector<uint32_t> tri_buf;
 
-  for (size_t mi = 0; mi < scene->meshes.count; ++mi) {
-    const ufbx_mesh* m = scene->meshes.data[mi];
-    if (m->num_faces == 0) continue;
+  // Iterate nodes (not scene->meshes) so that each node's geometry_to_world
+  // transform is applied to positions and normals.  Accessing scene->meshes
+  // directly gives raw object-space geometry and silently drops all per-node
+  // translation/rotation/scale, which causes multi-submesh FBX files to render
+  // with parts in wrong positions.
+  for (size_t ni = 0; ni < scene->nodes.count; ++ni) {
+    const ufbx_node* node = scene->nodes.data[ni];
+    const ufbx_mesh* m = node->mesh;
+    if (!m || m->num_faces == 0) continue;
+
+    const ufbx_matrix world_mat  = node->geometry_to_world;
+    const ufbx_matrix normal_mat = ufbx_matrix_for_normals(&world_mat);
 
     const bool has_normals = m->vertex_normal.exists;
     const bool has_uvs     = m->vertex_uv.exists;
@@ -84,13 +93,16 @@ bool FbxImporter::Import(const std::string& path, MeshData* mesh) const {
             for (uint32_t vi = 0; vi < 3; ++vi) {
               const uint32_t ix = tri_buf[ti * 3 + vi];
 
-              const ufbx_vec3 p = ufbx_get_vertex_vec3(&m->vertex_position, ix);
-              const ufbx_vec3 n = has_normals
+              const ufbx_vec3 rp = ufbx_get_vertex_vec3(&m->vertex_position, ix);
+              const ufbx_vec3 rn = has_normals
                   ? ufbx_get_vertex_vec3(&m->vertex_normal, ix)
                   : ufbx_vec3{0.0, 1.0, 0.0};
               const ufbx_vec2 uv = has_uvs
                   ? ufbx_get_vertex_vec2(&m->vertex_uv, ix)
                   : ufbx_vec2{0.0, 0.0};
+
+              const ufbx_vec3 p = ufbx_transform_position(&world_mat, rp);
+              const ufbx_vec3 n = ufbx_transform_direction(&normal_mat, rn);
 
               lod.indices.push_back(
                   static_cast<uint32_t>(lod.vertices.size()));
@@ -131,13 +143,16 @@ bool FbxImporter::Import(const std::string& path, MeshData* mesh) const {
           for (uint32_t vi = 0; vi < 3; ++vi) {
             const uint32_t ix = tri_buf[ti * 3 + vi];
 
-            const ufbx_vec3 p = ufbx_get_vertex_vec3(&m->vertex_position, ix);
-            const ufbx_vec3 n = has_normals
+            const ufbx_vec3 rp = ufbx_get_vertex_vec3(&m->vertex_position, ix);
+            const ufbx_vec3 rn = has_normals
                 ? ufbx_get_vertex_vec3(&m->vertex_normal, ix)
                 : ufbx_vec3{0.0, 1.0, 0.0};
             const ufbx_vec2 uv = has_uvs
                 ? ufbx_get_vertex_vec2(&m->vertex_uv, ix)
                 : ufbx_vec2{0.0, 0.0};
+
+            const ufbx_vec3 p = ufbx_transform_position(&world_mat, rp);
+            const ufbx_vec3 n = ufbx_transform_direction(&normal_mat, rn);
 
             lod.indices.push_back(
                 static_cast<uint32_t>(lod.vertices.size()));
