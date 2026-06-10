@@ -5,6 +5,7 @@
 #include "abstract/CompareFunc.h"
 #include "abstract/CullFace.h"
 #include "abstract/PrimitiveType.h"
+#include "abstract/TextureFormat.h"
 #include "core/Color.h"
 #include "core/VertexBase.h"
 #include "core/VertexType.h"
@@ -48,6 +49,17 @@ PreviewRenderer::PreviewRenderer(abstract::VideoDevice* video, int width, int he
   axes_vb_ = video_->CreateVertexBuffer(
       core::VertexType::kBase, kAxesVertexCount, abstract::BufferUsage::kImmutable,
       kAxesVertices);
+
+  // 1×1 black RT for the bloom sampler slot — preview renders never use bloom.
+  null_bloom_rt_ = video_->CreateRenderTarget(
+      1, 1, abstract::TextureFormat::kG11R11B10F);
+  {
+    std::array<abstract::RenderTarget*, 1> null_colors = {null_bloom_rt_.get()};
+    auto null_fbo = video_->CreateRenderTargetGroup(null_colors, nullptr);
+    null_fbo->BindForWriting();
+    video_->ClearRenderTargets(core::Color::kBlack);
+    null_fbo->UnbindForWriting();
+  }
 }
 
 PreviewRenderer::~PreviewRenderer() {
@@ -108,6 +120,7 @@ void PreviewRenderer::Render(float time, const core::Camera& camera,
 
   // 4. Composite pass — gamma-correct the HDR RT into the output RTG.
   emissive_fbo_.GetHDRRT()->BindAsSampler(0);
+  null_bloom_rt_->BindAsSampler(11);  // bloom is never active in preview renders
   composite_shader_->Activate();
   composite_quad_->Set();
   if (output_rtg) output_rtg->BindForWriting();

@@ -5,6 +5,7 @@
 #include <string>
 
 #include "abstract/VideoDevice.h"
+#include "editor/ImportedMaterialDesc.h"
 #include "editor/MeshPreview.h"
 #include "editor/commands/MaterialPropertyCommand.h"
 #include "renderer/TextureSlot.h"
@@ -18,19 +19,6 @@ namespace editor {
 
 class EditorCommandHistory;
 class EditorScene;
-
-// Describes a material slot passed from the import/edit workflow.
-// Carries the slot name and texture paths already resolved against data/textures/.
-// on_saved is fired after the material is written to disk; receives the saved
-// material name (basename without extension, relative to data/materials/).
-struct ImportedMaterialDesc {
-  // cppcheck-suppress unusedStructMember
-  std::string slot_name;
-  // cppcheck-suppress unusedStructMember
-  std::array<std::string, renderer::kTextureSlotCount> texture_paths{};
-  // cppcheck-suppress unusedStructMember
-  std::function<void(const std::string&)> on_saved;
-};
 
 // Floating window for inspecting and editing a game::GameMaterial.
 //
@@ -100,6 +88,11 @@ class MaterialEditorWindow {
   // released by this window (not by the scene or another owner).
   // cppcheck-suppress unusedStructMember
   bool desc_material_owned_ = false;
+
+  // Per-slot unresolved hint strings from OpenWithDesc(); shown dimly in
+  // RenderTextureSlot when the resolved texture path is empty.
+  // cppcheck-suppress unusedStructMember
+  std::array<std::string, renderer::kTextureSlotCount> hint_paths_{};
   // cppcheck-suppress unusedStructMember
   MaterialSnapshot        before_snapshot_ = {};
   // True while any color or shininess widget is actively being edited.

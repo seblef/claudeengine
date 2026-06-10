@@ -692,7 +692,15 @@ void EditorWindow::ImportMesh() {
   if (ext_lower == ".fbx" || ext_lower == ".obj") {
     mesh_editor_->OpenImport(path);
   } else if (ext_lower == ".emesh") {
-    mesh_editor_->OpenEdit(path);
+    game::MeshTemplate* tmpl =
+        game::MeshTemplate::GetOrLoad(path.string(), video_);
+    if (tmpl) {
+      scene_->AddMeshTemplate(tmpl);
+      LOG_F(INFO, "Imported emesh '%s'", path.filename().string().c_str());
+    } else {
+      LOG_F(ERROR, "ImportMesh: failed to load emesh '%s'",
+            path.string().c_str());
+    }
   } else {
     LOG_F(ERROR, "ImportMesh: unsupported extension '%s'", ext.c_str());
   }
