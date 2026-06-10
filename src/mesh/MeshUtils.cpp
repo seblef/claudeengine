@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -11,6 +12,7 @@
 #include "core/Vec3f.h"
 #include "core/Vertex3D.h"
 #include "mesh/LodData.h"
+#include "mesh/SubMeshRange.h"
 
 namespace mesh {
 
@@ -163,6 +165,55 @@ void WeldVertices(LodData* lod) {
 
   lod->vertices = std::move(new_verts);
   lod->indices  = std::move(new_idx);
+}
+
+// ---- MergeSubmeshesByMaterial -----------------------------------------------
+
+void MergeSubmeshesByMaterial(LodData* lod) {
+  if (lod->submeshes.size() <= 1) return;
+
+  // First pass: determine first-seen material order and check if any merging
+  // is actually needed (early-out when all materials are already unique).
+  std::vector<std::string> order;
+  order.reserve(lod->submeshes.size());
+  std::unordered_map<std::string, size_t> mat_to_slot;
+  mat_to_slot.reserve(lod->submeshes.size());
+
+  for (const SubMeshRange& sub : lod->submeshes) {
+    if (mat_to_slot.emplace(sub.material_name, order.size()).second)
+      order.push_back(sub.material_name);
+  }
+
+  if (order.size() == lod->submeshes.size()) return;  // nothing to merge
+
+  // Second pass: collect indices per material in first-seen order.
+  std::vector<std::vector<uint32_t>> buckets(order.size());
+  for (const SubMeshRange& sub : lod->submeshes) {
+    const size_t slot = mat_to_slot[sub.material_name];
+    auto& bucket = buckets[slot];
+    const uint32_t end = sub.index_offset + sub.index_count;
+    bucket.insert(bucket.end(),
+                  lod->indices.begin() + sub.index_offset,
+                  lod->indices.begin() + end);
+  }
+
+  // Rebuild index buffer and submesh list.
+  std::vector<uint32_t> new_indices;
+  new_indices.reserve(lod->indices.size());
+  std::vector<SubMeshRange> new_submeshes;
+  new_submeshes.reserve(order.size());
+
+  for (size_t i = 0; i < order.size(); ++i) {
+    const uint32_t offset = static_cast<uint32_t>(new_indices.size());
+    new_indices.insert(new_indices.end(), buckets[i].begin(), buckets[i].end());
+    new_submeshes.push_back(SubMeshRange{
+        offset,
+        static_cast<uint32_t>(buckets[i].size()),
+        order[i]});
+  }
+
+  lod->indices   = std::move(new_indices);
+  lod->submeshes = std::move(new_submeshes);
 }
 
 }  // namespace mesh

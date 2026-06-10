@@ -126,6 +126,7 @@ bool ObjImporter::Import(const std::string& path, MeshData* mesh) const {
   }
 
   WeldVertices(&lod);
+  MergeSubmeshesByMaterial(&lod);
   if (!has_normals) ComputeNormals(&lod);
   ComputeTangents(&lod);
   ComputeAabb(&lod);
