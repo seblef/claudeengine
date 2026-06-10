@@ -11,8 +11,12 @@
 
 namespace particles {
 
-// Renders solid (kGBuffer) ParticleEmitter instances into the G-buffer during
-// the geometry pass so they receive full deferred lighting.
+// Renders ParticleEmitter instances.
+//
+// - kGBuffer emitters: drawn in the geometry pass via RenderGeometryPass().
+// - kAdditive / kAlphaBlend emitters: drawn in the forward pass via
+//   RenderForwardPass(). Alpha-blend emitters are sorted back-to-front by
+//   distance from the camera before each draw.
 //
 // Not a singleton. Created and owned by GameSystem / EditorSystem, then wired
 // into the Renderer via Renderer::SetParticleRenderer().
@@ -22,11 +26,12 @@ namespace particles {
 //   particle_renderer_->Register(emitter);
 //   renderer.SetParticleRenderer(particle_renderer_.get());
 //
-//   // Each frame (inside Renderer::Update, end of geometry pass):
+//   // Each frame (called by Renderer::Update):
 //   particle_renderer_->RenderGeometryPass(camera, renderable_infos_cb);
+//   particle_renderer_->RenderForwardPass(camera, renderable_infos_cb);
 class ParticleRenderer {
  public:
-  // Loads the particle G-buffer shader and builds the shared index buffer.
+  // Loads particle shaders and builds the shared index buffer.
   // video must outlive this ParticleRenderer.
   explicit ParticleRenderer(abstract::VideoDevice* video);
   ~ParticleRenderer();
@@ -50,6 +55,13 @@ class ParticleRenderer {
   void RenderGeometryPass(const core::Camera& camera,
                           abstract::ConstantBuffer* renderable_infos_cb);
 
+  // Renders kAdditive and kAlphaBlend emitters into the currently bound HDR RT.
+  // kAlphaBlend emitters are sorted back-to-front by emitter world position
+  // distance from camera_pos before drawing.
+  // Must be called while the emissive FBO is bound for writing.
+  void RenderForwardPass(const core::Camera& camera,
+                         abstract::ConstantBuffer* renderable_infos_cb);
+
  private:
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice*                 video_;
@@ -58,7 +70,9 @@ class ParticleRenderer {
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<abstract::IndexBuffer> shared_ibo_;
   // cppcheck-suppress unusedStructMember
-  abstract::Shader*                      shader_ = nullptr;
+  abstract::Shader*                      gbuffer_shader_  = nullptr;
+  // cppcheck-suppress unusedStructMember
+  abstract::Shader*                      forward_shader_  = nullptr;
 };
 
 }  // namespace particles

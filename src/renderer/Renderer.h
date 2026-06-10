@@ -68,7 +68,8 @@ enum class DebugMode : int {
 //   2. Lighting pass  — HDR RT (additive blend); LightRenderer shades each light.
 //   3. Sky pass       — HDR RT (depth LEQUAL, no blend); SkyRenderer fills background.
 //   4. Emissive pass  — HDR RT (additive, depth read-only); emissive/ambient meshes.
-//   4b.Water pass     — copy HDR RT + depth; forward SrcAlpha blend into emissive FBO.
+//   4b.Particle fwd   — HDR RT; kAdditive (ONE+ONE) and kAlphaBlend (SrcAlpha) emitters.
+//   4c.Water pass     — copy HDR RT + depth; forward SrcAlpha blend into emissive FBO.
 //   5. Composite pass — default framebuffer; gamma correction.
 //
 // Debug mode (SetDebugMode != kNone):
@@ -186,8 +187,9 @@ class Renderer : public core::Singleton<Renderer> {
   // enabling; see TreeRenderer::Build().
   void SetTreeEnabled(bool enabled) { tree_enabled_ = enabled; }
 
-  // Registers a ParticleRenderer whose kGBuffer emitters are drawn at the end
-  // of the geometry pass. Pass nullptr to detach. The caller retains ownership.
+  // Registers a ParticleRenderer. kGBuffer emitters are drawn at the end of the
+  // geometry pass; kAdditive and kAlphaBlend emitters in the forward pass after
+  // the emissive pass. Pass nullptr to detach. The caller retains ownership.
   void SetParticleRenderer(particles::ParticleRenderer* p) {
     particle_renderer_ = p;
   }

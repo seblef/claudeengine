@@ -42,6 +42,8 @@ class ParticleEmitter {
   [[nodiscard]] abstract::VertexBuffer*      GetVBO()           const;
   // Number of live particles; index count for the draw call = GetParticleCount() * 6.
   [[nodiscard]] int                          GetParticleCount() const;
+  // World-space origin used to sort kAlphaBlend emitters back-to-front.
+  [[nodiscard]] core::Vec3f                  GetWorldPosition() const { return origin_; }
 
  private:
   struct Particle {
