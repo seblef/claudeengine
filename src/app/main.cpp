@@ -116,6 +116,9 @@ int main(int argc, char* argv[]) {
             env.time_scale, env.start_time_of_day);
         new environment::SkyRenderer();
         environment::SkyRenderer::Instance().Build(video);
+        environment::SkyRenderer::Instance().SetTurbidity(env.turbidity);
+        environment::SkyRenderer::Instance().SetMoonTexture(env.moon_texture);
+        environment::SkyRenderer::Instance().SetNightSkyTexture(env.night_sky_texture);
         renderer::Renderer::Instance().SetSkyRenderer(
             &environment::SkyRenderer::Instance());
       }

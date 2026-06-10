@@ -1,18 +1,21 @@
 // Procedural sky fragment shader — Preetham atmospheric scattering model.
 // Reference: Preetham et al., "A Practical Analytic Model for Daylight", 1999.
 //
-// Pipeline: daytime Rayleigh + Mie sky → HDR sun disc → moon disc → star noise.
+// Pipeline: daytime Rayleigh + Mie sky → HDR sun disc → moon disc → star noise / night sky tex.
 // All values are output as linear HDR (no gamma); the composite pass applies γ.
 //
 // UBO binding 2: scene_infos
-// UBO binding 8: sky_infos (sun_direction, time_of_day, turbidity, has_moon_texture)
-// Sampler binding 0: moon_tex (only sampled when has_moon_texture > 0.5)
+// UBO binding 8: sky_infos (sun_direction, time_of_day, turbidity,
+//                           has_moon_texture, has_night_sky_texture)
+// Sampler binding 0: moon_tex       (only sampled when has_moon_texture > 0.5)
+// Sampler binding 1: night_sky_tex  (equirectangular; sampled when has_night_sky_texture > 0.5)
 
 #version 460 core
 #include <uniforms/scene_infos.glsl>
 #include <uniforms/sky_infos.glsl>
 
 layout(binding = 0) uniform sampler2D moon_tex;
+layout(binding = 1) uniform sampler2D night_sky_tex;
 
 in  vec3 v_view_ray;
 out vec4 out_color;
@@ -144,51 +147,68 @@ void main() {
     }
 
     // --- Night sky ----------------------------------------------------------
-    // Dark-blue gradient fading toward the horizon.
-    float horizon_t = clamp(1.0 - view_dir.y * 4.0, 0.0, 1.0);
-    vec3 night_zenith  = vec3(0.005, 0.006, 0.025);
-    vec3 night_horizon = vec3(0.015, 0.012, 0.020);
-    sky_rgb += mix(night_zenith, night_horizon, horizon_t) * night_factor;
-
-    // --- Stars (night only, sky hemisphere) ---------------------------------
-    // Each star is placed at a random sub-cell position and rendered as a tight
-    // Gaussian point plus axis-aligned diffraction spikes, so it looks like a
-    // point of light rather than a uniform cell-wide quad.
-    if (night_factor > 0.05 && view_dir.y > 0.01) {
-        // Project view direction onto a spherical (lon, lat) grid.
-        float lat = asin(clamp(view_dir.y, -1.0, 1.0));
+    if (has_night_sky_texture > 0.5) {
+        // Textured night sky: equirectangular projection.
+        // U = longitude in [0, 1], V = latitude in [0, 1] (0 = south pole, 1 = north).
+        // The texture carries its own star detail; no procedural stars are added.
         float lon = atan(view_dir.z, view_dir.x);
-        vec2  star_coord = vec2(lon, lat) * 80.0;
-        vec2  star_grid  = floor(star_coord);
-        vec2  star_uv    = fract(star_coord);   // [0, 1) within cell
+        float lat = asin(clamp(view_dir.y, -1.0, 1.0));
+        vec2  sky_uv = vec2(lon / (2.0 * PI) + 0.5, lat / PI + 0.5);
+        vec3  tex_night = texture(night_sky_tex, sky_uv).rgb;
 
-        float h = StarHash(star_grid);
-        // Only ~3 % of cells contain a visible star.
-        const float kStarThresh = 0.97;
-        if (h > kStarThresh) {
-            float brightness = pow((h - kStarThresh) / (1.0 - kStarThresh), 2.0) * 1.5;
+        // Colorize toward blue-black near the horizon to blend with the daytime sky.
+        float horizon_t  = clamp(1.0 - view_dir.y * 4.0, 0.0, 1.0);
+        vec3  night_tint = mix(vec3(1.0), vec3(0.6, 0.7, 1.0) * 0.3, horizon_t);
 
-            // Random centre within the cell so the star is not at the grid corner.
-            vec2 centre = vec2(StarHash(star_grid + vec2(3.7, 1.3)),
-                               StarHash(star_grid + vec2(2.1, 5.9)));
-            // Offset from current pixel to star centre, in cell-width units [-1, 1].
-            vec2 d = star_uv - centre;
+        sky_rgb += tex_night * night_tint * night_factor;
+    } else {
+        // Procedural night sky: dark-blue gradient + star noise.
 
-            // Tight Gaussian core — σ ≈ 0.07 cell → ~1 px at typical resolution.
-            float core = exp(-dot(d, d) * 100.0);
+        // Dark-blue gradient fading toward the horizon.
+        float horizon_t = clamp(1.0 - view_dir.y * 4.0, 0.0, 1.0);
+        vec3 night_zenith  = vec3(0.005, 0.006, 0.025);
+        vec3 night_horizon = vec3(0.015, 0.012, 0.020);
+        sky_rgb += mix(night_zenith, night_horizon, horizon_t) * night_factor;
 
-            // Axis-aligned diffraction spikes (horizontal + vertical).
-            //   Length falloff : exp(-d_along² * 3)   → half-power ≈ 0.5 cell
-            //   Width  falloff : exp(-d_perp² * 120)  → half-power ≈ 0.08 cell (~1 px)
-            float spike_h = exp(-d.x * d.x * 3.0) * exp(-d.y * d.y * 120.0);
-            float spike_v = exp(-d.y * d.y * 3.0) * exp(-d.x * d.x * 120.0);
-            float spikes  = (spike_h + spike_v) * 0.4;
+        // Stars (night only, sky hemisphere).
+        // Each star is placed at a random sub-cell position and rendered as a tight
+        // Gaussian point plus axis-aligned diffraction spikes.
+        if (night_factor > 0.05 && view_dir.y > 0.01) {
+            // Project view direction onto a spherical (lon, lat) grid.
+            float lat = asin(clamp(view_dir.y, -1.0, 1.0));
+            float lon = atan(view_dir.z, view_dir.x);
+            vec2  star_coord = vec2(lon, lat) * 80.0;
+            vec2  star_grid  = floor(star_coord);
+            vec2  star_uv    = fract(star_coord);   // [0, 1) within cell
 
-            // Per-star colour tint spanning blue-white to yellow-white.
-            float tint       = StarHash(star_grid + vec2(7.3, 4.1));
-            vec3  star_color = mix(vec3(0.75, 0.9, 1.0), vec3(1.0, 0.95, 0.8), tint);
+            float h = StarHash(star_grid);
+            // Only ~3 % of cells contain a visible star.
+            const float kStarThresh = 0.97;
+            if (h > kStarThresh) {
+                float brightness = pow((h - kStarThresh) / (1.0 - kStarThresh), 2.0) * 1.5;
 
-            sky_rgb += star_color * brightness * (core + spikes) * night_factor;
+                // Random centre within the cell so the star is not at the grid corner.
+                vec2 centre = vec2(StarHash(star_grid + vec2(3.7, 1.3)),
+                                   StarHash(star_grid + vec2(2.1, 5.9)));
+                // Offset from current pixel to star centre, in cell-width units [-1, 1].
+                vec2 d = star_uv - centre;
+
+                // Tight Gaussian core — σ ≈ 0.07 cell → ~1 px at typical resolution.
+                float core = exp(-dot(d, d) * 100.0);
+
+                // Axis-aligned diffraction spikes (horizontal + vertical).
+                //   Length falloff : exp(-d_along² * 3)   → half-power ≈ 0.5 cell
+                //   Width  falloff : exp(-d_perp² * 120)  → half-power ≈ 0.08 cell (~1 px)
+                float spike_h = exp(-d.x * d.x * 3.0) * exp(-d.y * d.y * 120.0);
+                float spike_v = exp(-d.y * d.y * 3.0) * exp(-d.x * d.x * 120.0);
+                float spikes  = (spike_h + spike_v) * 0.4;
+
+                // Per-star colour tint spanning blue-white to yellow-white.
+                float tint       = StarHash(star_grid + vec2(7.3, 4.1));
+                vec3  star_color = mix(vec3(0.75, 0.9, 1.0), vec3(1.0, 0.95, 0.8), tint);
+
+                sky_rgb += star_color * brightness * (core + spikes) * night_factor;
+            }
         }
     }
 

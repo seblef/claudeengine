@@ -55,6 +55,10 @@ struct EnvironmentDesc {
     // Moon texture path, relative to data/textures/. Empty = plain circle fallback.
     // cppcheck-suppress unusedStructMember
     std::string moon_texture;
+    // Night sky texture path (equirectangular), relative to data/textures/.
+    // Empty = procedural star-noise fallback.
+    // cppcheck-suppress unusedStructMember
+    std::string night_sky_texture;
 };
 
 }  // namespace environment
