@@ -37,9 +37,9 @@ std::unique_ptr<game::GameObject> GameMesh::Copy(const core::Vec3f& position) co
   auto clone = std::make_unique<GameMesh>(template_);
   clone->SetName(GetName() + " (copy)");
   core::Mat4f t = GetWorldTransform();
-  t(3, 0) = position.x;
-  t(3, 1) = position.y;
-  t(3, 2) = position.z;
+  t(0, 3) = position.x;
+  t(1, 3) = position.y;
+  t(2, 3) = position.z;
   clone->SetWorldTransform(t);
   return clone;
 }
