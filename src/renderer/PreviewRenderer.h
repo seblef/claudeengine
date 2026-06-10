@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "abstract/ConstantBuffer.h"
+#include "abstract/RenderTarget.h"
 #include "abstract/RenderTargetGroup.h"
 #include "abstract/VideoDevice.h"
 #include "abstract/VertexBuffer.h"
@@ -76,6 +77,11 @@ class PreviewRenderer {
   // cppcheck-suppress unusedStructMember
   abstract::Shader*             composite_shader_;
   std::unique_ptr<GeometryData> composite_quad_;
+
+  // 1×1 black RT bound to sampler 11 so the composite shader's u_bloom uniform
+  // is always valid (bloom is never active in preview renders).
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<abstract::RenderTarget> null_bloom_rt_;
 
   // Axes gizmo — three colored line segments drawn on top of the composited
   // scene with depth testing disabled.
