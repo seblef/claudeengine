@@ -25,6 +25,7 @@ class EditorViewport;
 class MapPropertiesWindow;
 class MaterialEditorWindow;
 class MeshEditorWindow;
+class ParticleEditorWindow;
 class MeshSelectionModal;
 class PropertiesPanel;
 class ResourcesPanel;
@@ -133,6 +134,8 @@ class EditorWindow {
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<MeshEditorWindow>      mesh_editor_;
   // cppcheck-suppress unusedStructMember
+  std::unique_ptr<ParticleEditorWindow>  particle_editor_;
+  // cppcheck-suppress unusedStructMember
   std::unique_ptr<MeshSelectionModal>    mesh_modal_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<PropertiesPanel>       properties_panel_;
@@ -156,6 +159,9 @@ class EditorWindow {
   // True on the frame File > New is clicked; triggers OpenPopup that frame.
   // cppcheck-suppress unusedStructMember
   bool                                   new_map_pending_  = false;
+  // True when the Particle Editor window should be shown.
+  // cppcheck-suppress unusedStructMember
+  bool                                   show_particle_editor_ = false;
 
   // True when scene has unsaved changes; gates File > Save and the toolbar Save button.
   // cppcheck-suppress unusedStructMember
