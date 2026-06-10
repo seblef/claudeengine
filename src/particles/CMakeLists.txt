@@ -1,4 +1,5 @@
 add_library(particles STATIC
+    ParticleEmitter.cpp
     ParticleSystemTemplate.cpp
 )
 
