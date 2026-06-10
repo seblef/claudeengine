@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <string>
 
 #include "abstract/BufferUsage.h"
 #include "abstract/CompareFunc.h"
@@ -49,12 +50,15 @@ void SkyRenderer::Render([[maybe_unused]] const core::Camera& camera,
   if (!shader_) return;
 
   SkyInfos si;
-  si.sun_direction = ComputeSunDirection(world_time);
-  si.time_of_day   = world_time;
-  si.turbidity     = turbidity_;
+  si.sun_direction    = ComputeSunDirection(world_time);
+  si.time_of_day      = world_time;
+  si.turbidity        = turbidity_;
+  si.has_moon_texture = moon_tex_ ? 1.f : 0.f;
 
   sky_cb_->Bind();
   sky_cb_->Fill(&si);
+
+  if (moon_tex_) moon_tex_->Bind(0);
 
   video_->SetDepthWriteEnabled(false);
   video_->SetDepthTestEnabled(true);
@@ -66,10 +70,25 @@ void SkyRenderer::Render([[maybe_unused]] const core::Camera& camera,
   quad_ib_->Bind();
   video_->RenderIndexed(6);
 
+  video_->UnbindSampler(0);
   video_->SetDepthFunc(abstract::CompareFunc::kLess);
 }
 
+void SkyRenderer::SetMoonTexture(const std::string& path) {
+  if (moon_tex_) {
+    moon_tex_->Release();
+    moon_tex_ = nullptr;
+  }
+  if (!path.empty() && video_) {
+    moon_tex_ = video_->CreateTexture(path);
+  }
+}
+
 void SkyRenderer::Reset() {
+  if (moon_tex_) {
+    moon_tex_->Release();
+    moon_tex_ = nullptr;
+  }
   if (shader_) {
     shader_->Release();
     shader_ = nullptr;

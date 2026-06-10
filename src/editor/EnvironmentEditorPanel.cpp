@@ -2,10 +2,15 @@
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
+#include <string>
 
 #include <imgui.h>
+#include <loguru.hpp>
+#include <nfd.h>
 
 #include "core/Color.h"
+#include "core/Config.h"
 #include "core/Vec3f.h"
 #include "editor/EditorScene.h"
 #include "environment/CloudRenderer.h"
@@ -102,6 +107,7 @@ void EnvironmentEditorPanel::EnableSky(const environment::EnvironmentDesc& desc)
     environment::SkyRenderer::Instance().Build(video_);
   }
   environment::SkyRenderer::Instance().SetTurbidity(desc.turbidity);
+  environment::SkyRenderer::Instance().SetMoonTexture(desc.moon_texture);
   renderer::Renderer::Instance().SetSkyRenderer(
       &environment::SkyRenderer::Instance());
   renderer::Renderer::Instance().SetSkyWorldTime(world_time_->GetTimeOfDay());
@@ -305,6 +311,39 @@ bool EnvironmentEditorPanel::RenderSkySection(environment::EnvironmentDesc& env)
       environment::SkyRenderer::Instance().SetTurbidity(env.turbidity);
     changed = true;
   }
+
+  // Moon texture picker.
+  const std::string moon_label =
+      env.moon_texture.empty() ? "None" : env.moon_texture;
+  ImGui::LabelText("Moon texture", "%s", moon_label.c_str());
+
+  if (ImGui::Button("Pick moon texture")) {
+    const auto tex_dir = core::Config::GetDataFolder() / "textures";
+    nfdu8char_t* path  = nullptr;
+    const nfdu8filteritem_t filters[] = {{"Image files", "png,jpg,jpeg,tga"}};
+    const nfdresult_t res =
+        NFD_OpenDialogU8(&path, filters, 1, tex_dir.c_str());
+    if (res == NFD_OKAY) {
+      const auto rel = std::filesystem::relative(
+          std::filesystem::path(path), tex_dir);
+      env.moon_texture = rel.generic_string();
+      if (environment::SkyRenderer::IsInstanced())
+        environment::SkyRenderer::Instance().SetMoonTexture(env.moon_texture);
+      NFD_FreePathU8(path);
+      changed = true;
+    } else if (res == NFD_ERROR) {
+      LOG_F(ERROR, "NFD error opening moon texture dialog");
+    }
+  }
+
+  ImGui::SameLine();
+  if (ImGui::Button("Clear moon texture") && !env.moon_texture.empty()) {
+    env.moon_texture.clear();
+    if (environment::SkyRenderer::IsInstanced())
+      environment::SkyRenderer::Instance().SetMoonTexture("");
+    changed = true;
+  }
+
   ImGui::EndDisabled();
   return changed;
 }

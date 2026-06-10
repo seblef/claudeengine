@@ -97,6 +97,8 @@ environment::EnvironmentDesc ParseEnvironmentDesc(const YAML::Node& node) {
   }
   if (node["turbidity"])
     desc.turbidity = node["turbidity"].as<float>(desc.turbidity);
+  if (node["moon_texture"])
+    desc.moon_texture = node["moon_texture"].as<std::string>("");
   return desc;
 }
 
