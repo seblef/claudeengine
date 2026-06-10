@@ -50,15 +50,17 @@ void SkyRenderer::Render([[maybe_unused]] const core::Camera& camera,
   if (!shader_) return;
 
   SkyInfos si;
-  si.sun_direction    = ComputeSunDirection(world_time);
-  si.time_of_day      = world_time;
-  si.turbidity        = turbidity_;
-  si.has_moon_texture = moon_tex_ ? 1.f : 0.f;
+  si.sun_direction          = ComputeSunDirection(world_time);
+  si.time_of_day            = world_time;
+  si.turbidity              = turbidity_;
+  si.has_moon_texture       = moon_tex_      ? 1.f : 0.f;
+  si.has_night_sky_texture  = night_sky_tex_ ? 1.f : 0.f;
 
   sky_cb_->Bind();
   sky_cb_->Fill(&si);
 
-  if (moon_tex_) moon_tex_->Bind(0);
+  if (moon_tex_)      moon_tex_->Bind(0);
+  if (night_sky_tex_) night_sky_tex_->Bind(1);
 
   video_->SetDepthWriteEnabled(false);
   video_->SetDepthTestEnabled(true);
@@ -71,6 +73,7 @@ void SkyRenderer::Render([[maybe_unused]] const core::Camera& camera,
   video_->RenderIndexed(6);
 
   video_->UnbindSampler(0);
+  if (night_sky_tex_) video_->UnbindSampler(1);
   video_->SetDepthFunc(abstract::CompareFunc::kLess);
 }
 
@@ -84,7 +87,21 @@ void SkyRenderer::SetMoonTexture(const std::string& path) {
   }
 }
 
+void SkyRenderer::SetNightSkyTexture(const std::string& path) {
+  if (night_sky_tex_) {
+    night_sky_tex_->Release();
+    night_sky_tex_ = nullptr;
+  }
+  if (!path.empty() && video_) {
+    night_sky_tex_ = video_->CreateTexture(path);
+  }
+}
+
 void SkyRenderer::Reset() {
+  if (night_sky_tex_) {
+    night_sky_tex_->Release();
+    night_sky_tex_ = nullptr;
+  }
   if (moon_tex_) {
     moon_tex_->Release();
     moon_tex_ = nullptr;

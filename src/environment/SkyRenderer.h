@@ -66,6 +66,12 @@ class SkyRenderer : public core::Singleton<SkyRenderer> {
   // No-op before Build() is called.
   void SetMoonTexture(const std::string& path);
 
+  // Loads (or clears) the night sky texture (equirectangular) from a path
+  // relative to data/textures/. Pass an empty string to clear and fall back
+  // to the procedural star-noise implementation.
+  // No-op before Build() is called.
+  void SetNightSkyTexture(const std::string& path);
+
   // Geographic latitude in degrees.  Positive = north hemisphere.
   // Lower latitudes raise the noon sun, producing a bluer midday sky.
   // Must match WorldTime::SetLatitude() so sky and scene lighting agree.
@@ -84,11 +90,13 @@ class SkyRenderer : public core::Singleton<SkyRenderer> {
   [[nodiscard]] core::Vec3f ComputeSunDirection(float time_of_day) const;
 
   // cppcheck-suppress unusedStructMember
-  abstract::VideoDevice*                    video_   = nullptr;
+  abstract::VideoDevice*                    video_         = nullptr;
   // cppcheck-suppress unusedStructMember
-  abstract::Shader*                         shader_  = nullptr;
+  abstract::Shader*                         shader_        = nullptr;
   // cppcheck-suppress unusedStructMember
-  abstract::Texture*                        moon_tex_ = nullptr;
+  abstract::Texture*                        moon_tex_      = nullptr;
+  // cppcheck-suppress unusedStructMember
+  abstract::Texture*                        night_sky_tex_ = nullptr;
   std::unique_ptr<abstract::ConstantBuffer> sky_cb_;
   std::unique_ptr<abstract::VertexBuffer>   quad_vb_;
   std::unique_ptr<abstract::IndexBuffer>    quad_ib_;

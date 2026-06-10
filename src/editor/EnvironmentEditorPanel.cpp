@@ -108,6 +108,7 @@ void EnvironmentEditorPanel::EnableSky(const environment::EnvironmentDesc& desc)
   }
   environment::SkyRenderer::Instance().SetTurbidity(desc.turbidity);
   environment::SkyRenderer::Instance().SetMoonTexture(desc.moon_texture);
+  environment::SkyRenderer::Instance().SetNightSkyTexture(desc.night_sky_texture);
   renderer::Renderer::Instance().SetSkyRenderer(
       &environment::SkyRenderer::Instance());
   renderer::Renderer::Instance().SetSkyWorldTime(world_time_->GetTimeOfDay());
@@ -341,6 +342,38 @@ bool EnvironmentEditorPanel::RenderSkySection(environment::EnvironmentDesc& env)
     env.moon_texture.clear();
     if (environment::SkyRenderer::IsInstanced())
       environment::SkyRenderer::Instance().SetMoonTexture("");
+    changed = true;
+  }
+
+  // Night sky texture picker.
+  const std::string night_sky_label =
+      env.night_sky_texture.empty() ? "None (procedural)" : env.night_sky_texture;
+  ImGui::LabelText("Night sky texture", "%s", night_sky_label.c_str());
+
+  if (ImGui::Button("Pick night sky texture")) {
+    const auto tex_dir = core::Config::GetDataFolder() / "textures";
+    nfdu8char_t* path  = nullptr;
+    const nfdu8filteritem_t filters[] = {{"Image files", "png,jpg,jpeg,tga"}};
+    const nfdresult_t res =
+        NFD_OpenDialogU8(&path, filters, 1, tex_dir.c_str());
+    if (res == NFD_OKAY) {
+      const auto rel = std::filesystem::relative(
+          std::filesystem::path(path), tex_dir);
+      env.night_sky_texture = rel.generic_string();
+      if (environment::SkyRenderer::IsInstanced())
+        environment::SkyRenderer::Instance().SetNightSkyTexture(env.night_sky_texture);
+      NFD_FreePathU8(path);
+      changed = true;
+    } else if (res == NFD_ERROR) {
+      LOG_F(ERROR, "NFD error opening night sky texture dialog");
+    }
+  }
+
+  ImGui::SameLine();
+  if (ImGui::Button("Clear night sky texture") && !env.night_sky_texture.empty()) {
+    env.night_sky_texture.clear();
+    if (environment::SkyRenderer::IsInstanced())
+      environment::SkyRenderer::Instance().SetNightSkyTexture("");
     changed = true;
   }
 
