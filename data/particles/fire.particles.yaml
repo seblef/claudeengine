@@ -1,0 +1,55 @@
+sub_systems:
+  - name: fire_body
+    blend_mode: additive
+    texture: fx/fire.png
+    sprite_cols: 4
+    sprite_rows: 4
+    animation_fps: 24
+    animation_mode: sequential
+    emitter_shape: sphere
+    emitter_radius: 0.15
+    emission_rate: 60
+    max_particles: 200
+    looping: true
+    duration: 0.0
+    lifetime:   { min: 0.8, max: 1.5 }
+    speed:      { min: 1.0, max: 2.5 }
+    direction:  [0, 1, 0]
+    spread:     30
+    gravity:    0.2
+    size_start: { min: 0.2, max: 0.4 }
+    size_end:   { min: 0.0, max: 0.05 }
+    color_start: [1.0, 0.6, 0.1, 1.0]
+    color_end:   [0.8, 0.1, 0.0, 0.0]
+  - name: smoke
+    blend_mode: alpha_blend
+    lit: false
+    texture: fx/smoke.png
+    sprite_cols: 1
+    sprite_rows: 1
+    animation_fps: 0
+    animation_mode: random
+    emitter_shape: sphere
+    emitter_radius: 0.1
+    emission_rate: 15
+    max_particles: 80
+    looping: true
+    duration: 0.0
+    lifetime:   { min: 2.0, max: 4.0 }
+    speed:      { min: 0.3, max: 0.8 }
+    direction:  [0, 1, 0]
+    spread:     20
+    gravity:    -0.1
+    size_start: { min: 0.3, max: 0.5 }
+    size_end:   { min: 0.8, max: 1.2 }
+    color_start: [0.3, 0.3, 0.3, 0.6]
+    color_end:   [0.5, 0.5, 0.5, 0.0]
+lights:
+  - type: omni
+    color: [1.0, 0.5, 0.1]
+    intensity_min: 1.5
+    intensity_max: 3.0
+    radius: 4.0
+    local_offset: [0, 0.5, 0]
+    flicker_frequency: 8.0
+    flicker_amplitude: 0.4
