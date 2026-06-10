@@ -1,9 +1,11 @@
 #pragma once
 
+#include <memory>
 #include <string>
 
 #include "core/BBox3.h"
 #include "core/Mat4f.h"
+#include "core/Vec3f.h"
 #include "game/GameObjectType.h"
 #include "game/GameObjectVisitor.h"
 
@@ -44,6 +46,11 @@ class GameObject {
 
   // Dispatches to the matching visitor overload for this object's concrete type.
   virtual void Accept(GameObjectVisitor& visitor) = 0;
+
+  // Returns a clone placed at position, preserving orientation and scale from
+  // the original world transform. Returns nullptr for non-copyable types
+  // (GameTerrain, GamePlayerStart, GameCamera).
+  virtual std::unique_ptr<GameObject> Copy(const core::Vec3f& position) const;
 
   // Called after the world transform and world bbox have been updated.
   virtual void OnWorldTransformUpdated() = 0;

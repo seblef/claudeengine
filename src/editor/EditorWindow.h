@@ -15,6 +15,7 @@
 #include "editor/EnvironmentEditorPanel.h"
 #include "editor/TerrainCreationDialog.h"
 #include "editor/TerrainEditorPanel.h"
+#include "game/GameObject.h"
 
 namespace editor {
 
@@ -59,6 +60,14 @@ class EditorWindow {
   void RenderMenuBar();
   void ImportMaterial();
   void ImportMesh();
+
+  // Copies the currently selected object to the internal clipboard.
+  // No-op if nothing is selected or the object type is not copyable.
+  void CopySelectedObject();
+
+  // Pastes the clipboard object into the scene with a small position offset.
+  // Pushes a PlaceObjectCommand so the paste is undoable.
+  void PasteObject();
 
   // Saves to scene_->GetFilePath(); falls through to SaveAs() when empty.
   void SaveCurrent();
@@ -201,6 +210,11 @@ class EditorWindow {
   // Ordered list of recently opened map paths (most-recent first).
   // cppcheck-suppress unusedStructMember
   std::vector<std::string> recent_maps_;
+
+  // Clipboard — holds a master clone used to produce each paste.
+  // Never added to the scene; nullptr when nothing has been copied.
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<game::GameObject> clipboard_;
 
   // Debug state.
   // cppcheck-suppress unusedStructMember

@@ -17,10 +17,12 @@
 #include "core/AppConfig.h"
 #include "core/Config.h"
 #include "core/Event.h"
+#include "core/Vec3f.h"
 #include "core/YamlUtils.h"
 #include "editor/EditorScene.h"
 #include "editor/EditorSystem.h"
 #include "editor/EditorToolbar.h"
+#include "editor/commands/PlaceObjectCommand.h"
 #include "editor/EditorViewport.h"
 #include "editor/LogPanel.h"
 #include "editor/MapPropertiesWindow.h"
@@ -78,6 +80,8 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       log_panel_(std::make_unique<LogPanel>()) {
   toolbar_->SetCommandHistory(&history_);
   toolbar_->SetOnSave([this]{ SaveCurrent(); });
+  toolbar_->SetOnCopy([this]{ CopySelectedObject(); });
+  toolbar_->SetOnPaste([this]{ PasteObject(); });
   viewport_->SetScene(scene_.get());
   viewport_->SetCommandHistory(&history_);
   properties_panel_->SetCommandHistory(&history_);
@@ -141,8 +145,16 @@ void EditorWindow::Render() {
   // 2. Main menu bar.
   RenderMenuBar();
 
-  // 3. Toolbar — update dirty state before rendering.
+  // 3. Toolbar — update dirty state and copy/paste availability before rendering.
   toolbar_->SetDirty(scene_dirty_);
+  {
+    const game::GameObject* sel = scene_->GetSelectedObject();
+    const bool can_copy = sel &&
+        (sel->GetType() == game::GameObjectType::kMesh ||
+         sel->GetType() == game::GameObjectType::kLight);
+    toolbar_->SetCanCopy(can_copy);
+    toolbar_->SetCanPaste(clipboard_ != nullptr);
+  }
   toolbar_->Render();
   const EditorTool active_tool = toolbar_->GetActiveTool();
 
@@ -795,6 +807,26 @@ void EditorWindow::RemoveTerrain() {
   WireTerrainPanel();
   scene_dirty_ = true;
   LOG_F(INFO, "Terrain removed from scene");
+}
+
+void EditorWindow::CopySelectedObject() {
+  const game::GameObject* obj = scene_->GetSelectedObject();
+  if (!obj) return;
+  const core::Mat4f& t = obj->GetWorldTransform();
+  const core::Vec3f pos(t(3, 0), t(3, 1), t(3, 2));
+  clipboard_ = obj->Copy(pos);
+  if (clipboard_)
+    LOG_F(INFO, "Copied '%s'", clipboard_->GetName().c_str());
+}
+
+void EditorWindow::PasteObject() {
+  if (!clipboard_) return;
+  const core::Mat4f& ct = clipboard_->GetWorldTransform();
+  const core::Vec3f paste_pos(ct(3, 0) + 1.f, ct(3, 1), ct(3, 2) + 1.f);
+  auto clone = clipboard_->Copy(paste_pos);
+  if (!clone) return;
+  history_.Push(std::make_unique<PlaceObjectCommand>(scene_.get(), std::move(clone)));
+  scene_dirty_ = true;
 }
 
 void EditorWindow::WireTerrainPanel() {

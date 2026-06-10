@@ -109,4 +109,51 @@ renderer::Light* GameLight::GetLight() const {
   return light_.get();
 }
 
+std::unique_ptr<game::GameObject> GameLight::Copy(const core::Vec3f& position) const {
+  const renderer::Light* l = light_.get();
+  GameLightDesc desc;
+  desc.color             = l->GetColor();
+  desc.intensity         = l->GetIntensity();
+  desc.cast_shadow       = l->GetCastShadow();
+  desc.shadow_resolution = l->GetShadowResolution();
+  desc.shadow_bias       = l->GetShadowBias();
+
+  switch (l->GetType()) {
+    case renderer::LightType::kOmni:
+      desc.radius = static_cast<const renderer::OmniLight*>(l)->GetRadius();
+      break;
+    case renderer::LightType::kCircleSpot: {
+      const auto* s = static_cast<const renderer::CircleSpotLight*>(l);
+      desc.inner_angle = s->GetInnerAngle();
+      desc.outer_angle = s->GetOuterAngle();
+      desc.range       = s->GetRange();
+      desc.direction   = s->GetDirection();
+      break;
+    }
+    case renderer::LightType::kRectSpot: {
+      const auto* r = static_cast<const renderer::RectangleSpotLight*>(l);
+      desc.h_angle   = r->GetHAngle();
+      desc.v_angle   = r->GetVAngle();
+      desc.range     = r->GetRange();
+      desc.direction = r->GetDirection();
+      break;
+    }
+    case renderer::LightType::kGlobal: {
+      const auto* g = static_cast<const renderer::GlobalLight*>(l);
+      desc.direction     = g->GetDirection();
+      desc.ambient_color = g->GetAmbientColor();
+      break;
+    }
+  }
+
+  auto clone = std::make_unique<GameLight>(l->GetType(), desc);
+  clone->SetName(GetName() + " (copy)");
+  core::Mat4f t = GetWorldTransform();
+  t(3, 0) = position.x;
+  t(3, 1) = position.y;
+  t(3, 2) = position.z;
+  clone->SetWorldTransform(t);
+  return clone;
+}
+
 }  // namespace game
