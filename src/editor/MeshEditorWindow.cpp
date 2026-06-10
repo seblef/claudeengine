@@ -157,7 +157,8 @@ bool MeshEditorWindow::LoadEmeshFile() {
   for (const auto& sub : original_mesh_.lod.submeshes) {
     MatSlot slot;
     slot.original_name       = sub.material_name;
-    slot.saved_material_path = sub.material_name;  // already relative to data/
+    slot.saved_material_path = sub.material_name.empty()
+        ? "" : ("materials/" + sub.material_name + ".yaml");
     mat_slots_.push_back(std::move(slot));
   }
   return true;
@@ -209,7 +210,8 @@ mesh::MeshData MeshEditorWindow::BuildTransformedMesh() const {
   // Update submesh material paths from saved slots.
   for (int i = 0; i < static_cast<int>(result.lod.submeshes.size()); ++i) {
     if (i < static_cast<int>(mat_slots_.size())) {
-      result.lod.submeshes[i].material_name = mat_slots_[i].saved_material_path;
+      result.lod.submeshes[i].material_name =
+          std::filesystem::path(mat_slots_[i].saved_material_path).stem().string();
     }
   }
 
@@ -346,10 +348,10 @@ void MeshEditorWindow::RenderMaterialSlots() {
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
 
-    // Display saved material name if set, otherwise original source name.
-    const std::string& display = slot.saved_material_path.empty()
+    // Display saved material name (stem only) if set, otherwise original name.
+    const std::string display = slot.saved_material_path.empty()
         ? slot.original_name
-        : slot.saved_material_path;
+        : std::filesystem::path(slot.saved_material_path).stem().string();
     const bool saved = !slot.saved_material_path.empty();
     if (!saved) ImGui::TextDisabled("%s", display.c_str());
     else        ImGui::TextUnformatted(display.c_str());
