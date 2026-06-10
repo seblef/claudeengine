@@ -16,9 +16,11 @@
 #include "game/GameLight.h"
 #include "game/GameMaterial.h"
 #include "game/GameMesh.h"
+#include "game/GameParticleSystem.h"
 #include "game/GamePlayerStart.h"
 #include "game/GameTerrain.h"
 #include "game/MeshTemplate.h"
+#include "particles/ParticleSystemTemplate.h"
 #include "renderer/GeometryUtils.h"
 #include "renderer/Light.h"
 #include "renderer/MaterialDesc.h"
@@ -239,6 +241,21 @@ std::unique_ptr<GameObject> ParsePlayerStart(const YAML::Node& node) {
   return ps;
 }
 
+std::unique_ptr<GameObject> ParseParticleSystem(const YAML::Node& node,
+                                               abstract::VideoDevice* video) {
+  const std::string tmpl_name = node["template"].as<std::string>("");
+  auto* tmpl = particles::ParticleSystemTemplate::GetOrLoad(tmpl_name, video);
+  if (!tmpl) {
+    LOG_F(WARNING, "MapLoader: particle template '%s' not found", tmpl_name.c_str());
+    return nullptr;
+  }
+  auto go = std::make_unique<GameParticleSystem>(tmpl, video);
+  tmpl->Release();
+  go->SetName(node["name"].as<std::string>("ParticleSystem"));
+  go->SetWorldTransform(core::ParseMat4(node["transform"]));
+  return go;
+}
+
 std::unique_ptr<GameObject> ParseTerrain(const YAML::Node& node,
                                          const std::filesystem::path& map_path,
                                          abstract::VideoDevice* video) {
@@ -386,6 +403,9 @@ MapData MapLoader::Load(const std::filesystem::path& path,
         result.objects.push_back(ParseCamera(obj));
       } else if (type == "player_start") {
         result.objects.push_back(ParsePlayerStart(obj));
+      } else if (type == "particle_system") {
+        auto go = ParseParticleSystem(obj, video);
+        if (go) result.objects.push_back(std::move(go));
       } else {
         LOG_F(WARNING, "MapLoader: unknown object type '%s', skipping",
               type.c_str());
