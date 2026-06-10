@@ -1,10 +1,12 @@
 #pragma once
 
 #include <memory>
+#include <string>
 
 #include "abstract/ConstantBuffer.h"
 #include "abstract/IndexBuffer.h"
 #include "abstract/Shader.h"
+#include "abstract/Texture.h"
 #include "abstract/VertexBuffer.h"
 #include "abstract/VideoDevice.h"
 #include "core/Camera.h"
@@ -59,6 +61,11 @@ class SkyRenderer : public core::Singleton<SkyRenderer> {
   // Sets atmospheric turbidity: 1.7 = very clear, 2.0 = default, 10 = very hazy.
   void SetTurbidity(float t) { turbidity_ = t; }
 
+  // Loads (or clears) the moon texture from a path relative to data/textures/.
+  // Pass an empty string to clear and fall back to the plain circle.
+  // No-op before Build() is called.
+  void SetMoonTexture(const std::string& path);
+
   // Geographic latitude in degrees.  Positive = north hemisphere.
   // Lower latitudes raise the noon sun, producing a bluer midday sky.
   // Must match WorldTime::SetLatitude() so sky and scene lighting agree.
@@ -80,12 +87,14 @@ class SkyRenderer : public core::Singleton<SkyRenderer> {
   abstract::VideoDevice*                    video_   = nullptr;
   // cppcheck-suppress unusedStructMember
   abstract::Shader*                         shader_  = nullptr;
+  // cppcheck-suppress unusedStructMember
+  abstract::Texture*                        moon_tex_ = nullptr;
   std::unique_ptr<abstract::ConstantBuffer> sky_cb_;
   std::unique_ptr<abstract::VertexBuffer>   quad_vb_;
   std::unique_ptr<abstract::IndexBuffer>    quad_ib_;
-  float turbidity_      = 2.f;
-  float latitude_deg_   = 45.f;  // geographic latitude; lower = bluer noon sky
-  float declination_deg_ = 0.f;  // solar declination; +23.45 = northern summer
+  float turbidity_       = 2.f;
+  float latitude_deg_    = 45.f;  // geographic latitude; lower = bluer noon sky
+  float declination_deg_ = 0.f;   // solar declination; +23.45 = northern summer
 };
 
 }  // namespace environment

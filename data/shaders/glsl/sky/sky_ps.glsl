@@ -5,11 +5,14 @@
 // All values are output as linear HDR (no gamma); the composite pass applies γ.
 //
 // UBO binding 2: scene_infos
-// UBO binding 8: sky_infos (sun_direction, time_of_day, turbidity)
+// UBO binding 8: sky_infos (sun_direction, time_of_day, turbidity, has_moon_texture)
+// Sampler binding 0: moon_tex (only sampled when has_moon_texture > 0.5)
 
 #version 460 core
 #include <uniforms/scene_infos.glsl>
 #include <uniforms/sky_infos.glsl>
+
+layout(binding = 0) uniform sampler2D moon_tex;
 
 in  vec3 v_view_ray;
 out vec4 out_color;
@@ -216,9 +219,37 @@ void main() {
     if (moon_vis > 0.0 && view_dir.y > 0.0) {
         vec3  moon_dir  = -sun_direction;
         float cos_moon  = dot(view_dir, moon_dir);
+        // Inner: ~0.5° half-angle; outer edge sets the UV disc boundary.
         float moon_disc = smoothstep(0.99960, 0.99985, cos_moon);
-        // Softer silver colour, lower HDR value than the sun.
-        sky_rgb += vec3(0.80, 0.85, 0.95) * moon_disc * moon_vis * 4.0;
+
+        // Colorize by elevation: warm orange at horizon → cool white at zenith.
+        // Mirrors real moonrise/moonset atmospheric reddening.
+        float moon_elev_t = clamp(moon_dir.y / 0.5, 0.0, 1.0);
+        vec3  moon_tint   = mix(vec3(1.0, 0.80, 0.55), vec3(1.0, 0.97, 0.93),
+                                moon_elev_t);
+
+        if (has_moon_texture > 0.5 && moon_disc > 0.0) {
+            // Build an orthonormal tangent frame for the moon disc.
+            // Use world-up as the reference; fall back to +X when moon is overhead.
+            vec3 tmp        = abs(moon_dir.y) < 0.99 ? vec3(0.0, 1.0, 0.0)
+                                                      : vec3(1.0, 0.0, 0.0);
+            vec3 moon_right = normalize(cross(moon_dir, tmp));
+            vec3 moon_up_v  = cross(moon_right, moon_dir);
+
+            // Angular half-radius matching the outer smoothstep edge (acos(0.99960)).
+            // sin(acos(0.99960)) ≈ 0.02828 — used as linear scale for tiny angles.
+            const float kDiscHalfRadius = 0.02828;
+            float du = dot(view_dir, moon_right);
+            float dv = dot(view_dir, moon_up_v);
+            vec2 uv  = vec2(du / kDiscHalfRadius * 0.5 + 0.5,
+                            dv / kDiscHalfRadius * 0.5 + 0.5);
+
+            vec3 tex_col = texture(moon_tex, uv).rgb;
+            sky_rgb += tex_col * moon_tint * moon_disc * moon_vis * 3.0;
+        } else {
+            // Fallback: plain silver disc.
+            sky_rgb += vec3(0.80, 0.85, 0.95) * moon_tint * moon_disc * moon_vis * 4.0;
+        }
     }
 
     out_color = vec4(sky_rgb, 1.0);

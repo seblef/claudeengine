@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include "core/Vec3f.h"
 
 namespace environment {
@@ -50,6 +52,9 @@ struct EnvironmentDesc {
     core::Vec3f wind_direction = {1.f, 0.f, 0.f};
     // Atmospheric turbidity: 1.7 = very clear, 2.0 = default, 10.0 = very hazy.
     float turbidity = 2.f;
+    // Moon texture path, relative to data/textures/. Empty = plain circle fallback.
+    // cppcheck-suppress unusedStructMember
+    std::string moon_texture;
 };
 
 }  // namespace environment

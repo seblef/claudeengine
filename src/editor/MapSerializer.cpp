@@ -113,6 +113,8 @@ void EmitEnvironment(YAML::Emitter& out,
     out << YAML::Key << "time_scale"    << YAML::Value << env.time_scale;
   if (env.turbidity     != def.turbidity)
     out << YAML::Key << "turbidity"     << YAML::Value << env.turbidity;
+  if (!env.moon_texture.empty())
+    out << YAML::Key << "moon_texture"  << YAML::Value << env.moon_texture;
   out << YAML::EndMap;
 }
 
