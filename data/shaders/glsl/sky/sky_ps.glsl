@@ -245,7 +245,7 @@ void main() {
                             dv / kDiscHalfRadius * 0.5 + 0.5);
 
             vec3 tex_col = texture(moon_tex, uv).rgb;
-            sky_rgb += tex_col * moon_tint * moon_disc * moon_vis * 4.0;
+            sky_rgb += tex_col * moon_tint * moon_disc * moon_vis * 3.0;
         } else {
             // Fallback: plain silver disc.
             sky_rgb += vec3(0.80, 0.85, 0.95) * moon_tint * moon_disc * moon_vis * 4.0;
