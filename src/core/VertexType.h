@@ -6,6 +6,7 @@
 #include "core/Vertex2D.h"
 #include "core/Vertex3D.h"
 #include "core/VertexBase.h"
+#include "core/VertexParticle.h"
 #include "core/VertexTerrain.h"
 
 namespace core {
@@ -16,15 +17,17 @@ enum class VertexType : uint8_t {
   k2D,
   k3D,
   kTerrain,
+  kParticle,
   kCount
 };
 
 // Byte size of each vertex type, indexed by VertexType.
 constexpr size_t kVertexSize[] = {
-    sizeof(VertexBase),    // kBase
-    sizeof(Vertex2D),      // k2D
-    sizeof(Vertex3D),      // k3D
+    sizeof(VertexBase),     // kBase
+    sizeof(Vertex2D),       // k2D
+    sizeof(Vertex3D),       // k3D
     sizeof(VertexTerrain),  // kTerrain
+    sizeof(VertexParticle),  // kParticle
 };
 
 static_assert(sizeof(kVertexSize) / sizeof(kVertexSize[0]) ==

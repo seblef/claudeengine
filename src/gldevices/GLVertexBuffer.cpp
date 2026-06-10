@@ -6,6 +6,7 @@
 #include "core/Vertex2D.h"
 #include "core/Vertex3D.h"
 #include "core/VertexBase.h"
+#include "core/VertexParticle.h"
 #include "core/VertexTerrain.h"
 #include "core/VertexType.h"
 
@@ -75,6 +76,26 @@ void ConfigureAttributes(core::VertexType vertex_type) {
       glEnableVertexAttribArray(0);
       glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, stride,
           reinterpret_cast<const void*>(offsetof(core::VertexTerrain, xz)));
+      break;
+    }
+    case core::VertexType::kParticle: {
+      const GLsizei stride = static_cast<GLsizei>(sizeof(core::VertexParticle));
+      // location 0: center (vec3)
+      glEnableVertexAttribArray(0);
+      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride,
+          reinterpret_cast<const void*>(offsetof(core::VertexParticle, center)));
+      // location 1: size (float)
+      glEnableVertexAttribArray(1);
+      glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, stride,
+          reinterpret_cast<const void*>(offsetof(core::VertexParticle, size)));
+      // location 2: color (vec4)
+      glEnableVertexAttribArray(2);
+      glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, stride,
+          reinterpret_cast<const void*>(offsetof(core::VertexParticle, color)));
+      // location 3: uv_offset (vec2)
+      glEnableVertexAttribArray(3);
+      glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, stride,
+          reinterpret_cast<const void*>(offsetof(core::VertexParticle, uv_offset)));
       break;
     }
     default:

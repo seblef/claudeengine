@@ -1,0 +1,231 @@
+#include "particles/ParticleEmitter.h"
+
+#include <algorithm>
+#include <cmath>
+#include <random>
+
+#include "abstract/BufferUsage.h"
+#include "core/VertexType.h"
+#include "particles/EmitterShape.h"
+#include "particles/ParticleAnimationMode.h"
+
+namespace particles {
+
+namespace {
+
+constexpr float kPi        = 3.14159265358979323846f;
+constexpr float kTwoPi     = 2.f * kPi;
+constexpr float kDegToRad  = kPi / 180.f;
+
+}  // namespace
+
+ParticleEmitter::ParticleEmitter(const ParticleSubSystemDesc& desc,
+                                 abstract::VideoDevice* video)
+    : desc_(desc),
+      rng_(std::random_device{}()) {
+  particles_.resize(desc_.max_particles);
+  vbo_vertices_.resize(desc_.max_particles * 4);
+  vbo_ = video->CreateVertexBuffer(
+      core::VertexType::kParticle,
+      desc_.max_particles * 4,
+      abstract::BufferUsage::kDynamic);
+}
+
+void ParticleEmitter::Update(float dt) {
+  elapsed_ += dt;
+
+  // Spawn phase — stopped after duration for one-shot emitters.
+  bool emitting = desc_.looping || elapsed_ <= desc_.duration;
+  if (emitting) {
+    spawn_accum_ += desc_.emission_rate * dt;
+    int n = static_cast<int>(spawn_accum_);
+    spawn_accum_ -= static_cast<float>(n);
+    for (int i = 0; i < n; ++i) SpawnParticle();
+  }
+
+  // Integration and interpolation.
+  const core::Vec3f gravity_vec{0.f, -desc_.gravity, 0.f};
+  const float half_dt2      = 0.5f * dt * dt;
+  const int   frame_count   = desc_.sprite_cols * desc_.sprite_rows;
+
+  for (int i = 0; i < live_count_; ++i) {
+    Particle& p = particles_[i];
+    p.age      += dt;
+    p.position += p.velocity * dt + gravity_vec * half_dt2;
+
+    const float t = p.age / p.lifetime;
+    p.size  = p.size_start + (p.size_end - p.size_start) * t;
+    p.color = desc_.color_start.Lerp(desc_.color_end, t);
+
+    if (desc_.animation_mode == ParticleAnimationMode::kSequential &&
+        frame_count > 1 && desc_.animation_fps > 0.f) {
+      p.frame = static_cast<int>(p.age * desc_.animation_fps) % frame_count;
+    }
+  }
+
+  // Expire dead particles using swap-with-last to keep the live prefix packed.
+  for (int i = live_count_ - 1; i >= 0; --i) {
+    if (particles_[i].age >= particles_[i].lifetime) {
+      particles_[i] = particles_[--live_count_];
+    }
+  }
+
+  // One-shot: mark done when all particles have died and emission has stopped.
+  if (!desc_.looping && elapsed_ > desc_.duration && live_count_ == 0) {
+    done_ = true;
+  }
+}
+
+void ParticleEmitter::UploadToGPU() {
+  const int frame_count = desc_.sprite_cols * desc_.sprite_rows;
+
+  for (int i = 0; i < live_count_; ++i) {
+    const Particle& p = particles_[i];
+
+    int frame = 0;
+    if (frame_count > 0) {
+      frame = p.frame % frame_count;
+    }
+    const int col = (desc_.sprite_cols > 0) ? frame % desc_.sprite_cols : 0;
+    const int row = (desc_.sprite_cols > 0) ? frame / desc_.sprite_cols : 0;
+    const core::Vec2f uv_offset{
+        static_cast<float>(col) / static_cast<float>(std::max(1, desc_.sprite_cols)),
+        static_cast<float>(row) / static_cast<float>(std::max(1, desc_.sprite_rows))};
+
+    const core::VertexParticle v{p.position, p.size, p.color, uv_offset};
+    const int base = i * 4;
+    vbo_vertices_[base + 0] = v;
+    vbo_vertices_[base + 1] = v;
+    vbo_vertices_[base + 2] = v;
+    vbo_vertices_[base + 3] = v;
+  }
+
+  if (live_count_ > 0) {
+    vbo_->Fill(vbo_vertices_.data(), live_count_ * 4);
+  }
+}
+
+void ParticleEmitter::SetWorldTransform(const core::Mat4f& transform) {
+  // Extract the translation column from the row-major matrix.
+  origin_ = core::Vec3f(transform(0, 3), transform(1, 3), transform(2, 3));
+}
+
+const ParticleSubSystemDesc& ParticleEmitter::GetDesc() const { return desc_; }
+
+abstract::VertexBuffer* ParticleEmitter::GetVBO() const { return vbo_.get(); }
+
+int ParticleEmitter::GetParticleCount() const { return live_count_; }
+
+// ---------------------------------------------------------------------------
+
+void ParticleEmitter::SpawnParticle() {
+  if (live_count_ >= static_cast<int>(particles_.size())) return;
+
+  std::uniform_real_distribution<float> u01(0.f, 1.f);
+
+  Particle& p = particles_[live_count_++];
+  p.age      = 0.f;
+  p.lifetime = desc_.lifetime_min +
+               u01(rng_) * (desc_.lifetime_max - desc_.lifetime_min);
+
+  const float speed = desc_.speed_min +
+                      u01(rng_) * (desc_.speed_max - desc_.speed_min);
+  p.velocity = RandomDirection() * speed;
+  p.position = origin_ + RandomSpawnOffset();
+
+  p.size_start = desc_.size_start_min +
+                 u01(rng_) * (desc_.size_start_max - desc_.size_start_min);
+  p.size_end   = desc_.size_end_min +
+                 u01(rng_) * (desc_.size_end_max - desc_.size_end_min);
+  p.size  = p.size_start;
+  p.color = desc_.color_start;
+
+  const int frame_count = desc_.sprite_cols * desc_.sprite_rows;
+  if (desc_.animation_mode == ParticleAnimationMode::kRandom && frame_count > 0) {
+    std::uniform_int_distribution<int> u_frame(0, frame_count - 1);
+    p.frame = u_frame(rng_);
+  } else {
+    p.frame = 0;
+  }
+}
+
+core::Vec3f ParticleEmitter::RandomSpawnOffset() {
+  const float r = desc_.emitter_radius;
+  if (r <= 0.f) return core::Vec3f::kZero;
+
+  std::uniform_real_distribution<float> u01(0.f, 1.f);
+
+  switch (desc_.emitter_shape) {
+    case EmitterShape::kPoint:
+      return core::Vec3f::kZero;
+
+    case EmitterShape::kSphere: {
+      // Uniform point on sphere surface via rejection sampling.
+      std::uniform_real_distribution<float> u11(-1.f, 1.f);
+      core::Vec3f v;
+      float len;
+      do {
+        v = {u11(rng_), u11(rng_), u11(rng_)};
+        len = v.Length();
+      } while (len < 1e-6f);
+      return v * (r / len);
+    }
+
+    case EmitterShape::kBox: {
+      std::uniform_real_distribution<float> u11(-r, r);
+      return {u11(rng_), u11(rng_), u11(rng_)};
+    }
+
+    case EmitterShape::kCone: {
+      // Uniform point in a disc perpendicular to the emission direction.
+      const core::Vec3f dir = desc_.direction.Normalized();
+      core::Vec3f perp;
+      if (std::fabs(dir.x) < 0.9f)
+        perp = dir.Cross(core::Vec3f::kAxisX).Normalized();
+      else
+        perp = dir.Cross(core::Vec3f::kAxisY).Normalized();
+      const core::Vec3f perp2 = dir.Cross(perp).Normalized();
+
+      const float angle = u01(rng_) * kTwoPi;
+      const float rad   = std::sqrt(u01(rng_)) * r;
+      return perp * (rad * std::cos(angle)) + perp2 * (rad * std::sin(angle));
+    }
+  }
+  return core::Vec3f::kZero;
+}
+
+core::Vec3f ParticleEmitter::RandomDirection() {
+  const float spread_rad  = desc_.spread * kDegToRad;
+  const float cos_spread  = std::cos(spread_rad);
+
+  std::uniform_real_distribution<float> u01(0.f, 1.f);
+
+  // Uniform sampling on a spherical cap (Archimedes' hat-box theorem).
+  const float cos_theta = 1.f - u01(rng_) * (1.f - cos_spread);
+  const float sin_theta = std::sqrt(std::max(0.f, 1.f - cos_theta * cos_theta));
+  const float phi       = u01(rng_) * kTwoPi;
+
+  // Local direction around the canonical Y axis.
+  const core::Vec3f local{sin_theta * std::cos(phi), cos_theta,
+                           sin_theta * std::sin(phi)};
+
+  // Rotate local direction to align canonical Y with desc_.direction.
+  const core::Vec3f n   = desc_.direction.Normalized();
+  const float       ny  = n.y;
+  // Rotation axis = (0,1,0) × n = (nz, 0, -nx).
+  const core::Vec3f k{n.z, 0.f, -n.x};
+  const float       k_len = k.Length();
+
+  if (k_len < 1e-6f) {
+    // n is (nearly) parallel or anti-parallel to Y.
+    return (ny > 0.f) ? local : core::Vec3f{local.x, -local.y, local.z};
+  }
+
+  const core::Vec3f kn     = k * (1.f / k_len);
+  const float       cos_a  = ny;
+  const float       sin_a  = k_len;
+  const float       k_dot  = kn.Dot(local);
+  return local * cos_a + kn.Cross(local) * sin_a + kn * (k_dot * (1.f - cos_a));
+}
+
+}  // namespace particles
