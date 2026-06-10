@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <functional>
+#include <memory>
 #include <vector>
 
 #include "abstract/Devices.h"
@@ -10,6 +11,7 @@
 #include "game/GameCamera.h"
 #include "game/GameObject.h"
 #include "game/ICameraController.h"
+#include "particles/ParticleRenderer.h"
 
 namespace game {
 
@@ -61,6 +63,11 @@ class GameSystem : public core::Singleton<GameSystem> {
   // Returns the total elapsed time in seconds since construction.
   [[nodiscard]] float GetElapsedTime() const { return elapsed_time_; }
 
+  // Returns the ParticleRenderer owned by this system.
+  // Used by GameParticleSystem::OnAddedToScene / OnRemovedFromScene to
+  // register and unregister emitters.
+  [[nodiscard]] particles::ParticleRenderer* GetParticleRenderer() const;
+
  private:
   // cppcheck-suppress unusedStructMember
   abstract::Devices*  devices_;
@@ -77,6 +84,8 @@ class GameSystem : public core::Singleton<GameSystem> {
   std::chrono::steady_clock::time_point prev_time_;
   // cppcheck-suppress unusedStructMember
   std::function<void(const core::Event&)> event_callback_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<particles::ParticleRenderer> particle_renderer_;
 };
 
 }  // namespace game

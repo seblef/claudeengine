@@ -5,13 +5,18 @@
 
 #include "core/EventManager.h"
 #include "core/EventType.h"
+#include "game/GameParticleSystem.h"
 #include "renderer/Renderer.h"
 
 namespace game {
 
 GameSystem::GameSystem(abstract::Devices* devices)
     : devices_(devices),
-      prev_time_(std::chrono::steady_clock::now()) {}
+      prev_time_(std::chrono::steady_clock::now()),
+      particle_renderer_(std::make_unique<particles::ParticleRenderer>(
+          devices->GetVideoDevice())) {
+  renderer::Renderer::Instance().SetParticleRenderer(particle_renderer_.get());
+}
 
 void GameSystem::Update() {
   const auto now = std::chrono::steady_clock::now();
@@ -35,6 +40,12 @@ void GameSystem::Update() {
 
   if (camera_controller_) {
     camera_controller_->Update(dt);
+  }
+
+  for (GameObject* obj : objects_) {
+    if (obj->GetType() == GameObjectType::kParticleSystem) {
+      static_cast<GameParticleSystem*>(obj)->Update(elapsed_time_, dt);
+    }
   }
 
   if (active_camera_) {
@@ -70,6 +81,10 @@ void GameSystem::SetCameraController(ICameraController* controller) {
 void GameSystem::SetEventCallback(
     std::function<void(const core::Event&)> cb) {
   event_callback_ = std::move(cb);
+}
+
+particles::ParticleRenderer* GameSystem::GetParticleRenderer() const {
+  return particle_renderer_.get();
 }
 
 }  // namespace game
