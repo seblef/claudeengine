@@ -29,6 +29,7 @@ namespace environment { class CloudRenderer; }
 namespace environment { class SkyRenderer;   }
 namespace environment { class WaterRenderer; }
 namespace environment { class WindSystem;    }
+namespace particles   { class ParticleRenderer; }
 
 namespace renderer {
 
@@ -185,6 +186,12 @@ class Renderer : public core::Singleton<Renderer> {
   // enabling; see TreeRenderer::Build().
   void SetTreeEnabled(bool enabled) { tree_enabled_ = enabled; }
 
+  // Registers a ParticleRenderer whose kGBuffer emitters are drawn at the end
+  // of the geometry pass. Pass nullptr to detach. The caller retains ownership.
+  void SetParticleRenderer(particles::ParticleRenderer* p) {
+    particle_renderer_ = p;
+  }
+
   // Renders terrain patch edges as a flat-colour wireframe overlay into fbo.
   // No-op when no terrain has been registered or Init() has not been called.
   // Must be called after Update() so the scene UBO at slot 2 is bound.
@@ -281,6 +288,10 @@ class Renderer : public core::Singleton<Renderer> {
 
   bool foliage_enabled_ = false;
   bool tree_enabled_    = false;
+
+  // Optional particle renderer for kGBuffer emitters. Not owned by Renderer.
+  // cppcheck-suppress unusedStructMember
+  particles::ParticleRenderer* particle_renderer_ = nullptr;
 
   // cppcheck-suppress unusedStructMember
   PostProcessInfos post_process_infos_;

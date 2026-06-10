@@ -17,6 +17,7 @@
 #include "environment/WaterRenderer.h"
 #include "environment/WindInfos.h"
 #include "environment/WindSystem.h"
+#include "particles/ParticleRenderer.h"
 #include "renderer/CSMInfos.h"
 #include "renderer/GeometryUtils.h"
 #include "renderer/LightRenderer.h"
@@ -226,6 +227,9 @@ void Renderer::Update(float time, const core::Camera* camera,
   if (tree_enabled_ && TreeRenderer::IsInstanced() &&
       TreeRenderer::Instance().IsReady())
     TreeRenderer::Instance().Render(*camera_);
+  if (particle_renderer_)
+    particle_renderer_->RenderGeometryPass(*camera_,
+                                           renderable_infos_cb_.get());
   gbuffer_.UnbindForWriting();
 
   // Debug bypass — blit a chosen G-buffer RT to the default framebuffer and skip
