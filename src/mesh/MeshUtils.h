@@ -20,4 +20,10 @@ void ComputeTangents(LodData* lod);
 // Call before ComputeTangents() to avoid tangent-space fragmentation.
 void WeldVertices(LodData* lod);
 
+// Merges all submeshes that share the same material name by concatenating
+// their index ranges in the index buffer.  No-op when every material is
+// already unique or when there are fewer than two submeshes.  Call after
+// WeldVertices() and before ComputeTangents().
+void MergeSubmeshesByMaterial(LodData* lod);
+
 }  // namespace mesh

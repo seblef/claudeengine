@@ -185,6 +185,7 @@ bool FbxImporter::Import(const std::string& path, MeshData* mesh) const {
   }
 
   WeldVertices(&lod);
+  MergeSubmeshesByMaterial(&lod);
   if (!all_have_normals) ComputeNormals(&lod);
   ComputeTangents(&lod);
   ComputeAabb(&lod);
