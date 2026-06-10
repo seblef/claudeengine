@@ -38,4 +38,8 @@ const std::string& GameObject::GetName() const {
   return name_;
 }
 
+std::unique_ptr<GameObject> GameObject::Copy(const core::Vec3f&) const {
+  return nullptr;
+}
+
 }  // namespace game

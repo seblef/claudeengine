@@ -31,6 +31,18 @@ class EditorToolbar {
   // Registers a callback fired when the Save toolbar button is clicked.
   void SetOnSave(std::function<void()> cb) { on_save_ = std::move(cb); }
 
+  // Registers a callback fired when the Copy toolbar button is clicked or Ctrl+C.
+  void SetOnCopy(std::function<void()> cb) { on_copy_ = std::move(cb); }
+
+  // Registers a callback fired when the Paste toolbar button is clicked or Ctrl+V.
+  void SetOnPaste(std::function<void()> cb) { on_paste_ = std::move(cb); }
+
+  // Enables or greys out the Copy button.
+  void SetCanCopy(bool b) { can_copy_ = b; }
+
+  // Enables or greys out the Paste button.
+  void SetCanPaste(bool b) { can_paste_ = b; }
+
   // Reflects the scene dirty state; the Save button is greyed out when false.
   void SetDirty(bool dirty) { dirty_ = dirty; }
 
@@ -48,7 +60,15 @@ class EditorToolbar {
   // cppcheck-suppress unusedStructMember
   std::function<void()> on_save_;
   // cppcheck-suppress unusedStructMember
-  bool                  dirty_       = false;
+  std::function<void()> on_copy_;
+  // cppcheck-suppress unusedStructMember
+  std::function<void()> on_paste_;
+  // cppcheck-suppress unusedStructMember
+  bool                  dirty_     = false;
+  // cppcheck-suppress unusedStructMember
+  bool                  can_copy_  = false;
+  // cppcheck-suppress unusedStructMember
+  bool                  can_paste_ = false;
 };
 
 }  // namespace editor

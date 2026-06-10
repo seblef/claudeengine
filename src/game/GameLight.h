@@ -29,6 +29,10 @@ class GameLight : public GameObject {
 
   void Accept(GameObjectVisitor& visitor) override { visitor.Visit(*this); }
 
+  // Returns a new GameLight with identical type and properties, placed at position.
+  [[nodiscard]] std::unique_ptr<game::GameObject> Copy(
+      const core::Vec3f& position) const override;
+
   void OnWorldTransformUpdated() override;
   void OnAddedToScene()          override;
   void OnRemovedFromScene()      override;

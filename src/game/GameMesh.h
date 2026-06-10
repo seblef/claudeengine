@@ -31,6 +31,10 @@ class GameMesh : public GameObject {
 
   void Accept(GameObjectVisitor& visitor) override { visitor.Visit(*this); }
 
+  // Returns a new GameMesh from the same template, placed at position.
+  [[nodiscard]] std::unique_ptr<game::GameObject> Copy(
+      const core::Vec3f& position) const override;
+
   // Registers the instance with the Renderer.
   void OnAddedToScene() override;
 

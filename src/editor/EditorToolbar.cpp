@@ -60,8 +60,11 @@ void EditorToolbar::Render() {
 
   // Keyboard shortcuts — skip when a text input widget has keyboard focus.
   if (!io.WantCaptureKeyboard) {
+    // Single-key tool shortcuts are suppressed when a modifier is held so that
+    // Ctrl+C (copy) does not simultaneously activate the Camera tool.
     for (int i = 0; i < kTransformToolCount; ++i) {
       if (kTransformTools[i].shortcut != ImGuiKey_None &&
+          !io.KeyCtrl && !io.KeyAlt &&
           ImGui::IsKeyPressed(kTransformTools[i].shortcut, /*repeat=*/false)) {
         active_tool_ = kTransformTools[i].tool;
       }
@@ -75,6 +78,15 @@ void EditorToolbar::Render() {
                  ImGui::IsKeyPressed(ImGuiKey_Z, /*repeat=*/false)) {
         history_->Redo();
       }
+    }
+
+    if (io.KeyCtrl && !io.KeyShift &&
+        ImGui::IsKeyPressed(ImGuiKey_C, /*repeat=*/false)) {
+      if (on_copy_) on_copy_();
+    }
+    if (io.KeyCtrl && !io.KeyShift &&
+        ImGui::IsKeyPressed(ImGuiKey_V, /*repeat=*/false)) {
+      if (on_paste_) on_paste_();
     }
   }
 
@@ -113,6 +125,23 @@ void EditorToolbar::Render() {
   if (ImGui::Button(ICON_FA_FLOPPY_DISK) && on_save_)
     on_save_();
   ImGui::SetItemTooltip("Save (Ctrl+S)");
+  ImGui::EndDisabled();
+
+  ImGui::SameLine();
+  ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+  ImGui::SameLine();
+
+  // Copy / Paste buttons.
+  ImGui::BeginDisabled(!can_copy_);
+  if (ImGui::Button(ICON_FA_COPY) && on_copy_) on_copy_();
+  ImGui::SetItemTooltip("Copy (Ctrl+C)");
+  ImGui::EndDisabled();
+
+  ImGui::SameLine();
+
+  ImGui::BeginDisabled(!can_paste_);
+  if (ImGui::Button(ICON_FA_PASTE) && on_paste_) on_paste_();
+  ImGui::SetItemTooltip("Paste (Ctrl+V)");
   ImGui::EndDisabled();
 
   ImGui::SameLine();
