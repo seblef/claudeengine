@@ -11,5 +11,16 @@ external/glfw-subbuild/
 external/yaml-cpp-build/
 external/yaml-cpp-src/
 external/yaml-cpp-subbuild/
+external/fast_obj-build/
+external/fast_obj-subbuild/
+external/imgui-subbuild/
+external/imguizmo-build/
+external/imguizmo-subbuild/
+external/nfd-build/
+external/nfd-subbuild/
+external/stb-subbuild/
+external/tinyexr-build/
+external/tinyexr-subbuild/
+external/ufbx-subbuild/
 claude_engine.log
 .claude/settings.local.json
