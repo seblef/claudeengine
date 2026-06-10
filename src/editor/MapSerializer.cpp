@@ -17,8 +17,10 @@
 #include "game/GameMaterial.h"
 #include "game/GameMesh.h"
 #include "game/GameObjectType.h"
+#include "game/GameParticleSystem.h"
 #include "game/GamePlayerStart.h"
 #include "game/GameTerrain.h"
+#include "particles/ParticleSystemTemplate.h"
 #include "game/MapLoader.h"
 #include "renderer/CircleSpotLight.h"
 #include "renderer/GlobalLight.h"
@@ -230,6 +232,19 @@ void MapSerializer::SerializeVisitor::Visit(
   out_ << YAML::Key << "type"      << YAML::Value << "player_start";
   out_ << YAML::Key << "transform" << YAML::Value;
   EmitTransform(out_, player_start.GetWorldTransform());
+  out_ << YAML::EndMap;
+}
+
+void MapSerializer::SerializeVisitor::Visit(
+    game::GameParticleSystem& particle_system) {
+  const particles::ParticleSystemTemplate* tmpl = particle_system.GetTemplate();
+
+  out_ << YAML::BeginMap;
+  out_ << YAML::Key << "name"      << YAML::Value << particle_system.GetName();
+  out_ << YAML::Key << "type"      << YAML::Value << "particle_system";
+  out_ << YAML::Key << "template"  << YAML::Value << tmpl->GetId();
+  out_ << YAML::Key << "transform" << YAML::Value;
+  EmitTransform(out_, particle_system.GetWorldTransform());
   out_ << YAML::EndMap;
 }
 

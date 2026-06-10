@@ -58,8 +58,7 @@ class MapSerializer {
     void Visit(game::GameCamera& camera)                override;
     void Visit(game::GameLight& light)                  override;
     void Visit(game::GameMesh& mesh)                    override;
-    // Not serialized to map format.
-    void Visit(game::GameParticleSystem&)               override {}
+    void Visit(game::GameParticleSystem& particle_system) override;
     void Visit(game::GamePlayerStart& player_start)     override;
     // Skipped from the objects sequence — terrain is at root level.
     void Visit(game::GameTerrain& terrain)              override {}
