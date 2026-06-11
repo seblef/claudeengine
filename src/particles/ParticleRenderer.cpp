@@ -49,19 +49,18 @@ ParticleRenderer::~ParticleRenderer() {
   if (forward_shader_) forward_shader_->Release();
 }
 
-void ParticleRenderer::Register(ParticleEmitter* emitter) {
-  emitters_.push_back(emitter);
+void ParticleRenderer::BeginFrame() {
+  frame_emitters_.clear();
 }
 
-void ParticleRenderer::Unregister(ParticleEmitter* emitter) {
-  emitters_.erase(std::remove(emitters_.begin(), emitters_.end(), emitter),
-                  emitters_.end());
+void ParticleRenderer::EnqueueEmitter(ParticleEmitter* emitter) {
+  frame_emitters_.push_back(emitter);
 }
 
 void ParticleRenderer::RenderGeometryPass(
     const core::Camera& /*camera*/,
     abstract::ConstantBuffer* /*renderable_infos_cb*/) {
-  if (emitters_.empty()) return;
+  if (frame_emitters_.empty()) return;
 
   // Depth write ON, LEQUAL test — billboards share depth with their own quads.
   video_->SetDepthWriteEnabled(true);
@@ -72,7 +71,7 @@ void ParticleRenderer::RenderGeometryPass(
   video_->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
   video_->SetIndexType(abstract::IndexType::kUInt32);
 
-  for (const ParticleEmitter* emitter : emitters_) {
+  for (const ParticleEmitter* emitter : frame_emitters_) {
     if (emitter->GetDesc().blend_mode != ParticleBlendMode::kGBuffer) continue;
     const int particle_count = emitter->GetParticleCount();
     if (particle_count <= 0) continue;
@@ -100,12 +99,12 @@ void ParticleRenderer::RenderGeometryPass(
 void ParticleRenderer::RenderForwardPass(
     const core::Camera& camera,
     abstract::ConstantBuffer* /*renderable_infos_cb*/) {
-  if (emitters_.empty()) return;
+  if (frame_emitters_.empty()) return;
 
   // Collect additive and alpha-blend emitters.
   std::vector<ParticleEmitter*> additive_emitters;
   std::vector<ParticleEmitter*> alpha_emitters;
-  for (ParticleEmitter* emitter : emitters_) {
+  for (ParticleEmitter* emitter : frame_emitters_) {
     const ParticleBlendMode mode = emitter->GetDesc().blend_mode;
     if (mode == ParticleBlendMode::kAdditive)
       additive_emitters.push_back(emitter);

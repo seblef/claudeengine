@@ -177,6 +177,7 @@ void Renderer::Update(float time, const core::Camera* camera,
   // CycleShadowDebug) that fire before this Update() is entered.
   LightRenderer::Instance().EndRender();
   MeshRenderer::Instance().EndRender();
+  if (particle_renderer_) particle_renderer_->BeginFrame();
 
   if (!camera) {
     return;

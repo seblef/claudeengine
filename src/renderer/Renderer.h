@@ -194,6 +194,13 @@ class Renderer : public core::Singleton<Renderer> {
     particle_renderer_ = p;
   }
 
+  // Returns the active ParticleRenderer, or nullptr if none has been set.
+  // Used by ParticleRenderable::Enqueue() to forward emitters into the
+  // per-frame render queue.
+  [[nodiscard]] particles::ParticleRenderer* GetParticleRenderer() const {
+    return particle_renderer_;
+  }
+
   // Renders terrain patch edges as a flat-colour wireframe overlay into fbo.
   // No-op when no terrain has been registered or Init() has not been called.
   // Must be called after Update() so the scene UBO at slot 2 is bound.

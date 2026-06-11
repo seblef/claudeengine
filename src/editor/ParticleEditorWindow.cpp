@@ -218,9 +218,6 @@ void ParticleEditorWindow::Render(float time, float dt) {
 }
 
 void ParticleEditorWindow::RebuildPreview() {
-  // Unregister old emitters.
-  for (auto& e : preview_emitters_)
-    preview_renderer_->Unregister(e.get());
   preview_emitters_.clear();
 
   // Copy descs into stable storage so emitter references remain valid even if
@@ -228,21 +225,24 @@ void ParticleEditorWindow::RebuildPreview() {
   preview_descs_ = sub_systems_;
 
   // Create fresh emitters from the stable copies.
-  // Only register emitters that have a non-empty texture; emitters without a
-  // texture are simulated (for the count display) but not rendered, since
-  // ParticleRenderer::RenderForwardPass() would crash on CreateTexture("").
   preview_emitters_.reserve(preview_descs_.size());
-  for (const auto& desc : preview_descs_) {
-    auto emitter = std::make_unique<particles::ParticleEmitter>(desc, video_);
-    if (!desc.texture.empty())
-      preview_renderer_->Register(emitter.get());
-    preview_emitters_.push_back(std::move(emitter));
-  }
+  std::transform(preview_descs_.begin(), preview_descs_.end(),
+                 std::back_inserter(preview_emitters_),
+                 [this](const auto& desc) {
+                   return std::make_unique<particles::ParticleEmitter>(desc, video_);
+                 });
 }
 
 void ParticleEditorWindow::RenderPreviewFrame(float time) {
   FillSceneInfosCB(time);
   scene_infos_cb_->Bind();
+
+  // Populate the per-frame queue: only emitters with a texture are drawable.
+  preview_renderer_->BeginFrame();
+  for (auto& emitter : preview_emitters_) {
+    if (!emitter->GetDesc().texture.empty())
+      preview_renderer_->EnqueueEmitter(emitter.get());
+  }
 
   video_->SetViewport(0, 0, kPreviewW, kPreviewH);
   preview_rtg_->BindForWriting();

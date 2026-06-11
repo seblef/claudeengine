@@ -19,6 +19,7 @@ add_library(renderer STATIC
     NoCullingVisibilitySystem.cpp
     OctreeVisibilitySystem.cpp
     OmniLight.cpp
+    ParticleRenderable.cpp
     RectangleSpotLight.cpp
     Renderable.cpp
     Renderer.cpp

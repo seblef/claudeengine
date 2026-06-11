@@ -63,11 +63,6 @@ class GameSystem : public core::Singleton<GameSystem> {
   // Returns the total elapsed time in seconds since construction.
   [[nodiscard]] float GetElapsedTime() const { return elapsed_time_; }
 
-  // Returns the ParticleRenderer owned by this system.
-  // Used by GameParticleSystem::OnAddedToScene / OnRemovedFromScene to
-  // register and unregister emitters.
-  [[nodiscard]] particles::ParticleRenderer* GetParticleRenderer() const;
-
  private:
   // cppcheck-suppress unusedStructMember
   abstract::Devices*  devices_;
