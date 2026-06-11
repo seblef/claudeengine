@@ -65,6 +65,12 @@ MeshEditorWindow::MeshEditorWindow(abstract::VideoDevice* video,
 
 MeshEditorWindow::~MeshEditorWindow() {
   ClearPreview();
+  ClearSessionMaterialCache();
+}
+
+void MeshEditorWindow::ClearSessionMaterialCache() {
+  for (auto& [name, mat] : session_mat_cache_) mat->Release();
+  session_mat_cache_.clear();
 }
 
 void MeshEditorWindow::ClearPreview() {
@@ -78,6 +84,8 @@ void MeshEditorWindow::ClearPreview() {
 }
 
 void MeshEditorWindow::OpenImport(const std::filesystem::path& source_path) {
+  ClearPreview();
+  ClearSessionMaterialCache();
   source_path_ = source_path;
   mode_        = Mode::kImport;
   scale_       = 1.0f;
@@ -106,6 +114,8 @@ void MeshEditorWindow::OpenImport(const std::filesystem::path& source_path) {
 }
 
 void MeshEditorWindow::OpenEdit(const std::filesystem::path& emesh_path) {
+  ClearPreview();
+  ClearSessionMaterialCache();
   source_path_ = emesh_path;
   mode_        = Mode::kEdit;
   scale_       = 1.0f;
@@ -251,10 +261,21 @@ void MeshEditorWindow::RebuildPreview() {
       // Use saved material if available, otherwise create a default preview mat.
       game::GameMaterial* mat = nullptr;
       if (!slot.saved_material_path.empty()) {
-        // Extract material name (stem of path without extension pairs).
         const std::string mat_name =
             std::filesystem::path(slot.saved_material_path).stem().string();
-        mat = game::GameMaterial::GetOrLoad(mat_name, video_);
+        auto cache_it = session_mat_cache_.find(mat_name);
+        if (cache_it != session_mat_cache_.end()) {
+          // Cache hit: reuse already-loaded material; add a preview reference.
+          mat = cache_it->second;
+          mat->AddRef();
+        } else {
+          // Cache miss: load from registry or disk, then cache it.
+          mat = game::GameMaterial::GetOrLoad(mat_name, video_);
+          if (mat) {
+            mat->AddRef();  // extra ref owned by session_mat_cache_
+            session_mat_cache_[mat_name] = mat;
+          }
+        }
       }
       if (!mat) {
         const std::string id = "__proc_mesh_preview_slot_" + std::to_string(i);
@@ -355,14 +376,14 @@ void MeshEditorWindow::RenderMaterialSlots() {
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
 
-    // Inline-editable material name; updates the saved path immediately.
+    // Inline-editable material name; updates the export path but does NOT
+    // mark the preview dirty — renaming is metadata only and contains no
+    // material content to preview until a material is actually saved.
     ImGui::SetNextItemWidth(-1.f);
     if (ImGui::InputText("##name", slot.name_buf, sizeof(slot.name_buf))) {
       const std::string new_name(slot.name_buf);
-      if (!new_name.empty()) {
+      if (!new_name.empty())
         slot.saved_material_path = "materials/" + new_name + ".yaml";
-        preview_dirty_ = true;
-      }
     }
 
     ImGui::TableNextColumn();

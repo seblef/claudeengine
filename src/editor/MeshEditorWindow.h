@@ -2,6 +2,7 @@
 
 #include <array>
 #include <filesystem>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -145,6 +146,16 @@ class MeshEditorWindow {
   game::MeshTemplate*      preview_tmpl_   = nullptr;
   // cppcheck-suppress unusedStructMember
   std::vector<game::GameMaterial*> preview_mats_;
+
+  // Per-session material cache: maps material name → GameMaterial* (extra ref).
+  // Keeps materials alive in the global registry across preview rebuilds so that
+  // unchanged slots are never reloaded from disk. Cleared when a new import/edit
+  // session starts or the window is destroyed.
+  // cppcheck-suppress unusedStructMember
+  std::map<std::string, game::GameMaterial*> session_mat_cache_;
+
+  // Releases all entries in session_mat_cache_ and clears the map.
+  void ClearSessionMaterialCache();
 };
 
 }  // namespace editor
