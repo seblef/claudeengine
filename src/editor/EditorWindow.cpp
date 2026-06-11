@@ -29,6 +29,7 @@
 #include "editor/MapSerializer.h"
 #include "editor/MaterialEditorWindow.h"
 #include "editor/MeshEditorWindow.h"
+#include "editor/ParticleEditorWindow.h"
 #include "editor/MeshSelectionModal.h"
 #include "editor/ObjectsPanel.h"
 #include "editor/PropertiesPanel.h"
@@ -73,6 +74,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       material_editor_(std::make_unique<MaterialEditorWindow>(video)),
       mesh_editor_(std::make_unique<MeshEditorWindow>(video,
                                                        material_editor_.get())),
+      particle_editor_(std::make_unique<ParticleEditorWindow>(video)),
       mesh_modal_(std::make_unique<MeshSelectionModal>()),
       properties_panel_(std::make_unique<PropertiesPanel>()),
       resources_panel_(std::make_unique<ResourcesPanel>()),
@@ -232,6 +234,14 @@ void EditorWindow::Render() {
 
   // 8a. Mesh editor — floating window, shown when a mesh import/edit is active.
   mesh_editor_->Render(scene_.get());
+
+  // 8b. Particle editor — floating window, toggled via the Effects menu.
+  if (show_particle_editor_) {
+    particle_editor_->Render(
+        static_cast<float>(ImGui::GetTime()),
+        ImGui::GetIO().DeltaTime);
+    show_particle_editor_ = particle_editor_->IsOpen();
+  }
 
   // 9. Map properties panel — toggled via the Map menu.
   if (show_map_props_) {
@@ -485,6 +495,15 @@ void EditorWindow::RenderMenuBar() {
     }
     if (ImGui::MenuItem("Mesh")) {
       ImportMesh();
+    }
+    ImGui::EndMenu();
+  }
+
+  if (ImGui::BeginMenu("Effects")) {
+    if (ImGui::MenuItem("Particle Editor", nullptr,
+                         show_particle_editor_)) {
+      show_particle_editor_ = !show_particle_editor_;
+      if (show_particle_editor_) particle_editor_->Open();
     }
     ImGui::EndMenu();
   }
