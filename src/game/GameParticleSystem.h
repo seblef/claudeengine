@@ -62,7 +62,7 @@ class GameParticleSystem : public GameObject {
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice*                        video_;
   // cppcheck-suppress unusedStructMember
-  std::vector<particles::ParticleEmitter>       emitters_;
+  std::vector<std::unique_ptr<particles::ParticleEmitter>> emitters_;
   // cppcheck-suppress unusedStructMember
   std::vector<std::unique_ptr<renderer::Light>> lights_;
 };

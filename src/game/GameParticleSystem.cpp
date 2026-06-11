@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iterator>
+#include <memory>
 
 #include "core/BBox3.h"
 #include "core/Mat4f.h"
@@ -57,7 +58,7 @@ GameParticleSystem::GameParticleSystem(particles::ParticleSystemTemplate* tmpl,
   emitters_.reserve(subs.size());
   std::transform(subs.begin(), subs.end(), std::back_inserter(emitters_),
                  [video](const auto& sub) {
-                   return particles::ParticleEmitter(sub, video);
+                   return std::make_unique<particles::ParticleEmitter>(sub, video);
                  });
   for (const auto& light_desc : template_->GetLights()) {
     auto light = CreateEmbeddedLight(light_desc);
@@ -75,7 +76,7 @@ void GameParticleSystem::OnAddedToScene() {
   particles::ParticleRenderer* pr =
       GameSystem::Instance().GetParticleRenderer();
   for (auto& emitter : emitters_) {
-    pr->Register(&emitter);
+    pr->Register(emitter.get());
   }
   for (const auto& light : lights_) {
     renderer::Renderer::Instance().AddRenderable(light.get());
@@ -86,7 +87,7 @@ void GameParticleSystem::OnRemovedFromScene() {
   particles::ParticleRenderer* pr =
       GameSystem::Instance().GetParticleRenderer();
   for (auto& emitter : emitters_) {
-    pr->Unregister(&emitter);
+    pr->Unregister(emitter.get());
   }
   for (const auto& light : lights_) {
     renderer::Renderer::Instance().RemoveRenderable(light.get());
@@ -96,7 +97,7 @@ void GameParticleSystem::OnRemovedFromScene() {
 void GameParticleSystem::OnWorldTransformUpdated() {
   const core::Mat4f& wt = GetWorldTransform();
   for (auto& emitter : emitters_) {
-    emitter.SetWorldTransform(wt);
+    emitter->SetWorldTransform(wt);
   }
   const std::vector<particles::EmbeddedLightDesc>& descs =
       template_->GetLights();
@@ -108,7 +109,7 @@ void GameParticleSystem::OnWorldTransformUpdated() {
 
 void GameParticleSystem::Update(float time, float dt) {
   for (auto& emitter : emitters_) {
-    emitter.Update(dt);
+    emitter->Update(dt);
   }
   const std::vector<particles::EmbeddedLightDesc>& descs =
       template_->GetLights();

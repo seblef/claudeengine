@@ -4,6 +4,7 @@
 #include <random>
 #include <vector>
 
+#include "abstract/Texture.h"
 #include "abstract/VertexBuffer.h"
 #include "abstract/VideoDevice.h"
 #include "core/Mat4f.h"
@@ -24,8 +25,15 @@ namespace particles {
 //   // bind VBO, issue draw call for GetParticleCount() * 4 vertices
 class ParticleEmitter {
  public:
-  // desc must outlive this emitter; video is used to create the dynamic VBO.
+  // desc must outlive this emitter; video is used to create the dynamic VBO and
+  // load the particle texture once (owned until destruction).
   ParticleEmitter(const ParticleSubSystemDesc& desc, abstract::VideoDevice* video);
+  ~ParticleEmitter();
+
+  ParticleEmitter(const ParticleEmitter&)            = delete;
+  ParticleEmitter& operator=(const ParticleEmitter&) = delete;
+  ParticleEmitter(ParticleEmitter&&)                 = delete;
+  ParticleEmitter& operator=(ParticleEmitter&&)      = delete;
 
   // Advances simulation by dt seconds: spawns new particles, integrates
   // positions/velocities, interpolates size/color, and expires dead particles.
@@ -40,6 +48,8 @@ class ParticleEmitter {
 
   [[nodiscard]] const ParticleSubSystemDesc& GetDesc()          const;
   [[nodiscard]] abstract::VertexBuffer*      GetVBO()           const;
+  // Texture loaded at construction time; nullptr if no texture was specified.
+  [[nodiscard]] abstract::Texture*           GetTexture()       const;
   // Number of live particles; index count for the draw call = GetParticleCount() * 6.
   [[nodiscard]] int                          GetParticleCount() const;
   // World-space origin used to sort kAlphaBlend emitters back-to-front.
@@ -76,6 +86,7 @@ class ParticleEmitter {
   const ParticleSubSystemDesc&              desc_;
   // cppcheck-suppress unusedStructMember
   core::Vec3f                               origin_{};
+  abstract::Texture*                        texture_     = nullptr;
   std::unique_ptr<abstract::VertexBuffer>   vbo_;
   // cppcheck-suppress unusedStructMember
   std::vector<Particle>                     particles_;
