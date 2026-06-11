@@ -6,12 +6,13 @@
 //   location 2 (Specular, RGBA8)  — R=specular intensity (wet boost), G=shininess/256
 //
 // Texture slot layout:
-//   0  — heightmap    (VS / TESE, not used here)
-//   1  — splatmap     (RGBA8, one weight per layer)
-//   2–5 — layer albedos (layers 0–3)
-//   6–9 — layer normals (layers 0–3, tangent-space RG-encoded)
-//  10  — macro texture (optional, coarse large-scale detail)
-//  11  — caustic texture (RGBA8, tileable, animated caustic projection)
+//   0     — heightmap    (VS / TESE, not used here)
+//   1     — splatmap     (RGBA8, one weight per layer)
+//   2–5   — layer albedos (layers 0–3)
+//  10     — macro texture (optional, coarse large-scale detail)
+//  11     — caustic texture (RGBA8, tileable, animated caustic projection)
+//  12–15  — layer normals (layers 0–3, tangent-space RG-encoded)
+//           (slots 6-9 reserved for GBuffer samplers during the lighting pass)
 //
 // Splatmap blending:
 //   albedo = R*albedo0 + G*albedo1 + B*albedo2 + A*albedo3
@@ -37,10 +38,10 @@ layout(binding = 2)  uniform sampler2D u_albedo0;
 layout(binding = 3)  uniform sampler2D u_albedo1;
 layout(binding = 4)  uniform sampler2D u_albedo2;
 layout(binding = 5)  uniform sampler2D u_albedo3;
-layout(binding = 6)  uniform sampler2D u_normal0;
-layout(binding = 7)  uniform sampler2D u_normal1;
-layout(binding = 8)  uniform sampler2D u_normal2;
-layout(binding = 9)  uniform sampler2D u_normal3;
+layout(binding = 12) uniform sampler2D u_normal0;
+layout(binding = 13) uniform sampler2D u_normal1;
+layout(binding = 14) uniform sampler2D u_normal2;
+layout(binding = 15) uniform sampler2D u_normal3;
 layout(binding = 10) uniform sampler2D u_macro_texture;
 layout(binding = 11) uniform sampler2D u_caustic_tex;
 

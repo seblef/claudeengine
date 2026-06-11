@@ -22,7 +22,7 @@ constexpr int kPatchInfosFloat4s = sizeof(TerrainPatchInfos) / 16;  // 80 / 16 =
 constexpr int kHeightmapSlot     = 0;
 constexpr int kSplatmapSlot      = 1;
 constexpr int kAlbedoBaseSlot    = 2;   // slots 2-5 for 4 layer albedos
-constexpr int kNormalBaseSlot    = 6;   // slots 6-9 for 4 layer normals
+constexpr int kNormalBaseSlot    = 12;  // slots 12-15 for 4 layer normals (avoids GBuffer 5-8)
 constexpr int kMacroTextureSlot     = 10;
 constexpr int kCausticSlot          = 11;  // animated caustic projection on submerged terrain
 }  // namespace
