@@ -87,6 +87,7 @@ void ParticleRenderer::RenderGeometryPass(
 
     // Bind particle texture at slot 0.
     abstract::Texture* tex = video_->CreateTexture(desc.texture);
+    if (!tex) continue;
     tex->Bind(0);
 
     emitter->GetVBO()->Bind();
@@ -153,6 +154,7 @@ void ParticleRenderer::RenderForwardPass(
       forward_shader_->SetUniform2f("u_uv_size", uv_w, uv_h);
 
       abstract::Texture* tex = video_->CreateTexture(desc.texture);
+      if (!tex) continue;
       tex->Bind(0);
       emitter->GetVBO()->Bind();
       video_->RenderIndexed(particle_count * 6);
@@ -176,6 +178,7 @@ void ParticleRenderer::RenderForwardPass(
       forward_shader_->SetUniformInt("u_lit", desc.lit ? 1 : 0);
 
       abstract::Texture* tex = video_->CreateTexture(desc.texture);
+      if (!tex) continue;
       tex->Bind(0);
       emitter->GetVBO()->Bind();
       video_->RenderIndexed(particle_count * 6);
