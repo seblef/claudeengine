@@ -90,6 +90,20 @@ void TerrainRenderer::BindMaterialTextures() const {
     macro_texture_->Bind(kMacroTextureSlot);
 }
 
+void TerrainRenderer::UnbindMaterialTextures() const {
+  video_->UnbindSampler(kHeightmapSlot);
+  video_->UnbindSampler(kSplatmapSlot);
+
+  const int layer_count = material_ ? material_->GetLayerCount() : 0;
+  for (int i = 0; i < layer_count; ++i) {
+    video_->UnbindSampler(kAlbedoBaseSlot + i);
+    video_->UnbindSampler(kNormalBaseSlot + i);
+  }
+
+  if (macro_texture_) video_->UnbindSampler(kMacroTextureSlot);
+  if (caustic_tex_)   video_->UnbindSampler(kCausticSlot);
+}
+
 void TerrainRenderer::Render(const core::Camera& camera) {
   if (!shader_) return;
 
@@ -126,6 +140,8 @@ void TerrainRenderer::Render(const core::Camera& camera) {
     patch_mesh_->Bind();
     video_->RenderIndexed(patch_mesh_->GetIndexCount());
   }
+
+  UnbindMaterialTextures();
 }
 
 void TerrainRenderer::FillPatchInfos(const TerrainPatch& patch) {
