@@ -678,33 +678,15 @@ void EditorViewport::DrawSelectedBBox(ImDrawList* dl, ImVec2 image_pos,
 
 void EditorViewport::UpdatePreviewPosition(ImVec2 mouse_pos, ImVec2 image_pos,
                                             ImVec2 image_size) {
-  const float ndc_x = (mouse_pos.x - image_pos.x) / image_size.x * 2.f - 1.f;
-  const float ndc_y = 1.f - (mouse_pos.y - image_pos.y) / image_size.y * 2.f;
-
-  const core::Camera* cam        = camera_->GetCamera();
-  const core::Vec3f   ray_origin = cam->GetPosition();
-  const core::Mat4f   vp_inv     = cam->GetViewProjectionMatrix().Inverse();
-
-  const core::Vec4f clip(ndc_x, ndc_y, -1.f, 1.f);
-  const core::Vec4f world4 = clip * vp_inv;
-  if (std::abs(world4.w) < 1e-6f) return;
-  const core::Vec3f world3(world4.x / world4.w,
-                           world4.y / world4.w,
-                           world4.z / world4.w);
-  const core::Vec3f ray_dir = (world3 - ray_origin).Normalized();
-
-  if (std::abs(ray_dir.y) < 1e-4f) return;  // nearly parallel to floor
-  const float t = -ray_origin.y / ray_dir.y;
-  if (t < 0.f) return;  // behind the camera
-
-  const core::Vec3f hit = ray_origin + ray_dir * t;
+  const auto hit = ComputeTerrainHit(mouse_pos, image_pos, image_size);
+  if (!hit) return;
 
   if (pending_preview_)
     preview_object_ = scene_->AddDynamicObject(std::move(pending_preview_));
 
   if (preview_object_) {
     preview_object_->SetWorldTransform(
-        core::Mat4f::Translation({hit.x, preview_height_, hit.z}));
+        core::Mat4f::Translation({hit->x, hit->y + preview_height_, hit->z}));
     picking_acc_.UpdateMoved(preview_object_);
   }
 }
@@ -731,29 +713,11 @@ void EditorViewport::PlaceMeshAt(ImVec2 mouse_pos, ImVec2 image_pos,
                                   ImVec2 image_size, game::MeshTemplate* tmpl) {
   if (!scene_ || !tmpl) return;
 
-  const float ndc_x = (mouse_pos.x - image_pos.x) / image_size.x * 2.f - 1.f;
-  const float ndc_y = 1.f - (mouse_pos.y - image_pos.y) / image_size.y * 2.f;
-
-  const core::Camera* cam        = camera_->GetCamera();
-  const core::Vec3f   ray_origin = cam->GetPosition();
-  const core::Mat4f   vp_inv     = cam->GetViewProjectionMatrix().Inverse();
-
-  const core::Vec4f clip(ndc_x, ndc_y, -1.f, 1.f);
-  const core::Vec4f world4 = clip * vp_inv;
-  if (std::abs(world4.w) < 1e-6f) return;
-  const core::Vec3f world3(world4.x / world4.w,
-                           world4.y / world4.w,
-                           world4.z / world4.w);
-  const core::Vec3f ray_dir = (world3 - ray_origin).Normalized();
-
-  if (std::abs(ray_dir.y) < 1e-4f) return;  // nearly parallel to floor
-  const float t = -ray_origin.y / ray_dir.y;
-  if (t < 0.f) return;  // behind the camera
-
-  const core::Vec3f hit = ray_origin + ray_dir * t;
+  const auto hit = ComputeTerrainHit(mouse_pos, image_pos, image_size);
+  if (!hit) return;
 
   auto mesh = std::make_unique<game::GameMesh>(tmpl);
-  mesh->SetWorldTransform(core::Mat4f::Translation({hit.x, 0.f, hit.z}));
+  mesh->SetWorldTransform(core::Mat4f::Translation(*hit));
 
   if (history_) {
     history_->Push(std::make_unique<PlaceObjectCommand>(scene_, std::move(mesh)));
