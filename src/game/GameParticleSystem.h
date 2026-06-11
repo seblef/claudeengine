@@ -7,6 +7,7 @@
 #include "game/GameObject.h"
 #include "particles/ParticleEmitter.h"
 #include "renderer/Light.h"
+#include "renderer/ParticleRenderable.h"
 
 namespace particles {
 class ParticleSystemTemplate;
@@ -16,9 +17,10 @@ namespace game {
 
 // Game object wrapping a ParticleSystemTemplate.
 //
-// Owns one ParticleEmitter per sub-system and one renderer::Light per
-// EmbeddedLightDesc declared in the template. Emitters are registered with
-// ParticleRenderer on scene entry; lights with Renderer. Light intensities
+// Owns one ParticleEmitter and one ParticleRenderable per sub-system, and one
+// renderer::Light per EmbeddedLightDesc declared in the template.
+// Renderables are registered with the Renderer (visibility/culling) on scene
+// entry; lights are registered with Renderer as well.  Light intensities
 // flicker each frame using the per-descriptor frequency and phase parameters.
 class GameParticleSystem : public GameObject {
  public:
@@ -45,10 +47,10 @@ class GameParticleSystem : public GameObject {
   // Must be called once per frame from GameSystem::Update().
   void Update(float time, float dt);
 
-  // Registers emitters with ParticleRenderer and lights with Renderer.
+  // Registers renderables and lights with the Renderer (visibility system).
   void OnAddedToScene() override;
 
-  // Unregisters emitters and lights.
+  // Unregisters renderables and lights from the Renderer.
   void OnRemovedFromScene() override;
 
   // Forwards the world transform to each emitter and light (with offset).
@@ -62,7 +64,9 @@ class GameParticleSystem : public GameObject {
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice*                        video_;
   // cppcheck-suppress unusedStructMember
-  std::vector<std::unique_ptr<particles::ParticleEmitter>> emitters_;
+  std::vector<std::unique_ptr<particles::ParticleEmitter>>  emitters_;
+  // cppcheck-suppress unusedStructMember
+  std::vector<std::unique_ptr<renderer::ParticleRenderable>> renderables_;
   // cppcheck-suppress unusedStructMember
   std::vector<std::unique_ptr<renderer::Light>> lights_;
 };

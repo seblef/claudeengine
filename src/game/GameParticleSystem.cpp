@@ -10,10 +10,10 @@
 #include "core/MathUtils.h"
 #include "game/GameSystem.h"
 #include "particles/EmbeddedLightDesc.h"
-#include "particles/ParticleRenderer.h"
 #include "particles/ParticleSystemTemplate.h"
 #include "renderer/CircleSpotLight.h"
 #include "renderer/OmniLight.h"
+#include "renderer/ParticleRenderable.h"
 #include "renderer/Renderer.h"
 
 namespace game {
@@ -73,10 +73,13 @@ GameParticleSystem::~GameParticleSystem() {
 }
 
 void GameParticleSystem::OnAddedToScene() {
-  particles::ParticleRenderer* pr =
-      GameSystem::Instance().GetParticleRenderer();
+  const core::Mat4f& wt = GetWorldTransform();
+  renderables_.reserve(emitters_.size());
   for (auto& emitter : emitters_) {
-    pr->Register(emitter.get());
+    auto renderable = std::make_unique<renderer::ParticleRenderable>(
+        emitter.get(), wt, false);
+    renderer::Renderer::Instance().AddRenderable(renderable.get());
+    renderables_.push_back(std::move(renderable));
   }
   for (const auto& light : lights_) {
     renderer::Renderer::Instance().AddRenderable(light.get());
@@ -84,11 +87,10 @@ void GameParticleSystem::OnAddedToScene() {
 }
 
 void GameParticleSystem::OnRemovedFromScene() {
-  particles::ParticleRenderer* pr =
-      GameSystem::Instance().GetParticleRenderer();
-  for (auto& emitter : emitters_) {
-    pr->Unregister(emitter.get());
+  for (auto& renderable : renderables_) {
+    renderer::Renderer::Instance().RemoveRenderable(renderable.get());
   }
+  renderables_.clear();
   for (const auto& light : lights_) {
     renderer::Renderer::Instance().RemoveRenderable(light.get());
   }
@@ -98,6 +100,9 @@ void GameParticleSystem::OnWorldTransformUpdated() {
   const core::Mat4f& wt = GetWorldTransform();
   for (auto& emitter : emitters_) {
     emitter->SetWorldTransform(wt);
+  }
+  for (auto& renderable : renderables_) {
+    renderable->SetWorldMatrix(wt);
   }
   const std::vector<particles::EmbeddedLightDesc>& descs =
       template_->GetLights();
@@ -110,6 +115,7 @@ void GameParticleSystem::OnWorldTransformUpdated() {
 void GameParticleSystem::Update(float time, float dt) {
   for (auto& emitter : emitters_) {
     emitter->Update(dt);
+    emitter->UploadToGPU();
   }
   const std::vector<particles::EmbeddedLightDesc>& descs =
       template_->GetLights();

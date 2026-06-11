@@ -21,14 +21,11 @@ namespace particles {
 // Not a singleton. Created and owned by GameSystem / EditorSystem, then wired
 // into the Renderer via Renderer::SetParticleRenderer().
 //
-// Typical usage:
-//   // At scene init:
-//   particle_renderer_->Register(emitter);
-//   renderer.SetParticleRenderer(particle_renderer_.get());
-//
-//   // Each frame (called by Renderer::Update):
-//   particle_renderer_->RenderGeometryPass(camera, renderable_infos_cb);
-//   particle_renderer_->RenderForwardPass(camera, renderable_infos_cb);
+// Per-frame usage (via Renderer::Update):
+//   particle_renderer_->BeginFrame();           // clears per-frame queue
+//   // visibility pass calls EnqueueEmitter() per visible emitter
+//   particle_renderer_->RenderGeometryPass(...);
+//   particle_renderer_->RenderForwardPass(...);
 class ParticleRenderer {
  public:
   // Loads particle shaders and builds the shared index buffer.
@@ -41,15 +38,15 @@ class ParticleRenderer {
   ParticleRenderer(ParticleRenderer&&)                 = delete;
   ParticleRenderer& operator=(ParticleRenderer&&)      = delete;
 
-  // Adds an emitter to the render list.
-  // Called by GameParticleSystem::OnAddedToScene.
-  void Register(ParticleEmitter* emitter);
+  // Clears the per-frame emitter queue. Must be called once at the start of
+  // each frame, before the visibility pass enqueues renderables.
+  void BeginFrame();
 
-  // Removes an emitter from the render list.
-  // Called by GameParticleSystem::OnRemovedFromScene.
-  void Unregister(ParticleEmitter* emitter);
+  // Adds an emitter to the per-frame render queue.
+  // Called by renderer::ParticleRenderable::Enqueue() during visibility traversal.
+  void EnqueueEmitter(ParticleEmitter* emitter);
 
-  // Renders all registered emitters whose blend_mode == kGBuffer.
+  // Renders all queued emitters whose blend_mode == kGBuffer.
   // Must be called while the G-buffer FBO is bound for writing.
   // renderable_infos_cb is filled with an identity world matrix per emitter.
   void RenderGeometryPass(const core::Camera& camera,
@@ -66,7 +63,7 @@ class ParticleRenderer {
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice*                 video_;
   // cppcheck-suppress unusedStructMember
-  std::vector<ParticleEmitter*>          emitters_;
+  std::vector<ParticleEmitter*>          frame_emitters_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<abstract::IndexBuffer> shared_ibo_;
   // cppcheck-suppress unusedStructMember

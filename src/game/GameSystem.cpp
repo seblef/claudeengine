@@ -83,8 +83,4 @@ void GameSystem::SetEventCallback(
   event_callback_ = std::move(cb);
 }
 
-particles::ParticleRenderer* GameSystem::GetParticleRenderer() const {
-  return particle_renderer_.get();
-}
-
 }  // namespace game
