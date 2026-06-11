@@ -98,6 +98,9 @@ class EditorViewport {
   [[nodiscard]] EditorCameraController::CameraState GetCameraState() const;
   void SetCameraState(const EditorCameraController::CameraState& state);
 
+  // Adjusts the camera focus and distance so the given bounding box fills the view.
+  void FrameObject(const core::BBox3& bbox);
+
   // Enables or disables the terrain wireframe debug overlay.
   void SetTerrainWireframeDebugEnabled(bool enabled) {
     terrain_wireframe_debug_ = enabled;

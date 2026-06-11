@@ -88,6 +88,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   toolbar_->SetOnCopy([this]{ CopySelectedObject(); });
   toolbar_->SetOnPaste([this]{ PasteObject(); });
   toolbar_->SetOnFallToTerrain([this]{ FallToTerrain(); });
+  toolbar_->SetOnCenterOnObject([this]{ CenterCameraOnObject(); });
   viewport_->SetScene(scene_.get());
   viewport_->SetCommandHistory(&history_);
   properties_panel_->SetCommandHistory(&history_);
@@ -172,6 +173,9 @@ void EditorWindow::Render() {
     const bool can_fall = terrain_panel_.IsActive() && sel &&
         sel->GetType() != game::GameObjectType::kTerrain;
     toolbar_->SetCanFallToTerrain(can_fall);
+    const bool can_center = sel &&
+        sel->GetType() != game::GameObjectType::kTerrain;
+    toolbar_->SetCanCenterOnObject(can_center);
   }
   toolbar_->Render();
   const EditorTool active_tool = toolbar_->GetActiveTool();
@@ -930,6 +934,14 @@ void EditorWindow::FallToTerrain() {
 
   LOG_F(INFO, "Fell '%s' to terrain: y=%.2f, normal=(%.2f, %.2f, %.2f)",
         obj->GetName().c_str(), terrain_h, N.x, N.y, N.z);
+}
+
+void EditorWindow::CenterCameraOnObject() {
+  const game::GameObject* obj = scene_->GetSelectedObject();
+  if (!obj || obj->GetType() == game::GameObjectType::kTerrain) return;
+
+  viewport_->FrameObject(obj->GetWorldBBox());
+  LOG_F(INFO, "Camera centered on '%s'", obj->GetName().c_str());
 }
 
 void EditorWindow::WireTerrainPanel() {
