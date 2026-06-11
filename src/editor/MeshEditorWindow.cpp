@@ -376,14 +376,14 @@ void MeshEditorWindow::RenderMaterialSlots() {
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
 
-    // Inline-editable material name; updates the saved path immediately.
+    // Inline-editable material name; updates the export path but does NOT
+    // mark the preview dirty — renaming is metadata only and contains no
+    // material content to preview until a material is actually saved.
     ImGui::SetNextItemWidth(-1.f);
     if (ImGui::InputText("##name", slot.name_buf, sizeof(slot.name_buf))) {
       const std::string new_name(slot.name_buf);
-      if (!new_name.empty()) {
+      if (!new_name.empty())
         slot.saved_material_path = "materials/" + new_name + ".yaml";
-        preview_dirty_ = true;
-      }
     }
 
     ImGui::TableNextColumn();
