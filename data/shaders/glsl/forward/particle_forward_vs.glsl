@@ -46,19 +46,17 @@ const vec2 kCornerOffset[4] = vec2[4](
 void main() {
     int corner = gl_VertexID % 4;
 
-    // Extract camera right and up from the view matrix rows (row_major).
-    // view[0].xyz = right vector in world space
-    // view[1].xyz = up vector in world space
-    vec3 right = vec3(view[0][0], view[0][1], view[0][2]);
-    vec3 up    = vec3(view[1][0], view[1][1], view[1][2]);
+    // Transform the particle center to view space.
+    // In view space the axes are already camera-aligned (x = right, y = up),
+    // so expanding the billboard here guarantees screen-facing quads regardless
+    // of camera orientation.
+    vec4 view_center = view * vec4(in_center, 1.0);
 
-    // Expand the billboard center to a world-space corner position.
     vec2 co = kCornerOffset[corner];
-    vec3 world_pos = in_center
-                   + right * (co.x * in_size)
-                   + up    * (co.y * in_size);
+    vec4 view_pos = view_center
+                  + vec4(co.x * in_size, co.y * in_size, 0.0, 0.0);
 
-    gl_Position = proj * view * vec4(world_pos, 1.0);
+    gl_Position = proj * view_pos;
 
     // Map local corner UV into the sprite-sheet cell.
     v_uv    = in_uv_offset + kCornerUV[corner] * u_uv_size;
