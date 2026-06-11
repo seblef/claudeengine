@@ -265,6 +265,9 @@ void Renderer::Update(float time, const core::Camera* camera,
   gbuffer_.GetDepthRT()->BindAsSampler(8);       // depth=8 (position reconstruction)
   video_->SetBlendEnabled(true, abstract::BlendFactor::kOne, abstract::BlendFactor::kOne);
   LightRenderer::Instance().Render();
+  video_->UnbindSampler(5);
+  video_->UnbindSampler(6);
+  video_->UnbindSampler(7);
   video_->UnbindSampler(8);
   video_->SetBlendEnabled(false);
   emissive_fbo_.UnbindForWriting();
