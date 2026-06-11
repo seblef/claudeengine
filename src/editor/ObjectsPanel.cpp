@@ -121,6 +121,9 @@ void ObjectsPanel::Render(EditorScene& scene) {
   RenderGroup(ICON_FA_FLAG,      "Player Starts", game::GameObjectType::kPlayerStart,
               objects, scene, renaming_obj_, rename_buf_, sizeof(rename_buf_),
               rename_focus_needed_, history_);
+  RenderGroup(ICON_FA_FIRE,     "Particle Systems", game::GameObjectType::kParticleSystem,
+              objects, scene, renaming_obj_, rename_buf_, sizeof(rename_buf_),
+              rename_focus_needed_, history_);
 }
 
 }  // namespace editor

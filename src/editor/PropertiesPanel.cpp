@@ -17,7 +17,9 @@
 #include "game/GameMesh.h"
 #include "game/GameObject.h"
 #include "game/GameObjectType.h"
+#include "game/GameParticleSystem.h"
 #include "game/MeshTemplate.h"
+#include "particles/ParticleSystemTemplate.h"
 #include "renderer/CircleSpotLight.h"
 #include "renderer/GlobalLight.h"
 #include "renderer/Light.h"
@@ -71,6 +73,10 @@ void PropertiesPanel::Render(game::GameObject* obj) {
       break;
     case game::GameObjectType::kMesh:
       RenderMeshProperties(static_cast<game::GameMesh*>(obj));
+      break;
+    case game::GameObjectType::kParticleSystem:
+      RenderParticleSystemProperties(
+          static_cast<const game::GameParticleSystem*>(obj));
       break;
     default:
       break;
@@ -267,6 +273,20 @@ void PropertiesPanel::RenderLightProperties(game::GameLight* game_light) {
 void PropertiesPanel::RenderMeshProperties(const game::GameMesh* mesh) {
   ImGui::SeparatorText("Mesh");
   ImGui::LabelText("Template", "%s", mesh->GetTemplate()->GetId().c_str());
+}
+
+void PropertiesPanel::RenderParticleSystemProperties(
+    const game::GameParticleSystem* ps) {
+  ImGui::SeparatorText("Particle System");
+
+  const particles::ParticleSystemTemplate* tmpl = ps->GetTemplate();
+  const char* tmpl_name = tmpl ? tmpl->GetId().c_str() : "(none)";
+  ImGui::LabelText("Effect", "%s", tmpl_name);
+
+  if (tmpl && on_open_particle_editor_) {
+    if (ImGui::Button("Open in Particle Editor"))
+      on_open_particle_editor_(tmpl->GetId());
+  }
 }
 
 }  // namespace editor

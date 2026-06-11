@@ -31,6 +31,7 @@
 #include "editor/MeshEditorWindow.h"
 #include "editor/ParticleEditorWindow.h"
 #include "editor/MeshSelectionModal.h"
+#include "editor/ParticleSystemSelectionModal.h"
 #include "editor/ObjectsPanel.h"
 #include "editor/PropertiesPanel.h"
 #include "editor/ResourcesPanel.h"
@@ -76,6 +77,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
                                                        material_editor_.get())),
       particle_editor_(std::make_unique<ParticleEditorWindow>(video)),
       mesh_modal_(std::make_unique<MeshSelectionModal>()),
+      particle_modal_(std::make_unique<ParticleSystemSelectionModal>()),
       properties_panel_(std::make_unique<PropertiesPanel>()),
       resources_panel_(std::make_unique<ResourcesPanel>()),
       objects_panel_(std::make_unique<ObjectsPanel>()),
@@ -100,6 +102,14 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   resources_panel_->SetOnImportMesh([this] { ImportMesh(); });
   resources_panel_->SetOnMeshEdit([this](const game::MeshTemplate* tmpl) {
     if (tmpl) mesh_editor_->OpenEdit(tmpl->GetId());
+  });
+  resources_panel_->SetOnParticleOpen([this](const std::string& name) {
+    show_particle_editor_ = true;
+    particle_editor_->OpenTemplate(name);
+  });
+  properties_panel_->SetOnOpenParticleEditor([this](const std::string& name) {
+    show_particle_editor_ = true;
+    particle_editor_->OpenTemplate(name);
   });
   resources_panel_->SetOnNewMaterial([this](std::string_view name) {
     auto* mat = new game::GameMaterial(std::string(name),
@@ -140,6 +150,7 @@ void EditorWindow::OnEvent(const core::Event& event) {
 void EditorWindow::Render() {
   TickAutosave();
   environment_panel_.Tick(ImGui::GetIO().DeltaTime);
+  scene_->Update(static_cast<float>(ImGui::GetTime()), ImGui::GetIO().DeltaTime);
 
   // 1. Full-screen DockSpace — all panels dock into it.
   ImGui::DockSpaceOverViewport();
@@ -183,6 +194,8 @@ void EditorWindow::Render() {
       viewport_->SetPendingPlayerStart();
       placement_active_ = true;
       LOG_F(INFO, "Player start creation tool activated, click viewport to place");
+    } else if (active_tool == EditorTool::kCreateParticleSystem) {
+      particle_modal_->Open();
     }
   }
   prev_tool_ = active_tool;
@@ -192,6 +205,14 @@ void EditorWindow::Render() {
     viewport_->SetPendingMeshTemplate(tmpl);
     placement_active_ = true;
     LOG_F(INFO, "Mesh template selected, click viewport to place");
+  }
+
+  // Particle system selection modal — open when kCreateParticleSystem activated.
+  if (const std::string ps_name = particle_modal_->Render(); !ps_name.empty()) {
+    viewport_->SetPendingParticleSystem(ps_name);
+    placement_active_ = true;
+    LOG_F(INFO, "Particle system '%s' selected, click viewport to place",
+          ps_name.c_str());
   }
 
   // 4. Viewport panel.

@@ -9,6 +9,8 @@
 #include "core/Vec3f.h"
 #include "game/GameLightDesc.h"
 #include "game/GameMaterial.h"
+#include "game/GameObjectType.h"
+#include "game/GameParticleSystem.h"
 #include "game/GameSystem.h"
 #include "game/MeshTemplate.h"
 #include "renderer/GeometryUtils.h"
@@ -161,6 +163,13 @@ core::BBox3 EditorScene::GetBounds() const {
       std::max(half.y, kMinHalf),
       std::max(half.z, kMinHalf));
   return core::BBox3(center - expanded, center + expanded);
+}
+
+void EditorScene::Update(float time, float dt) {
+  for (game::GameObject* obj : objects_) {
+    if (obj->GetType() != game::GameObjectType::kParticleSystem) continue;
+    static_cast<game::GameParticleSystem*>(obj)->Update(time, dt);
+  }
 }
 
 const std::string& EditorScene::GetMapName() const { return map_name_; }

@@ -22,6 +22,8 @@ add_library(editor STATIC
     ParticleEditorWindow.cpp
     MeshPreview.cpp
     MeshSelectionModal.cpp
+    ParticleGizmoRenderer.cpp
+    ParticleSystemSelectionModal.cpp
     ObjectsPanel.cpp
     PickingAccelerator.cpp
     PropertiesPanel.cpp

@@ -27,6 +27,7 @@ class MaterialEditorWindow;
 class MeshEditorWindow;
 class ParticleEditorWindow;
 class MeshSelectionModal;
+class ParticleSystemSelectionModal;
 class PropertiesPanel;
 class ResourcesPanel;
 class ObjectsPanel;
@@ -136,7 +137,9 @@ class EditorWindow {
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<ParticleEditorWindow>  particle_editor_;
   // cppcheck-suppress unusedStructMember
-  std::unique_ptr<MeshSelectionModal>    mesh_modal_;
+  std::unique_ptr<MeshSelectionModal>              mesh_modal_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<ParticleSystemSelectionModal>    particle_modal_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<PropertiesPanel>       properties_panel_;
   // cppcheck-suppress unusedStructMember

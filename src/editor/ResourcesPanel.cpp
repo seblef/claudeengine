@@ -8,6 +8,7 @@
 
 #include "game/GameMaterial.h"
 #include "game/MeshTemplate.h"
+#include "particles/ParticleSystemTemplate.h"
 
 namespace editor {
 
@@ -67,6 +68,21 @@ void ResourcesPanel::Render() {
           if (on_mesh_edit_) on_mesh_edit_(tmpl_ptr);
         }
         ImGui::EndPopup();
+      }
+    }
+    ImGui::TreePop();
+  }
+
+  // ---- Particle effects -----------------------------------------------
+  bool fx_open = ImGui::TreeNodeEx("##fx_header", kRootFlags,
+                                   "%s Particle Effects", ICON_FA_FIRE);
+  if (fx_open) {
+    for (const auto& kv : particles::ParticleSystemTemplate::GetAll()) {
+      const std::string label = std::string(ICON_FA_FIRE) + " " + kv.first;
+      ImGui::TreeNodeEx(label.c_str(), kLeafFlags);
+      if (ImGui::IsItemHovered() &&
+          ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+        if (on_particle_open_) on_particle_open_(kv.first);
       }
     }
     ImGui::TreePop();

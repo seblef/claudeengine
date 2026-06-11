@@ -126,6 +126,31 @@ void ParticleEditorWindow::Open() {
   open_ = true;
 }
 
+void ParticleEditorWindow::OpenTemplate(const std::string& name) {
+  open_ = true;
+
+  particles::ParticleSystemTemplate* tmpl =
+      particles::ParticleSystemTemplate::GetOrLoad(name, video_);
+  if (!tmpl) {
+    LOG_F(ERROR, "ParticleEditorWindow: failed to load template '%s'",
+          name.c_str());
+    return;
+  }
+
+  sub_systems_ = tmpl->GetSubSystems();
+  lights_      = tmpl->GetLights();
+  tmpl->Release();
+
+  selected_sub_system_ = sub_systems_.empty() ? -1 : 0;
+  selected_light_      = -1;
+  current_path_        = core::Config::GetDataFolder() / "particles" /
+                         (name + ".particles.yaml");
+  unsaved_             = false;
+  preview_dirty_       = true;
+
+  LOG_F(INFO, "ParticleEditorWindow: opened template '%s'", name.c_str());
+}
+
 void ParticleEditorWindow::Render(float time, float dt) {
   if (!open_) return;
 
