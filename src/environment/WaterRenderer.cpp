@@ -135,7 +135,7 @@ void WaterRenderer::Build(abstract::VideoDevice* video,
 
     // Worst-case counts for a square bounding the ring (all quads included).
     const int side       = static_cast<int>(
-        std::ceil(2.f * ring.outer_radius / ring.cell_size));
+        std::ceil(2.5f * ring.outer_radius / ring.cell_size));
     const int max_verts  = (side + 1) * (side + 1);
     const int max_idx    = side * side * 6;
 
