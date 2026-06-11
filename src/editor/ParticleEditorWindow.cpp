@@ -197,11 +197,15 @@ void ParticleEditorWindow::RebuildPreview() {
   // sub_systems_ reallocates after a future add/remove.
   preview_descs_ = sub_systems_;
 
-  // Create fresh emitters from the stable copies and register them.
+  // Create fresh emitters from the stable copies.
+  // Only register emitters that have a non-empty texture; emitters without a
+  // texture are simulated (for the count display) but not rendered, since
+  // ParticleRenderer::RenderForwardPass() would crash on CreateTexture("").
   preview_emitters_.reserve(preview_descs_.size());
   for (const auto& desc : preview_descs_) {
     auto emitter = std::make_unique<particles::ParticleEmitter>(desc, video_);
-    preview_renderer_->Register(emitter.get());
+    if (!desc.texture.empty())
+      preview_renderer_->Register(emitter.get());
     preview_emitters_.push_back(std::move(emitter));
   }
 }
