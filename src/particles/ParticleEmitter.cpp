@@ -29,6 +29,12 @@ ParticleEmitter::ParticleEmitter(const ParticleSubSystemDesc& desc,
       core::VertexType::kParticle,
       desc_.max_particles * 4,
       abstract::BufferUsage::kDynamic);
+  if (!desc_.texture.empty())
+    texture_ = video->CreateTexture(desc_.texture);
+}
+
+ParticleEmitter::~ParticleEmitter() {
+  if (texture_) texture_->Release();
 }
 
 void ParticleEmitter::Update(float dt) {
@@ -110,11 +116,10 @@ void ParticleEmitter::SetWorldTransform(const core::Mat4f& transform) {
   origin_ = core::Vec3f(transform(0, 3), transform(1, 3), transform(2, 3));
 }
 
-const ParticleSubSystemDesc& ParticleEmitter::GetDesc() const { return desc_; }
-
-abstract::VertexBuffer* ParticleEmitter::GetVBO() const { return vbo_.get(); }
-
-int ParticleEmitter::GetParticleCount() const { return live_count_; }
+const ParticleSubSystemDesc& ParticleEmitter::GetDesc()    const { return desc_; }
+abstract::Texture*           ParticleEmitter::GetTexture() const { return texture_; }
+abstract::VertexBuffer*      ParticleEmitter::GetVBO()     const { return vbo_.get(); }
+int                          ParticleEmitter::GetParticleCount() const { return live_count_; }
 
 // ---------------------------------------------------------------------------
 
