@@ -78,6 +78,57 @@ GLuint LinkProgram(const std::string& label,
   }
   return prog;
 }
+
+bool IsSamplerType(GLenum type) {
+  switch (type) {
+    case GL_SAMPLER_1D:                          case GL_SAMPLER_2D:
+    case GL_SAMPLER_3D:                          case GL_SAMPLER_CUBE:
+    case GL_SAMPLER_1D_SHADOW:                   case GL_SAMPLER_2D_SHADOW:
+    case GL_SAMPLER_CUBE_SHADOW:                 case GL_SAMPLER_1D_ARRAY:
+    case GL_SAMPLER_2D_ARRAY:                    case GL_SAMPLER_1D_ARRAY_SHADOW:
+    case GL_SAMPLER_2D_ARRAY_SHADOW:             case GL_SAMPLER_2D_MULTISAMPLE:
+    case GL_SAMPLER_2D_MULTISAMPLE_ARRAY:        case GL_SAMPLER_CUBE_MAP_ARRAY:
+    case GL_SAMPLER_CUBE_MAP_ARRAY_SHADOW:       case GL_SAMPLER_2D_RECT:
+    case GL_SAMPLER_2D_RECT_SHADOW:              case GL_SAMPLER_BUFFER:
+    case GL_INT_SAMPLER_1D:                      case GL_INT_SAMPLER_2D:
+    case GL_INT_SAMPLER_3D:                      case GL_INT_SAMPLER_CUBE:
+    case GL_INT_SAMPLER_1D_ARRAY:                case GL_INT_SAMPLER_2D_ARRAY:
+    case GL_INT_SAMPLER_2D_MULTISAMPLE:          case GL_INT_SAMPLER_2D_MULTISAMPLE_ARRAY:
+    case GL_INT_SAMPLER_BUFFER:                  case GL_INT_SAMPLER_2D_RECT:
+    case GL_INT_SAMPLER_CUBE_MAP_ARRAY:          case GL_UNSIGNED_INT_SAMPLER_1D:
+    case GL_UNSIGNED_INT_SAMPLER_2D:             case GL_UNSIGNED_INT_SAMPLER_3D:
+    case GL_UNSIGNED_INT_SAMPLER_CUBE:           case GL_UNSIGNED_INT_SAMPLER_1D_ARRAY:
+    case GL_UNSIGNED_INT_SAMPLER_2D_ARRAY:       case GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE:
+    case GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY:
+    case GL_UNSIGNED_INT_SAMPLER_BUFFER:         case GL_UNSIGNED_INT_SAMPLER_2D_RECT:
+    case GL_UNSIGNED_INT_SAMPLER_CUBE_MAP_ARRAY:
+      return true;
+    default:
+      return false;
+  }
+}
+
+// Reads back the layout(binding = N) value for every active sampler uniform
+// in `prog` and re-sets it explicitly via glUniform1i.  Ensures the binding
+// is honoured on drivers (e.g. Mesa) that ignore the layout qualifier.
+void InitSamplerBindings(GLuint prog) {
+  glUseProgram(prog);
+  GLint count = 0;
+  glGetProgramiv(prog, GL_ACTIVE_UNIFORMS, &count);
+  char name[256];
+  for (GLint i = 0; i < count; ++i) {
+    GLsizei len = 0;
+    GLint   size = 0;
+    GLenum  type = 0;
+    glGetActiveUniform(prog, static_cast<GLuint>(i), sizeof(name), &len, &size, &type, name);
+    if (!IsSamplerType(type)) continue;
+    const GLint loc = glGetUniformLocation(prog, name);
+    if (loc < 0) continue;
+    GLint binding = 0;
+    glGetUniformiv(prog, loc, &binding);
+    glUniform1i(loc, binding);
+  }
+}
 }  // namespace
 
 GLShader::GLShader(const std::string& name) : abstract::Shader(name) {
@@ -110,6 +161,7 @@ GLShader::GLShader(const std::string& name) : abstract::Shader(name) {
   glDeleteShader(frag);
 
   if (!program_id_) return;
+  InitSamplerBindings(program_id_);
   initialized_ = true;
   LOG_F(INFO, "GLShader '%s': compiled and linked successfully", name.c_str());
 
@@ -129,8 +181,10 @@ GLShader::GLShader(const std::string& name) : abstract::Shader(name) {
 
   if (vert2 && tesc && tese && frag2) {
     tess_program_id_ = LinkProgram(name + "(tess)", {vert2, tesc, tese, frag2});
-    if (tess_program_id_)
+    if (tess_program_id_) {
+      InitSamplerBindings(tess_program_id_);
       LOG_F(INFO, "GLShader '%s': tessellation variant linked successfully", name.c_str());
+    }
   }
   glDeleteShader(vert2);
   glDeleteShader(tesc);
