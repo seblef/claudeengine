@@ -74,6 +74,9 @@ class MeshEditorWindow {
     std::string saved_material_path;
     // cppcheck-suppress unusedStructMember
     std::array<std::string, renderer::kTextureSlotCount> hint_textures{};
+    // User-editable material name; initialised from original_name (or "slot_N").
+    // cppcheck-suppress unusedStructMember
+    char name_buf[256] = {};
   };
 
   // Loads source mesh data (import mode).
