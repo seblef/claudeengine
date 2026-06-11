@@ -69,7 +69,6 @@ void ParticleRenderer::RenderGeometryPass(
   video_->SetDepthFunc(abstract::CompareFunc::kLessEqual);
 
   gbuffer_shader_->Activate();
-  shared_ibo_->Bind();
   video_->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
   video_->SetIndexType(abstract::IndexType::kUInt32);
 
@@ -91,6 +90,7 @@ void ParticleRenderer::RenderGeometryPass(
     tex->Bind(0);
 
     emitter->GetVBO()->Bind();
+    shared_ibo_->Bind();
     video_->RenderIndexed(particle_count * 6);
 
     tex->Release();
@@ -134,7 +134,6 @@ void ParticleRenderer::RenderForwardPass(
   video_->SetDepthFunc(abstract::CompareFunc::kLessEqual);
 
   forward_shader_->Activate();
-  shared_ibo_->Bind();
   video_->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
   video_->SetIndexType(abstract::IndexType::kUInt32);
 
@@ -157,6 +156,7 @@ void ParticleRenderer::RenderForwardPass(
       if (!tex) continue;
       tex->Bind(0);
       emitter->GetVBO()->Bind();
+      shared_ibo_->Bind();
       video_->RenderIndexed(particle_count * 6);
       tex->Release();
     }
@@ -181,6 +181,7 @@ void ParticleRenderer::RenderForwardPass(
       if (!tex) continue;
       tex->Bind(0);
       emitter->GetVBO()->Bind();
+      shared_ibo_->Bind();
       video_->RenderIndexed(particle_count * 6);
       tex->Release();
     }

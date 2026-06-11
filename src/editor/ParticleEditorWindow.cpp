@@ -528,7 +528,7 @@ void ParticleEditorWindow::RenderSubSystemProperties() {
   ImGui::SeparatorText("Rendering");
 
   // Blend mode
-  constexpr const char* kBlendItems[] = {"additive", "alpha_blend", "gbuffer"};
+  constexpr const char* kBlendItems[] = {"gbuffer", "additive", "alpha_blend"};
   int blend_idx = static_cast<int>(ss.blend_mode);
   if (ImGui::Combo("Blend mode", &blend_idx, kBlendItems, 3)) {
     ss.blend_mode = static_cast<particles::ParticleBlendMode>(blend_idx);

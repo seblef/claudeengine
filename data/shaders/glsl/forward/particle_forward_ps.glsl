@@ -28,7 +28,7 @@ uniform int u_lit;  // 1 = apply directional lighting, 0 = unlit
 layout(location = 0) out vec4 out_color;
 
 void main() {
-    vec4 tex_color = texture(u_texture, v_uv);
+    vec4 tex_color = vec4(texture(u_texture, v_uv).rgb, 1);
 
     vec4 final_color = tex_color * v_color;
 
