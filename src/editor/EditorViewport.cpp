@@ -791,4 +791,8 @@ void EditorViewport::SetCameraState(const EditorCameraController::CameraState& s
   camera_ctrl_->SetState(state);
 }
 
+void EditorViewport::FrameObject(const core::BBox3& bbox) {
+  camera_ctrl_->FrameObject(bbox);
+}
+
 }  // namespace editor

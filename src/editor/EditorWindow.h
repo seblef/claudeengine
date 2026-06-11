@@ -72,6 +72,10 @@ class EditorWindow {
   // No-op when no terrain is present or nothing is selected.
   void FallToTerrain();
 
+  // Moves the camera so the selected object's world bounding box fills the view.
+  // No-op when nothing is selected or the selection is a terrain.
+  void CenterCameraOnObject();
+
   // Pastes the clipboard object into the scene with a small position offset.
   // Pushes a PlaceObjectCommand so the paste is undoable.
   void PasteObject();

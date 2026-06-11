@@ -170,6 +170,16 @@ void EditorToolbar::Render() {
     ImGui::SetItemTooltip("Select an object and add a terrain first");
   ImGui::EndDisabled();
 
+  ImGui::SameLine();
+
+  ImGui::BeginDisabled(!can_center_on_object_);
+  if (ImGui::Button(ICON_FA_CROSSHAIRS) && on_center_on_object_)
+    on_center_on_object_();
+  ImGui::SetItemTooltip("Center Camera on Object");
+  if (!can_center_on_object_)
+    ImGui::SetItemTooltip("Select a non-terrain object first");
+  ImGui::EndDisabled();
+
   ImGui::End();
 }
 

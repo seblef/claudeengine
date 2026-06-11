@@ -42,6 +42,11 @@ class EditorToolbar {
     on_fall_to_terrain_ = std::move(cb);
   }
 
+  // Registers a callback fired when the "Center on Object" action button is clicked.
+  void SetOnCenterOnObject(std::function<void()> cb) {
+    on_center_on_object_ = std::move(cb);
+  }
+
   // Enables or greys out the Copy button.
   void SetCanCopy(bool b) { can_copy_ = b; }
 
@@ -51,6 +56,10 @@ class EditorToolbar {
   // Enables or greys out the "Fall to Terrain" button.
   // Should be false when no terrain is present or nothing is selected.
   void SetCanFallToTerrain(bool b) { can_fall_to_terrain_ = b; }
+
+  // Enables or greys out the "Center on Object" button.
+  // Should be false when nothing is selected or terrain is selected.
+  void SetCanCenterOnObject(bool b) { can_center_on_object_ = b; }
 
   // Reflects the scene dirty state; the Save button is greyed out when false.
   void SetDirty(bool dirty) { dirty_ = dirty; }
@@ -75,6 +84,8 @@ class EditorToolbar {
   // cppcheck-suppress unusedStructMember
   std::function<void()> on_fall_to_terrain_;
   // cppcheck-suppress unusedStructMember
+  std::function<void()> on_center_on_object_;
+  // cppcheck-suppress unusedStructMember
   bool                  dirty_              = false;
   // cppcheck-suppress unusedStructMember
   bool                  can_copy_           = false;
@@ -82,6 +93,8 @@ class EditorToolbar {
   bool                  can_paste_          = false;
   // cppcheck-suppress unusedStructMember
   bool                  can_fall_to_terrain_ = false;
+  // cppcheck-suppress unusedStructMember
+  bool                  can_center_on_object_ = false;
 };
 
 }  // namespace editor
