@@ -41,6 +41,10 @@ class ParticleEditorWindow {
   // Opens (or re-focuses) the editor window.
   void Open();
 
+  // Opens the editor with the named template loaded (basename without
+  // extension, e.g. "smoke"). Creates the window if not already open.
+  void OpenTemplate(const std::string& name);
+
   // Renders the window. time is elapsed app time in seconds; dt is the frame
   // delta used to advance the particle simulation.
   // Must be called between ImGui::NewFrame() and ImGui::Render().

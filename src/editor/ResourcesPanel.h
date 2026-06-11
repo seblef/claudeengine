@@ -46,6 +46,12 @@ class ResourcesPanel {
     on_mesh_edit_ = std::move(cb);
   }
 
+  // Sets the callback invoked when the user double-clicks a particle effect.
+  // Receives the template name (basename without extension).
+  void SetOnParticleOpen(std::function<void(const std::string&)> cb) {
+    on_particle_open_ = std::move(cb);
+  }
+
   // Renders the resources tree inside the current ImGui tab item.
   void Render();
 
@@ -55,6 +61,8 @@ class ResourcesPanel {
   std::function<void()>                    on_import_material_;
   std::function<void()>                    on_import_mesh_;
   std::function<void(const game::MeshTemplate*)> on_mesh_edit_;
+  // cppcheck-suppress unusedStructMember
+  std::function<void(const std::string&)>  on_particle_open_;
 
   // cppcheck-suppress unusedStructMember
   bool show_new_mat_modal_    = false;

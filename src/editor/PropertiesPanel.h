@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <string>
 
 #include "editor/commands/LightPropertyCommand.h"
@@ -8,6 +9,7 @@ namespace game {
 class GameObject;
 class GameLight;
 class GameMesh;
+class GameParticleSystem;
 }  // namespace game
 
 namespace editor {
@@ -26,6 +28,12 @@ class PropertiesPanel {
   // Registers the undo/redo history. Must be called before the first Render().
   void SetCommandHistory(EditorCommandHistory* history) { history_ = history; }
 
+  // Sets the callback invoked when "Open in Particle Editor" is clicked.
+  // Receives the template name (basename without extension).
+  void SetOnOpenParticleEditor(std::function<void(const std::string&)> cb) {
+    on_open_particle_editor_ = std::move(cb);
+  }
+
   // Renders the properties UI inside the current ImGui window.
   // obj may be nullptr (no selection).
   void Render(game::GameObject* obj);
@@ -33,6 +41,7 @@ class PropertiesPanel {
  private:
   void RenderLightProperties(game::GameLight* light);
   static void RenderMeshProperties(const game::GameMesh* mesh);
+  void RenderParticleSystemProperties(const game::GameParticleSystem* ps);
 
   // cppcheck-suppress unusedStructMember
   EditorCommandHistory* history_         = nullptr;
@@ -40,6 +49,8 @@ class PropertiesPanel {
   LightSnapshot         before_snapshot_ = {};
   // cppcheck-suppress unusedStructMember
   std::string           before_name_;
+  // cppcheck-suppress unusedStructMember
+  std::function<void(const std::string&)> on_open_particle_editor_;
 };
 
 }  // namespace editor

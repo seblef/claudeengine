@@ -28,8 +28,10 @@
 #include "game/GameMesh.h"
 #include "game/GameObject.h"
 #include "game/GameObjectType.h"
+#include "game/GameParticleSystem.h"
 #include "game/GamePlayerStart.h"
 #include "game/MeshTemplate.h"
+#include "particles/ParticleSystemTemplate.h"
 #include "renderer/CircleSpotLight.h"
 #include "renderer/Light.h"
 #include "renderer/OmniLight.h"
@@ -230,7 +232,8 @@ EditorViewport::EditorViewport(abstract::VideoDevice* video)
           core::CoordinateSystem::kRightHanded)),
       camera_ctrl_(std::make_unique<EditorCameraController>()),
       light_wireframe_(video),
-      player_start_gizmo_(video) {
+      player_start_gizmo_(video),
+      particle_gizmo_(video) {
   camera_->SetFOV(0.785398f);  // 45 degrees
   camera_->SetMinDepth(0.1f);
   camera_->SetMaxDepth(1000.f);
@@ -303,6 +306,16 @@ void EditorViewport::SetPendingLightType(std::optional<renderer::LightType> type
 void EditorViewport::SetPendingPlayerStart() {
   BeginPreview(std::make_unique<game::GamePlayerStart>(), 0.f,
                ImGuiMouseCursor_ResizeAll);
+}
+
+void EditorViewport::SetPendingParticleSystem(
+    const std::string& template_name) {
+  particles::ParticleSystemTemplate* tmpl =
+      particles::ParticleSystemTemplate::GetOrLoad(template_name, video_);
+  if (!tmpl) return;
+  auto ps = std::make_unique<game::GameParticleSystem>(tmpl, video_);
+  tmpl->Release();  // GameParticleSystem holds the AddRef'd reference
+  BeginPreview(std::move(ps), 0.f, ImGuiMouseCursor_ResizeAll);
 }
 
 void EditorViewport::ResizeIfNeeded(int w, int h) {
@@ -406,6 +419,12 @@ void EditorViewport::Render() {
   if (scene_ && render_fbo_) {
     player_start_gizmo_.Render(scene_->GetObjects(), scene_->GetSelectedObject(),
                                render_fbo_.get());
+  }
+
+  // Particle system sphere gizmos rendered without depth testing.
+  if (scene_ && render_fbo_) {
+    particle_gizmo_.Render(scene_->GetObjects(), scene_->GetSelectedObject(),
+                           render_fbo_.get());
   }
 
   // Terrain wireframe debug overlay — flat white edges over the composited scene.
@@ -619,6 +638,32 @@ void EditorViewport::PickObjectAt(ImVec2 mouse_pos, ImVec2 image_pos,
 
   if (best_ps)
     hit = best_ps;
+
+  // Particle-system pass: screen-space proximity picking against world position.
+  constexpr float kParticlePickThresholdPx = 12.f;
+  float best_ps2_dist_px = kParticlePickThresholdPx;
+  game::GameObject* best_particle = nullptr;
+
+  for (game::GameObject* obj : candidates) {
+    if (obj->GetType() != game::GameObjectType::kParticleSystem) continue;
+
+    const core::Mat4f& wt  = obj->GetWorldTransform();
+    const core::Vec3f  pos(wt(0, 3), wt(1, 3), wt(2, 3));
+
+    const ScreenPt sp = ProjectToScreen(pos, vp, image_pos, image_size);
+    if (!sp.valid) continue;
+
+    const float dx = sp.pos.x - mouse_pos.x;
+    const float dy = sp.pos.y - mouse_pos.y;
+    const float dist_px = std::sqrt(dx * dx + dy * dy);
+    if (dist_px < best_ps2_dist_px) {
+      best_ps2_dist_px = dist_px;
+      best_particle = obj;
+    }
+  }
+
+  if (best_particle)
+    hit = best_particle;
 
   scene_->SetSelectedObject(hit);
 }

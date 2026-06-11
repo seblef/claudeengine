@@ -50,6 +50,10 @@ class EditorScene {
   // Returns all scene objects (static + dynamic) in creation order.
   [[nodiscard]] const std::vector<game::GameObject*>& GetObjects() const { return objects_; }
 
+  // Ticks all kParticleSystem objects so effects run live in the editor.
+  // Call once per editor frame.
+  void Update(float time, float dt);
+
   // Registers callbacks fired when dynamic objects are added to or removed from
   // the scene. Covers all paths: direct calls, command execute, undo, and redo.
   void SetOnObjectAdded(std::function<void(game::GameObject*)> cb) {
