@@ -145,6 +145,7 @@ class TerrainRenderer : public core::Singleton<TerrainRenderer> {
 
  private:
   void BindMaterialTextures() const;
+  void UnbindMaterialTextures() const;
   void FillPatchInfos(const TerrainPatch& patch);
 
   abstract::VideoDevice*                    video_         = nullptr;
