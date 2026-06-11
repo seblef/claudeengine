@@ -10,6 +10,7 @@
 #include "abstract/RenderTargetGroup.h"
 #include "abstract/VideoDevice.h"
 #include "core/Camera.h"
+#include "core/Vec3f.h"
 #include "particles/EmbeddedLightDesc.h"
 #include "particles/ParticleEmitter.h"
 #include "particles/ParticleRenderer.h"
@@ -63,6 +64,9 @@ class ParticleEditorWindow {
 
   // Uploads current camera data into scene_infos_cb_.
   void FillSceneInfosCB(float time);
+
+  // Recomputes preview_camera_ position/target from the current orbit state.
+  void UpdatePreviewCamera();
 
   // Clears sub_systems_ and lights_; resets path and unsaved flag.
   void NewFile();
@@ -135,6 +139,15 @@ class ParticleEditorWindow {
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<abstract::ConstantBuffer>                scene_infos_cb_;
   core::Camera                                             preview_camera_;
+
+  // Orbit camera state — updated by mouse input in RenderPreviewColumn().
+  float       orbit_azimuth_deg_   = 30.f;
+  float       orbit_elevation_deg_ = 20.f;
+  // cppcheck-suppress unusedStructMember
+  float       orbit_distance_      = 7.f;
+  // cppcheck-suppress unusedStructMember
+  core::Vec3f orbit_center_        = {0.f, 1.5f, 0.f};
+
   // Set by any property change; triggers RebuildPreview() at frame start.
   // cppcheck-suppress unusedStructMember
   bool                                                     preview_dirty_ = false;
