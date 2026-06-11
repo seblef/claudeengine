@@ -164,6 +164,9 @@ void LightRenderer::RenderGlobalLights(bool disable_shadows) {
     Renderer::Instance().SetRenderableInfos(light->GetVolumeMatrix());
     video_->RenderIndexed(quad_->GetNumIndices());
   }
+
+  for (int i = 0; i < kCSMCascadeCount; ++i)
+    video_->UnbindSampler(9 + i);
 }
 
 void LightRenderer::RenderLocalLights(bool disable_shadows) {
@@ -255,6 +258,13 @@ void LightRenderer::RenderLocalLights(bool disable_shadows) {
     video_->SetStencilFunc(abstract::CompareFunc::kNotEqual, 0, 0xFF);
     video_->RenderIndexed(geo->GetNumIndices());
 
+    if (light->GetType() == LightType::kCircleSpot ||
+        light->GetType() == LightType::kRectSpot) {
+      video_->UnbindSampler(9);
+    }
+    if (light->GetType() == LightType::kOmni) {
+      video_->UnbindSampler(13);
+    }
     video_->SetStencilTestEnabled(false);
   }
 
