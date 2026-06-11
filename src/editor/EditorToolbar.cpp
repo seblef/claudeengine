@@ -158,6 +158,18 @@ void EditorToolbar::Render() {
   for (int i = 0; i < kCreationToolCount; ++i)
     RenderToolButton(kCreationTools[i], active_tool_, kTransformToolCount + i);
 
+  ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+  ImGui::SameLine();
+
+  // Action tools — one-shot buttons (not toggle modes).
+  ImGui::BeginDisabled(!can_fall_to_terrain_);
+  if (ImGui::Button(ICON_FA_CIRCLE_ARROW_DOWN) && on_fall_to_terrain_)
+    on_fall_to_terrain_();
+  ImGui::SetItemTooltip("Fall to Terrain");
+  if (!can_fall_to_terrain_)
+    ImGui::SetItemTooltip("Select an object and add a terrain first");
+  ImGui::EndDisabled();
+
   ImGui::End();
 }
 

@@ -23,6 +23,7 @@
 #include "editor/EditorSystem.h"
 #include "editor/EditorToolbar.h"
 #include "editor/commands/PlaceObjectCommand.h"
+#include "editor/commands/TransformCommand.h"
 #include "editor/EditorViewport.h"
 #include "editor/LogPanel.h"
 #include "editor/MapPropertiesWindow.h"
@@ -86,6 +87,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   toolbar_->SetOnSave([this]{ SaveCurrent(); });
   toolbar_->SetOnCopy([this]{ CopySelectedObject(); });
   toolbar_->SetOnPaste([this]{ PasteObject(); });
+  toolbar_->SetOnFallToTerrain([this]{ FallToTerrain(); });
   viewport_->SetScene(scene_.get());
   viewport_->SetCommandHistory(&history_);
   properties_panel_->SetCommandHistory(&history_);
@@ -167,6 +169,9 @@ void EditorWindow::Render() {
          sel->GetType() == game::GameObjectType::kLight);
     toolbar_->SetCanCopy(can_copy);
     toolbar_->SetCanPaste(clipboard_ != nullptr);
+    const bool can_fall = terrain_panel_.IsActive() && sel &&
+        sel->GetType() != game::GameObjectType::kTerrain;
+    toolbar_->SetCanFallToTerrain(can_fall);
   }
   toolbar_->Render();
   const EditorTool active_tool = toolbar_->GetActiveTool();
@@ -867,6 +872,64 @@ void EditorWindow::PasteObject() {
   if (!clone) return;
   history_.Push(std::make_unique<PlaceObjectCommand>(scene_.get(), std::move(clone)));
   scene_dirty_ = true;
+}
+
+void EditorWindow::FallToTerrain() {
+  game::GameObject* obj = scene_->GetSelectedObject();
+  if (!obj || obj->GetType() == game::GameObjectType::kTerrain) return;
+
+  const game::GameTerrain* gt = FindTerrain(*scene_);
+  if (!gt) return;
+
+  const terrain::TerrainData& data = gt->GetData();
+  const core::Mat4f& wt = obj->GetWorldTransform();
+
+  // Object pivot XZ position.
+  const float px = wt(0, 3);
+  const float pz = wt(2, 3);
+
+  // Terrain surface height and slope normal at the pivot XZ.
+  const float terrain_h = data.GetHeight(px, pz);
+  const core::Vec3f N   = data.GetNormal(px, pz);
+
+  // Extract per-axis scale from the current transform's column magnitudes.
+  const float sx = std::sqrt(wt(0, 0)*wt(0, 0) + wt(1, 0)*wt(1, 0) + wt(2, 0)*wt(2, 0));
+  const float sy = std::sqrt(wt(0, 1)*wt(0, 1) + wt(1, 1)*wt(1, 1) + wt(2, 1)*wt(2, 1));
+  const float sz = std::sqrt(wt(0, 2)*wt(0, 2) + wt(1, 2)*wt(1, 2) + wt(2, 2)*wt(2, 2));
+
+  // Horizontal projection of the current Z-axis (forward); preserve yaw.
+  core::Vec3f fwd(wt(0, 2), 0.f, wt(2, 2));
+  const float fwd_len = fwd.Length();
+  if (fwd_len < 1e-5f)
+    fwd = core::Vec3f(0.f, 0.f, 1.f);
+  else
+    fwd = fwd / fwd_len;
+
+  // Build an orthonormal frame whose Y-axis is the terrain normal (slope align).
+  const core::Vec3f new_right   = N.Cross(fwd).Normalized();
+  const core::Vec3f new_forward = new_right.Cross(N).Normalized();
+
+  // Place the pivot so the local bbox bottom (min_y) touches the terrain surface.
+  // The bbox-bottom offset in world space is N * local_min_y.
+  const float local_min_y = obj->GetLocalBBox().GetMin().y;
+  const float new_px = px - local_min_y * N.x;
+  const float new_py = terrain_h - local_min_y * N.y;
+  const float new_pz = pz - local_min_y * N.z;
+
+  // Compose new world transform: (rotation * scale) in columns 0-2, position in column 3.
+  const core::Mat4f new_transform(
+    new_right.x * sx,   N.x * sy,   new_forward.x * sz,   new_px,
+    new_right.y * sx,   N.y * sy,   new_forward.y * sz,   new_py,
+    new_right.z * sx,   N.z * sy,   new_forward.z * sz,   new_pz,
+    0.f,                0.f,        0.f,                   1.f);
+
+  const core::Mat4f before = wt;
+  obj->SetWorldTransform(new_transform);
+  history_.Push(std::make_unique<TransformCommand>(obj, before, new_transform));
+  scene_dirty_ = true;
+
+  LOG_F(INFO, "Fell '%s' to terrain: y=%.2f, normal=(%.2f, %.2f, %.2f)",
+        obj->GetName().c_str(), terrain_h, N.x, N.y, N.z);
 }
 
 void EditorWindow::WireTerrainPanel() {

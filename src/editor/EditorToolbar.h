@@ -37,11 +37,20 @@ class EditorToolbar {
   // Registers a callback fired when the Paste toolbar button is clicked or Ctrl+V.
   void SetOnPaste(std::function<void()> cb) { on_paste_ = std::move(cb); }
 
+  // Registers a callback fired when the "Fall to Terrain" action button is clicked.
+  void SetOnFallToTerrain(std::function<void()> cb) {
+    on_fall_to_terrain_ = std::move(cb);
+  }
+
   // Enables or greys out the Copy button.
   void SetCanCopy(bool b) { can_copy_ = b; }
 
   // Enables or greys out the Paste button.
   void SetCanPaste(bool b) { can_paste_ = b; }
+
+  // Enables or greys out the "Fall to Terrain" button.
+  // Should be false when no terrain is present or nothing is selected.
+  void SetCanFallToTerrain(bool b) { can_fall_to_terrain_ = b; }
 
   // Reflects the scene dirty state; the Save button is greyed out when false.
   void SetDirty(bool dirty) { dirty_ = dirty; }
@@ -64,11 +73,15 @@ class EditorToolbar {
   // cppcheck-suppress unusedStructMember
   std::function<void()> on_paste_;
   // cppcheck-suppress unusedStructMember
-  bool                  dirty_     = false;
+  std::function<void()> on_fall_to_terrain_;
   // cppcheck-suppress unusedStructMember
-  bool                  can_copy_  = false;
+  bool                  dirty_              = false;
   // cppcheck-suppress unusedStructMember
-  bool                  can_paste_ = false;
+  bool                  can_copy_           = false;
+  // cppcheck-suppress unusedStructMember
+  bool                  can_paste_          = false;
+  // cppcheck-suppress unusedStructMember
+  bool                  can_fall_to_terrain_ = false;
 };
 
 }  // namespace editor

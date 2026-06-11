@@ -67,6 +67,11 @@ class EditorWindow {
   // No-op if nothing is selected or the object type is not copyable.
   void CopySelectedObject();
 
+  // Aligns the selected object to the terrain below it: places its bbox bottom
+  // on the terrain surface and tilts its orientation to match the slope.
+  // No-op when no terrain is present or nothing is selected.
+  void FallToTerrain();
+
   // Pastes the clipboard object into the scene with a small position offset.
   // Pushes a PlaceObjectCommand so the paste is undoable.
   void PasteObject();
