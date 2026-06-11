@@ -1,6 +1,8 @@
 #include "editor/ParticleEditorWindow.h"
 
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -37,6 +39,12 @@ namespace {
 constexpr float kPreviewFovY = core::kPi / 3.f;   // 60 degrees
 constexpr float kPreviewNear = 0.1f;
 constexpr float kPreviewFar  = 100.f;
+
+constexpr float kOrbitSensitivity = 0.4f;
+constexpr float kZoomSensitivity  = 0.5f;
+constexpr float kZoomMin          = 1.f;
+constexpr float kZoomMax          = 30.f;
+constexpr float kDegToRad         = core::kPi / 180.f;
 
 constexpr int kSceneInfosFloat4s =
     static_cast<int>(sizeof(renderer::SceneInfos) / 16);
@@ -108,18 +116,13 @@ ParticleEditorWindow::ParticleEditorWindow(abstract::VideoDevice* video)
   scene_infos_cb_ = video_->CreateConstantBuffer(
       kSceneInfosFloat4s, kSceneInfosSlot, abstract::BufferUsage::kDynamic);
 
-  // Position the camera above and behind the origin so rising particles
-  // from [0,0,0] are visible in the preview viewport.
-  preview_camera_.SetPosition({3.f, 3.f, 6.f});
-  preview_camera_.SetTarget({0.f, 1.5f, 0.f});
-  preview_camera_.SetUp({0.f, 1.f, 0.f});
   preview_camera_.SetMinDepth(kPreviewNear);
   preview_camera_.SetMaxDepth(kPreviewFar);
   preview_camera_.SetFOV(kPreviewFovY);
   preview_camera_.SetScreenCenter(
       {static_cast<float>(kPreviewW) * 0.5f,
        static_cast<float>(kPreviewH) * 0.5f});
-  preview_camera_.UpdateMatrices();
+  UpdatePreviewCamera();
 }
 
 void ParticleEditorWindow::Open() {
@@ -165,6 +168,8 @@ void ParticleEditorWindow::Render(float time, float dt) {
     emitter->Update(dt);
     emitter->UploadToGPU();
   }
+
+  UpdatePreviewCamera();
 
   // Render to the offscreen RT so ImGui::Image() can display it.
   if (!preview_emitters_.empty())
@@ -265,6 +270,23 @@ void ParticleEditorWindow::FillSceneInfosCB(float time) {
   si.z_near_         = kPreviewNear;
   si.z_far_          = kPreviewFar;
   scene_infos_cb_->Fill(&si);
+}
+
+void ParticleEditorWindow::UpdatePreviewCamera() {
+  const float azi_rad = orbit_azimuth_deg_   * kDegToRad;
+  const float ele_rad = orbit_elevation_deg_ * kDegToRad;
+  const float cos_e   = std::cos(ele_rad);
+
+  const core::Vec3f offset{
+    orbit_distance_ * cos_e * std::sin(azi_rad),
+    orbit_distance_ * std::sin(ele_rad),
+    orbit_distance_ * cos_e * std::cos(azi_rad),
+  };
+
+  preview_camera_.SetPosition(orbit_center_ + offset);
+  preview_camera_.SetTarget(orbit_center_);
+  preview_camera_.SetUp(core::Vec3f::kAxisY);
+  preview_camera_.UpdateMatrices();
 }
 
 void ParticleEditorWindow::NewFile() {
@@ -801,6 +823,20 @@ void ParticleEditorWindow::RenderPreviewColumn(float /*time*/) {
 
   // Reserve space and capture input (prevents parent window drag).
   ImGui::InvisibleButton("##preview_area", img_size);
+
+  if (ImGui::IsItemHovered() || ImGui::IsItemActive()) {
+    const ImGuiIO& io = ImGui::GetIO();
+    if (io.MouseDown[ImGuiMouseButton_Left]) {
+      orbit_azimuth_deg_   -= io.MouseDelta.x * kOrbitSensitivity;
+      orbit_elevation_deg_ += io.MouseDelta.y * kOrbitSensitivity;
+      orbit_elevation_deg_  = std::clamp(orbit_elevation_deg_, -89.f, 89.f);
+    }
+    const float scroll = io.MouseWheel;
+    if (scroll != 0.f) {
+      orbit_distance_ -= scroll * kZoomSensitivity;
+      orbit_distance_  = std::clamp(orbit_distance_, kZoomMin, kZoomMax);
+    }
+  }
 
   if (!preview_emitters_.empty()) {
     // OpenGL FBO origin is bottom-left; flip UV Y to match ImGui's top-left.
