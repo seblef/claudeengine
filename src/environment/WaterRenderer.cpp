@@ -452,6 +452,7 @@ void WaterRenderer::Render(const core::Camera& camera,
   shader_->Activate();
   DrawRings();
 
+  video_->UnbindSampler(0);
   video_->UnbindSampler(1);
   video_->UnbindSampler(2);
   video_->UnbindSampler(3);
