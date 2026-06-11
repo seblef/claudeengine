@@ -473,9 +473,9 @@ void Renderer::UpdateWaterRenderer() {
   const float elev     = std::sin(((t - kSunriseHour) / 12.f) * kPi) * kMaxElevation;
   const float cos_el   = std::cos(elev);
   const core::Vec3f sun_dir(
-      -std::cos(azimuth) * cos_el,
+       std::cos(azimuth) * cos_el,
        std::sin(elev),
-      -std::sin(azimuth) * cos_el);
+       std::sin(azimuth) * cos_el);
 
   // Simple sky zenith colour: night (dark blue) → day (bright blue).
   const float day_factor = std::clamp(sun_dir.y, 0.f, 1.f);
