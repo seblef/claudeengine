@@ -64,6 +64,7 @@ GLTexture::GLTexture(const std::string& name, abstract::BufferUsage usage)
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0,
                GL_RGBA, GL_UNSIGNED_BYTE, pixels);
   glGenerateMipmap(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D, 0);
 
   if (ext == ".tif" || ext == ".tiff") {
 #ifdef HAVE_LIBTIFF
