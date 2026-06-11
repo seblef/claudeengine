@@ -139,12 +139,15 @@ bool MeshEditorWindow::LoadSourceFile() {
   if (!ok) return false;
 
   // Build material slot list from submesh ranges.
-  for (const auto& sub : original_mesh_.lod.submeshes) {
+  for (int i = 0; i < static_cast<int>(original_mesh_.lod.submeshes.size()); ++i) {
+    const auto& sub = original_mesh_.lod.submeshes[i];
     MatSlot slot;
     slot.original_name = sub.material_name;
-    // saved_material_path starts as the existing material name from the source.
     slot.saved_material_path = sub.material_name.empty()
         ? "" : ("materials/" + sub.material_name + ".yaml");
+    const std::string init_name = sub.material_name.empty()
+        ? ("slot_" + std::to_string(i)) : sub.material_name;
+    std::strncpy(slot.name_buf, init_name.c_str(), sizeof(slot.name_buf) - 1);
     mat_slots_.push_back(std::move(slot));
   }
   return true;
@@ -154,11 +157,15 @@ bool MeshEditorWindow::LoadEmeshFile() {
   bool ok = mesh::EmeshReader{}.Read(source_path_.string(), &original_mesh_);
   if (!ok) return false;
 
-  for (const auto& sub : original_mesh_.lod.submeshes) {
+  for (int i = 0; i < static_cast<int>(original_mesh_.lod.submeshes.size()); ++i) {
+    const auto& sub = original_mesh_.lod.submeshes[i];
     MatSlot slot;
     slot.original_name       = sub.material_name;
     slot.saved_material_path = sub.material_name.empty()
         ? "" : ("materials/" + sub.material_name + ".yaml");
+    const std::string init_name = sub.material_name.empty()
+        ? ("slot_" + std::to_string(i)) : sub.material_name;
+    std::strncpy(slot.name_buf, init_name.c_str(), sizeof(slot.name_buf) - 1);
     mat_slots_.push_back(std::move(slot));
   }
   return true;
@@ -343,34 +350,40 @@ void MeshEditorWindow::RenderMaterialSlots() {
   ImGui::TableHeadersRow();
 
   for (int i = 0; i < static_cast<int>(mat_slots_.size()); ++i) {
-    const auto& slot = mat_slots_[i];
+    auto& slot = mat_slots_[i];
     ImGui::PushID(i);
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
 
-    // Display saved material name (stem only) if set, otherwise original name.
-    const std::string display = slot.saved_material_path.empty()
-        ? slot.original_name
-        : std::filesystem::path(slot.saved_material_path).stem().string();
-    const bool saved = !slot.saved_material_path.empty();
-    if (!saved) ImGui::TextDisabled("%s", display.c_str());
-    else        ImGui::TextUnformatted(display.c_str());
+    // Inline-editable material name; updates the saved path immediately.
+    ImGui::SetNextItemWidth(-1.f);
+    if (ImGui::InputText("##name", slot.name_buf, sizeof(slot.name_buf))) {
+      const std::string new_name(slot.name_buf);
+      if (!new_name.empty()) {
+        slot.saved_material_path = "materials/" + new_name + ".yaml";
+        preview_dirty_ = true;
+      }
+    }
 
     ImGui::TableNextColumn();
     if (ImGui::SmallButton(ICON_FA_PEN " Edit")) {
       ImportedMaterialDesc desc;
-      desc.slot_name     = slot.original_name.empty()
+      const std::string current_name(slot.name_buf);
+      desc.slot_name     = current_name.empty()
           ? ("slot_" + std::to_string(i))
-          : slot.original_name;
+          : current_name;
       desc.texture_paths = slot.hint_textures;
       // For each unresolved slot, pass the original name as a dim hint.
       for (int ti = 0; ti < renderer::kTextureSlotCount; ++ti) {
         if (desc.texture_paths[ti].empty() && !slot.original_name.empty())
           desc.hint_paths[ti] = slot.original_name;
       }
-      desc.on_saved       = [this, i](const std::string& mat_name) {
+      desc.on_saved = [this, i](const std::string& mat_name) {
         if (i < static_cast<int>(mat_slots_.size())) {
           mat_slots_[i].saved_material_path = "materials/" + mat_name + ".yaml";
+          // Keep name_buf in sync with the actually saved material name.
+          std::strncpy(mat_slots_[i].name_buf, mat_name.c_str(),
+                       sizeof(mat_slots_[i].name_buf) - 1);
           preview_dirty_ = true;
         }
       };
