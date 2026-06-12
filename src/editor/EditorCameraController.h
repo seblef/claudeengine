@@ -100,6 +100,8 @@ class EditorCameraController : public game::ICameraController {
   bool  alt_down_   = false;
   // cppcheck-suppress unusedStructMember
   bool  shift_down_ = false;
+  // cppcheck-suppress unusedStructMember
+  bool  ctrl_down_  = false;
 
   // Drag / fly mode state.
   // cppcheck-suppress unusedStructMember

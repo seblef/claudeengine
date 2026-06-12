@@ -431,10 +431,11 @@ void EditorWindow::TickAutosave() {
 void EditorWindow::RenderMenuBar() {
   if (!ImGui::BeginMainMenuBar()) return;
 
-  // Global keyboard shortcuts — processed regardless of menu state.
-  if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_S)) SaveCurrent();
-  if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_N)) {
-    CheckDirtyThenRun([this]{ new_map_pending_ = true; });
+  // Global keyboard shortcuts — skip when a text input widget has keyboard focus.
+  if (!ImGui::GetIO().WantCaptureKeyboard) {
+    if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_S)) SaveCurrent();
+    if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_N))
+      CheckDirtyThenRun([this]{ new_map_pending_ = true; });
   }
 
   if (ImGui::BeginMenu("File")) {
