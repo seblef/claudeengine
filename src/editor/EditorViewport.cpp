@@ -254,7 +254,12 @@ void EditorViewport::SetScene(EditorScene* scene) {
 }
 
 void EditorViewport::OnEvent(const core::Event& event) {
-  if (event.type == core::EventType::kKeyDown &&
+  const bool keyboard_captured = ImGui::GetIO().WantCaptureKeyboard;
+
+  // Delete selected object — suppressed when ImGui has keyboard focus (e.g. a
+  // text input widget) so that deleting text does not also delete scene objects.
+  if (!keyboard_captured &&
+      event.type == core::EventType::kKeyDown &&
       event.key == core::Key::kDelete &&
       !ImGuizmo::IsUsing() &&
       scene_ != nullptr) {
@@ -266,6 +271,13 @@ void EditorViewport::OnEvent(const core::Event& event) {
       selected_object_ = nullptr;
     }
   }
+
+  // Always forward key-up events to the camera to clear any held movement
+  // flags, but suppress key-down events when ImGui owns the keyboard so that
+  // typing in a text field does not accidentally move the camera.
+  if (keyboard_captured && event.type == core::EventType::kKeyDown)
+    return;
+
   camera_ctrl_->OnEvent(event);
 }
 

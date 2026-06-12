@@ -82,6 +82,8 @@ void EditorCameraController::OnEvent(const core::Event& event) {
         case core::Key::kRAlt:    alt_down_   = true;  break;
         case core::Key::kLShift:
         case core::Key::kRShift:  shift_down_ = true;  break;
+        case core::Key::kLCtrl:
+        case core::Key::kRCtrl:   ctrl_down_  = true;  break;
         case core::Key::kW:       w_down_     = true;  break;
         case core::Key::kA:       a_down_     = true;  break;
         case core::Key::kS:       s_down_     = true;  break;
@@ -118,6 +120,8 @@ void EditorCameraController::OnEvent(const core::Event& event) {
         case core::Key::kRAlt:    alt_down_   = false; break;
         case core::Key::kLShift:
         case core::Key::kRShift:  shift_down_ = false; break;
+        case core::Key::kLCtrl:
+        case core::Key::kRCtrl:   ctrl_down_  = false; break;
         case core::Key::kW:       w_down_     = false; break;
         case core::Key::kA:       a_down_     = false; break;
         case core::Key::kS:       s_down_     = false; break;
@@ -134,6 +138,7 @@ void EditorCameraController::OnEvent(const core::Event& event) {
       pan_dragging_   = false;
       alt_down_       = false;
       shift_down_     = false;
+      ctrl_down_      = false;
       ExitFlyMode();
       break;
 
@@ -275,14 +280,17 @@ void EditorCameraController::Update(float dt) {
     const core::Vec3f fwd   = {-cos_p * sin_y, -sin_p, -cos_p * cos_y};
     const core::Vec3f right = core::Vec3f::kAxisY.Cross(fwd).Normalized();
 
-    // WASD movement scaled by orbit distance for comfortable traversal at any zoom.
-    const float speed = distance_ * kFlySpeedFactor * dt;
-    if (w_down_) fly_pos_ += fwd                  * speed;
-    if (s_down_) fly_pos_ -= fwd                  * speed;
-    if (a_down_) fly_pos_ -= right                * speed;
-    if (d_down_) fly_pos_ += right                * speed;
-    if (e_down_) fly_pos_ += core::Vec3f::kAxisY  * speed;
-    if (q_down_) fly_pos_ -= core::Vec3f::kAxisY  * speed;
+    // WASD/QE movement — suppressed while Ctrl is held so that Ctrl+shortcut
+    // key combos (e.g. Ctrl+Z for undo) do not accidentally move the camera.
+    if (!ctrl_down_) {
+      const float speed = distance_ * kFlySpeedFactor * dt;
+      if (w_down_) fly_pos_ += fwd                  * speed;
+      if (s_down_) fly_pos_ -= fwd                  * speed;
+      if (a_down_) fly_pos_ -= right                * speed;
+      if (d_down_) fly_pos_ += right                * speed;
+      if (e_down_) fly_pos_ += core::Vec3f::kAxisY  * speed;
+      if (q_down_) fly_pos_ -= core::Vec3f::kAxisY  * speed;
+    }
 
     camera_->SetWorldTransform(core::Mat4f(
         right.x, core::Vec3f::kAxisY.x, -fwd.x, fly_pos_.x,
@@ -299,7 +307,8 @@ void EditorCameraController::Update(float dt) {
 
   // W/S translate the focus forward/backward along the look direction so the
   // user can reposition the orbit pivot without entering fly mode.
-  if (w_down_ || s_down_) {
+  // Suppressed while Ctrl is held to avoid conflicts with Ctrl+key shortcuts.
+  if (!ctrl_down_ && (w_down_ || s_down_)) {
     const core::Vec3f fwd = {-cos_el * sin_az, -std::sin(elevation_), -cos_el * cos_az};
     const float speed = distance_ * kFlySpeedFactor * dt;
     if (w_down_) focus_ += fwd * speed;
