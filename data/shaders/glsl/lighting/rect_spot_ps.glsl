@@ -1,5 +1,6 @@
 // Fragment shader for the RectangleSpotLight (rectangular beam) pass.
-// Applies Blinn-Phong with inverse-square attenuation and independent H/V falloffs.
+// Applies Blinn-Phong with inverse-square attenuation, smooth range fadeoff,
+// and independent H/V angular falloffs.
 // Output is additive — blended onto the HDR render target.
 //
 // The light's local frame is reconstructed from the forward direction:
@@ -13,6 +14,10 @@
 // Each axis fades from full (inside 80% of half-angle) to zero (at half-angle):
 //   h_fall = 1 - smoothstep(h_angle * 0.8, h_angle, h_angle_px)
 //   v_fall = 1 - smoothstep(v_angle * 0.8, v_angle, v_angle_px)
+//
+// Range fadeoff: smoothstep on normalised distance in [0.8, 1.0]
+//   → 1.0 inside 80 % of range, fades to 0.0 at the pyramid boundary.
+//   Prevents the hard edge visible when geometry clipping cuts the light volume.
 //
 // UBO binding 2: scene infos (inv_view_proj, eye_pos).
 // UBO binding 4: light infos (position, color, intensity, direction, range,
@@ -56,6 +61,11 @@ void main() {
     vec3  L     = L_vec / dist;
     float atten = 1.0 / (1.0 + (dist * dist) / (range * range));
 
+    // Smooth fadeoff to zero at the pyramid boundary.
+    //   d_norm = 1 at range; fade window is the outer 20% of the range.
+    float d_norm    = clamp(dist / range, 0.0, 1.0);
+    float edge_fade = 1.0 - smoothstep(0.8, 1.0, d_norm);
+
     vec3 H = normalize(L + V);
 
     vec3 diff = max(dot(N, L), 0.0) * albedo * color * intensity;
@@ -89,5 +99,5 @@ void main() {
         shadow = 1.0 - texture(u_shadow_map, shadow_coord.xyz);
     }
 
-    out_color = vec4((diff + spec) * atten * h_fall * v_fall * (1.0 - shadow), 1.0);
+    out_color = vec4((diff + spec) * atten * h_fall * v_fall * edge_fade * (1.0 - shadow), 1.0);
 }
