@@ -24,3 +24,5 @@ external/tinyexr-subbuild/
 external/ufbx-subbuild/
 claude_engine.log
 .claude/settings.local.json
+imgui.ini
+config.yaml

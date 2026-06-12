@@ -1,0 +1,125 @@
+name: untitled
+map_size: 8192
+global_light:
+  direction: [-0.762103558, -0.409827054, -0.501238465]
+  color: [0.449999988, 0.5, 0.800000012]
+  intensity: 0.0799999982
+  ambient_color: [0.207964599, 0.207964599, 0.207964599]
+  cast_shadow: true
+  shadow_resolution: 2048
+  shadow_bias: 0.00499999989
+environment:
+  sky_enabled: true
+  water_enabled: true
+  water_level: 16.2999992
+  roughness: 0.215000004
+  sun_intensity: 20.7000008
+  refraction_strength: 0.061999999
+  absorption_scale: 0.379999995
+  foam_height_thresh: 1.13
+  foam_shoreline_depth: 6.4000001
+  foam_steepness_thresh: 0.540000021
+  foam_speed: 0.479999989
+  normal_scale1: 0.200000003
+  normal_scale2: 0.0500000007
+  normal_scroll_speed1: 0.0199999996
+  normal_scroll_speed2: 0.0399999991
+  cloud_enabled: true
+  cloud_density: 0.310000002
+  wind_enabled: true
+  wind_direction: [0.484809577, 0, 0.874619722]
+  wind_strength: 1.20000005
+  start_time_of_day: 13.1300001
+  time_scale: 60
+  turbidity: 3.4000001
+  moon_texture: moon.png
+  night_sky_texture: sky.png
+objects:
+  - name: Object
+    type: player_start
+    transform: [1, 0, 0, 590.843506, 0, 1, 0, 30.2803879, 0, 0, 1, 1122.58691, 0, 0, 0, 1]
+  - name: Object
+    type: mesh
+    transform: [0.998218954, -0.05961724, -0.00216432032, 610.325439, 0.059656512, 0.997561812, 0.0362150855, 30.5891151, -0, -0.036279697, 0.999341786, 1112.75317, 0, 0, 0, 1]
+    mesh: meshes/destroyed_car01.emesh
+    material: materials/slot_0.yaml
+  - name: Object
+    type: mesh
+    transform: [1.57920003, 0, 0, 613.207703, 0, 1.57920003, 0, 31.2293015, 0, 0, 1.57920003, 1125.29102, 0, 0, 0, 1]
+    mesh: meshes/destroyed_vehicle01.emesh
+    material: materials/destroyed_vehicle_base.yaml
+  - name: Object
+    type: mesh
+    transform: [1.26381564, -0.105658017, -0.942340732, 604.339539, 0.127377018, 1.57484651, -0.00574537087, 31.5227966, 0.939651489, -0.0713743493, 1.26821136, 1145.50195, 0, 0, 0, 1]
+    mesh: meshes/abandoned_shelter.emesh
+    material: materials/abandoned_shelter_01.yaml
+  - name: Object
+    type: mesh
+    transform: [0.745115459, -0.0920509845, -1.41246223, 600.669189, 0.0938560441, 1.59591365, -0.0544948392, 29.6296577, 1.41234362, -0.0574913397, 0.748799384, 1101.60767, 0, 0, 0, 1]
+    mesh: meshes/abandoned_car_02.emesh
+    material: materials/abandoned_car_02.yaml
+  - name: Object
+    type: mesh
+    transform: [5.14900017, 0, 0, 405.37207, 0, 5.14900017, 0, 15.9549923, 0, 0, 5.14900017, 1004.31689, 0, 0, 0, 1]
+    mesh: meshes/slum house.emesh
+    material: materials/dock_01.yaml
+  - name: entry_light_01
+    type: light
+    light_type: omni
+    transform: [1, 0, 0, 388.895508, 0, 1, 0, 26.705513, 0, 0, 1, 1005.40662, 0, 0, 0, 1]
+    color: [0.840707958, 0.631798327, 0.219476879]
+    intensity: 1
+    cast_shadow: false
+    shadow_resolution: 1024
+    shadow_bias: 0.00499999989
+    radius: 6
+  - name: entry_light_02
+    type: light
+    light_type: omni
+    transform: [1, 0, 0, 392.106903, 0, 1, 0, 26.5745945, 0, 0, 1, 996.624207, 0, 0, 0, 1]
+    color: [0.840707958, 0.631798327, 0.219476879]
+    intensity: 1
+    cast_shadow: false
+    shadow_resolution: 1024
+    shadow_bias: 0.00499999989
+    radius: 6
+terrain:
+  heightmap: demo.r16
+  heightmap_width: 4096
+  heightmap_height: 4096
+  meters_per_texel: 1
+  min_height: 0
+  max_height: 200
+  material:
+    layers:
+      - albedo: terrain/sandy_gravel_02_diff_1k.jpg
+        normal: terrain/sandy_gravel_02_nor_gl_1k.png
+        tiling: 256
+      - albedo: terrain/rocky_trail_diff_1k.jpg
+        normal: terrain/rocky_trail_nor_gl_1k.png
+        tiling: 128
+      - albedo: terrain/rocky_terrain_02_diff_1k.jpg
+        normal: terrain/rocky_terrain_02_nor_gl_1k.png
+        tiling: 192
+    splatmap: demo_splat.png
+  foliage_layers:
+    - name: grass_001
+      mesh: meshes/foliage/grass001.obj
+      texture: foliage/grass001.png
+      density_map: demo_foliage0.r8
+      density_width: 4096
+      density_height: 4096
+      spacing_min: 0.400000006
+      spacing_max: 0.5
+      scale_min: 0.0799999982
+      scale_max: 0.439999998
+      cull_distance: 80
+      billboard_distance: 35
+editor:
+  selected_object: entry_light_02
+  camera:
+    focus: [381.911621, 38.9980965, 1013.75891]
+    azimuth: -1.29272592
+    elevation: -0.010797428
+    distance: 31.1769142
+  snap_grid: 0

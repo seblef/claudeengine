@@ -1,0 +1,7 @@
+rendering:
+  textures:
+    diffuse: vehicles/da1_body_Diffuse.jpg
+  diffuse_color: [1, 1, 1, 1]
+  emissive_color: [0.756637156, 0.177441463, 0.177441463, 0]
+  ambient_color: [0, 0, 0, 0]
+  shininess: 42.0589981

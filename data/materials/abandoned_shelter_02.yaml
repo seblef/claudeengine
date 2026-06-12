@@ -1,0 +1,8 @@
+rendering:
+  textures:
+    diffuse: buildings/abandoned_shelter_1002_BaseColor.png
+    normal: buildings/abandoned_shelter_1002_Normal.png
+  diffuse_color: [1, 1, 1, 1]
+  emissive_color: [0, 0, 0, 0]
+  ambient_color: [0, 0, 0, 0]
+  shininess: 26.5970001

@@ -1,0 +1,7 @@
+rendering:
+  textures:
+    diffuse: vehicles/destroyed_car01.png
+  diffuse_color: [1, 1, 1, 1]
+  emissive_color: [0, 0, 0, 0]
+  ambient_color: [0, 0, 0, 0]
+  shininess: 32
