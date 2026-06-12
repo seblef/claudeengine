@@ -1,5 +1,6 @@
 // Fragment shader for the CircleSpotLight (cone spot) pass.
-// Applies Blinn-Phong with inverse-square attenuation and a smooth angular falloff.
+// Applies Blinn-Phong with inverse-square attenuation, smooth range fadeoff,
+// and a smooth angular falloff.
 // Output is additive — blended onto the HDR render target.
 //
 // Angular falloff:
@@ -8,6 +9,10 @@
 //     → 0 outside the outer cone, 1 inside the inner cone, smooth between.
 //     cos(outer_angle) < cos(inner_angle) for outer > inner, so smoothstep
 //     returns 0 when cos_angle is too small (angle too large) and 1 at the center.
+//
+// Range fadeoff: smoothstep on normalised distance in [0.8, 1.0]
+//   → 1.0 inside 80 % of range, fades to 0.0 at the cone boundary.
+//   Prevents the hard edge visible when geometry clipping cuts the light volume.
 //
 // UBO binding 2: scene infos (inv_view_proj, eye_pos).
 // UBO binding 4: light infos (position, color, intensity, direction, range,
@@ -51,6 +56,11 @@ void main() {
     vec3  L     = L_vec / dist;
     float atten = 1.0 / (1.0 + (dist * dist) / (range * range));
 
+    // Smooth fadeoff to zero at the cone boundary.
+    //   d_norm = 1 at range; fade window is the outer 20% of the range.
+    float d_norm    = clamp(dist / range, 0.0, 1.0);
+    float edge_fade = 1.0 - smoothstep(0.8, 1.0, d_norm);
+
     vec3 H = normalize(L + V);
 
     vec3 diff = max(dot(N, L), 0.0) * albedo * color * intensity;
@@ -72,5 +82,5 @@ void main() {
         shadow = 1.0 - texture(u_shadow_map, shadow_coord.xyz);
     }
 
-    out_color = vec4((diff + spec) * atten * falloff * (1.0 - shadow), 1.0);
+    out_color = vec4((diff + spec) * atten * falloff * edge_fade * (1.0 - shadow), 1.0);
 }
