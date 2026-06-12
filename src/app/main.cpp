@@ -194,11 +194,11 @@ int main(int argc, char* argv[]) {
 
   // ---- Camera setup --------------------------------------------------------
   if (map_camera) {
-    map_camera->SetMaxDepth(200.f);
+    map_camera->SetMaxDepth(1000.f);
     map_camera->SetScreenCenter({gfx.GetWidth() * 0.5f, gfx.GetHeight() * 0.5f});
     game.SetCamera(map_camera);
   } else {
-    camera.SetMaxDepth(200.f);
+    camera.SetMaxDepth(1000.f);
     camera.SetScreenCenter({gfx.GetWidth() * 0.5f, gfx.GetHeight() * 0.5f});
     game.SetCamera(&camera);
     game.SetCameraController(&controller);

@@ -10,7 +10,7 @@ GameCamera::GameCamera(core::ProjectionType proj_type,
       camera_(proj_type, coord_system) {
   camera_.SetFOV(1.0472f);   // 60 degrees
   camera_.SetMinDepth(0.1f);
-  camera_.SetMaxDepth(1000.f);
+  camera_.SetMaxDepth(2000.f);
   camera_.UpdateMatrices();
 }
 

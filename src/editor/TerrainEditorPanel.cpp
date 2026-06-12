@@ -252,6 +252,7 @@ void TerrainEditorPanel::OnBrushEnd() {
             renderer::FoliageRenderer::Instance().IsReady())
           renderer::FoliageRenderer::Instance().RebuildDirtyLayers();
       }
+      if (on_foliage_modified_) on_foliage_modified_();
     }
     foliage_stroke_active_ = false;
     return;
@@ -1403,12 +1404,14 @@ void TerrainEditorPanel::RenderFoliageTab() {
           data_->GetTexelWidth(), data_->GetTexelHeight(), desc);
       terrain_obj_->AddFoliageLayer(std::move(layer));
       foliage_active_layer_ = terrain_obj_->GetFoliageLayerCount() - 1;
+      if (on_foliage_modified_) on_foliage_modified_();
     }
   }
   ImGui::SameLine();
   if (ImGui::Button("Remove layer") && layer_count > 0) {
     terrain_obj_->RemoveFoliageLayer(foliage_active_layer_);
     foliage_active_layer_ = std::max(0, foliage_active_layer_ - 1);
+    if (on_foliage_modified_) on_foliage_modified_();
   }
 
   // ---- Active layer settings ------------------------------------------------
@@ -1422,8 +1425,10 @@ void TerrainEditorPanel::RenderFoliageTab() {
   // Editable layer name.
   char name_buf[256];
   std::snprintf(name_buf, sizeof(name_buf), "%s", desc.name.c_str());
-  if (ImGui::InputText("Name", name_buf, sizeof(name_buf)))
+  if (ImGui::InputText("Name", name_buf, sizeof(name_buf))) {
     desc.name = name_buf;
+    if (on_foliage_modified_) on_foliage_modified_();
+  }
 
   // Mesh — display current filename, button opens a file dialog.
   {
@@ -1434,7 +1439,10 @@ void TerrainEditorPanel::RenderFoliageTab() {
     ImGui::SameLine();
     if (ImGui::Button("Browse##mesh")) {
       const std::string picked = BrowseMesh();
-      if (!picked.empty()) desc.mesh_path = picked;
+      if (!picked.empty()) {
+        desc.mesh_path = picked;
+        if (on_foliage_modified_) on_foliage_modified_();
+      }
     }
   }
 
@@ -1447,16 +1455,25 @@ void TerrainEditorPanel::RenderFoliageTab() {
     ImGui::SameLine();
     if (ImGui::Button("Browse##tex")) {
       const std::string picked = BrowseTexture();
-      if (!picked.empty()) desc.texture_path = picked;
+      if (!picked.empty()) {
+        desc.texture_path = picked;
+        if (on_foliage_modified_) on_foliage_modified_();
+      }
     }
   }
 
   ImGui::DragFloat("Spacing min", &desc.spacing_min, 0.05f, 0.05f, 10.f);
+  if (ImGui::IsItemDeactivatedAfterEdit() && on_foliage_modified_) on_foliage_modified_();
   ImGui::DragFloat("Spacing max", &desc.spacing_max, 0.05f, 0.05f, 10.f);
+  if (ImGui::IsItemDeactivatedAfterEdit() && on_foliage_modified_) on_foliage_modified_();
   ImGui::DragFloat("Scale min",   &desc.scale_min,   0.01f, 0.01f, 10.f);
+  if (ImGui::IsItemDeactivatedAfterEdit() && on_foliage_modified_) on_foliage_modified_();
   ImGui::DragFloat("Scale max",   &desc.scale_max,   0.01f, 0.01f, 10.f);
-  ImGui::DragFloat("Cull dist",        &desc.cull_distance,      1.f, 10.f, 500.f);
-  ImGui::DragFloat("Billboard dist",   &desc.billboard_distance,  1.f, 5.f,  200.f);
+  if (ImGui::IsItemDeactivatedAfterEdit() && on_foliage_modified_) on_foliage_modified_();
+  ImGui::DragFloat("Cull dist",      &desc.cull_distance,     1.f, 10.f, 500.f);
+  if (ImGui::IsItemDeactivatedAfterEdit() && on_foliage_modified_) on_foliage_modified_();
+  ImGui::DragFloat("Billboard dist", &desc.billboard_distance, 1.f,  5.f, 200.f);
+  if (ImGui::IsItemDeactivatedAfterEdit() && on_foliage_modified_) on_foliage_modified_();
 
   // ---- Density brush --------------------------------------------------------
   ImGui::SeparatorText("Density brush");

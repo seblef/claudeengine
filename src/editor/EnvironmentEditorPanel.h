@@ -91,7 +91,7 @@ class EnvironmentEditorPanel {
   std::unique_ptr<environment::WindSystem> wind_system_;
 
   // ---- Panel UI state -------------------------------------------------------
-  bool  time_paused_   = false;
+  bool  time_paused_   = true;
   float wind_angle_deg_ = 0.f;   // cached compass angle for the direction widget
 };
 

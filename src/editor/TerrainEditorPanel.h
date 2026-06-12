@@ -103,6 +103,13 @@ class TerrainEditorPanel {
   void SetOnCreateFromImport(
       std::function<void(std::vector<uint16_t>, int, int, float, float)> cb);
 
+  // Sets a callback invoked whenever foliage data is modified (brush stroke
+  // completed, layer added/removed, or layer settings changed).
+  // EditorWindow uses this to mark the scene dirty and enable the Save button.
+  void SetOnFoliageModified(std::function<void()> cb) {
+    on_foliage_modified_ = std::move(cb);
+  }
+
  private:
   enum class Tool    { kRaise, kLower, kSmooth, kFlatten };
   enum class Falloff { kLinear, kSmooth };
@@ -228,6 +235,8 @@ class TerrainEditorPanel {
   // cppcheck-suppress unusedStructMember
   std::function<void(std::vector<uint16_t>, int, int, float, float)>
       on_create_from_import_;
+  // cppcheck-suppress unusedStructMember
+  std::function<void()> on_foliage_modified_;
   IoState io_state_           = IoState::kIdle;
   int     io_pending_w_     = 0;
   int     io_pending_h_     = 0;
