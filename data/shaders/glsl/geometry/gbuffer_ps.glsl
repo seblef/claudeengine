@@ -39,7 +39,8 @@ void main() {
     vec3 world_normal   = normalize(tbn * tangent_normal);
     out_normal = vec4(world_normal * 0.5 + 0.5, 0.0);
 
-    // Specular: intensity in R, packed shininess in G (0–256 mapped to 0–1).
-    float spec_intensity = texture(u_specular, v_uv).r;
+    // Specular: intensity in R (texture × material multiplier), packed shininess in G.
+    // Equation: final_specular = texture_sample * specular_multiplier
+    float spec_intensity = texture(u_specular, v_uv).r * specular;
     out_specular = vec4(spec_intensity, shininess / 256.0, 0.0, 0.0);
 }
