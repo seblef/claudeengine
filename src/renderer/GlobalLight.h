@@ -18,8 +18,10 @@ namespace renderer {
 class GlobalLight : public Light {
  public:
   // ambient_color: additive per-channel ambient term applied to all surfaces.
-  // direction: world-space unit vector pointing toward the light source
-  //            (i.e. from surface toward the sun — not the ray direction).
+  // direction: world-space unit vector of the incident ray (from light source
+  //            toward the surface, i.e. opposite to the "toward sun" vector).
+  //            The lighting shader computes L = -direction to get the surface-
+  //            to-light vector needed for Blinn-Phong.
   GlobalLight(const core::Color& color, float intensity,
               const core::Vec3f& ambient_color, const core::Vec3f& direction);
 

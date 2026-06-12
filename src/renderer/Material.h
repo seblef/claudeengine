@@ -72,6 +72,7 @@ class Material {
   [[nodiscard]] core::Color GetEmissiveColor() const { return emissive_color_; }
   [[nodiscard]] core::Color GetAmbientColor()  const { return ambient_color_; }
   [[nodiscard]] float       GetShininess()     const { return shininess_; }
+  [[nodiscard]] float       GetSpecular()      const { return specular_; }
 
   // ---- Color property setters ----------------------------------------------
 
@@ -79,6 +80,7 @@ class Material {
   void SetEmissiveColor(core::Color color) { emissive_color_ = color; }
   void SetAmbientColor(core::Color color)  { ambient_color_  = color; }
   void SetShininess(float shininess)       { shininess_      = shininess; }
+  void SetSpecular(float specular)         { specular_       = specular; }
 
  private:
   void LoadDefaults(abstract::VideoDevice* video);
@@ -93,6 +95,7 @@ class Material {
   // cppcheck-suppress unusedStructMember
   core::Color  ambient_color_  = core::Color::kTransparent;
   float        shininess_      = 32.f;
+  float        specular_       = 1.f;
   // cppcheck-suppress unusedStructMember
   bool         cast_shadow_    = true;
 };

@@ -289,6 +289,11 @@ void MaterialEditorWindow::RenderRenderingSection() {
     mat->SetShininess(shine);
   track();
 
+  float specular = mat->GetSpecular();
+  if (ImGui::SliderFloat("Specular", &specular, 0.f, 1.f))
+    mat->SetSpecular(specular);
+  track();
+
   // State machine: detect edit-start and edit-end across frames.
   if (history_) {
     if (any_edited && !editing_) {
@@ -425,6 +430,7 @@ void MaterialEditorWindow::Save() {
   write_color("emissive_color", mat->GetEmissiveColor());
   write_color("ambient_color",  mat->GetAmbientColor());
   out << YAML::Key << "shininess" << YAML::Value << mat->GetShininess();
+  out << YAML::Key << "specular"  << YAML::Value << mat->GetSpecular();
 
   out << YAML::EndMap;  // rendering
   out << YAML::EndMap;  // root

@@ -66,11 +66,16 @@ class MaterialDesc {
     shininess_ = shininess;
     return *this;
   }
+  MaterialDesc& SetSpecular(float specular) {
+    specular_ = specular;
+    return *this;
+  }
 
   [[nodiscard]] core::Color GetDiffuseColor()  const { return diffuse_color_; }
   [[nodiscard]] core::Color GetEmissiveColor() const { return emissive_color_; }
   [[nodiscard]] core::Color GetAmbientColor()  const { return ambient_color_; }
   [[nodiscard]] float       GetShininess()     const { return shininess_; }
+  [[nodiscard]] float       GetSpecular()      const { return specular_; }
 
   // When false the material's meshes are excluded from all shadow passes.
   MaterialDesc& SetCastShadow(bool b) { cast_shadow_ = b; return *this; }
@@ -82,6 +87,7 @@ class MaterialDesc {
   core::Color emissive_color_ = core::Color::kTransparent;
   core::Color ambient_color_  = core::Color::kTransparent;
   float       shininess_      = 32.f;
+  float       specular_       = 1.f;
   bool        cast_shadow_    = true;
 };
 

@@ -4,9 +4,11 @@
 //   [ 16] emissive_color  vec4  (16 B — RGBA emissive scale)
 //   [ 32] ambient_color   vec4  (16 B — RGBA ambient term)
 //   [ 48] shininess       float ( 4 B — Blinn-Phong exponent)
+//   [ 52] specular        float ( 4 B — specular intensity multiplier)
 layout(std140, binding = 3) uniform MaterialInfosBlock {
     vec4  diffuse_color;
     vec4  emissive_color;
     vec4  ambient_color;
     float shininess;
+    float specular;
 };

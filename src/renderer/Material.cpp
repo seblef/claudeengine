@@ -47,6 +47,7 @@ Material::Material(const MaterialDesc& desc, abstract::VideoDevice* video) {
   emissive_color_ = desc.GetEmissiveColor();
   ambient_color_  = desc.GetAmbientColor();
   shininess_      = desc.GetShininess();
+  specular_       = desc.GetSpecular();
   cast_shadow_    = desc.GetCastShadow();
 }
 
@@ -82,6 +83,7 @@ void Material::Set(abstract::ConstantBuffer* colors_cb) const {
   mi.emissive_color = emissive_color_;
   mi.ambient_color  = ambient_color_;
   mi.shininess      = shininess_;
+  mi.specular       = specular_;
   colors_cb->Fill(&mi);
 }
 
@@ -141,6 +143,7 @@ void Material::LoadFromYaml(const YAML::Node& yaml, abstract::VideoDevice* video
   if (yaml["emissive_color"]) emissive_color_ = core::ParseColor(yaml["emissive_color"]);
   if (yaml["ambient_color"])  ambient_color_  = core::ParseColor(yaml["ambient_color"]);
   if (yaml["shininess"])      shininess_      = yaml["shininess"].as<float>();
+  if (yaml["specular"])       specular_       = yaml["specular"].as<float>();
 
   // Old format: colors: sub-node (backward compatibility for legacy files).
   if (yaml["colors"]) {
