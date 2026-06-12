@@ -26,8 +26,13 @@ core::Mat4f GlobalLight::GetVolumeMatrix() const {
 
 void GlobalLight::ComputeCascadeMatrices(const core::Camera& camera,
                                          CSMInfos& out) const {
+  // Cap shadow distance independently of the camera far plane so that each
+  // cascade covers a small enough world area to produce sharp shadow texels.
+  // With a 2000-unit far plane the first cascade would span ~250 units, making
+  // texels visibly large ("squares") even at close range.
+  static constexpr float kMaxShadowDistance = 500.f;
   const float z_near  = camera.GetMinDepth();
-  const float z_far   = camera.GetMaxDepth();
+  const float z_far   = std::min(camera.GetMaxDepth(), kMaxShadowDistance);
   const float aspect  = camera.GetScreenCenter().x / camera.GetScreenCenter().y;
   const float thfov_y = std::tan(camera.GetFOV() * 0.5f);
   const float thfov_x = thfov_y * aspect;
