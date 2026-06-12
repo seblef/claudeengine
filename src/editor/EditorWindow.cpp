@@ -959,6 +959,7 @@ void EditorWindow::WireTerrainPanel() {
   auto* data     = const_cast<terrain::TerrainData*>(&gt->GetData());
   auto* material = const_cast<terrain::TerrainMaterial*>(&gt->GetMaterial());
   terrain_panel_.SetContext(data, material, video_, &history_, gt);
+  terrain_panel_.SetOnFoliageModified([this]{ scene_dirty_ = true; });
   viewport_->SetTerrainData(data);
   viewport_->SetOnSculptBrush([this](float wx, float wz, bool first, float dt) {
     terrain_panel_.OnBrushAt(wx, wz, first, dt);
