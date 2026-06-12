@@ -28,4 +28,11 @@ inline bool IsCreationTool(EditorTool tool) {
          tool == EditorTool::kCreateParticleSystem;
 }
 
+// Returns true for the three transform gizmo tools.
+inline bool IsTransformTool(EditorTool tool) {
+  return tool == EditorTool::kTranslate ||
+         tool == EditorTool::kRotate    ||
+         tool == EditorTool::kScale;
+}
+
 }  // namespace editor

@@ -181,7 +181,10 @@ void EditorWindow::Render() {
   const EditorTool active_tool = toolbar_->GetActiveTool();
 
   // Disable object picking while any creation tool is active.
-  viewport_->SetSelectionActive(active_tool == EditorTool::kSelection);
+  // Transform tools keep picking enabled so the user can select a different
+  // object by clicking outside the gizmo (issue #505).
+  viewport_->SetSelectionActive(active_tool == EditorTool::kSelection ||
+                                IsTransformTool(active_tool));
   viewport_->SetActiveTool(active_tool);
 
   // Cancel placement if the user switches tool while hovering to place.

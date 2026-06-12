@@ -407,10 +407,12 @@ void EditorViewport::Render() {
   }
 
   // Object picking: LMB release without Alt (Alt+LMB is camera orbit).
-  // Also skipped when a gizmo is being dragged or hovered.
+  // Skipped when the gizmo is hovered (IsOver) or was being dragged last frame
+  // (gizmo_was_using_): the drag-end release must not trigger a spurious pick
+  // because the gizmo code that clears gizmo_was_using_ runs after this block.
   if (scene_ && selection_active_ && !sculpt_active_ &&
       ImGui::IsWindowHovered() && !ImGuizmo::IsViewManipulateHovered() &&
-      !ImGuizmo::IsOver() &&
+      !ImGuizmo::IsOver() && !gizmo_was_using_ &&
       !ImGui::GetIO().KeyAlt && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
     PickObjectAt(ImGui::GetMousePos(), image_pos, avail);
   }
