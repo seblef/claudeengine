@@ -37,8 +37,9 @@ void main() {
 
     // Decode G-buffer.
     vec3  albedo    = texture(u_albedo,   v_screen_uv).rgb;
-    float spec_int  = texture(u_specular, v_screen_uv).r;
-    float shininess = texture(u_specular, v_screen_uv).g * 256.0;
+    vec2  spec_shine = texture(u_specular, v_screen_uv).rg;
+    float spec_int  = spec_shine.r;
+    float shininess = spec_shine.g * 256.0;
     vec3  N = normalize(texture(u_normal, v_screen_uv).rgb * 2.0 - 1.0);
 
     // Reconstruct world position from depth.

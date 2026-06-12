@@ -11,21 +11,18 @@ namespace renderer {
 // GPU constant buffer layout for per-frame scene data (UBO slot 2).
 // Matches layout(std140, row_major) exactly — do not reorder fields.
 //
-// std140 offsets:
+// std140 offsets (vec3 consumes 12 bytes; no implicit padding before next float):
 //   [  0] view_proj        mat4  (64 B)
 //   [ 64] inv_view_proj    mat4  (64 B)
 //   [128] inv_proj         mat4  (64 B)
 //   [192] proj             mat4  (64 B)
 //   [256] view             mat4  (64 B)
-//   [320] eye_pos          vec3  (16 B — Vec3f is alignas(16) with w_=0 padding)
-//   [336] time             float ( 4 B)
-//   [340] pad0_            float ( 4 B — explicit gap; vec2 needs align-8 at 344)
-//   [344] inv_screen_size  vec2  ( 8 B)
-//   [352] z_near_          float ( 4 B) — camera near plane (for depth linearization)
-//   [356] z_far_           float ( 4 B) — camera far plane  (for depth linearization)
-//   [360] pad1_            float ( 4 B — padding to complete the float4)
-//   [364] pad2_            float ( 4 B)
-//   [368] end              23 float4s total
+//   [320] eye_pos          vec3  (12 B — Vec3f = 3 floats, no w_ padding)
+//   [332] time             float ( 4 B)
+//   [336] inv_screen_size  vec2  ( 8 B)
+//   [344] z_near_          float ( 4 B) — camera near plane (for depth linearization)
+//   [348] z_far_           float ( 4 B) — camera far plane  (for depth linearization)
+//   [352] end
 struct SceneInfos {
   core::Mat4f view_proj;
   core::Mat4f inv_view_proj;
