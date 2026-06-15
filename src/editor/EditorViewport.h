@@ -9,9 +9,7 @@
 #include "core/Vec3f.h"
 #include "editor/EditorCameraController.h"
 #include "editor/EditorCommandHistory.h"
-#include "editor/EditorTool.h"
 #include "editor/tools/EditorToolBase.h"
-#include "editor/tools/SelectionTool.h"
 #include "editor/LightWireframeRenderer.h"
 #include "editor/ParticleGizmoRenderer.h"
 #include "editor/PlayerStartGizmoRenderer.h"
@@ -30,6 +28,7 @@ namespace terrain { class TerrainData; }
 namespace editor {
 
 class EditorScene;
+class SelectionTool;
 
 // Viewport panel: owns the offscreen render target and camera, and drives the
 // scene render each frame.
@@ -45,7 +44,7 @@ class EditorScene;
 class EditorViewport {
  public:
   explicit EditorViewport(abstract::VideoDevice* video);
-  ~EditorViewport() = default;
+  ~EditorViewport();
 
   // Called from within ImGui::Begin("Viewport"). Checks panel size, runs the
   // render pass, and blits the result via ImGui::Image().
@@ -62,15 +61,8 @@ class EditorViewport {
   [[nodiscard]] const game::GameObject* GetSelectedObject() const { return selected_object_; }
   void SetSelectedObject(game::GameObject* obj) { selected_object_ = obj; }
 
-  // Enables or disables object picking on LMB release. Driven by the toolbar
-  // selection tool state (issue #174).
-  void SetSelectionActive(bool active) { selection_active_ = active; }
-
-  // Sets the active tool, controlling which ImGuizmo operation is shown.
-  void SetActiveTool(EditorTool tool) { active_tool_ = tool; }
-
-  // Sets the abstract active tool (non-owning). Replaces any previously set
-  // tool via OnDeactivate() / OnActivate(). Pass nullptr to deactivate.
+  // Sets the active tool (non-owning). Replaces any previously set tool via
+  // OnDeactivate() / OnActivate(). Pass nullptr to fall back to SelectionTool.
   void SetActiveTool(EditorToolBase* tool);
 
   // Provides the command history used to record placements for undo/redo.
@@ -103,7 +95,9 @@ class EditorViewport {
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice*                       video_;
 
-  SelectionTool                                selection_tool_;
+  // Permanent default tool; activated when SetActiveTool(nullptr) is called.
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<SelectionTool>               selection_tool_;
 
   std::unique_ptr<game::GameCamera>            camera_;
   std::unique_ptr<EditorCameraController>      camera_ctrl_;
@@ -128,10 +122,6 @@ class EditorViewport {
   game::GameObject* selected_object_  = nullptr;
   // cppcheck-suppress unusedStructMember
   ImVec2            panel_size_       = {0.f, 0.f};
-  // cppcheck-suppress unusedStructMember
-  bool              selection_active_  = true;
-  // cppcheck-suppress unusedStructMember
-  EditorTool        active_tool_       = EditorTool::kSelection;
   // cppcheck-suppress unusedStructMember
   EditorToolBase*   active_tool_base_  = nullptr;  // not owned
   // cppcheck-suppress unusedStructMember

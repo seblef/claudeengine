@@ -3,9 +3,41 @@
 #include <functional>
 
 #include "editor/EditorCommandHistory.h"
-#include "editor/EditorTool.h"
 
 namespace editor {
+
+// Active tool in the editor toolbar.
+enum class EditorTool {
+  kSelection,  // click-to-select; no transform gizmo
+  kCamera,     // reserved for camera-specific interactions; no gizmo
+  kTranslate,
+  kRotate,
+  kScale,
+  // Creation tools: no gizmo; viewport placement mode is active.
+  kCreateMesh,
+  kCreateOmniLight,
+  kCreateCircleSpot,
+  kCreateRectSpot,
+  kCreatePlayerStart,
+  kCreateParticleSystem,
+};
+
+// Returns true for any object-creation tool.
+inline bool IsCreationTool(EditorTool tool) {
+  return tool == EditorTool::kCreateMesh           ||
+         tool == EditorTool::kCreateOmniLight      ||
+         tool == EditorTool::kCreateCircleSpot     ||
+         tool == EditorTool::kCreateRectSpot       ||
+         tool == EditorTool::kCreatePlayerStart    ||
+         tool == EditorTool::kCreateParticleSystem;
+}
+
+// Returns true for the three transform gizmo tools.
+inline bool IsTransformTool(EditorTool tool) {
+  return tool == EditorTool::kTranslate ||
+         tool == EditorTool::kRotate    ||
+         tool == EditorTool::kScale;
+}
 
 // Horizontal toolbar with mutually exclusive tool-selector buttons.
 //

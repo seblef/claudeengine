@@ -11,7 +11,7 @@
 #include "core/Event.h"
 #include "editor/EditorCommand.h"
 #include "editor/EditorCommandHistory.h"
-#include "editor/EditorTool.h"
+#include "editor/EditorToolbar.h"
 #include "editor/EnvironmentEditorPanel.h"
 #include "editor/TerrainCreationDialog.h"
 #include "editor/TerrainEditorPanel.h"
@@ -23,7 +23,6 @@ namespace editor {
 
 class EditorScene;
 class EditorToolBase;
-class EditorToolbar;
 class EditorViewport;
 class MapPropertiesWindow;
 class MaterialEditorWindow;
