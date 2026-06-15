@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <imgui.h>
+#include <ImGuizmo.h>
 #include <loguru.hpp>
 #include <nfd.h>
 #include <yaml-cpp/yaml.h>
@@ -73,6 +74,9 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       map_properties_(std::make_unique<MapPropertiesWindow>(scene_.get())),
       toolbar_(std::make_unique<EditorToolbar>()),
       viewport_(std::make_unique<EditorViewport>(video)),
+      translate_tool_(std::make_unique<TransformTool>(ImGuizmo::TRANSLATE)),
+      rotate_tool_(std::make_unique<TransformTool>(ImGuizmo::ROTATE)),
+      scale_tool_(std::make_unique<TransformTool>(ImGuizmo::SCALE)),
       material_editor_(std::make_unique<MaterialEditorWindow>(video)),
       mesh_editor_(std::make_unique<MeshEditorWindow>(video,
                                                        material_editor_.get())),
@@ -186,6 +190,18 @@ void EditorWindow::Render() {
   viewport_->SetSelectionActive(active_tool == EditorTool::kSelection ||
                                 IsTransformTool(active_tool));
   viewport_->SetActiveTool(active_tool);
+
+  // Activate the appropriate TransformTool base when the tool changes.
+  if (active_tool != prev_tool_) {
+    if (active_tool == EditorTool::kTranslate)
+      viewport_->SetActiveTool(translate_tool_.get());
+    else if (active_tool == EditorTool::kRotate)
+      viewport_->SetActiveTool(rotate_tool_.get());
+    else if (active_tool == EditorTool::kScale)
+      viewport_->SetActiveTool(scale_tool_.get());
+    else if (!IsTransformTool(active_tool))
+      viewport_->SetActiveTool(nullptr);
+  }
 
   // Cancel placement if the user switches tool while hovering to place.
   if (active_tool != prev_tool_ && placement_active_) {

@@ -14,11 +14,9 @@
 #include "core/ProjectionType.h"
 #include "core/Vec3f.h"
 #include "editor/EditorScene.h"
-#include "editor/EditorTool.h"
 #include "editor/LightWireframeRenderer.h"
 #include "editor/PickingAccelerator.h"
 #include "editor/commands/PlaceObjectCommand.h"
-#include "editor/commands/TransformCommand.h"
 #include "game/GameLight.h"
 #include "game/GameMesh.h"
 #include "game/GameObject.h"
@@ -34,22 +32,6 @@
 #include <loguru.hpp>
 
 namespace editor {
-
-namespace {
-
-// Returns the ImGuizmo operation for a tool, or nullopt if no gizmo should
-// be shown (kSelection and kCamera do not render a transform gizmo).
-std::optional<ImGuizmo::OPERATION> ToolToImGuizmoOp(EditorTool tool) {
-  switch (tool) {
-    case EditorTool::kTranslate: return ImGuizmo::TRANSLATE;
-    case EditorTool::kRotate:    return ImGuizmo::ROTATE;
-    case EditorTool::kScale:     return ImGuizmo::SCALE;
-    default:                     return std::nullopt;
-  }
-}
-
-
-}  // namespace
 
 EditorViewport::EditorViewport(abstract::VideoDevice* video)
     : video_(video),
@@ -225,12 +207,10 @@ void EditorViewport::Render() {
     }
   }
 
-  // Delegate picking and bounding-box drawing to the active base tool.
-  // The context carries gizmo_was_using_ so SelectionTool can guard against
-  // spurious picks on the frame a gizmo drag ends.
+  // Delegate picking, gizmo drawing, and bounding-box drawing to the active tool.
   if (scene_ && selection_active_ && !sculpt_active_ && active_tool_base_) {
     const EditorToolContext ctx{scene_, camera_.get(), &picking_acc_,
-                                history_, video_, gizmo_was_using_};
+                                history_, video_};
     active_tool_base_->OnRender(ctx, image_pos, avail);
   }
 
@@ -260,56 +240,18 @@ void EditorViewport::Render() {
   }
 
   // XYZ axis overlay — bottom-right corner of the viewport panel.
+  // ImGuizmo uses row-major storage with row-vector convention (translation in
+  // last row), which is the transpose of our column-vector Mat4f convention.
   const ImVec2 vp_pos  = ImGui::GetWindowPos();
   const ImVec2 vp_size = {static_cast<float>(w), static_cast<float>(h)};
   ImGuizmo::SetRect(vp_pos.x, vp_pos.y, vp_size.x, vp_size.y);
+  ImGuizmo::SetDrawlist();
 
-  // ImGuizmo uses row-major storage with row-vector convention (translation in
-  // last row), which is the transpose of our column-vector Mat4f convention.
   const core::Mat4f view_t = camera_->GetCamera()->GetViewMatrix().Transpose();
   const core::Mat4f proj_t = camera_->GetCamera()->GetProjectionMatrix().Transpose();
   float view_im[16], proj_im[16];
   std::memcpy(view_im, view_t.Data(), sizeof(view_im));
   std::memcpy(proj_im, proj_t.Data(), sizeof(proj_im));
-
-  // Route drawing to the current viewport window's draw list, not the
-  // background overlay created by BeginFrame().
-  ImGuizmo::SetDrawlist();
-
-  // Transform gizmo for the selected object.
-  game::GameObject* selected = scene_ ? scene_->GetSelectedObject() : nullptr;
-  const auto gizmo_op = ToolToImGuizmoOp(active_tool_);
-  if (selected && gizmo_op) {
-    const core::Mat4f model_t = selected->GetWorldTransform().Transpose();
-    float model_im[16];
-    std::memcpy(model_im, model_t.Data(), sizeof(model_im));
-
-    ImGuizmo::Manipulate(view_im, proj_im, *gizmo_op, ImGuizmo::WORLD, model_im);
-
-    const bool gizmo_using = ImGuizmo::IsUsing();
-
-    if (!gizmo_was_using_ && gizmo_using)
-      gizmo_before_transform_ = selected->GetWorldTransform();
-
-    if (gizmo_using) {
-      const core::Mat4f model_t_after(model_im);
-      selected->SetWorldTransform(model_t_after.Transpose());
-    }
-
-    if (gizmo_was_using_ && !gizmo_using) {
-      picking_acc_.UpdateMoved(selected);
-      if (history_) {
-        const core::Mat4f after = selected->GetWorldTransform();
-        if (after != gizmo_before_transform_)
-          history_->Push(std::make_unique<TransformCommand>(
-              selected, gizmo_before_transform_, after));
-      }
-    }
-
-    gizmo_was_using_ = gizmo_using;
-  } else {
-    gizmo_was_using_ = false;
-  }
 
   // Use the 9-parameter overload so ComputeContext runs first and sets
   // gContext.mProjectionMat. Without it the 5-parameter form reads a zero
@@ -449,10 +391,13 @@ void EditorViewport::SetCameraState(const EditorCameraController::CameraState& s
 
 void EditorViewport::SetCommandHistory(EditorCommandHistory* history) {
   history_ = history;
-  // Re-activate the current base tool so it picks up the command history.
-  EditorToolBase* current = active_tool_base_;
-  SetActiveTool(nullptr);
-  SetActiveTool(current);
+  // Re-activate the current base tool so it picks up the updated history pointer.
+  if (active_tool_base_) {
+    active_tool_base_->OnDeactivate();
+    const EditorToolContext ctx{scene_, camera_.get(), &picking_acc_,
+                                history_, video_};
+    active_tool_base_->OnActivate(ctx);
+  }
 }
 
 void EditorViewport::FrameObject(const core::BBox3& bbox) {
@@ -460,14 +405,13 @@ void EditorViewport::FrameObject(const core::BBox3& bbox) {
 }
 
 void EditorViewport::SetActiveTool(EditorToolBase* tool) {
+  if (!tool) tool = &selection_tool_;
   if (active_tool_base_)
     active_tool_base_->OnDeactivate();
   active_tool_base_ = tool;
-  if (active_tool_base_) {
-    const EditorToolContext ctx{scene_, camera_.get(), &picking_acc_,
-                                history_, video_, gizmo_was_using_};
-    active_tool_base_->OnActivate(ctx);
-  }
+  const EditorToolContext ctx{scene_, camera_.get(), &picking_acc_,
+                              history_, video_};
+  active_tool_base_->OnActivate(ctx);
 }
 
 }  // namespace editor
