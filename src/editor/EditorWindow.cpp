@@ -37,11 +37,16 @@
 #include "editor/ObjectsPanel.h"
 #include "editor/PropertiesPanel.h"
 #include "editor/ResourcesPanel.h"
+#include "game/GameLight.h"
 #include "game/GameLightDesc.h"
 #include "game/GameMaterial.h"
+#include "game/GameMesh.h"
 #include "game/GameObjectType.h"
+#include "game/GameParticleSystem.h"
+#include "game/GamePlayerStart.h"
 #include "game/GameTerrain.h"
 #include "game/MeshTemplate.h"
+#include "particles/ParticleSystemTemplate.h"
 #include "renderer/Light.h"
 #include "renderer/MaterialDesc.h"
 #include "renderer/PostProcessInfos.h"
@@ -99,10 +104,6 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   material_editor_->SetCommandHistory(&history_);
   objects_panel_->SetCommandHistory(&history_);
   history_.SetOnDirty([this]{ scene_dirty_ = true; });
-  viewport_->SetOnPlacementDone([this]() {
-    toolbar_->SetActiveTool(EditorTool::kSelection);
-    placement_active_ = false;
-  });
   resources_panel_->SetOnMaterialOpen(
       [this](game::GameMaterial* mat) { material_editor_->Open(mat); });
   resources_panel_->SetOnImportMaterial([this] { ImportMaterial(); });
@@ -191,8 +192,15 @@ void EditorWindow::Render() {
                                 IsTransformTool(active_tool));
   viewport_->SetActiveTool(active_tool);
 
-  // Activate the appropriate TransformTool base when the tool changes.
+  // When the active tool changes, deactivate any running placement tool and
+  // activate the appropriate base tool.
   if (active_tool != prev_tool_) {
+    if (placement_tool_) {
+      // OnDeactivate() is called by SetActiveTool(nullptr) below.
+      viewport_->SetActiveTool(static_cast<EditorToolBase*>(nullptr));
+      placement_tool_.reset();
+    }
+
     if (active_tool == EditorTool::kTranslate)
       viewport_->SetActiveTool(translate_tool_.get());
     else if (active_tool == EditorTool::kRotate)
@@ -200,45 +208,56 @@ void EditorWindow::Render() {
     else if (active_tool == EditorTool::kScale)
       viewport_->SetActiveTool(scale_tool_.get());
     else if (!IsTransformTool(active_tool))
-      viewport_->SetActiveTool(nullptr);
-  }
+      viewport_->SetActiveTool(static_cast<EditorToolBase*>(nullptr));
 
-  // Cancel placement if the user switches tool while hovering to place.
-  if (active_tool != prev_tool_ && placement_active_) {
-    viewport_->SetPendingMeshTemplate(nullptr);
-    viewport_->SetPendingLightType(std::nullopt);
-    placement_active_ = false;
-  }
-
-  // Detect tool transitions into creation tools.
-  if (active_tool != prev_tool_ && IsCreationTool(active_tool)) {
-    if (active_tool == EditorTool::kCreateMesh) {
-      mesh_modal_->Open();
-    } else if (const auto light_type = ToolToLightType(active_tool)) {
-      viewport_->SetPendingLightType(light_type);
-      placement_active_ = true;
-      LOG_F(INFO, "Light creation tool activated, click viewport to place");
-    } else if (active_tool == EditorTool::kCreatePlayerStart) {
-      viewport_->SetPendingPlayerStart();
-      placement_active_ = true;
-      LOG_F(INFO, "Player start creation tool activated, click viewport to place");
-    } else if (active_tool == EditorTool::kCreateParticleSystem) {
-      particle_modal_->Open();
+    // Detect transitions into creation tools.
+    if (IsCreationTool(active_tool)) {
+      if (active_tool == EditorTool::kCreateMesh) {
+        mesh_modal_->Open();
+      } else if (const auto light_type = ToolToLightType(active_tool)) {
+        placement_tool_ = std::make_unique<PlacementTool>(
+            std::make_unique<game::GameLight>(*light_type), 10.f,
+            ImGuiMouseCursor_ResizeAll,
+            [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
+        viewport_->SetActiveTool(placement_tool_.get());
+        LOG_F(INFO, "Light creation tool activated, click viewport to place");
+      } else if (active_tool == EditorTool::kCreatePlayerStart) {
+        placement_tool_ = std::make_unique<PlacementTool>(
+            std::make_unique<game::GamePlayerStart>(), 0.f,
+            ImGuiMouseCursor_ResizeAll,
+            [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
+        viewport_->SetActiveTool(placement_tool_.get());
+        LOG_F(INFO, "Player start creation tool activated, click viewport to place");
+      } else if (active_tool == EditorTool::kCreateParticleSystem) {
+        particle_modal_->Open();
+      }
     }
   }
   prev_tool_ = active_tool;
 
   // Mesh selection modal — open when kCreateMesh is activated.
   if (game::MeshTemplate* tmpl = mesh_modal_->Render()) {
-    viewport_->SetPendingMeshTemplate(tmpl);
-    placement_active_ = true;
+    placement_tool_ = std::make_unique<PlacementTool>(
+        std::make_unique<game::GameMesh>(tmpl), 0.f,
+        ImGuiMouseCursor_None,
+        [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
+    viewport_->SetActiveTool(placement_tool_.get());
     LOG_F(INFO, "Mesh template selected, click viewport to place");
   }
 
   // Particle system selection modal — open when kCreateParticleSystem activated.
   if (const std::string ps_name = particle_modal_->Render(); !ps_name.empty()) {
-    viewport_->SetPendingParticleSystem(ps_name);
-    placement_active_ = true;
+    particles::ParticleSystemTemplate* tmpl =
+        particles::ParticleSystemTemplate::GetOrLoad(ps_name, video_);
+    if (tmpl) {
+      auto ps = std::make_unique<game::GameParticleSystem>(tmpl, video_);
+      tmpl->Release();  // GameParticleSystem holds the AddRef'd reference
+      placement_tool_ = std::make_unique<PlacementTool>(
+          std::move(ps), 0.f,
+          ImGuiMouseCursor_ResizeAll,
+          [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
+      viewport_->SetActiveTool(placement_tool_.get());
+    }
     LOG_F(INFO, "Particle system '%s' selected, click viewport to place",
           ps_name.c_str());
   }

@@ -15,6 +15,7 @@
 #include "editor/EnvironmentEditorPanel.h"
 #include "editor/TerrainCreationDialog.h"
 #include "editor/TerrainEditorPanel.h"
+#include "editor/tools/PlacementTool.h"
 #include "editor/tools/TransformTool.h"
 #include "game/GameObject.h"
 
@@ -170,13 +171,13 @@ class EditorWindow {
   std::unique_ptr<TransformTool>         rotate_tool_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<TransformTool>         scale_tool_;
+  // Active placement tool; non-null only while a creation tool is pending.
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<PlacementTool>         placement_tool_;
 
   // Tracks the previous frame's active tool to detect transitions.
   // cppcheck-suppress unusedStructMember
   EditorTool                             prev_tool_        = EditorTool::kSelection;
-  // True while waiting for the user to click to place a mesh in the viewport.
-  // cppcheck-suppress unusedStructMember
-  bool                                   placement_active_ = false;
   // True on the frame File > New is clicked; triggers OpenPopup that frame.
   // cppcheck-suppress unusedStructMember
   bool                                   new_map_pending_  = false;

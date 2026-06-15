@@ -3,13 +3,11 @@
 #include <algorithm>
 #include <cstring>
 #include <memory>
-#include <optional>
 #include <span>
 #include <utility>
 
 #include "abstract/TextureFormat.h"
 #include "core/CoordinateSystem.h"
-#include "terrain/TerrainData.h"
 #include "core/Mat4f.h"
 #include "core/ProjectionType.h"
 #include "core/Vec3f.h"
@@ -17,15 +15,12 @@
 #include "editor/LightWireframeRenderer.h"
 #include "editor/PickingAccelerator.h"
 #include "editor/commands/PlaceObjectCommand.h"
-#include "game/GameLight.h"
+#include "editor/tools/ViewportRaycast.h"
 #include "game/GameMesh.h"
 #include "game/GameObject.h"
-#include "game/GameParticleSystem.h"
-#include "game/GamePlayerStart.h"
 #include "game/MeshTemplate.h"
-#include "particles/ParticleSystemTemplate.h"
-#include "renderer/Light.h"
 #include "renderer/Renderer.h"
+#include "terrain/TerrainData.h"
 
 #include <ImGuizmo.h>
 #include <imgui.h>
@@ -82,55 +77,6 @@ void EditorViewport::OnEvent(const core::Event& event) {
   camera_ctrl_->OnEvent(event);
 }
 
-void EditorViewport::BeginPreview(std::unique_ptr<game::GameObject> obj,
-                                   float height, ImGuiMouseCursor cursor) {
-  pending_preview_ = std::move(obj);
-  preview_height_  = height;
-  preview_cursor_  = cursor;
-  preview_active_  = true;
-  SetSelectionActive(false);
-}
-
-void EditorViewport::CancelPreview() {
-  if (preview_object_ && scene_) {
-    scene_->RemoveDynamicObject(preview_object_);
-    preview_object_ = nullptr;
-  }
-  pending_preview_.reset();
-  preview_active_ = false;
-  SetSelectionActive(true);
-}
-
-void EditorViewport::SetPendingMeshTemplate(game::MeshTemplate* tmpl) {
-  if (tmpl)
-    BeginPreview(std::make_unique<game::GameMesh>(tmpl), 0.f, ImGuiMouseCursor_None);
-  else
-    CancelPreview();
-}
-
-void EditorViewport::SetPendingLightType(std::optional<renderer::LightType> type) {
-  if (type.has_value())
-    BeginPreview(std::make_unique<game::GameLight>(*type), 10.f,
-                 ImGuiMouseCursor_ResizeAll);
-  else
-    CancelPreview();
-}
-
-void EditorViewport::SetPendingPlayerStart() {
-  BeginPreview(std::make_unique<game::GamePlayerStart>(), 0.f,
-               ImGuiMouseCursor_ResizeAll);
-}
-
-void EditorViewport::SetPendingParticleSystem(
-    const std::string& template_name) {
-  particles::ParticleSystemTemplate* tmpl =
-      particles::ParticleSystemTemplate::GetOrLoad(template_name, video_);
-  if (!tmpl) return;
-  auto ps = std::make_unique<game::GameParticleSystem>(tmpl, video_);
-  tmpl->Release();  // GameParticleSystem holds the AddRef'd reference
-  BeginPreview(std::move(ps), 0.f, ImGuiMouseCursor_ResizeAll);
-}
-
 void EditorViewport::ResizeIfNeeded(int w, int h) {
   if (w == static_cast<int>(panel_size_.x) && h == static_cast<int>(panel_size_.y)) return;
   panel_size_ = {static_cast<float>(w), static_cast<float>(h)};
@@ -180,14 +126,6 @@ void EditorViewport::Render() {
     }
   }
 
-  // Placement mode: preview follows the cursor; LMB click confirms placement.
-  if (scene_ && preview_active_ && ImGui::IsWindowHovered()) {
-    ImGui::SetMouseCursor(preview_cursor_);
-    UpdatePreviewPosition(ImGui::GetMousePos(), image_pos, avail);
-    if (!ImGui::GetIO().KeyAlt && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
-      PlacePreview();
-  }
-
   // Sculpt brush: LMB drag when sculpt mode is active.
   // Overrides object picking for the duration of the stroke.
   if (sculpt_active_ && scene_ && ImGui::IsWindowHovered()) {
@@ -195,7 +133,8 @@ void EditorViewport::Render() {
     const bool lmb_down  = ImGui::IsMouseDown(ImGuiMouseButton_Left) && !key_alt;
 
     if (lmb_down) {
-      const auto hit = ComputeTerrainHit(ImGui::GetMousePos(), image_pos, avail);
+      const auto hit = ComputeTerrainHit(camera_.get(), terrain_data_,
+                                          ImGui::GetMousePos(), image_pos, avail);
       if (hit && on_sculpt_brush_) {
         const bool first = !sculpt_stroke_active_;
         sculpt_stroke_active_ = true;
@@ -208,9 +147,10 @@ void EditorViewport::Render() {
   }
 
   // Delegate picking, gizmo drawing, and bounding-box drawing to the active tool.
-  if (scene_ && selection_active_ && !sculpt_active_ && active_tool_base_) {
-    const EditorToolContext ctx{scene_, camera_.get(), &picking_acc_,
-                                history_, video_};
+  if (scene_ && !sculpt_active_ && active_tool_base_) {
+    EditorToolContext ctx{scene_, camera_.get(), &picking_acc_,
+                          history_, video_};
+    ctx.terrain_data = terrain_data_;
     active_tool_base_->OnRender(ctx, image_pos, avail);
   }
 
@@ -274,44 +214,12 @@ void EditorViewport::Render() {
   }
 }
 
-void EditorViewport::UpdatePreviewPosition(ImVec2 mouse_pos, ImVec2 image_pos,
-                                            ImVec2 image_size) {
-  const auto hit = ComputeTerrainHit(mouse_pos, image_pos, image_size);
-  if (!hit) return;
-
-  if (pending_preview_)
-    preview_object_ = scene_->AddDynamicObject(std::move(pending_preview_));
-
-  if (preview_object_) {
-    preview_object_->SetWorldTransform(
-        core::Mat4f::Translation({hit->x, hit->y + preview_height_, hit->z}));
-    picking_acc_.UpdateMoved(preview_object_);
-  }
-}
-
-void EditorViewport::PlacePreview() {
-  if (!preview_object_) return;  // no valid floor hit yet
-
-  if (history_) {
-    auto obj = scene_->ReclaimDynamicObject(preview_object_);
-    preview_object_ = nullptr;
-    history_->Push(std::make_unique<PlaceObjectCommand>(scene_, std::move(obj)));
-  } else {
-    scene_->SetSelectedObject(preview_object_);
-    preview_object_ = nullptr;
-  }
-
-  preview_active_ = false;
-  SetSelectionActive(true);
-
-  if (on_placement_done_) on_placement_done_();
-}
-
 void EditorViewport::PlaceMeshAt(ImVec2 mouse_pos, ImVec2 image_pos,
                                   ImVec2 image_size, game::MeshTemplate* tmpl) {
   if (!scene_ || !tmpl) return;
 
-  const auto hit = ComputeTerrainHit(mouse_pos, image_pos, image_size);
+  const auto hit = ComputeTerrainHit(camera_.get(), terrain_data_,
+                                      mouse_pos, image_pos, image_size);
   if (!hit) return;
 
   auto mesh = std::make_unique<game::GameMesh>(tmpl);
@@ -323,62 +231,6 @@ void EditorViewport::PlaceMeshAt(ImVec2 mouse_pos, ImVec2 image_pos,
     game::GameObject* obj = scene_->AddDynamicObject(std::move(mesh));
     scene_->SetSelectedObject(obj);
   }
-}
-
-
-
-std::optional<core::Vec3f> EditorViewport::ComputeTerrainHit(
-    ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size) const {
-  const float ndc_x = (mouse_pos.x - image_pos.x) / image_size.x * 2.f - 1.f;
-  const float ndc_y = 1.f - (mouse_pos.y - image_pos.y) / image_size.y * 2.f;
-
-  const core::Camera* cam        = camera_->GetCamera();
-  const core::Vec3f   ray_origin = cam->GetPosition();
-  const core::Mat4f   vp_inv     = cam->GetViewProjectionMatrix().Inverse();
-
-  const core::Vec4f clip(ndc_x, ndc_y, -1.f, 1.f);
-  const core::Vec4f world4 = clip * vp_inv;
-  if (std::abs(world4.w) < 1e-6f) return std::nullopt;
-  const core::Vec3f world3(world4.x / world4.w,
-                           world4.y / world4.w,
-                           world4.z / world4.w);
-  const core::Vec3f ray_dir = (world3 - ray_origin).Normalized();
-
-  // When no terrain data is available, fall back to the y=0 horizontal plane.
-  if (!terrain_data_) {
-    if (std::abs(ray_dir.y) < 1e-4f) return std::nullopt;
-    const float t = -ray_origin.y / ray_dir.y;
-    if (t < 0.f) return std::nullopt;
-    return ray_origin + ray_dir * t;
-  }
-
-  // Ray-march against the heightmap with binary-search refinement.
-  constexpr int   kSteps    = 64;
-  constexpr float kMaxDist  = 2000.f;
-  const float     step      = kMaxDist / kSteps;
-
-  float prev_t = 0.f;
-  for (int i = 0; i < kSteps; ++i) {
-    const float  t = static_cast<float>(i + 1) * step;
-    const core::Vec3f p = ray_origin + ray_dir * t;
-    const float terrain_h = terrain_data_->GetHeight(p.x, p.z);
-    if (p.y <= terrain_h) {
-      // Binary search between prev_t and t.
-      float lo = prev_t;
-      float hi = t;
-      for (int j = 0; j < 8; ++j) {
-        const float mid   = (lo + hi) * 0.5f;
-        const core::Vec3f mp   = ray_origin + ray_dir * mid;
-        if (mp.y <= terrain_data_->GetHeight(mp.x, mp.z))
-          hi = mid;
-        else
-          lo = mid;
-      }
-      return ray_origin + ray_dir * ((lo + hi) * 0.5f);
-    }
-    prev_t = t;
-  }
-  return std::nullopt;
 }
 
 EditorCameraController::CameraState EditorViewport::GetCameraState() const {
