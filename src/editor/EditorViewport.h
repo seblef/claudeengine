@@ -13,6 +13,7 @@
 #include "editor/EditorCommandHistory.h"
 #include "editor/EditorTool.h"
 #include "editor/tools/EditorToolBase.h"
+#include "editor/tools/SelectionTool.h"
 #include "editor/LightWireframeRenderer.h"
 #include "editor/ParticleGizmoRenderer.h"
 #include "editor/PlayerStartGizmoRenderer.h"
@@ -97,7 +98,7 @@ class EditorViewport {
   void SetOnPlacementDone(std::function<void()> cb) { on_placement_done_ = std::move(cb); }
 
   // Provides the command history used to record placements for undo/redo.
-  void SetCommandHistory(EditorCommandHistory* history) { history_ = history; }
+  void SetCommandHistory(EditorCommandHistory* history);
 
   // Camera state pass-through for map save/restore.
   [[nodiscard]] EditorCameraController::CameraState GetCameraState() const;
@@ -133,9 +134,6 @@ class EditorViewport {
  private:
   void ResizeIfNeeded(int w, int h);
 
-  // Casts a world-space ray from mouse_pos and selects the nearest hit object.
-  void PickObjectAt(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size);
-
   // Returns the world-space terrain hit point for a ray through mouse_pos, or
   // std::nullopt if the ray misses the terrain bounds.
   [[nodiscard]] std::optional<core::Vec3f>
@@ -161,11 +159,10 @@ class EditorViewport {
   void PlaceMeshAt(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size,
                    game::MeshTemplate* tmpl);
 
-  // Draws the selected object's world bounding box as 12 orange wireframe edges.
-  void DrawSelectedBBox(ImDrawList* dl, ImVec2 image_pos, ImVec2 image_size) const;
-
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice*                       video_;
+
+  SelectionTool                                selection_tool_;
 
   std::unique_ptr<game::GameCamera>            camera_;
   std::unique_ptr<EditorCameraController>      camera_ctrl_;

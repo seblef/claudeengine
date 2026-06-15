@@ -24,6 +24,11 @@ struct EditorToolContext {
     EditorCommandHistory*  history;
     // cppcheck-suppress unusedStructMember
     abstract::VideoDevice* video;
+    // True if the ImGuizmo transform gizmo was being dragged last frame.
+    // Tools that fire on LMB release must skip the pick on the drag-end frame
+    // to avoid a spurious selection change when the user releases the gizmo.
+    // cppcheck-suppress unusedStructMember
+    bool                   gizmo_was_using = false;
 };
 
 }  // namespace editor
