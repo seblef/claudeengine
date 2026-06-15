@@ -3,6 +3,7 @@
 #include <imgui.h>
 
 #include "editor/tools/EditorToolBase.h"
+#include "editor/tools/PickingUtils.h"
 
 namespace editor {
 
@@ -25,15 +26,6 @@ class SelectionTool : public EditorToolBase {
                 ImVec2 image_pos, ImVec2 image_size) override;
 
  private:
-  // Casts a picking ray from mouse_pos and sets ctx.scene's selection to the
-  // nearest hit object, or nullptr on a miss.
-  static void PickObjectAt(const EditorToolContext& ctx, ImVec2 mouse_pos,
-                           ImVec2 image_pos, ImVec2 image_size);
-
-  // Draws an orange wireframe bounding box around ctx.scene's selected object.
-  static void DrawSelectedBBox(const EditorToolContext& ctx, ImDrawList* dl,
-                               ImVec2 image_pos, ImVec2 image_size);
-
   // Cached from OnActivate() for use in OnEvent(); cleared by OnDeactivate().
   EditorScene*          scene_   = nullptr;
   EditorCommandHistory* history_ = nullptr;
