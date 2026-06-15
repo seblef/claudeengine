@@ -30,6 +30,7 @@ int main(int argc, char* argv[]) {
 
   new renderer::Renderer(video);
   renderer::Renderer::Instance().InitVisibilitySystems(200.f);
+  renderer::Renderer::SetGizmosEnabled(true);
 
   new terrain::TerrainRenderer();
   renderer::Renderer::Instance().SetTerrainRenderer(
