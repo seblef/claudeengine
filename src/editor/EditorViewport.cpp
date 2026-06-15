@@ -21,6 +21,7 @@
 #include "game/GameObject.h"
 #include "game/MeshTemplate.h"
 #include "renderer/Renderer.h"
+#include "renderer/WireframeRenderer.h"
 #include "terrain/TerrainData.h"
 
 #include <ImGuizmo.h>
@@ -109,6 +110,7 @@ void EditorViewport::Render() {
 
   ResizeIfNeeded(w, h);
 
+  renderer::Renderer::Instance().SetTerrainWireframeEnabled(terrain_wireframe_debug_);
   renderer::Renderer::Instance().Update(
       static_cast<float>(ImGui::GetTime()),
       camera_->GetCamera(),
@@ -157,10 +159,10 @@ void EditorViewport::Render() {
                            render_fbo_.get());
   }
 
-  // Terrain wireframe debug overlay — flat white edges over the composited scene.
-  if (terrain_wireframe_debug_ && wireframe_fbo_) {
-    renderer::Renderer::Instance().RenderTerrainWireframe(
-        *camera_->GetCamera(), wireframe_fbo_.get());
+  // Wireframe debug overlay — terrain edges and future gizmo geometry.
+  if (wireframe_fbo_) {
+    renderer::WireframeRenderer::Instance().Render(
+        *camera_->GetCamera(), wireframe_fbo_.get(), render_fbo_.get());
   }
 
   // XYZ axis overlay — bottom-right corner of the viewport panel.

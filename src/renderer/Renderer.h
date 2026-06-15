@@ -23,6 +23,7 @@
 #include "renderer/OctreeVisibilitySystem.h"
 #include "renderer/ShadowDebugRenderer.h"
 #include "renderer/ShadowRenderer.h"
+#include "renderer/WireframeRenderer.h"
 #include "terrain/TerrainRenderer.h"
 
 namespace environment { class CloudRenderer; }
@@ -201,11 +202,16 @@ class Renderer : public core::Singleton<Renderer> {
     return particle_renderer_;
   }
 
-  // Renders terrain patch edges as a flat-colour wireframe overlay into fbo.
-  // No-op when no terrain has been registered or Init() has not been called.
-  // Must be called after Update() so the scene UBO at slot 2 is bound.
-  void RenderTerrainWireframe(const core::Camera& camera,
-                               abstract::RenderTargetGroup* fbo);
+  // Forwarding wrappers for WireframeRenderer configuration.
+  static void SetGizmosEnabled(bool enabled) {
+    WireframeRenderer::Instance().SetGizmosEnabled(enabled);
+  }
+  static void SetTerrainWireframeEnabled(bool enabled) {
+    WireframeRenderer::Instance().SetTerrainWireframeEnabled(enabled);
+  }
+  static void SetHighlightedObject(const void* key) {
+    WireframeRenderer::Instance().SetHighlightedObject(key);
+  }
 
   // Selects which G-buffer attachment to visualize. kNone restores the full pipeline.
   void SetDebugMode(DebugMode mode) { debug_mode_ = mode; }
