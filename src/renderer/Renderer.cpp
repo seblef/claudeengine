@@ -100,6 +100,7 @@ Renderer::Renderer(abstract::VideoDevice* video)
   new MeshRenderer(video_);
   new LightRenderer(video_);
   new ShadowRenderer(video_);
+  new WireframeRenderer(video_);
 
   shadow_debug_renderer_ = std::make_unique<ShadowDebugRenderer>(video_);
 
@@ -111,6 +112,7 @@ Renderer::~Renderer() {
   if (bloom_renderer_)     bloom_renderer_->Destroy();
   composite_shader_->Release();
   debug_shader_->Release();
+  WireframeRenderer::Shutdown();
   ShadowRenderer::Shutdown();
   LightRenderer::Shutdown();
   MeshRenderer::Shutdown();
@@ -159,6 +161,7 @@ void Renderer::SetWaterRenderer(environment::WaterRenderer* water) {
 
 void Renderer::SetTerrainRenderer(terrain::TerrainRenderer* terrain) {
   terrain_renderer_ = terrain;
+  WireframeRenderer::Instance().SetTerrainRenderer(terrain);
   // Wire caustic texture from water renderer if already available.
   if (terrain_renderer_ && water_renderer_) {
     terrain_renderer_->SetCausticTexture(water_renderer_->GetCausticTexture());
@@ -177,6 +180,7 @@ void Renderer::Update(float time, const core::Camera* camera,
   // CycleShadowDebug) that fire before this Update() is entered.
   LightRenderer::Instance().EndRender();
   MeshRenderer::Instance().EndRender();
+  WireframeRenderer::Instance().BeginFrame();
   if (particle_renderer_) particle_renderer_->BeginFrame();
 
   if (!camera) {
@@ -427,12 +431,6 @@ void Renderer::ResizeTargets(int w, int h) {
   water_depth_copy_rt_  = video_->CreateRenderTarget(
       w, h, abstract::TextureFormat::kDepth24Stencil8);
   if (water_renderer_) water_renderer_->Resize(w, h);
-}
-
-void Renderer::RenderTerrainWireframe(const core::Camera& camera,
-                                       abstract::RenderTargetGroup* fbo) {
-  if (terrain_renderer_ && terrain_renderer_->IsReady())
-    terrain_renderer_->RenderWireframe(video_, camera, fbo);
 }
 
 void Renderer::FillWindInfos() {
