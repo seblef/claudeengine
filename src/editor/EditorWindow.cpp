@@ -387,7 +387,7 @@ void EditorWindow::Render() {
     if (want_sculpt) {
       if (!sculpt_tool_active_) {
         sculpt_tool_active_ = true;
-        viewport_->SetActiveTool(sculpt_tool_.get());
+        viewport_->SetActiveTool(sculpt_tool_);
       }
     } else if (sculpt_tool_active_) {
       sculpt_tool_active_ = false;
@@ -998,7 +998,7 @@ void EditorWindow::WireTerrainPanel() {
   if (!gt) {
     terrain_panel_.SetContext(nullptr, nullptr, nullptr, nullptr, nullptr);
     viewport_->SetTerrainData(nullptr);
-    sculpt_tool_.reset();
+    sculpt_tool_ = nullptr;
     return;
   }
 
@@ -1009,12 +1009,7 @@ void EditorWindow::WireTerrainPanel() {
   terrain_panel_.SetContext(data, material, video_, &history_, gt);
   terrain_panel_.SetOnFoliageModified([this]{ scene_dirty_ = true; });
   viewport_->SetTerrainData(data);
-  sculpt_tool_ = std::make_unique<TerrainSculptTool>(
-      [this](float wx, float wz, bool first, float dt) {
-        terrain_panel_.OnBrushAt(wx, wz, first, dt);
-      },
-      [this]() { terrain_panel_.OnBrushEnd(); },
-      data);
+  sculpt_tool_ = terrain_panel_.GetSculptTool();
 }
 
 }  // namespace editor

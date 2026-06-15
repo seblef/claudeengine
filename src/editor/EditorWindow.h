@@ -16,13 +16,13 @@
 #include "editor/TerrainCreationDialog.h"
 #include "editor/TerrainEditorPanel.h"
 #include "editor/tools/PlacementTool.h"
-#include "editor/tools/TerrainSculptTool.h"
 #include "editor/tools/TransformTool.h"
 #include "game/GameObject.h"
 
 namespace editor {
 
 class EditorScene;
+class EditorToolBase;
 class EditorToolbar;
 class EditorViewport;
 class MapPropertiesWindow;
@@ -218,9 +218,9 @@ class EditorWindow {
   TerrainEditorPanel terrain_panel_;
   // cppcheck-suppress unusedStructMember
   bool               show_terrain_panel_  = false;
-  // Active sculpt tool; non-null when a terrain is in the scene.
-  // cppcheck-suppress unusedStructMember
-  std::unique_ptr<TerrainSculptTool> sculpt_tool_;
+  // Non-owning pointer to the sculpt tool owned by terrain_panel_.
+  // Non-null when a terrain is in the scene.
+  EditorToolBase*    sculpt_tool_    = nullptr;
   // True while sculpt_tool_ is the viewport's active base tool.
   // cppcheck-suppress unusedStructMember
   bool               sculpt_tool_active_  = false;
