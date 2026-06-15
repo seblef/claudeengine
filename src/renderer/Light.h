@@ -71,6 +71,11 @@ class Light : public Renderable {
   void SetColor(const core::Color& color) { color_ = color; }
   void SetIntensity(float intensity)      { intensity_ = intensity; }
 
+  // Stores an opaque key used to identify this light for selection highlight.
+  // Callers pass their own address; WireframeRenderer::IsHighlighted() compares
+  // pointers without dereferencing.
+  void SetGizmoKey(const void* key) { gizmo_key_ = key; }
+
   // When false the light never renders a shadow map (useful for fill lights).
   [[nodiscard]] bool GetCastShadow() const        { return cast_shadow_; }
   void               SetCastShadow(bool b)        { cast_shadow_ = b; }
@@ -95,8 +100,14 @@ class Light : public Renderable {
                                           float              tan_half_fov);
 
  private:
+  // Pushes the appropriate wireframe shape for this light to WireframeRenderer.
+  // Called by Enqueue() when gizmos are enabled.
+  void EnqueueWireframe(const core::Color& color);
+
   // cppcheck-suppress unusedStructMember
   LightType   type_;
+  // cppcheck-suppress unusedStructMember
+  const void* gizmo_key_ = nullptr;
   // cppcheck-suppress unusedStructMember
   core::Color color_;
   // cppcheck-suppress unusedStructMember

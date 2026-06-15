@@ -91,6 +91,7 @@ GameLight::GameLight(renderer::LightType type, const GameLightDesc& desc)
   light_->SetCastShadow(desc.cast_shadow);
   light_->SetShadowResolution(desc.shadow_resolution);
   light_->SetShadowBias(desc.shadow_bias);
+  light_->SetGizmoKey(this);
 }
 
 void GameLight::OnWorldTransformUpdated() {
