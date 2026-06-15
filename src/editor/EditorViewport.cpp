@@ -15,6 +15,7 @@
 #include "editor/LightWireframeRenderer.h"
 #include "editor/PickingAccelerator.h"
 #include "editor/commands/PlaceObjectCommand.h"
+#include "editor/tools/SelectionTool.h"
 #include "editor/tools/ViewportRaycast.h"
 #include "game/GameMesh.h"
 #include "game/GameObject.h"
@@ -28,8 +29,11 @@
 
 namespace editor {
 
+EditorViewport::~EditorViewport() = default;
+
 EditorViewport::EditorViewport(abstract::VideoDevice* video)
     : video_(video),
+      selection_tool_(std::make_unique<SelectionTool>()),
       camera_(std::make_unique<game::GameCamera>(
           core::ProjectionType::kPerspective,
           core::CoordinateSystem::kRightHanded)),
@@ -43,7 +47,7 @@ EditorViewport::EditorViewport(abstract::VideoDevice* video)
   camera_ctrl_->SetCamera(camera_.get());
   // SelectionTool is the permanent default base tool; scene and history are
   // null at this point and will be refreshed by SetScene() / SetCommandHistory().
-  active_tool_base_ = &selection_tool_;
+  active_tool_base_ = selection_tool_.get();
 }
 
 void EditorViewport::SetScene(EditorScene* scene) {
@@ -58,7 +62,7 @@ void EditorViewport::SetScene(EditorScene* scene) {
     picking_acc_.Build(scene_->GetObjects(), scene_->GetBounds());
   }
   // Re-activate the selection tool so it caches the updated scene pointer.
-  SetActiveTool(&selection_tool_);
+  SetActiveTool(selection_tool_.get());
 }
 
 void EditorViewport::OnEvent(const core::Event& event) {
@@ -237,7 +241,7 @@ void EditorViewport::FrameObject(const core::BBox3& bbox) {
 }
 
 void EditorViewport::SetActiveTool(EditorToolBase* tool) {
-  if (!tool) tool = &selection_tool_;
+  if (!tool) tool = selection_tool_.get();
   if (active_tool_base_)
     active_tool_base_->OnDeactivate();
   active_tool_base_ = tool;
