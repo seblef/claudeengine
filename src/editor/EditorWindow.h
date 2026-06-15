@@ -16,6 +16,7 @@
 #include "editor/TerrainCreationDialog.h"
 #include "editor/TerrainEditorPanel.h"
 #include "editor/tools/PlacementTool.h"
+#include "editor/tools/TerrainSculptTool.h"
 #include "editor/tools/TransformTool.h"
 #include "game/GameObject.h"
 
@@ -216,7 +217,13 @@ class EditorWindow {
   // cppcheck-suppress unusedStructMember
   TerrainEditorPanel terrain_panel_;
   // cppcheck-suppress unusedStructMember
-  bool               show_terrain_panel_         = false;
+  bool               show_terrain_panel_  = false;
+  // Active sculpt tool; non-null when a terrain is in the scene.
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<TerrainSculptTool> sculpt_tool_;
+  // True while sculpt_tool_ is the viewport's active base tool.
+  // cppcheck-suppress unusedStructMember
+  bool               sculpt_tool_active_  = false;
   // True on the frame "Remove" is clicked; triggers the confirm modal.
   // cppcheck-suppress unusedStructMember
   bool               confirm_remove_terrain_      = false;
