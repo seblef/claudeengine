@@ -76,11 +76,12 @@
 //
 // UBO binding 2: scene_infos (view_proj, eye_pos, inv_screen_size, inv_view_proj, z_near, z_far)
 // UBO binding 9: water_infos
-// Sampler 0:     u_normal_map     — procedural tileable water normal map
+// Sampler 0:     u_normal_map     — first water normal map  (file or flat fallback)
 // Sampler 1:     u_foam_tex       — procedural tileable foam blob texture
 // Sampler 2:     scene_color_tex  — HDR copy before water pass
 // Sampler 3:     depth_tex        — depth copy before water pass
 // Sampler 4:     u_ssr_rt         — half-res SSR render target (premultiplied alpha)
+// Sampler 5:     u_normal_map2    — second water normal map (file or flat fallback)
 
 #version 460 core
 #include <uniforms/scene_infos.glsl>
@@ -94,11 +95,12 @@ in  vec3 v_tangent;
 in  vec3 v_bitangent;
 in  vec2 v_uv;
 
-layout(binding = 0) uniform sampler2D u_normal_map;     // slot 0 — procedural normal map
+layout(binding = 0) uniform sampler2D u_normal_map;     // slot 0 — first water normal map
 layout(binding = 1) uniform sampler2D u_foam_tex;       // slot 1 — procedural foam texture
 layout(binding = 2) uniform sampler2D scene_color_tex;  // slot 2 — scene colour snapshot
 layout(binding = 3) uniform sampler2D depth_tex;        // slot 3 — scene depth snapshot
 layout(binding = 4) uniform sampler2D u_ssr_rt;         // slot 4 — half-res SSR (premultiplied alpha)
+layout(binding = 5) uniform sampler2D u_normal_map2;    // slot 5 — second water normal map
 
 layout(location = 0) out vec4 out_color;
 
@@ -118,7 +120,7 @@ void main() {
     vec2 uv2 = v_uv * foam_params.w - time * scroll_params.y * vec2(0.7, 1.0);
 
     vec3 n1   = texture(u_normal_map, uv1).rgb * 2.0 - 1.0;
-    vec3 n2   = is_mid ? texture(u_normal_map, uv2).rgb * 2.0 - 1.0 : n1;
+    vec3 n2   = is_mid ? texture(u_normal_map2, uv2).rgb * 2.0 - 1.0 : n1;
     vec3 ts_n = normalize(n1 + n2);
 
     // Transform tangent-space normal into world space using analytical Gerstner TBN.

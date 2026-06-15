@@ -41,11 +41,12 @@ namespace environment {
 //     depth discontinuities.
 //
 // Constant buffer slot 9 (WaterInfos): bound globally by Renderer.
-// Sampler slot 0: procedural water normal map (RGBA8, tileable).
-// Sampler slot 1: procedural foam texture    (RGBA8, tileable).
+// Sampler slot 0: first water normal map  (RGBA8, tileable; file or flat fallback).
+// Sampler slot 1: procedural foam texture (RGBA8, tileable).
 // Sampler slot 2: scene_color snapshot (RGBA16F).
 // Sampler slot 3: depth snapshot (DEPTH24STENCIL8).
 // Sampler slot 4: half-res SSR render target (RGBA16F, premultiplied alpha).
+// Sampler slot 5: second water normal map (RGBA8, tileable; file or flat fallback).
 //
 // The water surface is partitioned into 3 clipmap LOD rings centered on the
 // camera and snapped to a coarse grid.  Only ring geometry within the view
@@ -155,6 +156,12 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
     normal_scroll_speed2_ = scroll_speed2;
   }
 
+  // Loads normal map textures from files (relative to data/textures/).
+  // An empty path falls back to a 1×1 flat normal map for that layer.
+  // Both textures are re-uploaded to the GPU immediately; safe to call
+  // after Build() at any time (e.g. from the editor panel).
+  void SetNormalMapTextures(const std::string& path1, const std::string& path2);
+
   // Updates the XZ distance thresholds used by the water shader LOD system.
   // Fragments closer than lod_near_dist receive full quality (SSR, foam, second
   // normal map, translucency).  Between lod_near_dist and lod_far_dist, SSR is
@@ -201,7 +208,10 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
  private:
   // Sampler slot used for the half-res SSR render target in the main water pass.
   // cppcheck-suppress unusedStructMember
-  static constexpr int kSsrSlot = 4;
+  static constexpr int kSsrSlot        = 4;
+  // Sampler slot used for the second water normal map layer.
+  // cppcheck-suppress unusedStructMember
+  static constexpr int kNormalMap2Slot  = 5;
 
   // One tile of a LOD ring, used for per-ring view-frustum culling.
   struct TileInfo {
@@ -250,7 +260,11 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   // Indices are emitted in tile-major order for per-tile frustum culling.
   static void BuildRingGeometry(LodRing& ring, core::Vec2f snap_pos);
 
-  void BuildNormalMap();
+  // Loads an RGBA8 normal map from a file path relative to data/textures/.
+  // Falls back to a 1×1 flat normal map (pointing straight up) when path is empty
+  // or the file cannot be decoded.
+  [[nodiscard]] std::unique_ptr<abstract::RawTexture> LoadNormalMap(
+      const std::string& path);
   void BuildFoamTexture();
   // Generates a 256×256 tileable caustic interference texture from overlapping
   // circular wavefronts.  Result is stored in caustic_tex_.
@@ -266,6 +280,7 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   // cppcheck-suppress unusedStructMember
   abstract::Shader*                       ssr_shader_ = nullptr;
   std::unique_ptr<abstract::RawTexture>   normal_map_tex_;
+  std::unique_ptr<abstract::RawTexture>   normal_map_tex2_;
   std::unique_ptr<abstract::RawTexture>   foam_tex_;
   std::unique_ptr<abstract::RawTexture>   caustic_tex_;
   // cppcheck-suppress unusedStructMember

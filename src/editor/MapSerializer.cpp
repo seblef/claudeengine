@@ -119,6 +119,10 @@ void EmitEnvironment(YAML::Emitter& out,
     out << YAML::Key << "moon_texture"  << YAML::Value << env.moon_texture;
   if (!env.night_sky_texture.empty())
     out << YAML::Key << "night_sky_texture" << YAML::Value << env.night_sky_texture;
+  if (!env.normal_map_texture1.empty())
+    out << YAML::Key << "normal_map_texture1" << YAML::Value << env.normal_map_texture1;
+  if (!env.normal_map_texture2.empty())
+    out << YAML::Key << "normal_map_texture2" << YAML::Value << env.normal_map_texture2;
   out << YAML::EndMap;
 }
 

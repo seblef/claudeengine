@@ -59,6 +59,12 @@ struct EnvironmentDesc {
     // Empty = procedural star-noise fallback.
     // cppcheck-suppress unusedStructMember
     std::string night_sky_texture;
+    // Water normal map texture paths, relative to data/textures/.
+    // Empty = flat (no-perturbation) normal map fallback.
+    // cppcheck-suppress unusedStructMember
+    std::string normal_map_texture1;
+    // cppcheck-suppress unusedStructMember
+    std::string normal_map_texture2;
 };
 
 }  // namespace environment
