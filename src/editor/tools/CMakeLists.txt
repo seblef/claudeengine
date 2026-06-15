@@ -1,2 +1,3 @@
-# Tool sources are added here as concrete tools are implemented in subsequent issues.
-# Currently only header-only; no .cpp sources.
+target_sources(editor PRIVATE
+    SelectionTool.cpp
+)
