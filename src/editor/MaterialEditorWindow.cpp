@@ -100,6 +100,26 @@ void MaterialEditorWindow::Open(game::GameMaterial* mat) {
       preview_geo_ == PreviewGeometry::kCube ? cube_tmpl_ : sphere_tmpl_);
 }
 
+void MaterialEditorWindow::OpenExisting(
+    game::GameMaterial* mat,
+    std::function<void(const std::string&)> on_saved) {
+  if (desc_material_owned_ && material_)
+    material_->Release();
+
+  material_            = mat;
+  open_                = (mat != nullptr);
+  editing_             = false;
+  on_saved_            = on_saved;
+  hint_paths_          = {};
+  desc_material_owned_ = true;
+  if (!mat) return;
+
+  cube_tmpl_->SetMaterial(mat);
+  sphere_tmpl_->SetMaterial(mat);
+  preview_.SetTemplate(
+      preview_geo_ == PreviewGeometry::kCube ? cube_tmpl_ : sphere_tmpl_);
+}
+
 void MaterialEditorWindow::OpenWithDesc(const ImportedMaterialDesc& desc) {
   // Release any previously owned material.
   if (desc_material_owned_ && material_) {

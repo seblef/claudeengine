@@ -388,27 +388,51 @@ void MeshEditorWindow::RenderMaterialSlots() {
 
     ImGui::TableNextColumn();
     if (ImGui::SmallButton(ICON_FA_PEN " Edit")) {
-      ImportedMaterialDesc desc;
       const std::string current_name(slot.name_buf);
-      desc.slot_name     = current_name.empty()
-          ? ("slot_" + std::to_string(i))
-          : current_name;
-      desc.texture_paths = slot.hint_textures;
-      // For each unresolved slot, pass the original name as a dim hint.
-      for (int ti = 0; ti < renderer::kTextureSlotCount; ++ti) {
-        if (desc.texture_paths[ti].empty() && !slot.original_name.empty())
-          desc.hint_paths[ti] = slot.original_name;
-      }
-      desc.on_saved = [this, i](const std::string& mat_name) {
-        if (i < static_cast<int>(mat_slots_.size())) {
-          mat_slots_[i].saved_material_path = "materials/" + mat_name + ".yaml";
-          // Keep name_buf in sync with the actually saved material name.
-          std::strncpy(mat_slots_[i].name_buf, mat_name.c_str(),
-                       sizeof(mat_slots_[i].name_buf) - 1);
-          preview_dirty_ = true;
+      const std::string mat_name = current_name.empty()
+          ? ("slot_" + std::to_string(i)) : current_name;
+
+      // In edit mode, open the existing material file directly so that
+      // textures and properties already saved on disk are shown correctly.
+      bool opened = false;
+      if (mode_ == Mode::kEdit && !mat_name.empty()) {
+        const auto mat_path = core::Config::GetDataFolder() / "materials"
+                              / (mat_name + ".yaml");
+        std::error_code ec;
+        if (std::filesystem::exists(mat_path, ec) && !ec) {
+          game::GameMaterial* mat =
+              game::GameMaterial::GetOrLoad(mat_name, video_);
+          if (mat) {
+            material_editor_->OpenExisting(
+                mat,
+                [this, i](const std::string& /*saved_name*/) {
+                  if (i < static_cast<int>(mat_slots_.size()))
+                    preview_dirty_ = true;
+                });
+            opened = true;
+          }
         }
-      };
-      material_editor_->OpenWithDesc(desc);
+      }
+
+      if (!opened) {
+        ImportedMaterialDesc desc;
+        desc.slot_name     = mat_name;
+        desc.texture_paths = slot.hint_textures;
+        for (int ti = 0; ti < renderer::kTextureSlotCount; ++ti) {
+          if (desc.texture_paths[ti].empty() && !slot.original_name.empty())
+            desc.hint_paths[ti] = slot.original_name;
+        }
+        desc.on_saved = [this, i](const std::string& saved_name) {
+          if (i < static_cast<int>(mat_slots_.size())) {
+            mat_slots_[i].saved_material_path =
+                "materials/" + saved_name + ".yaml";
+            std::strncpy(mat_slots_[i].name_buf, saved_name.c_str(),
+                         sizeof(mat_slots_[i].name_buf) - 1);
+            preview_dirty_ = true;
+          }
+        };
+        material_editor_->OpenWithDesc(desc);
+      }
     }
     ImGui::PopID();
   }
