@@ -10,8 +10,8 @@ namespace renderer {
 // ---- Primitive geometry builders --------------------------------------------
 //
 // All functions return a GeometryData using the k3D vertex layout (Vertex3D).
-// Quad/sphere/cone/pyramid populate only the position field; other fields are
-// zeroed. CreatePlaneMesh and CreateCubeMesh populate all fields
+// Quad/cone/pyramid populate only the position field; other fields are zeroed.
+// CreateSphere, CreatePlaneMesh and CreateCubeMesh populate all fields
 // (normal/binormal/tangent/UV). All returned objects are owned by the caller.
 
 // Fullscreen quad: two triangles covering NDC [-1,1]² at z=0.

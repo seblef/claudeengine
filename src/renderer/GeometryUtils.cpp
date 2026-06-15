@@ -30,12 +30,23 @@ std::unique_ptr<GeometryData> CreateSphere(abstract::VideoDevice* video,
                           static_cast<float>(stacks);
     const float sin_phi = std::sin(phi);
     const float cos_phi = std::cos(phi);
+    const float v       = static_cast<float>(s) / static_cast<float>(stacks);
     for (int r = 0; r <= rings; ++r) {
-      const float theta = 2.f * static_cast<float>(M_PI) *
-                          static_cast<float>(r) / static_cast<float>(rings);
-      verts.push_back({{sin_phi * std::cos(theta), cos_phi,
-                        sin_phi * std::sin(theta)},
-                       {}, {}, {}, {}});
+      const float theta     = 2.f * static_cast<float>(M_PI) *
+                              static_cast<float>(r) / static_cast<float>(rings);
+      const float cos_theta = std::cos(theta);
+      const float sin_theta = std::sin(theta);
+      const float u         = static_cast<float>(r) / static_cast<float>(rings);
+      // Normal equals position on a unit sphere.
+      const core::Vec3f pos      = {sin_phi * cos_theta, cos_phi,
+                                    sin_phi * sin_theta};
+      // Tangent: d/dtheta(pos) / sin_phi, degenerate at poles (sin_phi==0)
+      // but ignored since pole triangles degenerate to zero area.
+      const core::Vec3f tangent  = {-sin_theta, 0.f, cos_theta};
+      // Binormal: d/dphi(pos), already unit length.
+      const core::Vec3f binormal = {cos_phi * cos_theta, -sin_phi,
+                                    cos_phi * sin_theta};
+      verts.push_back({pos, pos, binormal, tangent, {u, v}});
     }
   }
 
