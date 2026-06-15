@@ -27,9 +27,16 @@ class ParticleRenderable : public Renderable {
   // Registers the emitter with the active ParticleRenderer's per-frame queue.
   void Enqueue() override;
 
+  // Stores an opaque key used to identify this renderable for selection
+  // highlight. Callers pass their own address; WireframeRenderer::IsHighlighted()
+  // compares pointers without dereferencing.
+  void SetGizmoKey(const void* key) { gizmo_key_ = key; }
+
  private:
   // cppcheck-suppress unusedStructMember
   particles::ParticleEmitter* emitter_;
+  // cppcheck-suppress unusedStructMember
+  const void* gizmo_key_ = nullptr;
 };
 
 }  // namespace renderer

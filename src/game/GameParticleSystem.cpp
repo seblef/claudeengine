@@ -78,6 +78,7 @@ void GameParticleSystem::OnAddedToScene() {
   for (auto& emitter : emitters_) {
     auto renderable = std::make_unique<renderer::ParticleRenderable>(
         emitter.get(), wt, false);
+    renderable->SetGizmoKey(this);
     renderer::Renderer::Instance().AddRenderable(renderable.get());
     renderables_.push_back(std::move(renderable));
   }
