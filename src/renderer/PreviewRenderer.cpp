@@ -40,7 +40,7 @@ PreviewRenderer::PreviewRenderer(abstract::VideoDevice* video, int width, int he
       h_(height),
       composite_shader_(video->CreateShader("composite")),
       composite_quad_(CreateQuad(video)),
-      axes_shader_(video->CreateShader("light_wireframe")) {
+      axes_shader_(video->CreateShader("wireframe")) {
   scene_infos_cb_ = video_->CreateConstantBuffer(
       kSceneInfosFloat4s, kSceneInfosSlot, abstract::BufferUsage::kDynamic);
   gbuffer_.Create(video_, w_, h_);
