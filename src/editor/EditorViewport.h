@@ -75,6 +75,10 @@ class EditorViewport {
   // Enables or disables the terrain wireframe debug overlay.
   static void SetTerrainWireframeDebugEnabled(bool enabled);
 
+  // Updates the picking accelerator for an object whose transform changed
+  // outside of the viewport (e.g. from the Properties panel).
+  void UpdateMovedObject(game::GameObject* obj);
+
   // Provides terrain data used to ray-cast placement hit points.
   // Pass nullptr when no terrain is in the scene.
   void SetTerrainData(const terrain::TerrainData* data) { terrain_data_ = data; }
