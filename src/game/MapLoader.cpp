@@ -103,6 +103,10 @@ environment::EnvironmentDesc ParseEnvironmentDesc(const YAML::Node& node) {
     desc.moon_texture = node["moon_texture"].as<std::string>("");
   if (node["night_sky_texture"])
     desc.night_sky_texture = node["night_sky_texture"].as<std::string>("");
+  if (node["normal_map_texture1"])
+    desc.normal_map_texture1 = node["normal_map_texture1"].as<std::string>("");
+  if (node["normal_map_texture2"])
+    desc.normal_map_texture2 = node["normal_map_texture2"].as<std::string>("");
   return desc;
 }
 

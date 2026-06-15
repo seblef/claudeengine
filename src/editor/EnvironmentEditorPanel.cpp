@@ -158,6 +158,7 @@ void EnvironmentEditorPanel::EnableWater(const environment::EnvironmentDesc& des
                    desc.foam_steepness_thresh, desc.foam_speed);
   wr.SetNormalMapParams(desc.normal_scale1, desc.normal_scale2,
                         desc.normal_scroll_speed1, desc.normal_scroll_speed2);
+  wr.SetNormalMapTextures(desc.normal_map_texture1, desc.normal_map_texture2);
   renderer::Renderer::Instance().SetWaterRenderer(&wr);
 }
 
@@ -571,6 +572,53 @@ bool EnvironmentEditorPanel::RenderWaterSection(
           env.normal_scroll_speed1, env.normal_scroll_speed2);
     changed = true;
   }
+
+  // Normal map texture pickers.
+  const auto PickNormalMap = [&](const char* label, const char* btn_id,
+                                 const char* clr_id, std::string& tex_path,
+                                 bool is_layer2) -> bool {
+    bool tex_changed = false;
+    const std::string display = tex_path.empty() ? "None (flat fallback)" : tex_path;
+    ImGui::LabelText(label, "%s", display.c_str());
+
+    if (ImGui::Button(btn_id)) {
+      const auto tex_dir = core::Config::GetDataFolder() / "textures";
+      nfdu8char_t* path  = nullptr;
+      const nfdu8filteritem_t filters[] = {{"Image files", "png,jpg,jpeg,tga"}};
+      const nfdresult_t res =
+          NFD_OpenDialogU8(&path, filters, 1, tex_dir.c_str());
+      if (res == NFD_OKAY) {
+        const auto rel = std::filesystem::relative(
+            std::filesystem::path(path), tex_dir);
+        tex_path = rel.generic_string();
+        NFD_FreePathU8(path);
+        tex_changed = true;
+      } else if (res == NFD_ERROR) {
+        LOG_F(ERROR, "NFD error opening normal map texture dialog");
+      }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(clr_id) && !tex_path.empty()) {
+      tex_path.clear();
+      tex_changed = true;
+    }
+
+    if (tex_changed && environment::WaterRenderer::IsInstanced()) {
+      if (is_layer2) {
+        environment::WaterRenderer::Instance().SetNormalMapTextures(
+            env.normal_map_texture1, tex_path);
+      } else {
+        environment::WaterRenderer::Instance().SetNormalMapTextures(
+            tex_path, env.normal_map_texture2);
+      }
+    }
+    return tex_changed;
+  };
+
+  changed |= PickNormalMap("Normal map 1", "Pick##nm1", "Clear##nm1",
+                            env.normal_map_texture1, false);
+  changed |= PickNormalMap("Normal map 2", "Pick##nm2", "Clear##nm2",
+                            env.normal_map_texture2, true);
 
   ImGui::EndDisabled();
   return changed;

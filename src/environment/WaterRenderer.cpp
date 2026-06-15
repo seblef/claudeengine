@@ -4,7 +4,11 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <filesystem>
+#include <string>
 #include <vector>
+
+#include <loguru.hpp>
 
 #include "abstract/BlendFactor.h"
 #include "abstract/BufferUsage.h"
@@ -14,6 +18,7 @@
 #include "abstract/RenderTargetGroup.h"
 #include "abstract/TextureFormat.h"
 #include "core/Color.h"
+#include "core/Config.h"
 #include "core/Mat4f.h"
 #include "core/Vec3f.h"
 #include "core/Vertex3D.h"
@@ -23,7 +28,6 @@ namespace environment {
 
 namespace {
 
-constexpr int   kNormalMapSize  = 512;    // resolution of the procedural normal map
 constexpr int   kFoamTexSize    = 256;    // resolution of the procedural foam texture
 constexpr int   kCausticTexSize = 256;    // resolution of the procedural caustic texture
 constexpr int   kTileSize       = 8;      // grid cells per tile side for frustum culling
@@ -37,18 +41,6 @@ constexpr float kLodSpecs[3][2] = {
 };
 constexpr float kLod0OuterRadius = 200.f;
 constexpr float kLod1OuterRadius = 500.f;
-
-// Returns the height of an overlapping multi-frequency sine field at (u, v).
-// u and v are in [0, kNormalMapSize) and represent normalised tile coordinates.
-float NormalMapHeight(float u, float v) {
-  const float pi2 = 6.28318530f;
-  const float s   = pi2 / static_cast<float>(kNormalMapSize);
-  // Four overlapping sine waves at different frequencies and angles.
-  return  0.40f * std::sin(u * s * 3.f + v * s * 1.f)
-        + 0.25f * std::sin(u * s * 7.f - v * s * 5.f)
-        + 0.20f * std::sin(u * s * 2.f + v * s * 11.f)
-        + 0.15f * std::sin(u * s * 13.f + v * s * 3.f);
-}
 
 // Returns a caustic intensity in [0,1] at texel (u,v) by summing cosine rings
 // emanating from several source points (toroidal distance for tileability).
@@ -145,7 +137,8 @@ void WaterRenderer::Build(abstract::VideoDevice* video,
         abstract::IndexType::kUInt32, max_idx, abstract::BufferUsage::kDynamic);
   }
 
-  BuildNormalMap();
+  normal_map_tex_  = LoadNormalMap("");
+  normal_map_tex2_ = LoadNormalMap("");
   BuildFoamTexture();
   BuildCausticTexture();
   BuildSsrTarget();
@@ -260,44 +253,30 @@ void WaterRenderer::BuildRingGeometry(LodRing& ring, core::Vec2f snap_pos) {
     ring.ib->Fill(indices.data(), ring.num_indices);
 }
 
-void WaterRenderer::BuildNormalMap() {
-  constexpr int   size  = kNormalMapSize;
-  constexpr float scale = 8.f;  // normal contrast multiplier
-  constexpr float eps   = 1.f;  // finite-difference step in texel units
-
-  std::vector<uint8_t> pixels;
-  pixels.resize(static_cast<size_t>(size * size * 4));
-
-  for (int y = 0; y < size; ++y) {
-    for (int x = 0; x < size; ++x) {
-      // Wrap-around finite differences for tileability.
-      const float fx = static_cast<float>(x);
-      const float fy = static_cast<float>(y);
-
-      const float dhdx = (NormalMapHeight(fx + eps, fy) -
-                          NormalMapHeight(fx - eps, fy)) / (2.f * eps);
-      const float dhdz = (NormalMapHeight(fx, fy + eps) -
-                          NormalMapHeight(fx, fy - eps)) / (2.f * eps);
-
-      // Surface normal from height field finite differences.
-      const float nx = -dhdx * scale;
-      const float ny = 1.f;
-      const float nz = -dhdz * scale;
-      const float len = std::sqrt(nx * nx + ny * ny + nz * nz);
-
-      const int idx = (y * size + x) * 4;
-      // Encode: R = N.x*0.5+0.5, G = N.z*0.5+0.5, B = N.y*0.5+0.5
-      pixels[static_cast<size_t>(idx + 0)] =
-          static_cast<uint8_t>((nx / len) * 127.5f + 127.5f);
-      pixels[static_cast<size_t>(idx + 1)] =
-          static_cast<uint8_t>((nz / len) * 127.5f + 127.5f);
-      pixels[static_cast<size_t>(idx + 2)] =
-          static_cast<uint8_t>((ny / len) * 127.5f + 127.5f);
-      pixels[static_cast<size_t>(idx + 3)] = 255;
+std::unique_ptr<abstract::RawTexture> WaterRenderer::LoadNormalMap(
+    const std::string& path) {
+  if (!path.empty()) {
+    const std::filesystem::path full =
+        core::Config::GetDataFolder() / "textures" / path;
+    int w = 0, h = 0;
+    std::vector<uint8_t> pixels;
+    if (video_->LoadRGBA8File(full, &w, &h, pixels)) {
+      return video_->CreateTileableTexture(w, h, pixels.data());
     }
+    LOG_F(WARNING, "WaterRenderer: failed to load normal map '%s', using flat fallback",
+          path.c_str());
   }
+  // 1×1 flat normal pointing straight up: R=128, G=128, B=255, A=255.
+  const uint8_t flat[4] = {128, 128, 255, 255};
+  return video_->CreateTileableTexture(1, 1, flat);
+}
 
-  normal_map_tex_ = video_->CreateTileableTexture(size, size, pixels.data());
+void WaterRenderer::SetNormalMapTextures(const std::string& path1,
+                                         const std::string& path2) {
+  if (video_) {
+    normal_map_tex_  = LoadNormalMap(path1);
+    normal_map_tex2_ = LoadNormalMap(path2);
+  }
 }
 
 void WaterRenderer::BuildFoamTexture() {
@@ -449,6 +428,7 @@ void WaterRenderer::Render(const core::Camera& camera,
   scene_color->BindAsSampler(2);
   depth->BindAsSampler(3);
   ssr_rt_->BindAsSampler(kSsrSlot);
+  normal_map_tex2_->Bind(kNormalMap2Slot);
   shader_->Activate();
   DrawRings();
 
@@ -457,6 +437,7 @@ void WaterRenderer::Render(const core::Camera& camera,
   video_->UnbindSampler(2);
   video_->UnbindSampler(3);
   video_->UnbindSampler(kSsrSlot);
+  video_->UnbindSampler(kNormalMap2Slot);
 }
 
 void WaterRenderer::SetWaterLevel(float y) {
@@ -482,6 +463,7 @@ void WaterRenderer::Reset() {
     ring.last_snap = {-1e9f, -1e9f};
   }
   normal_map_tex_.reset();
+  normal_map_tex2_.reset();
   foam_tex_.reset();
   caustic_tex_.reset();
   video_ = nullptr;
