@@ -123,6 +123,9 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
     show_particle_editor_ = true;
     particle_editor_->OpenTemplate(name);
   });
+  properties_panel_->SetOnTransformChanged([this](game::GameObject* obj) {
+    viewport_->UpdateMovedObject(obj);
+  });
   resources_panel_->SetOnNewMaterial([this](std::string_view name) {
     auto* mat = new game::GameMaterial(std::string(name),
                                        renderer::MaterialDesc(), video_);

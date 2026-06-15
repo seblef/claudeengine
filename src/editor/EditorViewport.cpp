@@ -235,4 +235,8 @@ void EditorViewport::SetActiveTool(EditorToolBase* tool) {
   active_tool_base_->OnActivate(ctx);
 }
 
+void EditorViewport::UpdateMovedObject(game::GameObject* obj) {
+  picking_acc_.UpdateMoved(obj);
+}
+
 }  // namespace editor

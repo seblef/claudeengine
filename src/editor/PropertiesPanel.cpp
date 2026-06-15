@@ -6,13 +6,16 @@
 #include <string>
 
 #include <imgui.h>
+#include <ImGuizmo.h>
 
 #include "core/Color.h"
+#include "core/Mat4f.h"
 #include "core/Vec3f.h"
 #include "editor/EditorCommandHistory.h"
 #include "editor/EditorUtils.h"
 #include "editor/commands/LightPropertyCommand.h"
 #include "editor/commands/RenameObjectCommand.h"
+#include "editor/commands/TransformCommand.h"
 #include "game/GameLight.h"
 #include "game/GameMesh.h"
 #include "game/GameObject.h"
@@ -67,6 +70,8 @@ void PropertiesPanel::Render(game::GameObject* obj) {
   }
   ImGui::Separator();
 
+  RenderTransformSection(obj);
+
   switch (obj->GetType()) {
     case game::GameObjectType::kLight:
       RenderLightProperties(static_cast<game::GameLight*>(obj));
@@ -80,6 +85,49 @@ void PropertiesPanel::Render(game::GameObject* obj) {
       break;
     default:
       break;
+  }
+}
+
+void PropertiesPanel::RenderTransformSection(game::GameObject* obj) {
+  // ImGuizmo uses row-vector convention (transpose of our column-vector Mat4f).
+  const core::Mat4f mat_t = obj->GetWorldTransform().Transpose();
+  float matrix[16];
+  std::memcpy(matrix, mat_t.Data(), sizeof(matrix));
+
+  float translation[3], rotation[3], scale[3];
+  ImGuizmo::DecomposeMatrixToComponents(matrix, translation, rotation, scale);
+
+  ImGui::SeparatorText("Transform");
+
+  const bool p_changed    = ImGui::DragFloat3("Position##xfm", translation, 0.1f);
+  const bool p_activated  = ImGui::IsItemActivated();
+  const bool p_deactivated = ImGui::IsItemDeactivatedAfterEdit();
+
+  const bool r_changed    = ImGui::DragFloat3("Rotation##xfm", rotation, 0.5f,
+                                              0.f, 0.f, "%.1f deg");
+  const bool r_activated  = ImGui::IsItemActivated();
+  const bool r_deactivated = ImGui::IsItemDeactivatedAfterEdit();
+
+  const bool s_changed    = ImGui::DragFloat3("Scale##xfm", scale, 0.01f,
+                                              0.001f, 1000.f);
+  const bool s_activated  = ImGui::IsItemActivated();
+  const bool s_deactivated = ImGui::IsItemDeactivatedAfterEdit();
+
+  if (p_activated || r_activated || s_activated)
+    before_transform_ = obj->GetWorldTransform();
+
+  if (p_changed || r_changed || s_changed) {
+    float new_matrix[16];
+    ImGuizmo::RecomposeMatrixFromComponents(translation, rotation, scale, new_matrix);
+    obj->SetWorldTransform(core::Mat4f(new_matrix).Transpose());
+    if (on_transform_changed_)
+      on_transform_changed_(obj);
+  }
+
+  if (history_ && (p_deactivated || r_deactivated || s_deactivated)) {
+    const core::Mat4f after = obj->GetWorldTransform();
+    if (after != before_transform_)
+      history_->Push(std::make_unique<TransformCommand>(obj, before_transform_, after));
   }
 }
 
