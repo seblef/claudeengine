@@ -910,7 +910,7 @@ void EditorWindow::CopySelectedObject() {
   const game::GameObject* obj = scene_->GetSelectedObject();
   if (!obj) return;
   const core::Mat4f& t = obj->GetWorldTransform();
-  const core::Vec3f pos(t(3, 0), t(3, 1), t(3, 2));
+  const core::Vec3f pos(t(0, 3), t(1, 3), t(2, 3));
   clipboard_ = obj->Copy(pos);
   if (clipboard_)
     LOG_F(INFO, "Copied '%s'", clipboard_->GetName().c_str());
@@ -919,7 +919,7 @@ void EditorWindow::CopySelectedObject() {
 void EditorWindow::PasteObject() {
   if (!clipboard_) return;
   const core::Mat4f& ct = clipboard_->GetWorldTransform();
-  const core::Vec3f paste_pos(ct(3, 0) + 1.f, ct(3, 1), ct(3, 2) + 1.f);
+  const core::Vec3f paste_pos(ct(0, 3) + 1.f, ct(1, 3), ct(2, 3) + 1.f);
   auto clone = clipboard_->Copy(paste_pos);
   if (!clone) return;
   history_.Push(std::make_unique<PlaceObjectCommand>(scene_.get(), std::move(clone)));
