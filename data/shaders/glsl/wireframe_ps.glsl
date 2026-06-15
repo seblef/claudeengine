@@ -1,4 +1,4 @@
-// Fragment shader for the editor light wireframe pass.
+// Fragment shader for the wireframe pass.
 // Outputs the interpolated vertex colour directly; no texture sampling.
 
 #version 460 core

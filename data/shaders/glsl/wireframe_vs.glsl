@@ -1,4 +1,4 @@
-// Vertex shader for the editor light wireframe pass.
+// Vertex shader for the wireframe pass.
 // Vertices are supplied in world space; only the VP transform is applied.
 // UBO binding 2: SceneInfosBlock — only view_proj is consumed here.
 
