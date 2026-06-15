@@ -12,6 +12,7 @@
 #include "editor/EditorCameraController.h"
 #include "editor/EditorCommandHistory.h"
 #include "editor/EditorTool.h"
+#include "editor/tools/EditorToolBase.h"
 #include "editor/LightWireframeRenderer.h"
 #include "editor/ParticleGizmoRenderer.h"
 #include "editor/PlayerStartGizmoRenderer.h"
@@ -69,6 +70,10 @@ class EditorViewport {
 
   // Sets the active tool, controlling which ImGuizmo operation is shown.
   void SetActiveTool(EditorTool tool) { active_tool_ = tool; }
+
+  // Sets the abstract active tool (non-owning). Replaces any previously set
+  // tool via OnDeactivate() / OnActivate(). Pass nullptr to deactivate.
+  void SetActiveTool(EditorToolBase* tool);
 
   // Enters mesh placement mode: the next LMB click places a GameMesh built
   // from tmpl at the y=0 floor-plane hit, then clears the pending template.
@@ -189,6 +194,8 @@ class EditorViewport {
   bool              selection_active_  = true;
   // cppcheck-suppress unusedStructMember
   EditorTool        active_tool_       = EditorTool::kSelection;
+  // cppcheck-suppress unusedStructMember
+  EditorToolBase*   active_tool_base_  = nullptr;  // not owned
   // True while any object-creation preview is active.
   // cppcheck-suppress unusedStructMember
   bool              preview_active_    = false;

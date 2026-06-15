@@ -34,6 +34,7 @@ add_library(editor STATIC
 )
 
 add_subdirectory(commands)
+add_subdirectory(tools)
 
 target_include_directories(editor PUBLIC
     "${CMAKE_SOURCE_DIR}/src"

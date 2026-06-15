@@ -809,4 +809,15 @@ void EditorViewport::FrameObject(const core::BBox3& bbox) {
   camera_ctrl_->FrameObject(bbox);
 }
 
+void EditorViewport::SetActiveTool(EditorToolBase* tool) {
+  if (active_tool_base_)
+    active_tool_base_->OnDeactivate();
+  active_tool_base_ = tool;
+  if (active_tool_base_) {
+    const EditorToolContext ctx{scene_, camera_.get(), &picking_acc_,
+                                history_, video_};
+    active_tool_base_->OnActivate(ctx);
+  }
+}
+
 }  // namespace editor
