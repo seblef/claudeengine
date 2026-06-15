@@ -12,8 +12,8 @@
 #include "core/ProjectionType.h"
 #include "core/Vec3f.h"
 #include "editor/EditorScene.h"
-#include "editor/LightWireframeRenderer.h"
 #include "editor/PickingAccelerator.h"
+#include "editor/PlayerStartGizmos.h"
 #include "editor/commands/PlaceObjectCommand.h"
 #include "editor/tools/SelectionTool.h"
 #include "editor/tools/ViewportRaycast.h"
@@ -38,10 +38,7 @@ EditorViewport::EditorViewport(abstract::VideoDevice* video)
       camera_(std::make_unique<game::GameCamera>(
           core::ProjectionType::kPerspective,
           core::CoordinateSystem::kRightHanded)),
-      camera_ctrl_(std::make_unique<EditorCameraController>()),
-      light_wireframe_(video),
-      player_start_gizmo_(video),
-      particle_gizmo_(video) {
+      camera_ctrl_(std::make_unique<EditorCameraController>()) {
   camera_->SetFOV(0.785398f);  // 45 degrees
   camera_->SetMinDepth(0.1f);
   camera_->SetMaxDepth(1000.f);
@@ -110,7 +107,6 @@ void EditorViewport::Render() {
 
   ResizeIfNeeded(w, h);
 
-  renderer::Renderer::Instance().SetTerrainWireframeEnabled(terrain_wireframe_debug_);
   renderer::Renderer::Instance().Update(
       static_cast<float>(ImGui::GetTime()),
       camera_->GetCamera(),
@@ -140,30 +136,13 @@ void EditorViewport::Render() {
     active_tool_base_->OnRender(ctx, image_pos, avail);
   }
 
-  // Light wireframes rendered into the scene FBO with depth testing so lights
-  // behind opaque geometry are correctly occluded.
-  if (scene_ && wireframe_fbo_) {
-    light_wireframe_.Render(scene_->GetObjects(), scene_->GetSelectedObject(),
-                            wireframe_fbo_.get());
-  }
-
-  // Player-start flag gizmos rendered without depth testing (always visible).
-  if (scene_ && render_fbo_) {
-    player_start_gizmo_.Render(scene_->GetObjects(), scene_->GetSelectedObject(),
-                               render_fbo_.get());
-  }
-
-  // Particle system sphere gizmos rendered without depth testing.
-  if (scene_ && render_fbo_) {
-    particle_gizmo_.Render(scene_->GetObjects(), scene_->GetSelectedObject(),
-                           render_fbo_.get());
-  }
-
-  // Wireframe debug overlay — terrain edges and future gizmo geometry.
-  if (wireframe_fbo_) {
+  renderer::WireframeRenderer::Instance().SetHighlightedObject(
+      scene_ ? scene_->GetSelectedObject() : nullptr);
+  if (scene_)
+    editor::EnqueuePlayerStartGizmos(scene_->GetObjects(), scene_->GetSelectedObject());
+  if (wireframe_fbo_ && render_fbo_)
     renderer::WireframeRenderer::Instance().Render(
         *camera_->GetCamera(), wireframe_fbo_.get(), render_fbo_.get());
-  }
 
   // XYZ axis overlay — bottom-right corner of the viewport panel.
   // ImGuizmo uses row-major storage with row-vector convention (translation in
@@ -236,6 +215,10 @@ void EditorViewport::SetCommandHistory(EditorCommandHistory* history) {
                                 history_, video_};
     active_tool_base_->OnActivate(ctx);
   }
+}
+
+void EditorViewport::SetTerrainWireframeDebugEnabled(bool enabled) {
+  renderer::Renderer::Instance().SetTerrainWireframeEnabled(enabled);
 }
 
 void EditorViewport::FrameObject(const core::BBox3& bbox) {

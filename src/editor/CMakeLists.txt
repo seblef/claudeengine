@@ -8,8 +8,7 @@ add_library(editor STATIC
     EditorScene.cpp
     EditorSystem.cpp
     EnvironmentEditorPanel.cpp
-    LightWireframeRenderer.cpp
-    PlayerStartGizmoRenderer.cpp
+    PlayerStartGizmos.cpp
     MapPropertiesWindow.cpp
     MapSerializer.cpp
     EditorTheme.cpp
@@ -22,7 +21,6 @@ add_library(editor STATIC
     ParticleEditorWindow.cpp
     MeshPreview.cpp
     MeshSelectionModal.cpp
-    ParticleGizmoRenderer.cpp
     ParticleSystemSelectionModal.cpp
     ObjectsPanel.cpp
     PickingAccelerator.cpp

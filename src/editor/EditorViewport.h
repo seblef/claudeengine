@@ -10,9 +10,6 @@
 #include "editor/EditorCameraController.h"
 #include "editor/EditorCommandHistory.h"
 #include "editor/tools/EditorToolBase.h"
-#include "editor/LightWireframeRenderer.h"
-#include "editor/ParticleGizmoRenderer.h"
-#include "editor/PlayerStartGizmoRenderer.h"
 #include "editor/PickingAccelerator.h"
 #include "game/GameCamera.h"
 #include "game/GameObject.h"
@@ -76,9 +73,7 @@ class EditorViewport {
   void FrameObject(const core::BBox3& bbox);
 
   // Enables or disables the terrain wireframe debug overlay.
-  void SetTerrainWireframeDebugEnabled(bool enabled) {
-    terrain_wireframe_debug_ = enabled;
-  }
+  static void SetTerrainWireframeDebugEnabled(bool enabled);
 
   // Provides terrain data used to ray-cast placement hit points.
   // Pass nullptr when no terrain is in the scene.
@@ -110,13 +105,6 @@ class EditorViewport {
   std::unique_ptr<abstract::RenderTargetGroup> wireframe_fbo_;
 
   // cppcheck-suppress unusedStructMember
-  LightWireframeRenderer                       light_wireframe_;
-  // cppcheck-suppress unusedStructMember
-  PlayerStartGizmoRenderer                     player_start_gizmo_;
-  // cppcheck-suppress unusedStructMember
-  ParticleGizmoRenderer                        particle_gizmo_;
-
-  // cppcheck-suppress unusedStructMember
   EditorScene*      scene_            = nullptr;  // not owned; set by EditorWindow (issue #170)
   // cppcheck-suppress unusedStructMember
   game::GameObject* selected_object_  = nullptr;
@@ -129,9 +117,6 @@ class EditorViewport {
 
   // cppcheck-suppress unusedStructMember
   PickingAccelerator      picking_acc_;
-
-  // cppcheck-suppress unusedStructMember
-  bool terrain_wireframe_debug_ = false;
 
   // Terrain heightmap for placement hit raycasts; nullptr when no terrain exists.
   // cppcheck-suppress unusedStructMember
