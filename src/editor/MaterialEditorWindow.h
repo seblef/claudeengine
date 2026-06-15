@@ -46,6 +46,14 @@ class MaterialEditorWindow {
   // Opens (or re-focuses) the window for mat. Pass nullptr to hide.
   void Open(game::GameMaterial* mat);
 
+  // Opens the window for an existing GameMaterial already loaded from disk.
+  // Takes ownership of one AddRef — the caller must NOT release mat after
+  // this call.  on_saved (if set) is fired after the user saves, with the
+  // material name.  Use this instead of OpenWithDesc when the material file
+  // already exists and should be shown as-is rather than rebuilt from hints.
+  void OpenExisting(game::GameMaterial* mat,
+                    std::function<void(const std::string&)> on_saved = nullptr);
+
   // Opens the window for a new material described by desc.
   // Creates a procedural GameMaterial named desc.slot_name, pre-fills its
   // texture slots from desc.texture_paths, and calls desc.on_saved (if set)
