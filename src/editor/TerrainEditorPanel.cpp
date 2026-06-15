@@ -59,43 +59,38 @@ void TerrainEditorPanel::SetContext(terrain::TerrainData* data,
   history_      = history;
   terrain_obj_  = terrain_obj;
 
-  sculpt_tool_.reset();
-  if (data) {
-    sculpt_tool_ = std::make_unique<TerrainSculptTool>(
-        data, material, video, history,
-        [this](float wx, float wz, bool first, float dt) {
-          if (!terrain_obj_ || !data_) return;
-          terrain::FoliageLayer* layer =
-              terrain_obj_->GetFoliageLayer(foliage_active_layer_);
-          if (!layer) return;
-          if (foliage_brush_mode_ == FoliageBrushMode::kPaint)
-            layer->PaintBrush(wx, wz, foliage_radius_,
-                               foliage_strength_ * dt * 5.f, *data_);
-          else
-            layer->EraseBrush(wx, wz, foliage_radius_,
-                               foliage_strength_ * dt * 5.f, *data_);
-        },
-        [this]() {
-          if (!terrain_obj_ || !data_) return;
-          terrain::FoliageLayer* layer =
-              terrain_obj_->GetFoliageLayer(foliage_active_layer_);
-          if (layer) {
-            layer->RebuildInstances(*data_);
-            if (renderer::FoliageRenderer::IsInstanced() &&
-                renderer::FoliageRenderer::Instance().IsReady())
-              renderer::FoliageRenderer::Instance().RebuildDirtyLayers();
-          }
-          if (on_foliage_modified_) on_foliage_modified_();
-        });
-  }
+  sculpt_tool_ = nullptr;
 
   if (!painter_window_)
     painter_window_ = std::make_unique<TerrainPainterWindow>();
   painter_window_->SetContext(data, material, video, history);
 }
 
-EditorToolBase* TerrainEditorPanel::GetSculptTool() {
-  return sculpt_tool_.get();
+void TerrainEditorPanel::OnFoliageBrush(float wx, float wz, bool first,
+                                        float dt) {
+  if (!terrain_obj_ || !data_) return;
+  terrain::FoliageLayer* layer =
+      terrain_obj_->GetFoliageLayer(foliage_active_layer_);
+  if (!layer) return;
+  if (foliage_brush_mode_ == FoliageBrushMode::kPaint)
+    layer->PaintBrush(wx, wz, foliage_radius_,
+                      foliage_strength_ * dt * 5.f, *data_);
+  else
+    layer->EraseBrush(wx, wz, foliage_radius_,
+                      foliage_strength_ * dt * 5.f, *data_);
+}
+
+void TerrainEditorPanel::OnFoliageEnd() {
+  if (!terrain_obj_ || !data_) return;
+  terrain::FoliageLayer* layer =
+      terrain_obj_->GetFoliageLayer(foliage_active_layer_);
+  if (layer) {
+    layer->RebuildInstances(*data_);
+    if (renderer::FoliageRenderer::IsInstanced() &&
+        renderer::FoliageRenderer::Instance().IsReady())
+      renderer::FoliageRenderer::Instance().RebuildDirtyLayers();
+  }
+  if (on_foliage_modified_) on_foliage_modified_();
 }
 
 // ---- Render -----------------------------------------------------------------

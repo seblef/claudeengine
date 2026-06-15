@@ -22,6 +22,8 @@
 #include "core/YamlUtils.h"
 #include "editor/EditorScene.h"
 #include "editor/EditorSystem.h"
+#include "editor/tools/SelectionTool.h"
+#include "editor/tools/TerrainSculptTool.h"
 #include "editor/EditorToolbar.h"
 #include "editor/commands/PlaceObjectCommand.h"
 #include "editor/commands/TransformCommand.h"
@@ -79,6 +81,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       map_properties_(std::make_unique<MapPropertiesWindow>(scene_.get())),
       toolbar_(std::make_unique<EditorToolbar>()),
       viewport_(std::make_unique<EditorViewport>(video)),
+      selection_tool_(std::make_unique<SelectionTool>()),
       translate_tool_(std::make_unique<TransformTool>(ImGuizmo::TRANSLATE)),
       rotate_tool_(std::make_unique<TransformTool>(ImGuizmo::ROTATE)),
       scale_tool_(std::make_unique<TransformTool>(ImGuizmo::SCALE)),
@@ -100,6 +103,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   toolbar_->SetOnCenterOnObject([this]{ CenterCameraOnObject(); });
   viewport_->SetScene(scene_.get());
   viewport_->SetCommandHistory(&history_);
+  viewport_->SetActiveTool(selection_tool_.get());
   properties_panel_->SetCommandHistory(&history_);
   material_editor_->SetCommandHistory(&history_);
   objects_panel_->SetCommandHistory(&history_);
@@ -189,19 +193,21 @@ void EditorWindow::Render() {
   // activate the appropriate base tool.
   if (active_tool != prev_tool_) {
     if (placement_tool_) {
-      // OnDeactivate() is called by SetActiveTool(nullptr) below.
-      viewport_->SetActiveTool(static_cast<EditorToolBase*>(nullptr));
+      // Deactivate placement tool before resetting it.
+      viewport_->SetActiveTool(selection_tool_.get());
       placement_tool_.reset();
     }
 
-    if (active_tool == EditorTool::kTranslate)
+    if (active_tool == EditorTool::kSelection)
+      viewport_->SetActiveTool(selection_tool_.get());
+    else if (active_tool == EditorTool::kTranslate)
       viewport_->SetActiveTool(translate_tool_.get());
     else if (active_tool == EditorTool::kRotate)
       viewport_->SetActiveTool(rotate_tool_.get());
     else if (active_tool == EditorTool::kScale)
       viewport_->SetActiveTool(scale_tool_.get());
     else if (!IsTransformTool(active_tool))
-      viewport_->SetActiveTool(static_cast<EditorToolBase*>(nullptr));
+      viewport_->SetActiveTool(selection_tool_.get());
 
     // Detect transitions into creation tools.
     if (IsCreationTool(active_tool)) {
@@ -380,15 +386,15 @@ void EditorWindow::Render() {
     if (want_sculpt) {
       if (!sculpt_tool_active_) {
         sculpt_tool_active_ = true;
-        viewport_->SetActiveTool(sculpt_tool_);
+        viewport_->SetActiveTool(sculpt_tool_.get());
       }
     } else if (sculpt_tool_active_) {
       sculpt_tool_active_ = false;
-      viewport_->SetActiveTool(static_cast<EditorToolBase*>(nullptr));
+      viewport_->SetActiveTool(selection_tool_.get());
     }
   } else if (sculpt_tool_active_) {
     sculpt_tool_active_ = false;
-    viewport_->SetActiveTool(static_cast<EditorToolBase*>(nullptr));
+    viewport_->SetActiveTool(selection_tool_.get());
   }
 
   // 11e. Environment editor panel — dockable, shown via Map > Environment.
@@ -990,8 +996,14 @@ void EditorWindow::WireTerrainPanel() {
   game::GameTerrain* gt = FindTerrain(*scene_);
   if (!gt) {
     terrain_panel_.SetContext(nullptr, nullptr, nullptr, nullptr, nullptr);
+    terrain_panel_.SetSculptTool(nullptr);
     viewport_->SetTerrainData(nullptr);
-    sculpt_tool_ = nullptr;
+    // Switch away from sculpt tool before destroying it to avoid dangling ptr.
+    if (sculpt_tool_active_) {
+      sculpt_tool_active_ = false;
+      viewport_->SetActiveTool(selection_tool_.get());
+    }
+    sculpt_tool_.reset();
     return;
   }
 
@@ -1002,7 +1014,14 @@ void EditorWindow::WireTerrainPanel() {
   terrain_panel_.SetContext(data, material, video_, &history_, gt);
   terrain_panel_.SetOnFoliageModified([this]{ scene_dirty_ = true; });
   viewport_->SetTerrainData(data);
-  sculpt_tool_ = terrain_panel_.GetSculptTool();
+
+  sculpt_tool_ = std::make_unique<TerrainSculptTool>(
+      data, material, video_, &history_,
+      [this](float wx, float wz, bool first, float dt) {
+        terrain_panel_.OnFoliageBrush(wx, wz, first, dt);
+      },
+      [this]() { terrain_panel_.OnFoliageEnd(); });
+  terrain_panel_.SetSculptTool(sculpt_tool_.get());
 }
 
 }  // namespace editor
