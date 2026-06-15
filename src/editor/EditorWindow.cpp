@@ -382,10 +382,20 @@ void EditorWindow::Render() {
       terrain_panel_.Render();
     }
     ImGui::End();
-    // Sculpt active only while the panel is open and context is set.
-    viewport_->SetSculptActive(terrain_panel_.IsActive());
-  } else {
-    viewport_->SetSculptActive(false);
+    // Activate sculpt tool while the panel is open and a terrain context is set.
+    const bool want_sculpt = terrain_panel_.IsActive() && sculpt_tool_;
+    if (want_sculpt) {
+      if (!sculpt_tool_active_) {
+        sculpt_tool_active_ = true;
+        viewport_->SetActiveTool(sculpt_tool_);
+      }
+    } else if (sculpt_tool_active_) {
+      sculpt_tool_active_ = false;
+      viewport_->SetActiveTool(static_cast<EditorToolBase*>(nullptr));
+    }
+  } else if (sculpt_tool_active_) {
+    sculpt_tool_active_ = false;
+    viewport_->SetActiveTool(static_cast<EditorToolBase*>(nullptr));
   }
 
   // 11e. Environment editor panel — dockable, shown via Map > Environment.
@@ -988,7 +998,7 @@ void EditorWindow::WireTerrainPanel() {
   if (!gt) {
     terrain_panel_.SetContext(nullptr, nullptr, nullptr, nullptr, nullptr);
     viewport_->SetTerrainData(nullptr);
-    viewport_->SetSculptActive(false);
+    sculpt_tool_ = nullptr;
     return;
   }
 
@@ -999,12 +1009,7 @@ void EditorWindow::WireTerrainPanel() {
   terrain_panel_.SetContext(data, material, video_, &history_, gt);
   terrain_panel_.SetOnFoliageModified([this]{ scene_dirty_ = true; });
   viewport_->SetTerrainData(data);
-  viewport_->SetOnSculptBrush([this](float wx, float wz, bool first, float dt) {
-    terrain_panel_.OnBrushAt(wx, wz, first, dt);
-  });
-  viewport_->SetOnSculptEnd([this]() {
-    terrain_panel_.OnBrushEnd();
-  });
+  sculpt_tool_ = terrain_panel_.GetSculptTool();
 }
 
 }  // namespace editor

@@ -126,28 +126,8 @@ void EditorViewport::Render() {
     }
   }
 
-  // Sculpt brush: LMB drag when sculpt mode is active.
-  // Overrides object picking for the duration of the stroke.
-  if (sculpt_active_ && scene_ && ImGui::IsWindowHovered()) {
-    const bool key_alt   = ImGui::GetIO().KeyAlt;
-    const bool lmb_down  = ImGui::IsMouseDown(ImGuiMouseButton_Left) && !key_alt;
-
-    if (lmb_down) {
-      const auto hit = ComputeTerrainHit(camera_.get(), terrain_data_,
-                                          ImGui::GetMousePos(), image_pos, avail);
-      if (hit && on_sculpt_brush_) {
-        const bool first = !sculpt_stroke_active_;
-        sculpt_stroke_active_ = true;
-        on_sculpt_brush_(hit->x, hit->z, first, ImGui::GetIO().DeltaTime);
-      }
-    } else if (sculpt_stroke_active_) {
-      sculpt_stroke_active_ = false;
-      if (on_sculpt_end_) on_sculpt_end_();
-    }
-  }
-
   // Delegate picking, gizmo drawing, and bounding-box drawing to the active tool.
-  if (scene_ && !sculpt_active_ && active_tool_base_) {
+  if (scene_ && active_tool_base_) {
     EditorToolContext ctx{scene_, camera_.get(), &picking_acc_,
                           history_, video_};
     ctx.terrain_data = terrain_data_;

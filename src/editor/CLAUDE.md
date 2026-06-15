@@ -49,3 +49,26 @@ Follow all rules in `src/CLAUDE.md`. Additionally:
 - All ImGui calls must be bracketed by `ImGui::NewFrame()` / `ImGui::Render()`.
 - Editor subsystems (panels, viewport, scene) are owned by `EditorSystem` and
   created in its constructor; they must not be singletons.
+
+## GUI vs. edition logic separation (CRITICAL)
+
+Panel classes (files named `*Panel`, `*Window`) must be **pure UI**:
+they render controls, read user input, and call setters — nothing else.
+
+All editing algorithms (heightmap mutation, splatmap painting, object
+placement, undo/redo command construction) must live in a dedicated
+class: an `EditorToolBase` subclass (for viewport-driven, per-frame
+operations) or a standalone command/utility class (for button-triggered
+one-shot operations).
+
+Concretely:
+- A panel **may** own a tool via `unique_ptr<MyTool>`, create it in
+  `SetContext()`, and expose it via `GetTool()` so the viewport can
+  activate it.
+- A panel **may** read tool state through getters and write it through
+  setters (e.g. `tool_->SetRadius(r)`).
+- A panel **must not** implement brush math, geometry algorithms, GPU
+  uploads, or command pushes inline in its `Render*()` methods.
+
+The split has two benefits: the editing logic is testable in isolation,
+and the panel stays readable as a pure description of the UI layout.

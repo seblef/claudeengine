@@ -1,6 +1,5 @@
 #pragma once
 
-#include <functional>
 #include <memory>
 
 #include "abstract/RenderTarget.h"
@@ -89,24 +88,9 @@ class EditorViewport {
     terrain_wireframe_debug_ = enabled;
   }
 
-  // Provides terrain data used to ray-cast the sculpt brush hit point.
+  // Provides terrain data used to ray-cast placement hit points.
   // Pass nullptr when no terrain is in the scene.
   void SetTerrainData(const terrain::TerrainData* data) { terrain_data_ = data; }
-
-  // Enables or disables terrain sculpt mode. When active, LMB drag fires the
-  // sculpt callbacks instead of performing object selection.
-  void SetSculptActive(bool active) { sculpt_active_ = active; }
-
-  // Callback fired each frame while LMB is held in sculpt mode, with the
-  // terrain world XZ hit (wx, wz), a first_touch flag, and the frame delta dt.
-  void SetOnSculptBrush(std::function<void(float, float, bool, float)> cb) {
-    on_sculpt_brush_ = std::move(cb);
-  }
-
-  // Callback fired when the sculpt drag stroke ends (LMB released).
-  void SetOnSculptEnd(std::function<void()> cb) {
-    on_sculpt_end_ = std::move(cb);
-  }
 
  private:
   void ResizeIfNeeded(int w, int h);
@@ -159,17 +143,9 @@ class EditorViewport {
   // cppcheck-suppress unusedStructMember
   bool terrain_wireframe_debug_ = false;
 
-  // Sculpt brush state.
+  // Terrain heightmap for placement hit raycasts; nullptr when no terrain exists.
   // cppcheck-suppress unusedStructMember
-  const terrain::TerrainData* terrain_data_        = nullptr;
-  // cppcheck-suppress unusedStructMember
-  bool                        sculpt_active_        = false;
-  // cppcheck-suppress unusedStructMember
-  bool                        sculpt_stroke_active_ = false;
-  // cppcheck-suppress unusedStructMember
-  std::function<void(float, float, bool, float)> on_sculpt_brush_;
-  // cppcheck-suppress unusedStructMember
-  std::function<void()>                          on_sculpt_end_;
+  const terrain::TerrainData* terrain_data_ = nullptr;
 };
 
 }  // namespace editor

@@ -19,33 +19,16 @@ class TerrainMaterial;
 namespace editor {
 
 class EditorCommandHistory;
+class EditorToolBase;
 class TerrainPainterWindow;
+class TerrainSculptTool;
 
 // Dockable ImGui panel for terrain sculpting and texture painting.
 //
-// Exposes two tabs — **Sculpt** and **Paint** — that share the same
-// radius and falloff brush parameters but use separate tool-specific
-// controls (tool/strength for Sculpt; layer/opacity for Paint).
-//
-// EditorWindow calls OnBrushAt() each frame while LMB is held in the
-// viewport, then OnBrushEnd() when the button is released. The active
-// tab determines whether the stroke modifies the heightmap (sculpt) or
-// the splatmap (paint). At stroke end a SculptBrushCommand or
-// PaintBrushCommand is pushed to the history for undo/redo.
-//
-// Sculpt tools:
-//   Raise   — h += strength * w * dt * kBrushRate
-//   Lower   — h -= strength * w * dt * kBrushRate
-//   Smooth  — blend toward 3×3 neighbourhood average
-//   Flatten — blend toward the height sampled on first brush touch
-//
-// Paint brush:
-//   Increases the active layer's splatmap channel by opacity * w per
-//   frame, then renormalises all four channels to sum to 1.
-//
-// Falloff modes (shared):
-//   Linear — w = 1 - t         (t = dist / radius, t in [0,1])
-//   Smooth — w = smoothstep(0, 1, 1 - t)
+// Owns a TerrainSculptTool which handles all brush algorithms (sculpt,
+// paint, foliage). The panel is pure UI: it reads/writes tool parameters
+// via the tool's getter/setter API and exposes GetSculptTool() so
+// EditorWindow can activate the tool in the viewport.
 class TerrainEditorPanel {
  public:
   TerrainEditorPanel();
@@ -84,14 +67,9 @@ class TerrainEditorPanel {
                   EditorCommandHistory* history,
                   game::GameTerrain* terrain_obj = nullptr);
 
-  // Notifies the panel that the brush is at world (wx, wz) this frame.
-  // first_touch must be true on the first frame of a new drag stroke.
-  // dt is the frame delta in seconds (used by sculpt tools).
-  void OnBrushAt(float wx, float wz, bool first_touch, float dt);
-
-  // Notifies the panel that the drag stroke has ended (LMB released).
-  // Pushes the appropriate command to the command history.
-  void OnBrushEnd();
+  // Returns the owned TerrainSculptTool so EditorWindow can set it as
+  // the viewport's active base tool. Returns nullptr if no context is set.
+  [[nodiscard]] EditorToolBase* GetSculptTool();
 
   // Returns true when a context is set (terrain exists in scene).
   [[nodiscard]] bool IsActive() const { return data_ != nullptr; }
@@ -111,42 +89,9 @@ class TerrainEditorPanel {
   }
 
  private:
-  enum class Tool    { kRaise, kLower, kSmooth, kFlatten };
-  enum class Falloff { kLinear, kSmooth };
   enum class FoliageBrushMode { kPaint, kErase };
   enum class ActiveTab { kSculpt, kPaint, kMaterial, kProperties, kExport, kFoliage };
   enum class IoState  { kIdle, kConfirmResize };
-
-  // Returns the falloff weight for normalised distance t in [0, 1].
-  [[nodiscard]] float ComputeFalloff(float t) const;
-
-  // ---- Sculpt helpers -------------------------------------------------------
-
-  // Expands the tracked pre-snapshot region to cover [nx0, nz0, nx1, nz1).
-  // Newly added texels are snapshotted from the current heightmap.
-  void EnsureRegionCovers(int nx0, int nz0, int nx1, int nz1);
-
-  // Applies the active sculpt tool to all texels within radius_ of the
-  // world position (cx_world, cz_world). Uploads the affected GPU tile.
-  void ApplyBrushFootprint(float cx_world, float cz_world, float dt);
-
-  // Sculpt-specific stroke entry points.
-  void OnSculptAt(float wx, float wz, bool first_touch, float dt);
-  void OnSculptEnd();
-
-  // ---- Paint helpers --------------------------------------------------------
-
-  // Expands the splatmap pre-snapshot region to cover [nx0, nz0, nx1, nz1).
-  // Newly added texels are snapshotted from the current splatmap.
-  void EnsurePaintRegionCovers(int nx0, int nz0, int nx1, int nz1);
-
-  // Increases the active layer for all texels within radius_ of
-  // (cx_world, cz_world), renormalises all channels, uploads the tile.
-  void ApplyPaintFootprint(float cx_world, float cz_world);
-
-  // Paint-specific stroke entry points.
-  void OnPaintAt(float wx, float wz, bool first_touch);
-  void OnPaintEnd();
 
   // ---- Tab render -----------------------------------------------------------
   void RenderSculptTab();
@@ -193,18 +138,6 @@ class TerrainEditorPanel {
 
   // Writes the current heightmap as a raw R16 (uint16_t) binary file.
   void DoExportR16(const std::string& path);
-
-  // ---- Shared brush parameters ----------------------------------------------
-  Falloff falloff_  = Falloff::kSmooth;
-  float   radius_   = 10.f;
-
-  // ---- Sculpt-specific parameters -------------------------------------------
-  Tool  tool_     = Tool::kRaise;
-  float strength_ = 0.5f;
-
-  // ---- Paint-specific parameters --------------------------------------------
-  int   active_layer_  = 0;
-  float paint_opacity_ = 0.5f;
 
   // ---- Active tab -----------------------------------------------------------
   ActiveTab active_tab_ = ActiveTab::kSculpt;
@@ -266,25 +199,9 @@ class TerrainEditorPanel {
   // cppcheck-suppress unusedStructMember
   game::GameTerrain*         terrain_obj_  = nullptr;
 
-  // ---- Sculpt stroke state --------------------------------------------------
-  bool     stroke_active_    = false;
-  int      stroke_x0_        = 0;
-  int      stroke_z0_        = 0;
-  int      stroke_x1_        = 0;
-  int      stroke_z1_        = 0;
-  float    stroke_flatten_h_ = 0.f;
+  // ---- Sculpt tool (owned; null until SetContext() receives non-null data) --
   // cppcheck-suppress unusedStructMember
-  std::vector<uint16_t> stroke_pre_snapshot_;
-
-  // ---- Paint stroke state ---------------------------------------------------
-  // cppcheck-suppress unusedStructMember
-  bool                 paint_stroke_active_ = false;
-  int                  paint_x0_            = 0;
-  int                  paint_z0_            = 0;
-  int                  paint_x1_            = 0;
-  int                  paint_z1_            = 0;
-  // cppcheck-suppress unusedStructMember
-  std::vector<uint8_t> paint_pre_snapshot_;
+  std::unique_ptr<TerrainSculptTool> sculpt_tool_;
 
   // ---- Auto-paint floating window -------------------------------------------
   // cppcheck-suppress unusedStructMember
