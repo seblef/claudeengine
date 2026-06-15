@@ -29,6 +29,7 @@ add_library(renderer STATIC
     ShadowMapPool.cpp
     ShadowRenderer.cpp
     TreeRenderer.cpp
+    WireframeRenderer.cpp
 )
 
 target_include_directories(renderer PUBLIC "${CMAKE_SOURCE_DIR}/src")
