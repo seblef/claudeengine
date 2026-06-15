@@ -19,7 +19,6 @@ class TerrainMaterial;
 namespace editor {
 
 class EditorCommandHistory;
-class EditorToolBase;
 class TerrainPainterWindow;
 class TerrainSculptTool;
 
@@ -67,9 +66,15 @@ class TerrainEditorPanel {
                   EditorCommandHistory* history,
                   game::GameTerrain* terrain_obj = nullptr);
 
-  // Returns the owned TerrainSculptTool so EditorWindow can set it as
-  // the viewport's active base tool. Returns nullptr if no context is set.
-  [[nodiscard]] EditorToolBase* GetSculptTool();
+  // Provides a non-owning pointer to the sculpt tool created by EditorWindow.
+  // The panel uses this pointer to read/write brush parameters in its UI.
+  // Must be called with nullptr when the terrain context is cleared.
+  void SetSculptTool(TerrainSculptTool* tool) { sculpt_tool_ = tool; }
+
+  // Foliage brush callbacks invoked by TerrainSculptTool during LMB drag / release.
+  // EditorWindow passes these as lambdas when constructing TerrainSculptTool.
+  void OnFoliageBrush(float wx, float wz, bool first, float dt);
+  void OnFoliageEnd();
 
   // Returns true when a context is set (terrain exists in scene).
   [[nodiscard]] bool IsActive() const { return data_ != nullptr; }
@@ -199,9 +204,9 @@ class TerrainEditorPanel {
   // cppcheck-suppress unusedStructMember
   game::GameTerrain*         terrain_obj_  = nullptr;
 
-  // ---- Sculpt tool (owned; null until SetContext() receives non-null data) --
+  // ---- Sculpt tool (not owned; provided by EditorWindow via SetSculptTool()) --
   // cppcheck-suppress unusedStructMember
-  std::unique_ptr<TerrainSculptTool> sculpt_tool_;
+  TerrainSculptTool* sculpt_tool_ = nullptr;
 
   // ---- Auto-paint floating window -------------------------------------------
   // cppcheck-suppress unusedStructMember
