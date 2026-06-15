@@ -230,12 +230,6 @@ class EditorViewport {
   std::function<void(float, float, bool, float)> on_sculpt_brush_;
   // cppcheck-suppress unusedStructMember
   std::function<void()>                          on_sculpt_end_;
-
-  // Gizmo drag-state tracking for TransformCommand (issue #236).
-  // cppcheck-suppress unusedStructMember
-  bool                    gizmo_was_using_          = false;
-  // cppcheck-suppress unusedStructMember
-  core::Mat4f             gizmo_before_transform_;
 };
 
 }  // namespace editor

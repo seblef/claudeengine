@@ -15,6 +15,7 @@
 #include "editor/EnvironmentEditorPanel.h"
 #include "editor/TerrainCreationDialog.h"
 #include "editor/TerrainEditorPanel.h"
+#include "editor/tools/TransformTool.h"
 #include "game/GameObject.h"
 
 namespace editor {
@@ -161,6 +162,14 @@ class EditorWindow {
   // Command history for undo/redo. Panels receive a raw pointer to this.
   // cppcheck-suppress unusedStructMember
   EditorCommandHistory                   history_;
+
+  // Transform tools — created at startup, activated on tool switch.
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<TransformTool>         translate_tool_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<TransformTool>         rotate_tool_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<TransformTool>         scale_tool_;
 
   // Tracks the previous frame's active tool to detect transitions.
   // cppcheck-suppress unusedStructMember
