@@ -6,10 +6,15 @@
 #include "particles/ParticleRenderer.h"
 #include "particles/ParticleSubSystemDesc.h"
 #include "renderer/Renderer.h"
+#include "renderer/WireframeRenderer.h"
 
 namespace renderer {
 
 namespace {
+
+constexpr float kDefaultRadius = 0.5f;
+const core::Color kGizmoCyan(0.2f, 0.8f, 1.0f, 1.0f);
+const core::Color kHighlightCyan(0.5f, 1.0f, 1.0f, 1.0f);
 
 // Returns a conservative local AABB for a single particle sub-system.
 //
@@ -42,6 +47,15 @@ void ParticleRenderable::Enqueue() {
   particles::ParticleRenderer* pr =
       Renderer::Instance().GetParticleRenderer();
   if (pr) pr->EnqueueEmitter(emitter_);
+
+  if (WireframeRenderer::Instance().AreGizmosEnabled()) {
+    const auto& desc = emitter_->GetDesc();
+    const float radius = (desc.emitter_shape == particles::EmitterShape::kPoint)
+                         ? kDefaultRadius : desc.emitter_radius;
+    const core::Color& color = WireframeRenderer::Instance().IsHighlighted(gizmo_key_)
+                               ? kHighlightCyan : kGizmoCyan;
+    WireframeRenderer::Instance().PushOverlaySphere(radius, color, GetWorldMatrix());
+  }
 }
 
 }  // namespace renderer
