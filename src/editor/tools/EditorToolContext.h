@@ -3,6 +3,7 @@
 namespace abstract { class VideoDevice; }
 
 namespace game { class GameCamera; }
+namespace terrain { class TerrainData; }
 
 namespace editor {
 
@@ -28,7 +29,10 @@ struct EditorToolContext {
     // Tools that fire on LMB release must skip the pick on the drag-end frame
     // to avoid a spurious selection change when the user releases the gizmo.
     // cppcheck-suppress unusedStructMember
-    bool                   gizmo_was_using = false;
+    bool                        gizmo_was_using = false;
+    // Terrain heightmap for floor-hit raycasts; nullptr when no terrain exists.
+    // cppcheck-suppress unusedStructMember
+    const terrain::TerrainData* terrain_data    = nullptr;
 };
 
 }  // namespace editor
