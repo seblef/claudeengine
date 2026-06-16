@@ -44,6 +44,11 @@ class TransformTool : public EditorToolBase {
   // Per-drag snapshots — populated when the drag starts, cleared after.
   // cppcheck-suppress unusedStructMember
   core::Vec3f              pivot_center_;
+  // Accumulated pivot matrix in ImGuizmo's float[16] format.
+  // Persisted across drag frames so rotation and scale accumulate correctly
+  // instead of being reset to identity orientation each frame.
+  // cppcheck-suppress unusedStructMember
+  float                    pivot_im_[16]     = {};
   // cppcheck-suppress unusedStructMember
   std::vector<game::GameObject*>  drag_objects_;
   // cppcheck-suppress unusedStructMember
