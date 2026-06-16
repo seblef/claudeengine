@@ -16,6 +16,7 @@ namespace {
 
 constexpr int   kCircleSegments = 32;
 constexpr float kTwoPi         = 6.28318530718f;
+constexpr float kPi            = kTwoPi * 0.5f;
 
 }  // namespace
 
@@ -79,6 +80,18 @@ void WireframeRenderer::PushCone(float half_angle, float range,
   AppendCone(depth_list_, half_angle, range, color, transform);
 }
 
+void WireframeRenderer::PushCylinder(float radius, float half_height,
+                                      const core::Color& color,
+                                      const core::Mat4f& transform) {
+  AppendCylinder(depth_list_, radius, half_height, color, transform);
+}
+
+void WireframeRenderer::PushCapsule(float radius, float half_height,
+                                     const core::Color& color,
+                                     const core::Mat4f& transform) {
+  AppendCapsule(depth_list_, radius, half_height, color, transform);
+}
+
 void WireframeRenderer::PushLineList(const std::vector<core::Vec3f>& points,
                                       const core::Color& color,
                                       const core::Mat4f& transform) {
@@ -109,6 +122,18 @@ void WireframeRenderer::PushOverlayCone(float half_angle, float range,
                                          const core::Color& color,
                                          const core::Mat4f& transform) {
   AppendCone(overlay_list_, half_angle, range, color, transform);
+}
+
+void WireframeRenderer::PushOverlayCylinder(float radius, float half_height,
+                                             const core::Color& color,
+                                             const core::Mat4f& transform) {
+  AppendCylinder(overlay_list_, radius, half_height, color, transform);
+}
+
+void WireframeRenderer::PushOverlayCapsule(float radius, float half_height,
+                                            const core::Color& color,
+                                            const core::Mat4f& transform) {
+  AppendCapsule(overlay_list_, radius, half_height, color, transform);
 }
 
 void WireframeRenderer::PushOverlayLineList(
@@ -221,6 +246,78 @@ void WireframeRenderer::AppendCone(std::vector<core::VertexBase>& list,
   for (const core::Vec3f& d : spoke_dirs) {
     const core::Vec3f edge = base_center + d * base_radius;
     AppendSegment(list, apex, edge, color, transform);
+  }
+}
+
+void WireframeRenderer::AppendCylinder(std::vector<core::VertexBase>& list,
+                                        float radius, float half_height,
+                                        const core::Color& color,
+                                        const core::Mat4f& transform) {
+  const core::Vec3f top(0.f, half_height, 0.f);
+  const core::Vec3f bot(0.f, -half_height, 0.f);
+
+  // Top and bottom circles in the XZ plane.
+  for (int i = 0; i < kCircleSegments; ++i) {
+    const float t0 = kTwoPi * static_cast<float>(i)     / kCircleSegments;
+    const float t1 = kTwoPi * static_cast<float>(i + 1) / kCircleSegments;
+    const core::Vec3f d0 = core::Vec3f::kAxisX * (radius * std::cos(t0))
+                         + core::Vec3f::kAxisZ * (radius * std::sin(t0));
+    const core::Vec3f d1 = core::Vec3f::kAxisX * (radius * std::cos(t1))
+                         + core::Vec3f::kAxisZ * (radius * std::sin(t1));
+    AppendSegment(list, top + d0, top + d1, color, transform);
+    AppendSegment(list, bot + d0, bot + d1, color, transform);
+  }
+
+  // 4 vertical edges at 0°, 90°, 180°, 270°.
+  const core::Vec3f spoke_dirs[4] = {
+    core::Vec3f::kAxisX, core::Vec3f::kAxisZ,
+    -core::Vec3f::kAxisX, -core::Vec3f::kAxisZ,
+  };
+  for (const core::Vec3f& d : spoke_dirs) {
+    const core::Vec3f p = d * radius;
+    AppendSegment(list, top + p, bot + p, color, transform);
+  }
+}
+
+void WireframeRenderer::AppendCapsule(std::vector<core::VertexBase>& list,
+                                       float radius, float half_height,
+                                       const core::Color& color,
+                                       const core::Mat4f& transform) {
+  AppendCylinder(list, radius, half_height, color, transform);
+
+  // Each hemisphere is two 180° arcs (XY and ZY planes).
+  // Top cap: t in [0, π] (sin ≥ 0), centred at (0, +half_height, 0).
+  // Bottom cap: t in [π, 2π] (sin ≤ 0), centred at (0, -half_height, 0).
+  const int kHalfSegments = kCircleSegments / 2;
+  for (int i = 0; i < kHalfSegments; ++i) {
+    const float t0 = kTwoPi * static_cast<float>(i)     / kCircleSegments;
+    const float t1 = kTwoPi * static_cast<float>(i + 1) / kCircleSegments;
+    const float c0 = std::cos(t0), s0 = std::sin(t0);
+    const float c1 = std::cos(t1), s1 = std::sin(t1);
+
+    // Top hemisphere (XY and ZY arcs).
+    AppendSegment(list,
+      {radius * c0, half_height + radius * s0, 0.f},
+      {radius * c1, half_height + radius * s1, 0.f},
+      color, transform);
+    AppendSegment(list,
+      {0.f, half_height + radius * s0, radius * c0},
+      {0.f, half_height + radius * s1, radius * c1},
+      color, transform);
+
+    // Bottom hemisphere (XY and ZY arcs, t shifted by π).
+    const float bt0 = t0 + kPi;
+    const float bt1 = t1 + kPi;
+    const float bc0 = std::cos(bt0), bs0 = std::sin(bt0);
+    const float bc1 = std::cos(bt1), bs1 = std::sin(bt1);
+    AppendSegment(list,
+      {radius * bc0, -half_height + radius * bs0, 0.f},
+      {radius * bc1, -half_height + radius * bs1, 0.f},
+      color, transform);
+    AppendSegment(list,
+      {0.f, -half_height + radius * bs0, radius * bc0},
+      {0.f, -half_height + radius * bs1, radius * bc1},
+      color, transform);
   }
 }
 
