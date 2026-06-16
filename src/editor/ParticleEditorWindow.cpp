@@ -457,6 +457,8 @@ bool ParticleEditorWindow::SerializeToFile(
     out << YAML::Key << "min" << YAML::Value << ss.angular_velocity_min;
     out << YAML::Key << "max" << YAML::Value << ss.angular_velocity_max;
     out << YAML::EndMap;
+    out << YAML::Key << "intensity_start"       << YAML::Value << ss.intensity_start;
+    out << YAML::Key << "intensity_end"         << YAML::Value << ss.intensity_end;
     out << YAML::Key << "drag"                 << YAML::Value << ss.drag;
     out << YAML::Key << "turbulence_strength"  << YAML::Value << ss.turbulence_strength;
     out << YAML::Key << "turbulence_frequency" << YAML::Value << ss.turbulence_frequency;
@@ -782,6 +784,16 @@ void ParticleEditorWindow::RenderSubSystemProperties() {
           : 0.f;
       ss.color_gradient[ss.color_gradient_count++] = {new_key, core::Color{1.f, 1.f, 1.f, 1.f}};
       changed = true;
+    }
+  }
+
+  // Intensity (RGB multiplier over particle lifetime; supports HDR values > 1).
+  {
+    float iv[2] = {ss.intensity_start, ss.intensity_end};
+    if (ImGui::DragFloat2("Intensity (start/end)", iv, 0.05f, 0.f, 20.f)) {
+      ss.intensity_start = iv[0];
+      ss.intensity_end   = iv[1];
+      changed             = true;
     }
   }
 
