@@ -94,9 +94,13 @@ void ParticleEmitter::UploadToGPU() {
     }
     const int col = (desc_.sprite_cols > 0) ? frame % desc_.sprite_cols : 0;
     const int row = (desc_.sprite_cols > 0) ? frame / desc_.sprite_cols : 0;
+    // Rows are counted top-to-bottom in the image but the texture is loaded with
+    // stbi_set_flip_vertically_on_load(1), so V=0 is the image bottom. Invert the
+    // row index so that sprite row 0 maps to the top of the texture (high V).
+    const int rows = std::max(1, desc_.sprite_rows);
     const core::Vec2f uv_offset{
         static_cast<float>(col) / static_cast<float>(std::max(1, desc_.sprite_cols)),
-        static_cast<float>(row) / static_cast<float>(std::max(1, desc_.sprite_rows))};
+        static_cast<float>(rows - 1 - row) / static_cast<float>(rows)};
 
     const core::VertexParticle v{p.position, p.size, p.color, uv_offset};
     const int base = i * 4;
