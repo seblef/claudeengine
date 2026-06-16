@@ -289,6 +289,7 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/jrouwe/JoltPhysics.git
     GIT_TAG        v5.5.0
     GIT_SHALLOW    TRUE
+    SOURCE_SUBDIR  "Build"
 )
 set(JPH_BUILD_SAMPLES        OFF CACHE BOOL "" FORCE)
 set(JPH_BUILD_PERFORMANCE_TEST OFF CACHE BOOL "" FORCE)

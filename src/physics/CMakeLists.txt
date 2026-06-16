@@ -1,12 +1,12 @@
 add_library(physics STATIC
     Physics.cpp
-    # Additional source files are added as downstream issues are implemented.
+    PhysicsSystem.cpp
 )
 
 target_include_directories(physics PUBLIC "${CMAKE_SOURCE_DIR}/src")
 
-# Jolt headers are PRIVATE — they must not leak into consumers (game/, editor/).
-target_include_directories(physics PRIVATE "${JoltPhysics_SOURCE_DIR}")
+# Jolt's own CMakeLists exports its source root as a PUBLIC include, so
+# linking PRIVATE against the Jolt target is enough to compile Jolt headers.
 
 target_link_libraries(physics
     PUBLIC  core
