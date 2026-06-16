@@ -122,8 +122,12 @@ void main() {
     vec2 uv1 = v_uv * foam_params.z + time * scroll_params.x * dir_params.xy;
     vec2 uv2 = v_uv * foam_params.w + time * scroll_params.y * dir_params.zw;
 
-    vec3 n1   = texture(u_normal_map, uv1).rgb * 2.0 - 1.0;
-    vec3 n2   = is_mid ? texture(u_normal_map2, uv2).rgb * 2.0 - 1.0 : n1;
+    // RG-only decode: Z is reconstructed so BC5-compressed and full-RGB maps both work.
+    // Equation: Z = sqrt(max(0, 1 - X^2 - Y^2))
+    vec2 rg1 = texture(u_normal_map, uv1).rg * 2.0 - 1.0;
+    vec3 n1  = vec3(rg1, sqrt(max(0.0, 1.0 - dot(rg1, rg1))));
+    vec2 rg2 = is_mid ? texture(u_normal_map2, uv2).rg * 2.0 - 1.0 : rg1;
+    vec3 n2  = is_mid ? vec3(rg2, sqrt(max(0.0, 1.0 - dot(rg2, rg2)))) : n1;
     vec3 ts_n = normalize(n1 + n2);
 
     // Transform tangent-space normal into world space using analytical Gerstner TBN.

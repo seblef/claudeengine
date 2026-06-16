@@ -35,6 +35,8 @@ external/gli-subbuild/
 external/glm-build/
 external/glm-src/
 external/glm-subbuild/
+external/bc7enc-src/
+external/bc7enc-subbuild/
 claude_engine.log
 .claude/settings.local.json
 imgui.ini
