@@ -148,9 +148,18 @@ void LightRenderer::RenderGlobalLights(bool disable_shadows) {
     if (cm) cm->GetDepthRT()->BindAsSampler(9 + i);
   }
 
+  // Bind cloud shadow texture (sampler 13) when available.
+  if (cloud_shadow_rt_) cloud_shadow_rt_->BindAsSampler(13);
+
   // Shader and geometry are the same for all GlobalLights — activate once.
   global_shader_->Activate();
   quad_->Set();
+
+  // Upload cloud shadow uniforms — coverage 0 disables sampling in the shader.
+  global_shader_->SetUniformFloat("cloud_shadow_coverage",
+                                  cloud_shadow_rt_ ? cloud_shadow_coverage_ : 0.f);
+  global_shader_->SetUniformFloat("cloud_shadow_intensity",
+                                  cloud_shadow_rt_ ? cloud_shadow_intensity_ : 0.f);
 
   for (const Light* light : instances_) {
     if (light->GetType() != LightType::kGlobal) continue;
@@ -167,6 +176,14 @@ void LightRenderer::RenderGlobalLights(bool disable_shadows) {
 
   for (int i = 0; i < kCSMCascadeCount; ++i)
     video_->UnbindSampler(9 + i);
+  if (cloud_shadow_rt_) video_->UnbindSampler(13);
+}
+
+void LightRenderer::SetCloudShadow(abstract::RenderTarget* texture,
+                                    float coverage_radius, float intensity) {
+  cloud_shadow_rt_       = texture;
+  cloud_shadow_coverage_ = coverage_radius;
+  cloud_shadow_intensity_ = intensity;
 }
 
 void LightRenderer::RenderLocalLights(bool disable_shadows) {

@@ -12,68 +12,19 @@
 // downward (below the horizon) receive zero cloud alpha.
 //
 // UBO binding 2: scene_infos (eye_pos)
-// UBO binding 7: wind_infos  (wind_xz, wind_time)
+// UBO binding 7: wind_infos  (wind_xz, wind_time, wind_displacement)
 // Uniform:       cloud_density  [0, 1]   (0 = clear, 1 = overcast)
 
 #version 460 core
 #include <uniforms/scene_infos.glsl>
 #include <uniforms/wind_infos.glsl>
+#include <clouds/cloud_density.glsl>
 
 in  vec3 v_view_ray;
 out vec4 out_color;
 
 uniform float cloud_density;
 
-// Altitude of the virtual cloud plane above the camera (metres).
-const float kCloudAltitude = 800.0;
-// World-unit scale of the noise field — larger = bigger clouds.
-const float kCloudScale    = 400.0;
-// Strength of the domain warp displacement applied to density UVs.
-const float kWarpScale     = 0.8;
-
-// ---- Value noise helpers ---------------------------------------------------
-
-// 2D hash (0–1).
-float Hash2(vec2 p) {
-    p  = fract(p * vec2(127.1, 311.7));
-    p += dot(p, p + 19.19);
-    return fract(p.x * p.y);
-}
-
-// Bilinear value noise (0–1).
-float ValueNoise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    vec2 u = f * f * (3.0 - 2.0 * f);  // smoothstep
-
-    float a = Hash2(i + vec2(0.0, 0.0));
-    float b = Hash2(i + vec2(1.0, 0.0));
-    float c = Hash2(i + vec2(0.0, 1.0));
-    float d = Hash2(i + vec2(1.0, 1.0));
-
-    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
-}
-
-// Rotation matrix (~30°) applied between FBM octaves to break grid alignment.
-// cos(30°) ≈ 0.866, sin(30°) = 0.5.
-const mat2 kRot = mat2(0.866, -0.5, 0.5, 0.866);
-
-// 4-octave FBM built from ValueNoise.
-// Returns a value in [0, 1].
-// A 30° rotation is applied at each octave so successive frequency bands
-// sample along different axes, eliminating axis-aligned banding.
-float FBM(vec2 p) {
-    float v   = 0.0;
-    float amp = 0.5;
-    for (int i = 0; i < 4; ++i) {
-        v   += amp * ValueNoise(p);
-        p    = kRot * p * 2.1;
-        amp *= 0.5;
-    }
-    return v;
-}
-
-// ===========================================================================
 void main() {
     vec3 view_dir = normalize(v_view_ray);
 
@@ -85,21 +36,10 @@ void main() {
 
     // Intersect the view ray with the horizontal cloud plane at eye_pos.y + kCloudAltitude.
     // t = kCloudAltitude / view_dir.y
-    float t = kCloudAltitude / view_dir.y;
+    float t              = kCloudAltitude / view_dir.y;
     vec2  cloud_plane_xz = eye_pos.xz + view_dir.xz * t;
 
-    // Scroll UVs with wind: wind_displacement is the CPU-side time-integral of
-    // wind velocity (metres), so dividing by kCloudScale gives a pure translation
-    // in UV space at exactly wind speed — no sinusoidal artefact from gust modulation.
-    vec2 uv = cloud_plane_xz / kCloudScale + wind_displacement / kCloudScale;
-
-    // Domain warping: sample two decorrelated FBM passes to produce a 2D warp
-    // vector, then displace the UVs before the density evaluation.  The constant
-    // offset (5.2, 1.3) shifts the second sample far enough in noise space to
-    // decorrelate the two axes of the warp vector.
-    vec2 warp    = vec2(FBM(uv),
-                        FBM(uv + vec2(5.2, 1.3)));
-    float density = FBM(uv + kWarpScale * warp);
+    float density = CloudDensity(cloud_plane_xz);
 
     // Remap so that cloud_density controls the coverage threshold:
     //   cloud_density = 0 → all density values below threshold → clear sky

@@ -6,7 +6,10 @@
 // UBO binding 4: light infos (color, intensity, direction, ambient, cast_shadow, shadow_bias).
 // UBO binding 5: CSM infos (cascade_vp[4], split_distances).
 // Samplers: binding 5=albedo, 6=normal, 7=specular, 8=depth,
-//           binding 9–12=cascade shadow maps.
+//           binding 9–12=cascade shadow maps,
+//           binding 13=cloud shadow map (world-space R16F, centred on camera).
+// Uniforms: cloud_shadow_intensity [0,1]  — max shadow darkening from clouds.
+//           cloud_shadow_coverage  float  — half-extent of the shadow texture (metres).
 
 #version 460 core
 #include <uniforms/scene_infos.glsl>
@@ -21,6 +24,14 @@ layout(binding = 9)  uniform sampler2DShadow  u_shadow_cascade0;
 layout(binding = 10) uniform sampler2DShadow  u_shadow_cascade1;
 layout(binding = 11) uniform sampler2DShadow  u_shadow_cascade2;
 layout(binding = 12) uniform sampler2DShadow  u_shadow_cascade3;
+layout(binding = 13) uniform sampler2D        u_cloud_shadow;
+
+uniform float cloud_shadow_intensity;
+uniform float cloud_shadow_coverage;
+
+// Altitude of the virtual cloud plane above the camera (metres) — must match
+// the value in cloud_density.glsl so the shadow UV projection is consistent.
+const float kCloudShadowAltitude = 800.0;
 
 out vec4 out_color;
 
@@ -87,5 +98,29 @@ void main() {
         shadow_factor = 1.0 - lit;
     }
 
-    out_color = vec4((diff + spec + ambient * albedo) * (1.0 - shadow_factor * cast_shadow), 1.0);
+    // Cloud shadow: trace from world_pos toward the sun to the cloud plane,
+    // then sample the shadow texture for the cloud density above that point.
+    //
+    // direction (LightInfosBlock) is the incident ray from light → surface,
+    // so direction.y < 0 when the sun is above the horizon.
+    // At t = kCloudShadowAltitude / (-direction.y) the ray hits the cloud plane;
+    // the cloud XZ that casts shadow on world_pos is:
+    //   cloud_xz = world_pos.xz + direction.xz / direction.y * kCloudShadowAltitude
+    float cloud_shadow_factor = 0.0;
+    if (direction.y < 0.0 && cloud_shadow_coverage > 0.0) {
+        vec2 cloud_xz   = world_pos.xz + direction.xz / direction.y * kCloudShadowAltitude;
+        vec2 shadow_uv  = (cloud_xz - eye_pos.xz) / cloud_shadow_coverage * 0.5 + 0.5;
+        if (all(greaterThanEqual(shadow_uv, vec2(0.0))) &&
+            all(lessThanEqual(shadow_uv, vec2(1.0)))) {
+            cloud_shadow_factor =
+                texture(u_cloud_shadow, shadow_uv).r * cloud_shadow_intensity;
+        }
+    }
+
+    // Apply CSM shadow to full output and cloud shadow to the direct sun term only
+    // (diff + spec), preserving the ambient contribution in cloud shadow.
+    float sun_factor = 1.0 - shadow_factor * cast_shadow;
+    vec3  direct     = (diff + spec) * sun_factor * (1.0 - cloud_shadow_factor);
+    vec3  amb        = ambient * albedo;
+    out_color = vec4(direct + amb, 1.0);
 }

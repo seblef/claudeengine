@@ -14,6 +14,7 @@
 #include "core/Vec3f.h"
 #include "editor/EditorScene.h"
 #include "environment/CloudRenderer.h"
+#include "environment/CloudShadowRenderer.h"
 #include "environment/EnvironmentDesc.h"
 #include "environment/SkyRenderer.h"
 #include "environment/WaterRenderer.h"
@@ -197,6 +198,13 @@ void EnvironmentEditorPanel::EnableCloud(const environment::EnvironmentDesc& des
   renderer::Renderer::Instance().SetCloudRenderer(
       &environment::CloudRenderer::Instance());
   renderer::Renderer::Instance().SetCloudDensity(desc.cloud_density);
+
+  if (!environment::CloudShadowRenderer::IsInstanced()) {
+    new environment::CloudShadowRenderer();
+    environment::CloudShadowRenderer::Instance().Build(video_);
+  }
+  renderer::Renderer::Instance().SetCloudShadowRenderer(
+      &environment::CloudShadowRenderer::Instance());
 }
 
 // cppcheck-suppress functionStatic
@@ -206,6 +214,11 @@ void EnvironmentEditorPanel::DisableCloud() {
   if (environment::CloudRenderer::IsInstanced()) {
     environment::CloudRenderer::Instance().Reset();
     environment::CloudRenderer::Shutdown();
+  }
+  renderer::Renderer::Instance().SetCloudShadowRenderer(nullptr);
+  if (environment::CloudShadowRenderer::IsInstanced()) {
+    environment::CloudShadowRenderer::Instance().Reset();
+    environment::CloudShadowRenderer::Shutdown();
   }
 }
 

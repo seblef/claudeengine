@@ -15,6 +15,7 @@
 #include "core/ProjectionType.h"
 #include "core/Vec3f.h"
 #include "environment/CloudRenderer.h"
+#include "environment/CloudShadowRenderer.h"
 #include "environment/SkyRenderer.h"
 #include "environment/WaterRenderer.h"
 #include "environment/WindSystem.h"
@@ -159,6 +160,11 @@ int main(int argc, char* argv[]) {
         renderer::Renderer::Instance().SetCloudRenderer(
             &environment::CloudRenderer::Instance());
         renderer::Renderer::Instance().SetCloudDensity(env.cloud_density);
+
+        new environment::CloudShadowRenderer();
+        environment::CloudShadowRenderer::Instance().Build(video);
+        renderer::Renderer::Instance().SetCloudShadowRenderer(
+            &environment::CloudShadowRenderer::Instance());
       }
 
       if (env.wind_enabled) {
@@ -273,6 +279,10 @@ int main(int argc, char* argv[]) {
   if (environment::CloudRenderer::IsInstanced()) {
     environment::CloudRenderer::Instance().Reset();
     environment::CloudRenderer::Shutdown();
+  }
+  if (environment::CloudShadowRenderer::IsInstanced()) {
+    environment::CloudShadowRenderer::Instance().Reset();
+    environment::CloudShadowRenderer::Shutdown();
   }
 
   game::GameSystem::Shutdown();

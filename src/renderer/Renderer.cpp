@@ -12,6 +12,7 @@
 #include "core/Color.h"
 #include "core/ViewFrustum.h"
 #include "environment/CloudRenderer.h"
+#include "environment/CloudShadowRenderer.h"
 #include "environment/SkyRenderer.h"
 #include "environment/WaterInfos.h"
 #include "environment/WaterRenderer.h"
@@ -260,9 +261,24 @@ void Renderer::Update(float time, const core::Camera* camera,
     return;
   }
 
+  // 1b. Cloud shadow pass — bake cloud density top-down into a R16F shadow
+  //     texture centred on the camera.  Runs before the lighting pass so the
+  //     texture is ready when GlobalLight samples it at sampler slot 13.
+  if (cloud_shadow_renderer_ && cloud_shadow_renderer_->IsReady()) {
+    video_->SetViewport(0, 0, render_w_, render_h_);
+    cloud_shadow_renderer_->Render(cloud_density_);
+    LightRenderer::Instance().SetCloudShadow(
+        cloud_shadow_renderer_->GetShadowTexture(),
+        cloud_shadow_renderer_->GetCoverageRadius(),
+        cloud_shadow_renderer_->GetShadowIntensity());
+  } else {
+    LightRenderer::Instance().SetCloudShadow(nullptr, 0.f, 0.f);
+  }
+
   // 2. Lighting pass — shade into the HDR RT; G-buffer RTs as samplers.
   //    Depth write is disabled so glClear only clears the HDR color attachment,
   //    preserving G-buffer depth for stencil sub-passes and position reconstruction.
+  video_->SetViewport(0, 0, render_w_, render_h_);
   emissive_fbo_.BindForWriting();
   video_->SetDepthWriteEnabled(false);
   video_->ClearRenderTargets(core::Color::kBlack);

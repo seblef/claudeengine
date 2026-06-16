@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "abstract/ConstantBuffer.h"
+#include "abstract/RenderTarget.h"
 #include "abstract/Shader.h"
 #include "abstract/VideoDevice.h"
 #include "core/Singleton.h"
@@ -54,6 +55,12 @@ class LightRenderer : public core::Singleton<LightRenderer> {
   // No-op when no GlobalLight is enqueued.
   void BindGlobalLight();
 
+  // Provides a cloud shadow texture to be bound at sampler 13 and its uniforms
+  // set on the global_light shader during RenderGlobalLights().
+  // Passing nullptr disables cloud shadow for the current frame.
+  void SetCloudShadow(abstract::RenderTarget* texture,
+                      float coverage_radius, float intensity);
+
   // Clears the instance queue after drawing.
   void EndRender();
 
@@ -89,6 +96,14 @@ class LightRenderer : public core::Singleton<LightRenderer> {
 
   // cppcheck-suppress unusedStructMember
   std::vector<Light*> instances_;
+
+  // Cloud shadow: set each frame before Render(); nullptr disables the feature.
+  // cppcheck-suppress unusedStructMember
+  abstract::RenderTarget* cloud_shadow_rt_       = nullptr;
+  // cppcheck-suppress unusedStructMember
+  float                   cloud_shadow_coverage_ = 4000.f;
+  // cppcheck-suppress unusedStructMember
+  float                   cloud_shadow_intensity_ = 0.f;
 };
 
 }  // namespace renderer
