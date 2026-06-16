@@ -156,6 +156,31 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(gli)
 
+# ---------------------------------------------------------------------------
+# bc7enc (BC7 block compressor used by texture_compressor tool)
+# Uses FetchContent_Populate (not MakeAvailable) to download the sources
+# without invoking bc7enc's own CMakeLists.txt, which creates an executable
+# that would conflict with our own bc7enc_lib target.
+# ---------------------------------------------------------------------------
+FetchContent_Declare(
+    bc7enc
+    GIT_REPOSITORY https://github.com/richgel999/bc7enc.git
+    GIT_TAG        master
+    GIT_SHALLOW    TRUE
+)
+FetchContent_GetProperties(bc7enc)
+if(NOT bc7enc_POPULATED)
+    FetchContent_Populate(bc7enc)
+endif()
+
+add_library(bc7enc_lib STATIC ${bc7enc_SOURCE_DIR}/bc7enc.c)
+target_include_directories(bc7enc_lib PUBLIC ${bc7enc_SOURCE_DIR})
+if(MSVC)
+    target_compile_options(bc7enc_lib PRIVATE /W0)
+else()
+    target_compile_options(bc7enc_lib PRIVATE -w)
+endif()
+
 # Optional TIFF support via system libtiff
 find_package(TIFF QUIET)
 if(TIFF_FOUND AND TARGET TIFF::TIFF)
@@ -257,6 +282,7 @@ if(BUILD_EDITOR)
 endif()
 
 add_subdirectory(src)
+add_subdirectory(tools)
 
 # ---------------------------------------------------------------------------
 # Google Test via FetchContent

@@ -56,10 +56,13 @@ layout(location = 2) out vec4 out_specular;
 // Coarse UV scale applied to the macro texture.
 const float kMacroScale = 0.05;
 
-// Decodes a tangent-space normal from a normalmap texel (RG stored as XY,
-// Z reconstructed to point outward in tangent space).
+// Decodes a tangent-space normal from a normalmap texel.
+// Only RG (XY) are used; Z is reconstructed from the unit-sphere constraint so
+// this works for both BC5-compressed (RG-only) and full-RGB normal maps.
+// Equation: Z = sqrt(max(0, 1 - X^2 - Y^2))
 vec3 DecodeNormal(vec4 sp) {
-    return sp.rgb * 2.0 - 1.0;
+    vec2 xy = sp.rg * 2.0 - 1.0;
+    return vec3(xy, sqrt(max(0.0, 1.0 - dot(xy, xy))));
 }
 
 vec3 BlendNormals(vec3 n1, vec3 n2, float f) {

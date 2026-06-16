@@ -36,8 +36,11 @@ void main() {
     out_albedo  = vec4(albedo, 0.0);
 
     // Normal: remap sampled tangent-space normal to world space via TBN.
+    // BC5 normal maps store only RG (XY); Z is reconstructed to stay compatible
+    // with both BC5-compressed and full-RGB normal maps.
     // Equation: world_normal = TBN * (sample * 2 - 1), then encode to [0,1].
-    vec3 tangent_normal = texture(u_normal, v_uv).rgb * 2.0 - 1.0;
+    vec2 n_xy = texture(u_normal, v_uv).rg * 2.0 - 1.0;
+    vec3 tangent_normal = vec3(n_xy, sqrt(max(0.0, 1.0 - dot(n_xy, n_xy))));
     mat3 tbn            = mat3(v_tangent_world, v_binormal_world, v_normal_world);
     vec3 world_normal   = normalize(tbn * tangent_normal);
     out_normal = vec4(world_normal * 0.5 + 0.5, 0.0);
