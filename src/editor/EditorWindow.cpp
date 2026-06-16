@@ -36,6 +36,7 @@
 #include "editor/ParticleEditorWindow.h"
 #include "editor/MeshSelectionModal.h"
 #include "editor/ParticleSystemSelectionModal.h"
+#include "editor/ObjectNamingUtils.h"
 #include "editor/ObjectsPanel.h"
 #include "editor/PropertiesPanel.h"
 #include "editor/ResourcesPanel.h"
@@ -69,6 +70,17 @@ std::optional<renderer::LightType> ToolToLightType(EditorTool tool) {
     case EditorTool::kCreateRectSpot:   return renderer::LightType::kRectSpot;
     default:                            return std::nullopt;
   }
+}
+
+// Returns the base name used to generate a unique object name for a light type.
+const char* LightBaseName(renderer::LightType type) {
+  switch (type) {
+    case renderer::LightType::kOmni:       return "omni";
+    case renderer::LightType::kCircleSpot: return "cspot";
+    case renderer::LightType::kRectSpot:   return "rspot";
+    case renderer::LightType::kGlobal:     return "global";
+  }
+  return "light";
 }
 
 constexpr const char* kMapFilter = "map.yaml";
@@ -217,15 +229,19 @@ void EditorWindow::Render() {
       if (active_tool == EditorTool::kCreateMesh) {
         mesh_modal_->Open();
       } else if (const auto light_type = ToolToLightType(active_tool)) {
+        auto light = std::make_unique<game::GameLight>(*light_type);
+        light->SetName(GenerateObjectName(*scene_, LightBaseName(*light_type)));
         placement_tool_ = std::make_unique<PlacementTool>(
-            std::make_unique<game::GameLight>(*light_type), 10.f,
+            std::move(light), 10.f,
             ImGuiMouseCursor_ResizeAll,
             [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
         viewport_->SetActiveTool(placement_tool_.get());
         LOG_F(INFO, "Light creation tool activated, click viewport to place");
       } else if (active_tool == EditorTool::kCreatePlayerStart) {
+        auto ps = std::make_unique<game::GamePlayerStart>();
+        ps->SetName(GenerateObjectName(*scene_, "player_start"));
         placement_tool_ = std::make_unique<PlacementTool>(
-            std::make_unique<game::GamePlayerStart>(), 0.f,
+            std::move(ps), 0.f,
             ImGuiMouseCursor_ResizeAll,
             [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
         viewport_->SetActiveTool(placement_tool_.get());
@@ -239,8 +255,12 @@ void EditorWindow::Render() {
 
   // Mesh selection modal — open when kCreateMesh is activated.
   if (game::MeshTemplate* tmpl = mesh_modal_->Render()) {
+    auto mesh = std::make_unique<game::GameMesh>(tmpl);
+    const std::string stem =
+        std::filesystem::path(tmpl->GetId()).stem().string();
+    mesh->SetName(GenerateObjectName(*scene_, stem));
     placement_tool_ = std::make_unique<PlacementTool>(
-        std::make_unique<game::GameMesh>(tmpl), 0.f,
+        std::move(mesh), 0.f,
         ImGuiMouseCursor_None,
         [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
     viewport_->SetActiveTool(placement_tool_.get());
@@ -254,6 +274,7 @@ void EditorWindow::Render() {
     if (tmpl) {
       auto ps = std::make_unique<game::GameParticleSystem>(tmpl, video_);
       tmpl->Release();  // GameParticleSystem holds the AddRef'd reference
+      ps->SetName(GenerateObjectName(*scene_, ps_name));
       placement_tool_ = std::make_unique<PlacementTool>(
           std::move(ps), 0.f,
           ImGuiMouseCursor_ResizeAll,
