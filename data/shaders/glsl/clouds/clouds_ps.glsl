@@ -56,14 +56,20 @@ float ValueNoise(vec2 p) {
     return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
 
+// Rotation matrix (~30°) applied between FBM octaves to break grid alignment.
+// cos(30°) ≈ 0.866, sin(30°) = 0.5.
+const mat2 kRot = mat2(0.866, -0.5, 0.5, 0.866);
+
 // 4-octave FBM built from ValueNoise.
 // Returns a value in [0, 1].
+// A 30° rotation is applied at each octave so successive frequency bands
+// sample along different axes, eliminating axis-aligned banding.
 float FBM(vec2 p) {
     float v   = 0.0;
     float amp = 0.5;
     for (int i = 0; i < 4; ++i) {
         v   += amp * ValueNoise(p);
-        p   *= 2.1;
+        p    = kRot * p * 2.1;
         amp *= 0.5;
     }
     return v;
