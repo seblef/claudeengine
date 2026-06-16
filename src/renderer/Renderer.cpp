@@ -437,9 +437,10 @@ void Renderer::FillWindInfos() {
   environment::WindInfos wi;
   if (wind_system_) {
     const core::Vec3f vec = wind_system_->GetWindVector();
-    wi.wind_xz       = {vec.x, vec.z};
-    wi.wind_strength = wind_system_->GetWindStrength();
-    wi.wind_time     = wind_system_->GetWindTime();
+    wi.wind_xz          = {vec.x, vec.z};
+    wi.wind_strength    = wind_system_->GetWindStrength();
+    wi.wind_time        = wind_system_->GetWindTime();
+    wi.wind_displacement = wind_system_->GetWindDisplacement();
   }
   wind_infos_cb_->Fill(&wi);
 }

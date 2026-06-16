@@ -25,6 +25,9 @@ void WindSystem::Update(float dt) {
   const float gust = base_strength_ * gust_amplitude_
                      * std::sin(phase_ * kTwoPi * gust_frequency_);
   wind_vec_ = base_direction_ * (base_strength_ + gust);
+
+  wind_displacement_.x += wind_vec_.x * dt;
+  wind_displacement_.y += wind_vec_.z * dt;
 }
 
 core::Vec3f WindSystem::GetWindVector() const {

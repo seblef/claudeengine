@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/Vec2f.h"
 #include "core/Vec3f.h"
 
 namespace environment {
@@ -40,6 +41,9 @@ class WindSystem {
   // Returns accumulated simulation time in seconds (for shader phase effects).
   [[nodiscard]] float GetWindTime() const { return wind_time_; }
 
+  // Returns accumulated XZ displacement in metres (time-integral of wind velocity).
+  [[nodiscard]] core::Vec2f GetWindDisplacement() const { return wind_displacement_; }
+
   // Hot-updates the wind base direction (XZ unit vector; Y is ignored).
   void SetBaseDirection(const core::Vec3f& dir);
 
@@ -56,6 +60,8 @@ class WindSystem {
   float       wind_time_        = 0.f;     // total elapsed time in seconds
   // cppcheck-suppress unusedStructMember
   core::Vec3f wind_vec_;                   // current wind vector (Y = 0)
+  // cppcheck-suppress unusedStructMember
+  core::Vec2f wind_displacement_;          // time-integral of wind_vec_.xz * dt (m)
 };
 
 }  // namespace environment

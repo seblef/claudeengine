@@ -88,9 +88,10 @@ void main() {
     float t = kCloudAltitude / view_dir.y;
     vec2  cloud_plane_xz = eye_pos.xz + view_dir.xz * t;
 
-    // Scroll UVs with wind: UV offset = world offset / kCloudScale so clouds
-    // drift at exactly wind speed in world space (wind_xz in m/s, wind_time in s).
-    vec2 uv = cloud_plane_xz / kCloudScale + wind_xz * wind_time / kCloudScale;
+    // Scroll UVs with wind: wind_displacement is the CPU-side time-integral of
+    // wind velocity (metres), so dividing by kCloudScale gives a pure translation
+    // in UV space at exactly wind speed — no sinusoidal artefact from gust modulation.
+    vec2 uv = cloud_plane_xz / kCloudScale + wind_displacement / kCloudScale;
 
     // Domain warping: sample two decorrelated FBM passes to produce a 2D warp
     // vector, then displace the UVs before the density evaluation.  The constant
