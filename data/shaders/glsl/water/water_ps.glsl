@@ -18,9 +18,11 @@
 //   steep_foam  = smoothstep(st-0.1, st, 1-v_world_normal.y)                   // steepness
 //   sl_foam     = (1-smoothstep(0,shore_depth,depth)) * animRing * 0.8         // shoreline
 //   foam_amount = max(max(h_foam, steep_foam), sl_foam)
-//   ft          = foam_tex(v_uv*0.04 + t*0.015).r * foam_tex(v_uv*0.07 - t*0.010).r
+//   s1          = foam_tex(v_uv*0.04 + t*0.015).r
+//   s2          = foam_tex(v_uv*0.07 - t*0.010).r
+//   ft          = s1*0.6 + s2*0.4
 //   foam_amount = clamp(foam_amount * ft * 2.5, 0, 1)
-//   final_color = mix(final_color, vec3(1), foam_amount)
+//   final_color = mix(final_color, vec3(0.92,0.95,0.98), foam_amount*0.85)
 //
 // Alpha equation:
 //   water_depth = v_world_pos.y - world_y_of_scene_bottom  (world-space metres)
@@ -182,9 +184,10 @@ void main() {
 
         foam_amount = max(max(h_foam, steep_foam), sl_foam);
 
-        // Foam texture modulation — two scrolling samples break foam into natural clumps.
-        float ft = texture(u_foam_tex, v_uv * 0.04 + time * 0.015).r
-                 * texture(u_foam_tex, v_uv * 0.07 - time * 0.010).r;
+        // Weighted blend preserves large-patch and fine-bubble detail simultaneously.
+        float s1 = texture(u_foam_tex, v_uv * 0.04 + time * 0.015).r;
+        float s2 = texture(u_foam_tex, v_uv * 0.07 - time * 0.010).r;
+        float ft = s1 * 0.6 + s2 * 0.4;
         foam_amount = clamp(foam_amount * ft * 2.5, 0.0, 1.0);
     }
 
@@ -272,7 +275,9 @@ void main() {
         final_color += kTipColor * tip_amount * sun_params.w * 0.15;
     }
 
-    final_color = mix(final_color, vec3(1.0), foam_amount);
+    // Off-white tint at 85% opacity lets underlying water color bleed through.
+    const vec3 kFoamColor = vec3(0.92, 0.95, 0.98);
+    final_color = mix(final_color, kFoamColor, foam_amount * 0.85);
 
     // Alpha: shoreline fade-in, foam override, Fresnel lift.
     float out_alpha = smoothstep(0.0, 1.5, water_depth);
