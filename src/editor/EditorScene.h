@@ -93,8 +93,24 @@ class EditorScene {
     mesh_templates_.push_back(tmpl);
   }
 
-  [[nodiscard]] game::GameObject* GetSelectedObject() const { return selected_; }
-  void SetSelectedObject(game::GameObject* obj)             { selected_ = obj; }
+  // Returns the single selected object, or nullptr when nothing or multiple
+  // objects are selected. Use GetSelection() for multi-selection queries.
+  [[nodiscard]] game::GameObject* GetSelectedObject() const;
+  // Clears the selection and selects obj (or nothing if obj is nullptr).
+  void SetSelectedObject(game::GameObject* obj);
+
+  // Returns all currently selected objects (zero, one, or many).
+  [[nodiscard]] const std::vector<game::GameObject*>& GetSelection() const {
+    return selection_;
+  }
+  // Returns true if obj is currently selected.
+  [[nodiscard]] bool IsSelected(const game::GameObject* obj) const;
+  // Adds obj to the selection. No-op if obj is nullptr or already selected.
+  void AddToSelection(game::GameObject* obj);
+  // Removes obj from the selection. No-op if obj is not selected.
+  void RemoveFromSelection(game::GameObject* obj);
+  // Clears the full selection.
+  void ClearSelection();
 
   // Returns the union of all object world bboxes.
   // Guarantees a minimum diagonal of 10 world units for empty scenes.
@@ -143,7 +159,7 @@ class EditorScene {
   std::vector<game::GameMaterial*>  game_materials_;
   std::vector<game::MeshTemplate*>  mesh_templates_;
   // cppcheck-suppress unusedStructMember
-  game::GameObject*                selected_ = nullptr;
+  std::vector<game::GameObject*>   selection_;
   // cppcheck-suppress unusedStructMember
   std::function<void(game::GameObject*)> on_object_added_;
   // cppcheck-suppress unusedStructMember

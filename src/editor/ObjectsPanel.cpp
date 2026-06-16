@@ -43,11 +43,10 @@ void ObjectsPanel::RenderGroup(const char* icon, const char* group_name,
   const std::string header = std::string(icon) + " " + group_name;
   if (!ImGui::TreeNodeEx(header.c_str(), kRootFlags)) return;
 
-  const game::GameObject* selected = scene.GetSelectedObject();
   for (game::GameObject* obj : objects) {
     if (obj->GetType() != type) continue;
 
-    const bool is_selected = (obj == selected);
+    const bool is_selected = scene.IsSelected(obj);
     if (is_selected)
       ImGui::PushStyleColor(ImGuiCol_Header, kSelectedColor);
 

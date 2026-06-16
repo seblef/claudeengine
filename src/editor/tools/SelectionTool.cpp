@@ -1,6 +1,8 @@
 #include "editor/tools/SelectionTool.h"
 
+#include <algorithm>
 #include <memory>
+#include <vector>
 
 #include "core/Event.h"
 #include "editor/EditorCommandHistory.h"
@@ -33,11 +35,16 @@ void SelectionTool::OnEvent(const core::Event& event) {
   if (ImGuizmo::IsUsing()) return;
   if (!scene_) return;
 
-  game::GameObject* selected = scene_->GetSelectedObject();
-  if (selected && scene_->IsDynamic(selected)) {
-    LOG_F(INFO, "Deleting object '%s'", selected->GetName().c_str());
+  // Collect deletable (dynamic) objects from the current selection.
+  const auto& sel = scene_->GetSelection();
+  std::vector<game::GameObject*> to_delete;
+  std::copy_if(sel.begin(), sel.end(), std::back_inserter(to_delete),
+               [this](const game::GameObject* o) { return scene_->IsDynamic(o); });
+
+  for (game::GameObject* obj : to_delete) {
+    LOG_F(INFO, "Deleting object '%s'", obj->GetName().c_str());
     if (history_)
-      history_->Push(std::make_unique<DeleteObjectCommand>(scene_, selected));
+      history_->Push(std::make_unique<DeleteObjectCommand>(scene_, obj));
   }
 }
 
@@ -54,11 +61,12 @@ void SelectionTool::OnRender(const EditorToolContext& ctx,
       !ctx.gizmo_was_using &&
       !ImGui::GetIO().KeyAlt &&
       ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-    PickObjectAt(ctx, ImGui::GetMousePos(), image_pos, image_size);
+    PickObjectAt(ctx, ImGui::GetMousePos(), image_pos, image_size,
+                 ImGui::GetIO().KeyCtrl);
   }
 
-  // Orange wireframe bounding box for the selected object.
-  if (ctx.scene->GetSelectedObject())
+  // Orange wireframe bounding boxes for all selected objects.
+  if (!ctx.scene->GetSelection().empty())
     DrawSelectedBBox(ctx, ImGui::GetWindowDrawList(), image_pos, image_size);
 }
 

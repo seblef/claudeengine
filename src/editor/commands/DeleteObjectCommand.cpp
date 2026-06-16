@@ -10,24 +10,21 @@ DeleteObjectCommand::DeleteObjectCommand(EditorScene* scene,
     : scene_(scene),
       owned_(nullptr),
       deleted_(obj),
-      was_selected_(scene->GetSelectedObject() == obj) {}
+      was_selected_(scene->IsSelected(obj)) {}
 
 void DeleteObjectCommand::Execute() {
+  // ReclaimDynamicObject already removes the object from the selection.
   owned_ = scene_->ReclaimDynamicObject(deleted_);
-  if (was_selected_)
-    scene_->SetSelectedObject(nullptr);
 }
 
 void DeleteObjectCommand::Undo() {
   scene_->AddDynamicObject(std::move(owned_));
   if (was_selected_)
-    scene_->SetSelectedObject(deleted_);
+    scene_->AddToSelection(deleted_);
 }
 
 void DeleteObjectCommand::Redo() {
   owned_ = scene_->ReclaimDynamicObject(deleted_);
-  if (was_selected_)
-    scene_->SetSelectedObject(nullptr);
 }
 
 std::string_view DeleteObjectCommand::GetDescription() const {

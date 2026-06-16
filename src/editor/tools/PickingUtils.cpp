@@ -197,7 +197,7 @@ float LightPickDistPx(const core::Vec3f& world_pos,
 }  // namespace
 
 void PickObjectAt(const EditorToolContext& ctx, ImVec2 mouse_pos,
-                  ImVec2 image_pos, ImVec2 image_size) {
+                  ImVec2 image_pos, ImVec2 image_size, bool ctrl_held) {
   // Normalised device coordinates: x in [-1,1], y in [-1,1] (Y flipped).
   const float ndc_x = (mouse_pos.x - image_pos.x) / image_size.x * 2.f - 1.f;
   const float ndc_y = 1.f - (mouse_pos.y - image_pos.y) / image_size.y * 2.f;
@@ -341,15 +341,28 @@ void PickObjectAt(const EditorToolContext& ctx, ImVec2 mouse_pos,
 
   if (best_particle) hit = best_particle;
 
-  ctx.scene->SetSelectedObject(hit);
+  if (ctrl_held) {
+    // Ctrl-click: toggle the hit in/out of the current selection.
+    if (hit) {
+      if (ctx.scene->IsSelected(hit))
+        ctx.scene->RemoveFromSelection(hit);
+      else
+        ctx.scene->AddToSelection(hit);
+    }
+    // No hit with Ctrl held: keep existing selection unchanged.
+  } else {
+    ctx.scene->SetSelectedObject(hit);
+  }
 }
 
 void DrawSelectedBBox(const EditorToolContext& ctx, ImDrawList* dl,
                       ImVec2 image_pos, ImVec2 image_size) {
-  DrawBBoxWireframe(dl, ctx.scene->GetSelectedObject()->GetWorldBBox(),
-                    ctx.camera->GetCamera()->GetViewProjectionMatrix(),
-                    image_pos, image_size,
-                    IM_COL32(255, 165, 0, 255), 1.5f);
+  const core::Mat4f& vp = ctx.camera->GetCamera()->GetViewProjectionMatrix();
+  for (const game::GameObject* obj : ctx.scene->GetSelection()) {
+    DrawBBoxWireframe(dl, obj->GetWorldBBox(), vp,
+                      image_pos, image_size,
+                      IM_COL32(255, 165, 0, 255), 1.5f);
+  }
 }
 
 }  // namespace editor
