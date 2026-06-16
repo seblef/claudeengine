@@ -49,6 +49,10 @@ Whenever possible, try to keep compilation time low.
 
 The CMake binary dir is `_build/` (not `build/`) — `build/` holds only the final executable
 
+CMake build targets:
+* `claude_editor` — builds the editor (requires `-DBUILD_EDITOR=ON`)
+* `claude_engine` — builds the game app
+
 ## Guidelines (CRITICAL)
 
 All of written code must be **optimized but readable for a good C++ developer**
