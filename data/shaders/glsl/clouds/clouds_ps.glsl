@@ -28,8 +28,6 @@ uniform float cloud_density;
 const float kCloudAltitude = 800.0;
 // World-unit scale of the noise field — larger = bigger clouds.
 const float kCloudScale    = 400.0;
-// UV drift speed in UV-units per second at 1 m/s wind.
-const float kCloudSpeed    = 0.0001;
 // Strength of the domain warp displacement applied to density UVs.
 const float kWarpScale     = 0.8;
 
@@ -56,14 +54,20 @@ float ValueNoise(vec2 p) {
     return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
 
+// Rotation matrix (~30°) applied between FBM octaves to break grid alignment.
+// cos(30°) ≈ 0.866, sin(30°) = 0.5.
+const mat2 kRot = mat2(0.866, -0.5, 0.5, 0.866);
+
 // 4-octave FBM built from ValueNoise.
 // Returns a value in [0, 1].
+// A 30° rotation is applied at each octave so successive frequency bands
+// sample along different axes, eliminating axis-aligned banding.
 float FBM(vec2 p) {
     float v   = 0.0;
     float amp = 0.5;
     for (int i = 0; i < 4; ++i) {
         v   += amp * ValueNoise(p);
-        p   *= 2.1;
+        p    = kRot * p * 2.1;
         amp *= 0.5;
     }
     return v;
@@ -84,9 +88,10 @@ void main() {
     float t = kCloudAltitude / view_dir.y;
     vec2  cloud_plane_xz = eye_pos.xz + view_dir.xz * t;
 
-    // Scroll UVs with wind.
-    vec2 scroll = wind_xz * wind_time * kCloudSpeed;
-    vec2 uv     = cloud_plane_xz / kCloudScale + scroll;
+    // Scroll UVs with wind: wind_displacement is the CPU-side time-integral of
+    // wind velocity (metres), so dividing by kCloudScale gives a pure translation
+    // in UV space at exactly wind speed — no sinusoidal artefact from gust modulation.
+    vec2 uv = cloud_plane_xz / kCloudScale + wind_displacement / kCloudScale;
 
     // Domain warping: sample two decorrelated FBM passes to produce a 2D warp
     // vector, then displace the UVs before the density evaluation.  The constant
