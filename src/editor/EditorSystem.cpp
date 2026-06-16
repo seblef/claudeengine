@@ -44,7 +44,7 @@ EditorSystem::EditorSystem(abstract::Devices* devices)
   static const ImWchar kIconRanges[] = {ICON_MIN_FA, ICON_MAX_16_FA, 0};
   const std::string font_path =
       (core::Config::GetDataFolder() / "fonts/fa-solid-900.ttf").string();
-  io.Fonts->AddFontFromFileTTF(font_path.c_str(), 13.0f, &icons_cfg, kIconRanges);
+  io.Fonts->AddFontFromFileTTF(font_path.c_str(), 16.0f, &icons_cfg, kIconRanges);
   io.Fonts->Build();
 
   NFD_Init();
