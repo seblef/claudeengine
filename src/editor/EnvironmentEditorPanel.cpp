@@ -173,6 +173,8 @@ void EnvironmentEditorPanel::EnableWater(const environment::EnvironmentDesc& des
   wr.SetAbsorptionScale(desc.absorption_scale);
   wr.SetFoamParams(desc.foam_height_thresh, desc.foam_shoreline_depth,
                    desc.foam_steepness_thresh, desc.foam_speed);
+  wr.SetFoamTexParams(desc.foam_scale1, desc.foam_scale2,
+                      desc.foam_scroll_speed1, desc.foam_scroll_speed2);
   wr.SetNormalMapParams(desc.normal_scale1, desc.normal_scale2,
                         desc.normal_scroll_speed1, desc.normal_scroll_speed2);
   wr.SetNormalMapDirections(desc.normal_dir1_x, desc.normal_dir1_y,
@@ -565,6 +567,42 @@ bool EnvironmentEditorPanel::RenderWaterSection(
       environment::WaterRenderer::Instance().SetFoamParams(
           env.foam_height_thresh, env.foam_shoreline_depth,
           env.foam_steepness_thresh, env.foam_speed);
+    changed = true;
+  }
+
+  if (ImGui::SliderFloat("Foam tex scale 1", &env.foam_scale1,
+                          0.005f, 0.3f, "%.3f")) {
+    if (environment::WaterRenderer::IsInstanced())
+      environment::WaterRenderer::Instance().SetFoamTexParams(
+          env.foam_scale1, env.foam_scale2,
+          env.foam_scroll_speed1, env.foam_scroll_speed2);
+    changed = true;
+  }
+
+  if (ImGui::SliderFloat("Foam tex scale 2", &env.foam_scale2,
+                          0.005f, 0.3f, "%.3f")) {
+    if (environment::WaterRenderer::IsInstanced())
+      environment::WaterRenderer::Instance().SetFoamTexParams(
+          env.foam_scale1, env.foam_scale2,
+          env.foam_scroll_speed1, env.foam_scroll_speed2);
+    changed = true;
+  }
+
+  if (ImGui::SliderFloat("Foam scroll speed 1", &env.foam_scroll_speed1,
+                          -0.1f, 0.1f, "%.3f")) {
+    if (environment::WaterRenderer::IsInstanced())
+      environment::WaterRenderer::Instance().SetFoamTexParams(
+          env.foam_scale1, env.foam_scale2,
+          env.foam_scroll_speed1, env.foam_scroll_speed2);
+    changed = true;
+  }
+
+  if (ImGui::SliderFloat("Foam scroll speed 2", &env.foam_scroll_speed2,
+                          -0.1f, 0.1f, "%.3f")) {
+    if (environment::WaterRenderer::IsInstanced())
+      environment::WaterRenderer::Instance().SetFoamTexParams(
+          env.foam_scale1, env.foam_scale2,
+          env.foam_scroll_speed1, env.foam_scroll_speed2);
     changed = true;
   }
 

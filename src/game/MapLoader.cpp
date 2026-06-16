@@ -75,6 +75,16 @@ environment::EnvironmentDesc ParseEnvironmentDesc(const YAML::Node& node) {
         node["foam_steepness_thresh"].as<float>(desc.foam_steepness_thresh);
   if (node["foam_speed"])
     desc.foam_speed = node["foam_speed"].as<float>(desc.foam_speed);
+  if (node["foam_scale1"])
+    desc.foam_scale1 = node["foam_scale1"].as<float>(desc.foam_scale1);
+  if (node["foam_scale2"])
+    desc.foam_scale2 = node["foam_scale2"].as<float>(desc.foam_scale2);
+  if (node["foam_scroll_speed1"])
+    desc.foam_scroll_speed1 =
+        node["foam_scroll_speed1"].as<float>(desc.foam_scroll_speed1);
+  if (node["foam_scroll_speed2"])
+    desc.foam_scroll_speed2 =
+        node["foam_scroll_speed2"].as<float>(desc.foam_scroll_speed2);
   if (node["normal_scale1"])
     desc.normal_scale1 = node["normal_scale1"].as<float>(desc.normal_scale1);
   if (node["normal_scale2"])

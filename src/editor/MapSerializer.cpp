@@ -85,6 +85,14 @@ void EmitEnvironment(YAML::Emitter& out,
     out << YAML::Key << "foam_steepness_thresh" << YAML::Value << env.foam_steepness_thresh;
   if (env.foam_speed           != def.foam_speed)
     out << YAML::Key << "foam_speed"           << YAML::Value << env.foam_speed;
+  if (env.foam_scale1          != def.foam_scale1)
+    out << YAML::Key << "foam_scale1"          << YAML::Value << env.foam_scale1;
+  if (env.foam_scale2          != def.foam_scale2)
+    out << YAML::Key << "foam_scale2"          << YAML::Value << env.foam_scale2;
+  if (env.foam_scroll_speed1   != def.foam_scroll_speed1)
+    out << YAML::Key << "foam_scroll_speed1"   << YAML::Value << env.foam_scroll_speed1;
+  if (env.foam_scroll_speed2   != def.foam_scroll_speed2)
+    out << YAML::Key << "foam_scroll_speed2"   << YAML::Value << env.foam_scroll_speed2;
   if (env.normal_scale1        != def.normal_scale1)
     out << YAML::Key << "normal_scale1"        << YAML::Value << env.normal_scale1;
   if (env.normal_scale2        != def.normal_scale2)

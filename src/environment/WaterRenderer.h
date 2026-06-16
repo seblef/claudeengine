@@ -147,6 +147,16 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
     foam_speed_            = speed;
   }
 
+  // Updates the foam texture UV scales and signed scroll speeds.
+  // foam_scroll_speed2 is negative by convention to produce counter-scrolling.
+  void SetFoamTexParams(float scale1, float scale2,
+                        float scroll_speed1, float scroll_speed2) {
+    foam_scale1_        = scale1;
+    foam_scale2_        = scale2;
+    foam_scroll_speed1_ = scroll_speed1;
+    foam_scroll_speed2_ = scroll_speed2;
+  }
+
   // Updates scale and scroll speed for both normal map layers.
   void SetNormalMapParams(float scale1, float scale2,
                           float scroll_speed1, float scroll_speed2) {
@@ -196,6 +206,10 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   [[nodiscard]] float GetFoamShorelineDepth()  const { return foam_shoreline_depth_; }
   [[nodiscard]] float GetFoamSteepnessThresh() const { return foam_steepness_thresh_; }
   [[nodiscard]] float GetFoamSpeed()           const { return foam_speed_; }
+  [[nodiscard]] float GetFoamScale1()          const { return foam_scale1_; }
+  [[nodiscard]] float GetFoamScale2()          const { return foam_scale2_; }
+  [[nodiscard]] float GetFoamScrollSpeed1()    const { return foam_scroll_speed1_; }
+  [[nodiscard]] float GetFoamScrollSpeed2()    const { return foam_scroll_speed2_; }
   [[nodiscard]] float GetNormalScale1()        const { return normal_scale1_; }
   [[nodiscard]] float GetNormalScale2()        const { return normal_scale2_; }
   [[nodiscard]] float GetNormalScrollSpeed1()  const { return normal_scroll_speed1_; }
@@ -322,6 +336,10 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   float         foam_shoreline_depth_ = 2.0f;
   float         foam_steepness_thresh_ = 0.70f;
   float         foam_speed_           = 1.5f;
+  float         foam_scale1_          = 0.04f;
+  float         foam_scale2_          = 0.07f;
+  float         foam_scroll_speed1_   = 0.015f;
+  float         foam_scroll_speed2_   = -0.010f;
   float         normal_scale1_        = 0.03f;
   float         normal_scale2_        = 0.07f;
   float         normal_scroll_speed1_ = 0.30f;
