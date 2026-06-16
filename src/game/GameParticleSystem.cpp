@@ -144,4 +144,46 @@ particles::ParticleSystemTemplate* GameParticleSystem::GetTemplate() const {
   return template_;
 }
 
+void GameParticleSystem::ReloadFromTemplate() {
+  const bool in_scene = !renderables_.empty();
+
+  if (in_scene) {
+    for (auto& renderable : renderables_)
+      renderer::Renderer::Instance().RemoveRenderable(renderable.get());
+    renderables_.clear();
+    for (const auto& light : lights_)
+      renderer::Renderer::Instance().RemoveRenderable(light.get());
+  }
+
+  emitters_.clear();
+  lights_.clear();
+
+  const auto& subs = template_->GetSubSystems();
+  emitters_.reserve(subs.size());
+  std::transform(subs.begin(), subs.end(), std::back_inserter(emitters_),
+                 [this](const auto& sub) {
+                   return std::make_unique<particles::ParticleEmitter>(sub, video_);
+                 });
+
+  for (const auto& light_desc : template_->GetLights()) {
+    auto light = CreateEmbeddedLight(light_desc);
+    if (light) lights_.push_back(std::move(light));
+  }
+
+  if (in_scene) {
+    const core::Mat4f& wt = GetWorldTransform();
+    renderables_.reserve(emitters_.size());
+    for (auto& emitter : emitters_) {
+      auto renderable = std::make_unique<renderer::ParticleRenderable>(
+          emitter.get(), wt, false);
+      renderable->SetGizmoKey(this);
+      renderer::Renderer::Instance().AddRenderable(renderable.get());
+      renderables_.push_back(std::move(renderable));
+    }
+    for (const auto& light : lights_)
+      renderer::Renderer::Instance().AddRenderable(light.get());
+    OnWorldTransformUpdated();
+  }
+}
+
 }  // namespace game

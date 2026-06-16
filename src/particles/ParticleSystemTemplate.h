@@ -36,6 +36,11 @@ class ParticleSystemTemplate
   [[nodiscard]] const std::vector<ParticleSubSystemDesc>& GetSubSystems() const;
   [[nodiscard]] const std::vector<EmbeddedLightDesc>&    GetLights()     const;
 
+  // Re-parses data/particles/<name>.particles.yaml and replaces sub_systems_
+  // and lights_. Call after the file has been written to disk (e.g. from the
+  // particle editor) to propagate the new data to all live owners.
+  void Reload();
+
  private:
   explicit ParticleSystemTemplate(const std::string& name,
                                   abstract::VideoDevice* video);

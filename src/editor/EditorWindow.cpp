@@ -135,6 +135,17 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
     show_particle_editor_ = true;
     particle_editor_->OpenTemplate(name);
   });
+  particle_editor_->SetOnTemplateSaved([this](const std::string& name) {
+    particles::ParticleSystemTemplate* tmpl =
+        particles::ParticleSystemTemplate::Get(name);
+    if (!tmpl) return;
+    tmpl->Reload();
+    for (game::GameObject* obj : scene_->GetObjects()) {
+      if (obj->GetType() != game::GameObjectType::kParticleSystem) continue;
+      auto* ps = static_cast<game::GameParticleSystem*>(obj);
+      if (ps->GetTemplate() == tmpl) ps->ReloadFromTemplate();
+    }
+  });
   properties_panel_->SetOnTransformChanged([this](game::GameObject* obj) {
     viewport_->UpdateMovedObject(obj);
   });

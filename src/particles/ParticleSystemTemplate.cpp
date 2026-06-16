@@ -233,4 +233,33 @@ const std::vector<EmbeddedLightDesc>& ParticleSystemTemplate::GetLights() const 
   return lights_;
 }
 
+void ParticleSystemTemplate::Reload() {
+  const auto path =
+      core::Config::GetDataFolder() / "particles" / (GetId() + ".particles.yaml");
+
+  YAML::Node root;
+  try {
+    root = core::LoadYamlFile(path);
+  } catch (const std::exception& e) {
+    LOG_F(ERROR, "ParticleSystemTemplate: failed to reload '%s': %s",
+          path.string().c_str(), e.what());
+    return;
+  }
+
+  sub_systems_.clear();
+  lights_.clear();
+
+  if (root["sub_systems"] && root["sub_systems"].IsSequence()) {
+    std::transform(root["sub_systems"].begin(), root["sub_systems"].end(),
+                   std::back_inserter(sub_systems_), ParseSubSystem);
+  }
+  if (root["lights"] && root["lights"].IsSequence()) {
+    std::transform(root["lights"].begin(), root["lights"].end(),
+                   std::back_inserter(lights_), ParseLight);
+  }
+
+  LOG_F(INFO, "ParticleSystemTemplate: reloaded '%s' (%zu sub-systems, %zu lights)",
+        GetId().c_str(), sub_systems_.size(), lights_.size());
+}
+
 }  // namespace particles
