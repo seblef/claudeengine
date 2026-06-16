@@ -1,0 +1,57 @@
+sub_systems:
+  - name: flame
+    blend_mode: additive
+    lit: false
+    texture: fx/fireflamepart01anim.png
+    sprite_cols: 8
+    sprite_rows: 4
+    animation_fps: 9
+    animation_mode: sequential
+    emitter_shape: point
+    emitter_radius: 0.360000014
+    emission_rate: 2
+    max_particles: 4
+    looping: true
+    duration: 1
+    lifetime:
+      min: 3
+      max: 5
+    speed:
+      min: 0.3
+      max: 0.8
+    direction: [0, 1, 0]
+    spread: 20
+    gravity: -0.4
+    size_start:
+      min: 3
+      max: 4
+    size_end:
+      min: 1
+      max: 2
+    color_gradient:
+      - key: 0.0
+        color: [1.0, 1.0, 0.8, 1.0]
+      - key: 0.3
+        color: [1.0, 0.55, 0.1, 0.9]
+      - key: 0.7
+        color: [0.8, 0.1, 0.0, 0.5]
+      - key: 1.0
+        color: [0.0, 0.0, 0.0, 0.0]
+    rotation_start:
+      min: 0
+      max: 360
+    angular_velocity:
+      min: -30
+      max: 30
+    drag: 0.6
+    turbulence_strength: 0.25
+    turbulence_frequency: 2.0
+lights:
+  - type: omni
+    color: [0.977876127, 0.718109846, 0.060576424]
+    intensity_min: 2
+    intensity_max: 3
+    radius: 10
+    local_offset: [0, 0, 0]
+    flicker_frequency: 5
+    flicker_amplitude: 0.200000003

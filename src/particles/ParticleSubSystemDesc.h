@@ -1,9 +1,10 @@
 #pragma once
 
+#include <array>
 #include <string>
 
-#include "core/Color.h"
 #include "core/Vec3f.h"
+#include "particles/ColorStop.h"
 #include "particles/EmitterShape.h"
 #include "particles/ParticleAnimationMode.h"
 #include "particles/ParticleBlendMode.h"
@@ -68,10 +69,27 @@ struct ParticleSubSystemDesc {
   float size_end_min   = 0.f;
   float size_end_max   = 0.1f;
 
+  // Multi-stop colour gradient keyed by normalised particle age [0,1].
+  // Up to kMaxColorStops stops are supported. When count == 0 the gradient
+  // defaults to two implicit stops: white-opaque → white-transparent.
+  static constexpr int kMaxColorStops = 4;
   // cppcheck-suppress unusedStructMember
-  core::Color color_start{1.f, 1.f, 1.f, 1.f};
+  std::array<ColorStop, kMaxColorStops> color_gradient{};
   // cppcheck-suppress unusedStructMember
-  core::Color color_end{1.f, 1.f, 1.f, 0.f};
+  int color_gradient_count = 0;
+
+  // Per-particle rotation (degrees / degrees per second).
+  float rotation_start_min   = 0.f;
+  float rotation_start_max   = 0.f;
+  float angular_velocity_min = 0.f;
+  float angular_velocity_max = 0.f;
+
+  // Velocity drag applied each frame: velocity *= (1 - drag * dt). Range [0,1].
+  float drag = 0.f;
+
+  // Sinusoidal lateral turbulence. strength > 0 enables it.
+  float turbulence_strength  = 0.f;
+  float turbulence_frequency = 1.f;  // Hz
 };
 
 }  // namespace particles

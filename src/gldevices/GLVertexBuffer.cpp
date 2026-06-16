@@ -96,6 +96,10 @@ void ConfigureAttributes(core::VertexType vertex_type) {
       glEnableVertexAttribArray(3);
       glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, stride,
           reinterpret_cast<const void*>(offsetof(core::VertexParticle, uv_offset)));
+      // location 4: rotation (float, radians)
+      glEnableVertexAttribArray(4);
+      glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, stride,
+          reinterpret_cast<const void*>(offsetof(core::VertexParticle, rotation)));
       break;
     }
     default:

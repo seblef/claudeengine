@@ -75,6 +75,12 @@ class ParticleEmitter {
     float       size_start;
     // cppcheck-suppress unusedStructMember
     float       size_end;
+    // cppcheck-suppress unusedStructMember
+    float       angle;          // current rotation in radians
+    // cppcheck-suppress unusedStructMember
+    float       angular_vel;    // radians per second
+    // cppcheck-suppress unusedStructMember
+    float       turb_phase;     // random phase offset for turbulence
   };
 
   void SpawnParticle();
