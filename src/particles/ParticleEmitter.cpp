@@ -133,26 +133,42 @@ void ParticleEmitter::Update(float dt) {
 }
 
 void ParticleEmitter::UploadToGPU() {
-  const int frame_count = desc_.sprite_cols * desc_.sprite_rows;
+  const int cols        = std::max(1, desc_.sprite_cols);
+  const int rows        = std::max(1, desc_.sprite_rows);
+  const int frame_count = cols * rows;
+  const float inv_cols  = 1.f / static_cast<float>(cols);
+  const float inv_rows  = 1.f / static_cast<float>(rows);
+
+  const bool can_interpolate =
+      desc_.smooth_transition &&
+      desc_.animation_mode == ParticleAnimationMode::kSequential &&
+      frame_count > 1 && desc_.animation_fps > 0.f;
 
   for (int i = 0; i < live_count_; ++i) {
     const Particle& p = particles_[i];
 
-    int frame = 0;
-    if (frame_count > 0) {
-      frame = p.frame % frame_count;
-    }
-    const int col = (desc_.sprite_cols > 0) ? frame % desc_.sprite_cols : 0;
-    const int row = (desc_.sprite_cols > 0) ? frame / desc_.sprite_cols : 0;
+    const int frame = (frame_count > 0) ? (p.frame % frame_count) : 0;
+    const int col   = frame % cols;
+    const int row   = frame / cols;
     // Rows are counted top-to-bottom in the image but the texture is loaded with
     // stbi_set_flip_vertically_on_load(1), so V=0 is the image bottom. Invert the
     // row index so that sprite row 0 maps to the top of the texture (high V).
-    const int rows = std::max(1, desc_.sprite_rows);
     const core::Vec2f uv_offset{
-        static_cast<float>(col) / static_cast<float>(std::max(1, desc_.sprite_cols)),
-        static_cast<float>(rows - 1 - row) / static_cast<float>(rows)};
+        static_cast<float>(col) * inv_cols,
+        static_cast<float>(rows - 1 - row) * inv_rows};
 
-    const core::VertexParticle v{p.position, p.size, p.color, uv_offset, p.angle};
+    core::VertexParticle v{p.position, p.size, p.color, uv_offset, p.angle};
+
+    if (can_interpolate) {
+      const float frame_f   = p.age * desc_.animation_fps;
+      const int   next      = (frame + 1) % frame_count;
+      const int   next_col  = next % cols;
+      const int   next_row  = next / cols;
+      v.uv_offset2  = {static_cast<float>(next_col) * inv_cols,
+                       static_cast<float>(rows - 1 - next_row) * inv_rows};
+      v.frame_blend = frame_f - std::floor(frame_f);
+    }
+
     const int base = i * 4;
     vbo_vertices_[base + 0] = v;
     vbo_vertices_[base + 1] = v;

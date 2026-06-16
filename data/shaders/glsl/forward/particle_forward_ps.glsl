@@ -1,6 +1,11 @@
 // Fragment shader for the particle forward pass (kAdditive and kAlphaBlend emitters).
 // Outputs to a single HDR render target (no MRT).
 //
+// Frame interpolation: samples both the current (v_uv) and next (v_uv2) sprite-sheet
+// frames and blends between them:
+//   tex_color = mix(texture(u_texture, v_uv), texture(u_texture, v_uv2), v_frame_blend)
+// When v_frame_blend == 0 (smooth_transition disabled), only the current frame is used.
+//
 // When u_lit is true (kAlphaBlend + lit), applies a forward directional-light
 // approximation consistent with the G-buffer particle normal:
 //   N       = -view[2].xyz  (world-space camera-facing billboard normal)
@@ -20,6 +25,8 @@
 #include <uniforms/light_infos.glsl>
 
 in vec2 v_uv;
+in vec2 v_uv2;
+in float v_frame_blend;
 in vec4 v_color;
 
 layout(binding = 0) uniform sampler2D u_texture;
@@ -28,7 +35,8 @@ uniform int u_lit;  // 1 = apply directional lighting, 0 = unlit
 layout(location = 0) out vec4 out_color;
 
 void main() {
-    vec4 tex_color = vec4(texture(u_texture, v_uv).rgb, 1);
+    // Blend between the current and next sprite-sheet frame.
+    vec4 tex_color = mix(texture(u_texture, v_uv), texture(u_texture, v_uv2), v_frame_blend);
 
     vec4 final_color = tex_color * v_color;
 
