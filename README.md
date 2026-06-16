@@ -37,6 +37,7 @@ All dependencies are fetched automatically by CMake at configure time via `Fetch
 | [fast_obj](https://github.com/thisistherk/fast_obj) | `master` | OBJ mesh loading |
 | [ufbx](https://github.com/ufbx/ufbx) | `master` | FBX mesh loading |
 | [stb](https://github.com/nothings/stb) | `master` | JPEG / PNG texture loading |
+| [Jolt Physics](https://github.com/jrouwe/JoltPhysics) | `v5.5.0` | Rigid-body physics simulation |
 | [ImGui (docking)](https://github.com/ocornut/imgui) | `docking` | Editor UI *(editor only)* |
 | [ImGuizmo](https://github.com/CedricGuillemet/ImGuizmo) | `master` | Transform gizmo *(editor only)* |
 | [nfd-extended](https://github.com/btzy/nativefiledialog-extended) | `master` | Native file dialogs *(editor only)* |
