@@ -62,7 +62,7 @@ const float kMacroScale = 0.05;
 // Equation: Z = sqrt(max(0, 1 - X^2 - Y^2))
 vec3 DecodeNormal(vec4 sp) {
     vec2 xy = sp.rg * 2.0 - 1.0;
-    return vec3(xy, sqrt(max(0.0, 1.0 - dot(xy, xy))));
+    return vec3(xy, sqrt(max(0.0, dot(xy, xy))));
 }
 
 vec3 BlendNormals(vec3 n1, vec3 n2, float f) {
