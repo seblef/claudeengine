@@ -24,6 +24,7 @@
 #include "core/ProjectionType.h"
 #include "core/Vec2f.h"
 #include "core/YamlUtils.h"
+#include "particles/ColorStop.h"
 #include "particles/EmitterShape.h"
 #include "particles/ParticleAnimationMode.h"
 #include "particles/ParticleBlendMode.h"
@@ -429,10 +430,27 @@ bool ParticleEditorWindow::SerializeToFile(
     out << YAML::Key << "min"      << YAML::Value << ss.size_end_min;
     out << YAML::Key << "max"      << YAML::Value << ss.size_end_max;
     out << YAML::EndMap;
-    out << YAML::Key << "color_start" << YAML::Value;
-    EmitColorRGBA(out, ss.color_start);
-    out << YAML::Key << "color_end" << YAML::Value;
-    EmitColorRGBA(out, ss.color_end);
+    out << YAML::Key << "color_gradient" << YAML::Value << YAML::BeginSeq;
+    for (int s = 0; s < ss.color_gradient_count; ++s) {
+      const particles::ColorStop& stop = ss.color_gradient[s];
+      out << YAML::BeginMap;
+      out << YAML::Key << "key"   << YAML::Value << stop.key;
+      out << YAML::Key << "color" << YAML::Value;
+      EmitColorRGBA(out, stop.color);
+      out << YAML::EndMap;
+    }
+    out << YAML::EndSeq;
+    out << YAML::Key << "rotation_start" << YAML::Value << YAML::BeginMap;
+    out << YAML::Key << "min" << YAML::Value << ss.rotation_start_min;
+    out << YAML::Key << "max" << YAML::Value << ss.rotation_start_max;
+    out << YAML::EndMap;
+    out << YAML::Key << "angular_velocity" << YAML::Value << YAML::BeginMap;
+    out << YAML::Key << "min" << YAML::Value << ss.angular_velocity_min;
+    out << YAML::Key << "max" << YAML::Value << ss.angular_velocity_max;
+    out << YAML::EndMap;
+    out << YAML::Key << "drag"                 << YAML::Value << ss.drag;
+    out << YAML::Key << "turbulence_strength"  << YAML::Value << ss.turbulence_strength;
+    out << YAML::Key << "turbulence_frequency" << YAML::Value << ss.turbulence_frequency;
     out << YAML::EndMap;
   }
   out << YAML::EndSeq;
@@ -706,24 +724,70 @@ void ParticleEditorWindow::RenderSubSystemProperties() {
   changed |= ImGui::DragFloat("Spread",  &ss.spread,  0.5f,  0.f, 180.f);
   changed |= ImGui::DragFloat("Gravity", &ss.gravity, 0.01f, -50.f, 50.f);
 
-  ImGui::SeparatorText("Colors");
+  ImGui::SeparatorText("Color gradient");
+
+  for (int s = 0; s < ss.color_gradient_count; ++s) {
+    particles::ColorStop& stop = ss.color_gradient[s];
+    ImGui::PushID(s);
+
+    char label[32];
+    std::snprintf(label, sizeof(label), "Key##cg%d", s);
+    changed |= ImGui::DragFloat(label, &stop.key, 0.01f, 0.f, 1.f);
+
+    std::snprintf(label, sizeof(label), "Color##cg%d", s);
+    float c[4] = {stop.color.r, stop.color.g, stop.color.b, stop.color.a};
+    if (ImGui::ColorEdit4(label, c)) {
+      stop.color = {c[0], c[1], c[2], c[3]};
+      changed     = true;
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button(ICON_FA_MINUS "##cg_del")) {
+      for (int j = s; j < ss.color_gradient_count - 1; ++j)
+        ss.color_gradient[j] = ss.color_gradient[j + 1];
+      --ss.color_gradient_count;
+      changed = true;
+    }
+    ImGui::PopID();
+  }
+
+  if (ss.color_gradient_count < particles::ParticleSubSystemDesc::kMaxColorStops) {
+    if (ImGui::Button(ICON_FA_PLUS " Add stop")) {
+      const float new_key = (ss.color_gradient_count > 0)
+          ? ss.color_gradient[ss.color_gradient_count - 1].key
+          : 0.f;
+      ss.color_gradient[ss.color_gradient_count++] = {new_key, core::Color{1.f, 1.f, 1.f, 1.f}};
+      changed = true;
+    }
+  }
+
+  ImGui::SeparatorText("Rotation");
 
   {
-    float cs[4] = {ss.color_start.r, ss.color_start.g,
-                   ss.color_start.b, ss.color_start.a};
-    if (ImGui::ColorEdit4("Color start", cs)) {
-      ss.color_start = {cs[0], cs[1], cs[2], cs[3]};
-      changed         = true;
+    float rot[2] = {ss.rotation_start_min, ss.rotation_start_max};
+    if (ImGui::DragFloat2("Start angle (min/max)", rot, 1.f, -360.f, 360.f)) {
+      ss.rotation_start_min = rot[0];
+      ss.rotation_start_max = rot[1];
+      changed                = true;
     }
   }
   {
-    float ce[4] = {ss.color_end.r, ss.color_end.g,
-                   ss.color_end.b, ss.color_end.a};
-    if (ImGui::ColorEdit4("Color end", ce)) {
-      ss.color_end = {ce[0], ce[1], ce[2], ce[3]};
-      changed       = true;
+    float av[2] = {ss.angular_velocity_min, ss.angular_velocity_max};
+    if (ImGui::DragFloat2("Angular vel (min/max)", av, 1.f, -720.f, 720.f)) {
+      ss.angular_velocity_min = av[0];
+      ss.angular_velocity_max = av[1];
+      changed                  = true;
     }
   }
+
+  ImGui::SeparatorText("Dynamics");
+
+  changed |= ImGui::DragFloat("Drag",                 &ss.drag,
+                               0.01f, 0.f, 1.f);
+  changed |= ImGui::DragFloat("Turbulence strength",  &ss.turbulence_strength,
+                               0.01f, 0.f, 10.f);
+  changed |= ImGui::DragFloat("Turbulence frequency", &ss.turbulence_frequency,
+                               0.1f, 0.f, 20.f);
 
   if (changed)
     unsaved_ = preview_dirty_ = true;

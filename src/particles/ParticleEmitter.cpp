@@ -17,6 +17,35 @@ constexpr float kPi        = 3.14159265358979323846f;
 constexpr float kTwoPi     = 2.f * kPi;
 constexpr float kDegToRad  = kPi / 180.f;
 
+// Sample the colour gradient at normalised age t ∈ [0, 1].
+// Falls back to white-opaque → white-transparent when the gradient is empty.
+core::Color SampleGradient(const ParticleSubSystemDesc& desc, float t) {
+  const int count = desc.color_gradient_count;
+  if (count <= 0) {
+    // Legacy two-stop fallback: white-opaque → white-transparent.
+    static const core::Color kDefault0{1.f, 1.f, 1.f, 1.f};
+    static const core::Color kDefault1{1.f, 1.f, 1.f, 0.f};
+    return kDefault0.Lerp(kDefault1, t);
+  }
+  if (count == 1) return desc.color_gradient[0].color;
+
+  if (t <= desc.color_gradient[0].key) return desc.color_gradient[0].color;
+
+  const ColorStop& last = desc.color_gradient[count - 1];
+  if (t >= last.key) return last.color;
+
+  for (int i = 0; i < count - 1; ++i) {
+    const ColorStop& a = desc.color_gradient[i];
+    const ColorStop& b = desc.color_gradient[i + 1];
+    if (t <= b.key) {
+      const float span = b.key - a.key;
+      const float local_t = (span > 1e-6f) ? (t - a.key) / span : 0.f;
+      return a.color.Lerp(b.color, local_t);
+    }
+  }
+  return last.color;
+}
+
 }  // namespace
 
 ParticleEmitter::ParticleEmitter(const ParticleSubSystemDesc& desc,
@@ -53,15 +82,31 @@ void ParticleEmitter::Update(float dt) {
   const core::Vec3f gravity_vec{0.f, -desc_.gravity, 0.f};
   const float half_dt2      = 0.5f * dt * dt;
   const int   frame_count   = desc_.sprite_cols * desc_.sprite_rows;
+  const float drag_factor   = 1.f - std::min(desc_.drag * dt, 1.f);
 
   for (int i = 0; i < live_count_; ++i) {
     Particle& p = particles_[i];
-    p.age      += dt;
+    p.age += dt;
+
+    // Velocity drag.
+    if (desc_.drag > 0.f)
+      p.velocity = p.velocity * drag_factor;
+
+    // Lateral turbulence: sinusoidal XZ perturbation based on particle age.
+    if (desc_.turbulence_strength > 0.f) {
+      const float phase = desc_.turbulence_frequency * kTwoPi * p.age + p.turb_phase;
+      p.position.x += std::sin(phase) * desc_.turbulence_strength * dt;
+      p.position.z += std::cos(phase) * desc_.turbulence_strength * dt;
+    }
+
     p.position += p.velocity * dt + gravity_vec * half_dt2;
+
+    // Per-particle rotation.
+    p.angle += p.angular_vel * dt;
 
     const float t = p.age / p.lifetime;
     p.size  = p.size_start + (p.size_end - p.size_start) * t;
-    p.color = desc_.color_start.Lerp(desc_.color_end, t);
+    p.color = SampleGradient(desc_, t);
 
     if (desc_.animation_mode == ParticleAnimationMode::kSequential &&
         frame_count > 1 && desc_.animation_fps > 0.f) {
@@ -102,7 +147,7 @@ void ParticleEmitter::UploadToGPU() {
         static_cast<float>(col) / static_cast<float>(std::max(1, desc_.sprite_cols)),
         static_cast<float>(rows - 1 - row) / static_cast<float>(rows)};
 
-    const core::VertexParticle v{p.position, p.size, p.color, uv_offset};
+    const core::VertexParticle v{p.position, p.size, p.color, uv_offset, p.angle};
     const int base = i * 4;
     vbo_vertices_[base + 0] = v;
     vbo_vertices_[base + 1] = v;
@@ -147,7 +192,18 @@ void ParticleEmitter::SpawnParticle() {
   p.size_end   = desc_.size_end_min +
                  u01(rng_) * (desc_.size_end_max - desc_.size_end_min);
   p.size  = p.size_start;
-  p.color = desc_.color_start;
+  p.color = SampleGradient(desc_, 0.f);
+
+  // Per-particle rotation.
+  p.angle = (desc_.rotation_start_min +
+             u01(rng_) * (desc_.rotation_start_max - desc_.rotation_start_min))
+            * kDegToRad;
+  p.angular_vel = (desc_.angular_velocity_min +
+                   u01(rng_) * (desc_.angular_velocity_max - desc_.angular_velocity_min))
+                  * kDegToRad;
+
+  // Random turbulence phase so adjacent particles don't oscillate in sync.
+  p.turb_phase = u01(rng_) * kTwoPi;
 
   const int frame_count = desc_.sprite_cols * desc_.sprite_rows;
   if (desc_.animation_mode == ParticleAnimationMode::kRandom && frame_count > 0) {

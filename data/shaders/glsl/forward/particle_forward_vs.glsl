@@ -13,11 +13,12 @@
 #version 460 core
 
 // kParticle layout: location 0=center(vec3), 1=size(float),
-//                  2=color(vec4), 3=uv_offset(vec2).
+//                  2=color(vec4), 3=uv_offset(vec2), 4=rotation(float).
 layout(location = 0) in vec3  in_center;
 layout(location = 1) in float in_size;
 layout(location = 2) in vec4  in_color;
 layout(location = 3) in vec2  in_uv_offset;
+layout(location = 4) in float in_rotation;
 
 #include <uniforms/scene_infos.glsl>
 
@@ -53,9 +54,15 @@ void main() {
     // of camera orientation.
     vec4 view_center = view * vec4(in_center, 1.0);
 
+    // Rotate corner offset in the billboard plane by in_rotation (radians).
+    // rot(θ) * co = (cos θ·co.x − sin θ·co.y, sin θ·co.x + cos θ·co.y)
     vec2 co = kCornerOffset[corner];
+    float cos_r = cos(in_rotation);
+    float sin_r = sin(in_rotation);
+    vec2 rotated_co = vec2(co.x * cos_r - co.y * sin_r,
+                           co.x * sin_r + co.y * cos_r);
     vec4 view_pos = view_center
-                  + vec4(co.x * in_size, co.y * in_size, 0.0, 0.0);
+                  + vec4(rotated_co.x * in_size, rotated_co.y * in_size, 0.0, 0.0);
 
     gl_Position = proj * view_pos;
 

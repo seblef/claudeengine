@@ -11,6 +11,7 @@
 #include "core/Config.h"
 #include "core/Vec3f.h"
 #include "core/YamlUtils.h"
+#include "particles/ColorStop.h"
 
 namespace particles {
 
@@ -102,10 +103,47 @@ ParticleSubSystemDesc ParseSubSystem(const YAML::Node& node) {
     desc.size_end_max = node["size_end"]["max"].as<float>(desc.size_end_max);
   }
 
-  if (node["color_start"])
-    desc.color_start = core::ParseColor(node["color_start"], desc.color_start);
-  if (node["color_end"])
-    desc.color_end = core::ParseColor(node["color_end"], desc.color_end);
+  if (node["color_gradient"] && node["color_gradient"].IsSequence()) {
+    desc.color_gradient_count = 0;
+    for (const auto& stop_node : node["color_gradient"]) {
+      if (desc.color_gradient_count >= ParticleSubSystemDesc::kMaxColorStops) break;
+      ColorStop& stop = desc.color_gradient[desc.color_gradient_count++];
+      stop.key   = stop_node["key"].as<float>(0.f);
+      stop.color = core::ParseColor(stop_node["color"], core::Color{});
+    }
+  } else {
+    // Legacy two-stop format: synthesise a gradient from color_start / color_end.
+    core::Color c0{1.f, 1.f, 1.f, 1.f};
+    core::Color c1{1.f, 1.f, 1.f, 0.f};
+    if (node["color_start"]) c0 = core::ParseColor(node["color_start"], c0);
+    if (node["color_end"])   c1 = core::ParseColor(node["color_end"],   c1);
+    desc.color_gradient[0] = {0.f, c0};
+    desc.color_gradient[1] = {1.f, c1};
+    desc.color_gradient_count = 2;
+  }
+
+  if (node["rotation_start"]) {
+    desc.rotation_start_min =
+        node["rotation_start"]["min"].as<float>(desc.rotation_start_min);
+    desc.rotation_start_max =
+        node["rotation_start"]["max"].as<float>(desc.rotation_start_max);
+  }
+  if (node["angular_velocity"]) {
+    desc.angular_velocity_min =
+        node["angular_velocity"]["min"].as<float>(desc.angular_velocity_min);
+    desc.angular_velocity_max =
+        node["angular_velocity"]["max"].as<float>(desc.angular_velocity_max);
+  }
+
+  if (node["drag"])
+    desc.drag = node["drag"].as<float>(desc.drag);
+
+  if (node["turbulence_strength"])
+    desc.turbulence_strength =
+        node["turbulence_strength"].as<float>(desc.turbulence_strength);
+  if (node["turbulence_frequency"])
+    desc.turbulence_frequency =
+        node["turbulence_frequency"].as<float>(desc.turbulence_frequency);
 
   return desc;
 }
