@@ -85,9 +85,13 @@ class FoliageRenderer : public core::Singleton<FoliageRenderer> {
     std::unique_ptr<abstract::ShaderStorageBuffer> near_ssbo;
     std::unique_ptr<abstract::ShaderStorageBuffer> billboard_ssbo;
     // cppcheck-suppress unusedStructMember
-    int                                            near_count  = 0;
+    int                                            near_count    = 0;
     // cppcheck-suppress unusedStructMember
-    int                                            bill_count  = 0;
+    int                                            bill_count    = 0;
+    // cppcheck-suppress unusedStructMember
+    float                                          mesh_height   = 1.f;   // bbox Y range
+    // cppcheck-suppress unusedStructMember
+    float                                          sway_strength = 0.05f;  // tip displacement (m)
   };
 
   // Creates a 1 × 1 billboard quad centred at x=0 with y in [0, 1].

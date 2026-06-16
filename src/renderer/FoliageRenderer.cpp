@@ -92,9 +92,14 @@ void FoliageRenderer::Build(abstract::VideoDevice* video,
     if (!desc.mesh_path.empty()) {
       const auto path = core::Config::GetDataFolder() / desc.mesh_path;
       gpu.geometry = MeshLoader::LoadGeometry(path.string(), video_);
-      if (!gpu.geometry)
+      if (gpu.geometry) {
+        const core::BBox3& bb = gpu.geometry->GetBBox();
+        const float h = bb.GetMax().y - bb.GetMin().y;
+        gpu.mesh_height = (h > 0.f) ? h : 1.f;
+      } else {
         LOG_F(WARNING, "FoliageRenderer: failed to load mesh '%s'",
               desc.mesh_path.c_str());
+      }
     }
 
     // Load albedo texture.
@@ -174,6 +179,9 @@ void FoliageRenderer::Render(const core::Camera& camera) {
 
     if (gpu.near_count == 0) continue;
 
+    mesh_shader_->SetUniformFloat("u_mesh_height",   gpu.mesh_height);
+    mesh_shader_->SetUniformFloat("u_sway_strength", gpu.sway_strength);
+
     if (gpu.albedo_tex)
       gpu.albedo_tex->Bind(0);
 
@@ -194,6 +202,8 @@ void FoliageRenderer::RenderBillboards(const core::Camera& camera) {
 
   for (auto& gpu : layers_) {
     if (gpu.bill_count == 0) continue;
+
+    billboard_shader_->SetUniformFloat("u_sway_strength", gpu.sway_strength);
 
     if (gpu.albedo_tex)
       gpu.albedo_tex->Bind(0);
