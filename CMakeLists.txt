@@ -121,13 +121,6 @@ else()
     target_compile_options(ufbx PRIVATE -w)
 endif()
 
-# Copy a known-good FBX from the ufbx test suite as the engine demo asset.
-configure_file(
-    ${ufbx_SOURCE_DIR}/data/blender_279_default_6100_ascii.fbx
-    ${CMAKE_SOURCE_DIR}/data/meshes/demo.fbx
-    COPYONLY
-)
-
 # ---------------------------------------------------------------------------
 # stb (single-header image loader) — JPEG and PNG support
 # ---------------------------------------------------------------------------
