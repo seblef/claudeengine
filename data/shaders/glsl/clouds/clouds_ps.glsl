@@ -2,9 +2,14 @@
 //
 // Projects a view ray onto a virtual cloud plane at a fixed altitude above the
 // camera (kCloudAltitude = 800 m) and samples a 4-octave FBM noise field
-// scrolled by the wind vector.  The resulting density is thresholded against
-// the per-frame cloud_density uniform and alpha-blended over the incoming sky
-// pixel.  Rays directed downward (below the horizon) receive zero cloud alpha.
+// scrolled by the wind vector.  Domain warping (Inigo Quilez's technique) is
+// applied before the density FBM: a first FBM pass produces a 2D warp vector
+// that displaces the UVs fed to the density FBM, breaking self-similar tiling
+// and producing swirling, organic cloud formations at the cost of one extra
+// FBM evaluation (~4 additional value-noise samples) per fragment.
+// The resulting density is thresholded against the per-frame cloud_density
+// uniform and alpha-blended over the incoming sky pixel.  Rays directed
+// downward (below the horizon) receive zero cloud alpha.
 //
 // UBO binding 2: scene_infos (eye_pos)
 // UBO binding 7: wind_infos  (wind_xz, wind_time)
@@ -25,6 +30,8 @@ const float kCloudAltitude = 800.0;
 const float kCloudScale    = 400.0;
 // UV drift speed in UV-units per second at 1 m/s wind.
 const float kCloudSpeed    = 0.0001;
+// Strength of the domain warp displacement applied to density UVs.
+const float kWarpScale     = 0.8;
 
 // ---- Value noise helpers ---------------------------------------------------
 
@@ -81,7 +88,13 @@ void main() {
     vec2 scroll = wind_xz * wind_time * kCloudSpeed;
     vec2 uv     = cloud_plane_xz / kCloudScale + scroll;
 
-    float density = FBM(uv);
+    // Domain warping: sample two decorrelated FBM passes to produce a 2D warp
+    // vector, then displace the UVs before the density evaluation.  The constant
+    // offset (5.2, 1.3) shifts the second sample far enough in noise space to
+    // decorrelate the two axes of the warp vector.
+    vec2 warp    = vec2(FBM(uv),
+                        FBM(uv + vec2(5.2, 1.3)));
+    float density = FBM(uv + kWarpScale * warp);
 
     // Remap so that cloud_density controls the coverage threshold:
     //   cloud_density = 0 → all density values below threshold → clear sky
