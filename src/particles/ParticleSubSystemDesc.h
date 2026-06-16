@@ -81,6 +81,14 @@ struct ParticleSubSystemDesc {
   // cppcheck-suppress unusedStructMember
   int color_gradient_count = 0;
 
+  // Intensity multiplier applied to the RGB channels of the sampled gradient
+  // colour.  Values > 1 produce HDR / bloom-friendly output (e.g. fire).
+  // intensity_start is the multiplier at particle birth; intensity_end at death.
+  // The two values are linearly interpolated over the particle's normalised age.
+  // Alpha is NOT affected — use the gradient alpha stops for transparency.
+  float intensity_start = 1.f;
+  float intensity_end   = 1.f;
+
   // Per-particle rotation (degrees / degrees per second).
   float rotation_start_min   = 0.f;
   float rotation_start_max   = 0.f;

@@ -137,6 +137,11 @@ ParticleSubSystemDesc ParseSubSystem(const YAML::Node& node) {
         node["angular_velocity"]["max"].as<float>(desc.angular_velocity_max);
   }
 
+  if (node["intensity_start"])
+    desc.intensity_start = node["intensity_start"].as<float>(desc.intensity_start);
+  if (node["intensity_end"])
+    desc.intensity_end = node["intensity_end"].as<float>(desc.intensity_end);
+
   if (node["drag"])
     desc.drag = node["drag"].as<float>(desc.drag);
 

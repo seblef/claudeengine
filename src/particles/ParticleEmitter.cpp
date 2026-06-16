@@ -104,9 +104,14 @@ void ParticleEmitter::Update(float dt) {
     // Per-particle rotation.
     p.angle += p.angular_vel * dt;
 
-    const float t = p.age / p.lifetime;
-    p.size  = p.size_start + (p.size_end - p.size_start) * t;
-    p.color = SampleGradient(desc_, t);
+    const float t         = p.age / p.lifetime;
+    p.size                = p.size_start + (p.size_end - p.size_start) * t;
+    p.color               = SampleGradient(desc_, t);
+    const float intensity = desc_.intensity_start +
+                            (desc_.intensity_end - desc_.intensity_start) * t;
+    p.color.r *= intensity;
+    p.color.g *= intensity;
+    p.color.b *= intensity;
 
     if (desc_.animation_mode == ParticleAnimationMode::kSequential &&
         frame_count > 1 && desc_.animation_fps > 0.f) {
@@ -191,8 +196,11 @@ void ParticleEmitter::SpawnParticle() {
                  u01(rng_) * (desc_.size_start_max - desc_.size_start_min);
   p.size_end   = desc_.size_end_min +
                  u01(rng_) * (desc_.size_end_max - desc_.size_end_min);
-  p.size  = p.size_start;
-  p.color = SampleGradient(desc_, 0.f);
+  p.size    = p.size_start;
+  p.color   = SampleGradient(desc_, 0.f);
+  p.color.r *= desc_.intensity_start;
+  p.color.g *= desc_.intensity_start;
+  p.color.b *= desc_.intensity_start;
 
   // Per-particle rotation.
   p.angle = (desc_.rotation_start_min +
