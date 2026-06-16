@@ -36,7 +36,11 @@ namespace environment {
 //   [100] normal_dir1_y         float  normalised UV scroll direction for layer 1, Y
 //   [104] normal_dir2_x         float  normalised UV scroll direction for layer 2, X
 //   [108] normal_dir2_y         float  normalised UV scroll direction for layer 2, Y
-// Total: 112 bytes (7 float4s).
+//   [112] foam_scale1           float  UV scale for first foam texture sample
+//   [116] foam_scale2           float  UV scale for second foam texture sample
+//   [120] foam_scroll_speed1    float  signed scroll speed for first foam sample
+//   [124] foam_scroll_speed2    float  signed scroll speed for second foam sample (negative = counter-scroll)
+// Total: 128 bytes (8 float4s).
 struct WaterInfos {
     // float4 0
     // cppcheck-suppress unusedStructMember
@@ -108,8 +112,20 @@ struct WaterInfos {
     float normal_dir2_x = -0.5735f;  // layer 2 scroll direction, X
     // cppcheck-suppress unusedStructMember
     float normal_dir2_y = -0.8192f;  // layer 2 scroll direction, Y
+
+    // float4 7 — foam texture UV scales and signed scroll speeds.
+    // Defaults reproduce the previous hardcoded constants in water_ps.glsl.
+    // foam_scroll_speed2 is negative to maintain the counter-scrolling convention.
+    // cppcheck-suppress unusedStructMember
+    float foam_scale1        = 0.04f;   // UV scale for first foam sample (controls bubble density)
+    // cppcheck-suppress unusedStructMember
+    float foam_scale2        = 0.07f;   // UV scale for second foam sample
+    // cppcheck-suppress unusedStructMember
+    float foam_scroll_speed1 = 0.015f;  // signed scroll speed for first foam sample
+    // cppcheck-suppress unusedStructMember
+    float foam_scroll_speed2 = -0.010f;  // signed scroll speed for second foam sample (negative = counter-scroll)
 };
 
-static_assert(sizeof(WaterInfos) == 112);
+static_assert(sizeof(WaterInfos) == 128);
 
 }  // namespace environment
