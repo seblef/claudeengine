@@ -1,0 +1,163 @@
+sub_systems:
+  - name: flame
+    blend_mode: additive
+    lit: false
+    texture: fx/fireflamepart01anim.png
+    sprite_cols: 8
+    sprite_rows: 4
+    animation_fps: 12
+    animation_mode: sequential
+    smooth_transition: true
+    emitter_shape: sphere
+    emitter_radius: 0.200000003
+    enabled: true
+    emission_rate: 8
+    max_particles: 25
+    looping: true
+    duration: 1
+    lifetime:
+      min: 1.5
+      max: 3
+    speed:
+      min: 0.5
+      max: 1.20000005
+    direction: [0, 1, 0]
+    spread: 25
+    gravity: -0.300000012
+    size_start:
+      min: 2
+      max: 3
+    size_end:
+      min: 3
+      max: 4
+    color_gradient:
+      - key: 0
+        color: [1, 0.980000019, 0.699999988, 1]
+      - key: 0.25
+        color: [1, 0.600000024, 0.100000001, 0.899999976]
+      - key: 0.600000024
+        color: [0.850000024, 0.100000001, 0, 0.5]
+      - key: 1
+        color: [0, 0, 0, 0]
+    rotation_start:
+      min: 0
+      max: 360
+    angular_velocity:
+      min: -20
+      max: 20
+    intensity_start: 2
+    intensity_end: 1.5
+    drag: 0.5
+    turbulence_strength: 0.300000012
+    turbulence_frequency: 2.5
+  - name: smoke
+    blend_mode: alpha_blend
+    lit: false
+    texture: fx/smoke02.png
+    sprite_cols: 4
+    sprite_rows: 4
+    animation_fps: 13
+    animation_mode: sequential
+    smooth_transition: false
+    emitter_shape: sphere
+    emitter_radius: 0.150000006
+    enabled: false
+    emission_rate: 3
+    max_particles: 10
+    looping: true
+    duration: 1
+    lifetime:
+      min: 4
+      max: 8
+    speed:
+      min: 0.300000012
+      max: 0.699999988
+    direction: [0, 1, 0]
+    spread: 15
+    gravity: -2
+    size_start:
+      min: 2
+      max: 3
+    size_end:
+      min: 5
+      max: 7
+    color_gradient:
+      - key: 0
+        color: [1, 0.980392158, 0.980392158, 0.0431372561]
+      - key: 0.100000001
+        color: [0.827450991, 0.827450991, 0.827450991, 0.784313738]
+      - key: 0.600000024
+        color: [0.778761029, 0.778761029, 0.778761029, 0.200000003]
+      - key: 1
+        color: [0.508849561, 0.502094924, 0.502094924, 0]
+    rotation_start:
+      min: 0
+      max: 360
+    angular_velocity:
+      min: -10
+      max: 10
+    intensity_start: 1
+    intensity_end: 1
+    drag: 0.800000012
+    turbulence_strength: 0.100000001
+    turbulence_frequency: 0.5
+  - name: sparks
+    blend_mode: additive
+    lit: false
+    texture: fx/flame04.png
+    sprite_cols: 1
+    sprite_rows: 1
+    animation_fps: 0
+    animation_mode: sequential
+    smooth_transition: false
+    emitter_shape: point
+    emitter_radius: 0.100000001
+    enabled: true
+    emission_rate: 15
+    max_particles: 60
+    looping: true
+    duration: 1
+    lifetime:
+      min: 0.300000012
+      max: 1.5
+    speed:
+      min: 1.5
+      max: 4
+    direction: [0, 1, 0]
+    spread: 45
+    gravity: 1.5
+    size_start:
+      min: 0.0500000007
+      max: 0.150000006
+    size_end:
+      min: 0
+      max: 0.0250000004
+    color_gradient:
+      - key: 0
+        color: [1, 1, 1, 1]
+      - key: 0.25
+        color: [1, 0.949999988, 0.400000006, 1]
+      - key: 0.699999988
+        color: [1, 0.5, 0.100000001, 0.699999988]
+      - key: 1
+        color: [0.5, 0.100000001, 0, 0]
+    rotation_start:
+      min: 0
+      max: 0
+    angular_velocity:
+      min: 0
+      max: 0
+    intensity_start: 1
+    intensity_end: 1
+    drag: 0.300000012
+    turbulence_strength: 0.200000003
+    turbulence_frequency: 4
+lights:
+  - type: omni
+    color: [0.977876127, 0.660000026, 0.0399999991]
+    intensity_min: 2.5
+    intensity_max: 4
+    radius: 12
+    local_offset: [0, 0.5, 0]
+    flicker_frequency: 6
+    flicker_amplitude: 0.300000012

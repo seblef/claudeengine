@@ -10,18 +10,18 @@ sub_systems:
     emitter_shape: point
     emitter_radius: 0.360000014
     emission_rate: 2
-    max_particles: 4
+    max_particles: 6
     looping: true
     duration: 1
     lifetime:
       min: 3
       max: 5
     speed:
-      min: 0.3
-      max: 0.8
+      min: 0.300000012
+      max: 0.800000012
     direction: [0, 1, 0]
     spread: 20
-    gravity: -0.4
+    gravity: -0.400000006
     size_start:
       min: 3
       max: 4
@@ -29,23 +29,23 @@ sub_systems:
       min: 1
       max: 2
     color_gradient:
-      - key: 0.0
-        color: [1.0, 1.0, 0.8, 1.0]
-      - key: 0.3
-        color: [1.0, 0.55, 0.1, 0.9]
-      - key: 0.7
-        color: [0.8, 0.1, 0.0, 0.5]
-      - key: 1.0
-        color: [0.0, 0.0, 0.0, 0.0]
+      - key: 0
+        color: [1, 1, 0.800000012, 1]
+      - key: 0.300000012
+        color: [1, 0.550000012, 0.100000001, 0.899999976]
+      - key: 0.699999988
+        color: [0.800000012, 0.100000001, 0, 0.5]
+      - key: 1
+        color: [0, 0, 0, 0]
     rotation_start:
       min: 0
       max: 360
     angular_velocity:
       min: -30
       max: 30
-    drag: 0.6
+    drag: 0.600000024
     turbulence_strength: 0.25
-    turbulence_frequency: 2.0
+    turbulence_frequency: 2
 lights:
   - type: omni
     color: [0.977876127, 0.718109846, 0.060576424]

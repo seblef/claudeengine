@@ -132,6 +132,30 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(stb)
 
+# ---------------------------------------------------------------------------
+# GLM (header-only math library, required by GLI)
+# ---------------------------------------------------------------------------
+FetchContent_Declare(
+    glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG        0.9.9.8
+    GIT_SHALLOW    TRUE
+    EXCLUDE_FROM_ALL
+)
+FetchContent_MakeAvailable(glm)
+
+# ---------------------------------------------------------------------------
+# GLI (header-only DDS/KTX compressed-texture loader)
+# ---------------------------------------------------------------------------
+FetchContent_Declare(
+    gli
+    GIT_REPOSITORY https://github.com/g-truc/gli.git
+    GIT_TAG        master
+    GIT_SHALLOW    TRUE
+    EXCLUDE_FROM_ALL
+)
+FetchContent_MakeAvailable(gli)
+
 # Optional TIFF support via system libtiff
 find_package(TIFF QUIET)
 if(TIFF_FOUND AND TARGET TIFF::TIFF)

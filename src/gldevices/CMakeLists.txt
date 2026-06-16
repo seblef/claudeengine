@@ -18,7 +18,9 @@ add_library(gldevices STATIC
 )
 
 target_include_directories(gldevices PUBLIC "${CMAKE_SOURCE_DIR}/src"
-                                     PRIVATE ${stb_SOURCE_DIR})
+                                     PRIVATE ${stb_SOURCE_DIR}
+                                             ${gli_SOURCE_DIR}
+                                             ${glm_SOURCE_DIR})
 
 find_package(OpenGL REQUIRED)
 target_link_libraries(gldevices PUBLIC abstract PRIVATE glfw OpenGL::GL)

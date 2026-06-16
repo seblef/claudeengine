@@ -1,0 +1,10 @@
+rendering:
+  textures:
+    diffuse: objects/campfire01_diffuse.jpg
+    normal: objects/campfire01_normal.jpg
+    emissive: objects/campfire01_emissive.jpg
+  diffuse_color: [1, 1, 1, 1]
+  emissive_color: [1, 1, 0.996078432, 1]
+  ambient_color: [0, 0, 0, 0]
+  shininess: 32
+  specular: 1

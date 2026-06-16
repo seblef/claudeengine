@@ -1,9 +1,9 @@
 name: untitled
 map_size: 8192
 global_light:
-  direction: [-0.762103558, -0.409827054, -0.501238465]
-  color: [0.449999988, 0.5, 0.800000012]
-  intensity: 0.0799999982
+  direction: [0.291537166, -0.676389754, -0.676389635]
+  color: [1, 0.949999988, 0.800000012]
+  intensity: 1.14788258
   ambient_color: [0.207964599, 0.207964599, 0.207964599]
   cast_shadow: true
   shadow_resolution: 2048
@@ -16,24 +16,31 @@ environment:
   sun_intensity: 20.7000008
   refraction_strength: 0.061999999
   absorption_scale: 0.379999995
-  foam_height_thresh: 1.13
-  foam_shoreline_depth: 6.4000001
-  foam_steepness_thresh: 0.540000021
-  foam_speed: 0.479999989
-  normal_scale1: 0.200000003
-  normal_scale2: 0.0500000007
+  foam_height_thresh: 1.25999999
+  foam_shoreline_depth: 10
+  foam_steepness_thresh: 0.5
+  foam_speed: 0.300000012
+  foam_scale1: 0.230000004
+  foam_scale2: 0.169
+  foam_scroll_speed1: 0.00800000038
+  normal_scale1: 0.0170000009
+  normal_scale2: 0.0109999999
   normal_scroll_speed1: 0.0199999996
-  normal_scroll_speed2: 0.0399999991
+  normal_scroll_speed2: 0.00999999978
+  normal_dir1: [-0.0523359403, 0.99862951]
+  normal_dir2: [-0.438370973, -0.898794115]
   cloud_enabled: true
   cloud_density: 0.310000002
   wind_enabled: true
-  wind_direction: [0.484809577, 0, 0.874619722]
+  wind_direction: [0.484809637, 0, 0.874619842]
   wind_strength: 1.20000005
   start_time_of_day: 13.1300001
   time_scale: 60
   turbidity: 3.4000001
   moon_texture: moon.png
   night_sky_texture: sky.png
+  normal_map_texture1: water/normal01.jpg
+  normal_map_texture2: water/normal02.jpg
 objects:
   - name: Object
     type: player_start
@@ -83,6 +90,65 @@ objects:
     shadow_resolution: 1024
     shadow_bias: 0.00499999989
     radius: 6
+  - name: barrel01_01
+    type: mesh
+    transform: [1.72650385, -0.109835476, -0.0045195967, 603.581299, 0.109928422, 1.72504401, 0.0709834695, 30.8230515, -0, -0.0711272061, 1.72853732, 1131.21741, 0, 0, 0, 1]
+    mesh: meshes/barrel01.emesh
+    material: materials/barrel01.yaml
+  - name: Object
+    type: mesh
+    transform: [1.82999992, 0, 0, 604.8573, 0, 1.82999992, 0, 31.0214157, 0, 0, 1.82999992, 1134.18823, 0, 0, 0, 1]
+    mesh: meshes/barrel01.emesh
+    material: materials/barrel01.yaml
+  - name: Object
+    type: mesh
+    transform: [1.97529125, -0.140017211, -0.911604941, 603.385193, 0.158348635, 2.17422175, 0.00916612614, 30.5396748, 0.908600211, -0.0745215714, 1.98022616, 1123.3324, 0, 0, 0, 1]
+    mesh: meshes/concrete_road_barrier.emesh
+    material: materials/concrete_road_barrier.yaml
+  - name: Object
+    type: mesh
+    transform: [3.76171565, -0.2496133, -0.00959869009, 597.406128, 0.249797821, 3.75893688, 0.144547075, 30.3843746, -0, -0.144865423, 3.76721549, 1129.47021, 0, 0, 0, 1]
+    mesh: meshes/campfire01.emesh
+    material: materials/campfire01.yaml
+  - name: barrel01_01 (copy) (copy)
+    type: mesh
+    transform: [1.72650385, -0.109835476, -0.0045195967, 604.581299, 0.109928422, 1.72504401, 0.0709834695, 30.8230515, -0, -0.0711272061, 1.72853732, 1132.21741, 0, 0, 0, 1]
+    mesh: meshes/barrel01.emesh
+    material: materials/barrel01.yaml
+  - name: barrel01_01 (copy) (copy)
+    type: mesh
+    transform: [1.72650385, -0.109835476, -0.0045195967, 602.52063, 0.109928422, 1.72504401, 0.0709834695, 30.8230515, 0, -0.0711272061, 1.72853732, 1132.21741, 0, 0, 0, 1]
+    mesh: meshes/barrel01.emesh
+    material: materials/barrel01.yaml
+  - name: Object
+    type: mesh
+    transform: [1.6559118, -0.116332039, -0.00480638258, 607.150085, 0.116431288, 1.65450013, 0.0683574528, 32.3528824, -0, -0.0685262084, 1.65858507, 1160.25916, 0, 0, 0, 1]
+    mesh: meshes/Leaf_Oak.emesh
+    material: materials/oak001_branches.yaml
+  - name: Object (copy) (copy)
+    type: mesh
+    transform: [1.4828794, -0.0877100006, 0.74092871, 602.666138, 0.0384163521, 1.6552788, 0.119063675, 32.2629585, -0.745112419, -0.0892128199, 1.48069203, 1163.86365, 0, 0, 0, 1]
+    mesh: meshes/Leaf_Oak.emesh
+    material: materials/oak001_branches.yaml
+  - name: Object (copy) (copy)
+    type: mesh
+    transform: [1.65774632, -0.0863370076, -0.00482368236, 608.150085, 0.086471647, 1.65516508, 0.0924747214, 32.8180504, -0, -0.0926004425, 1.65741515, 1168.5824, 0, 0, 0, 1]
+    mesh: meshes/Leaf_Oak.emesh
+    material: materials/oak001_branches.yaml
+  - name: Object (copy) (copy)
+    type: mesh
+    transform: [-0.196440831, -0.0849852487, -1.64614332, 602.814087, 0.085564144, 1.65503109, -0.0956548303, 32.5996742, 1.64611316, -0.096169509, -0.191472352, 1169.43469, 0, 0, 0, 1]
+    mesh: meshes/Leaf_Oak.emesh
+    material: materials/oak001_branches.yaml
+  - name: Object (copy) (copy)
+    type: mesh
+    transform: [1.46305048, -0.111086003, -0.776365459, 597.031799, 0.126614794, 1.65516329, 0.00177537475, 31.4015331, 0.773984611, -0.0607812144, 1.4672606, 1152.98315, 0, 0, 0, 1]
+    mesh: meshes/Leaf_Oak.emesh
+    material: materials/oak001_branches.yaml
+  - name: bonfire_001
+    type: particle_system
+    template: bonfire
+    transform: [1, 0, 0, 597.407837, 0, 1, 0, 32.5606194, 0, 0, 1, 1129.4657, 0, 0, 0, 1]
 terrain:
   heightmap: demo.r16
   heightmap_width: 4096
@@ -116,10 +182,10 @@ terrain:
       cull_distance: 80
       billboard_distance: 35
 editor:
-  selected_object: entry_light_02
+  selected_object: ~
   camera:
-    focus: [381.911621, 38.9980965, 1013.75891]
-    azimuth: -1.29272592
-    elevation: -0.010797428
-    distance: 31.1769142
+    focus: [592.342651, 31.2416592, 1147.29333]
+    azimuth: -1.70771885
+    elevation: 0.179202959
+    distance: 34.1072502
   snap_grid: 0
