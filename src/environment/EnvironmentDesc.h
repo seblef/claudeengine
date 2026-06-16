@@ -40,6 +40,12 @@ struct EnvironmentDesc {
     float normal_scale2        = 0.07f;
     float normal_scroll_speed1 = 0.30f;
     float normal_scroll_speed2 = 0.20f;
+    // Normalised UV-space scroll direction for each normal map layer.
+    // Defaults reproduce the visual appearance of the former hardcoded directions.
+    float normal_dir1_x = 0.8575f;
+    float normal_dir1_y = 0.5145f;
+    float normal_dir2_x = -0.5735f;
+    float normal_dir2_y = -0.8192f;
     // Starting time of day in hours [0, 24). Defaults to noon.
     float start_time_of_day = 12.f;
     // Time multiplier: 1.0 = real time, 60.0 = 1 min real → 1 hr in-game.

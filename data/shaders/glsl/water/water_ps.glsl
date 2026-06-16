@@ -5,10 +5,10 @@
 // shallow shoreline water fades in and deep water is opaque.
 //
 // Normal map blending:
-//   Two tileable water normal map layers scroll in slightly different directions
+//   Two tileable water normal map layers scroll in configurable directions
 //   to produce micro-surface ripple detail independent of the vertex waves.
-//   uv1 = v_uv * normal_scale1 + time * scroll_speed1 * vec2(1.0, 0.6)
-//   uv2 = v_uv * normal_scale2 - time * scroll_speed2 * vec2(0.7, 1.0)
+//   uv1 = v_uv * normal_scale1 + time * scroll_speed1 * dir_params.xy
+//   uv2 = v_uv * normal_scale2 + time * scroll_speed2 * dir_params.zw
 //   ts_n = normalize(n1 + n2)
 //   N    = normalize(TBN * ts_n)
 //   where TBN comes from the Gerstner analytical tangent frame (from VS).
@@ -115,9 +115,10 @@ void main() {
 
     // Sample two scrolling normal map layers and combine into a world-space normal.
     // foam_params.z/w = normal_scale1/2; scroll_params.x/y = scroll speeds.
+    // dir_params.xy/zw = configurable normalised UV-space scroll directions.
     // Second layer skipped beyond lod_far_dist — reuse n1 instead.
-    vec2 uv1 = v_uv * foam_params.z + time * scroll_params.x * vec2(1.0, 0.6);
-    vec2 uv2 = v_uv * foam_params.w - time * scroll_params.y * vec2(0.7, 1.0);
+    vec2 uv1 = v_uv * foam_params.z + time * scroll_params.x * dir_params.xy;
+    vec2 uv2 = v_uv * foam_params.w + time * scroll_params.y * dir_params.zw;
 
     vec3 n1   = texture(u_normal_map, uv1).rgb * 2.0 - 1.0;
     vec3 n2   = is_mid ? texture(u_normal_map2, uv2).rgb * 2.0 - 1.0 : n1;

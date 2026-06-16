@@ -156,6 +156,15 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
     normal_scroll_speed2_ = scroll_speed2;
   }
 
+  // Updates the normalised UV-space scroll direction for each normal map layer.
+  void SetNormalMapDirections(float dir1_x, float dir1_y,
+                              float dir2_x, float dir2_y) {
+    normal_dir1_x_ = dir1_x;
+    normal_dir1_y_ = dir1_y;
+    normal_dir2_x_ = dir2_x;
+    normal_dir2_y_ = dir2_y;
+  }
+
   // Loads normal map textures from files (relative to data/textures/).
   // An empty path falls back to a 1×1 flat normal map for that layer.
   // Both textures are re-uploaded to the GPU immediately; safe to call
@@ -191,6 +200,10 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   [[nodiscard]] float GetNormalScale2()        const { return normal_scale2_; }
   [[nodiscard]] float GetNormalScrollSpeed1()  const { return normal_scroll_speed1_; }
   [[nodiscard]] float GetNormalScrollSpeed2()  const { return normal_scroll_speed2_; }
+  [[nodiscard]] float GetNormalDir1X() const { return normal_dir1_x_; }
+  [[nodiscard]] float GetNormalDir1Y() const { return normal_dir1_y_; }
+  [[nodiscard]] float GetNormalDir2X() const { return normal_dir2_x_; }
+  [[nodiscard]] float GetNormalDir2Y() const { return normal_dir2_y_; }
   [[nodiscard]] float GetLodNearDist() const { return lod_near_dist_; }
   [[nodiscard]] float GetLodFarDist()  const { return lod_far_dist_;  }
 
@@ -313,6 +326,10 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   float         normal_scale2_        = 0.07f;
   float         normal_scroll_speed1_ = 0.30f;
   float         normal_scroll_speed2_ = 0.20f;
+  float         normal_dir1_x_        = 0.8575f;
+  float         normal_dir1_y_        = 0.5145f;
+  float         normal_dir2_x_        = -0.5735f;
+  float         normal_dir2_y_        = -0.8192f;
   // cppcheck-suppress unusedStructMember
   float         lod_near_dist_ = 50.f;
   // cppcheck-suppress unusedStructMember

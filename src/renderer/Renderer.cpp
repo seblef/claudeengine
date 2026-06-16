@@ -41,7 +41,7 @@ constexpr int kCSMInfosFloat4s        = sizeof(CSMInfos) / 16;          // 272 /
 constexpr int kWindInfosSlot          = 7;
 constexpr int kWindInfosFloat4s       = sizeof(environment::WindInfos) / 16;  // 16 / 16 = 1
 constexpr int kWaterInfosSlot            = 9;
-constexpr int kWaterInfosFloat4s         = sizeof(environment::WaterInfos) / 16;   // 96 / 16 = 6
+constexpr int kWaterInfosFloat4s         = sizeof(environment::WaterInfos) / 16;   // 112 / 16 = 7
 constexpr int kPostProcessInfosSlot      = 10;
 constexpr int kPostProcessInfosFloat4s   = sizeof(PostProcessInfos) / 16;           // 16 / 16 = 1
 }  // namespace
@@ -514,6 +514,10 @@ void Renderer::UpdateWaterRenderer() {
   wi.normal_scroll_speed2    = water_renderer_->GetNormalScrollSpeed2();
   wi.lod_near_dist           = water_renderer_->GetLodNearDist();
   wi.lod_far_dist            = water_renderer_->GetLodFarDist();
+  wi.normal_dir1_x           = water_renderer_->GetNormalDir1X();
+  wi.normal_dir1_y           = water_renderer_->GetNormalDir1Y();
+  wi.normal_dir2_x           = water_renderer_->GetNormalDir2X();
+  wi.normal_dir2_y           = water_renderer_->GetNormalDir2Y();
   water_infos_cb_->Fill(&wi);
 }
 
