@@ -337,21 +337,18 @@ void Renderer::Update(float time, const core::Camera* camera,
   if (tree_enabled_ && TreeRenderer::IsInstanced() &&
       TreeRenderer::Instance().IsReady() && camera_)
     TreeRenderer::Instance().RenderBillboards(*camera_);
-  // 4b. Particle forward pass — kAdditive and kAlphaBlend emitters drawn into
-  //     the emissive HDR RT. Alpha-blend emitters are sorted back-to-front.
-  //     RenderForwardPass manages its own blend/depth state and restores defaults.
-  if (particle_renderer_)
-    particle_renderer_->RenderForwardPass(*camera_, renderable_infos_cb_.get());
-
   video_->SetBlendEnabled(false);
   video_->SetDepthFunc(abstract::CompareFunc::kLess);
   video_->SetDepthWriteEnabled(true);
   video_->SetDepthTestEnabled(false);
   emissive_fbo_.UnbindForWriting();
 
-  // 4c. Forward water pass — two-pass: half-res SSR pre-pass then full-res
+  // 4b. Forward water pass — two-pass: half-res SSR pre-pass then full-res
   //     alpha-blend into the HDR RT.  Runs after emissive so the scene snapshot
-  //     includes sky, lighting, and emissive objects.
+  //     includes sky, lighting, and emissive objects, but BEFORE the particle
+  //     forward pass so that above-water particles render on top of the surface
+  //     (particles do not write depth, so the water depth test would otherwise
+  //     treat the particle pixels as unoccluded and paint water over them).
   //     WaterRenderer::Render() manages FBO switching internally; output_fbo is
   //     the emissive FBO that must be rebound after the SSR pre-pass.
   if (water_renderer_ && water_renderer_->IsReady()) {
@@ -367,6 +364,16 @@ void Renderer::Update(float time, const core::Camera* camera,
     video_->SetDepthFunc(abstract::CompareFunc::kLess);
     video_->SetDepthWriteEnabled(true);
     video_->SetDepthTestEnabled(false);
+    emissive_fbo_.UnbindForWriting();
+  }
+
+  // 4c. Particle forward pass — kAdditive and kAlphaBlend emitters drawn into
+  //     the emissive HDR RT after water so they correctly appear on top of the
+  //     water surface. Alpha-blend emitters are sorted back-to-front.
+  //     RenderForwardPass manages its own blend/depth state and restores defaults.
+  if (particle_renderer_) {
+    emissive_fbo_.BindForWriting();
+    particle_renderer_->RenderForwardPass(*camera_, renderable_infos_cb_.get());
     emissive_fbo_.UnbindForWriting();
   }
 

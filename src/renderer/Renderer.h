@@ -70,8 +70,12 @@ enum class DebugMode : int {
 //   2. Lighting pass  — HDR RT (additive blend); LightRenderer shades each light.
 //   3. Sky pass       — HDR RT (depth LEQUAL, no blend); SkyRenderer fills background.
 //   4. Emissive pass  — HDR RT (additive, depth read-only); emissive/ambient meshes.
-//   4b.Particle fwd   — HDR RT; kAdditive (ONE+ONE) and kAlphaBlend (SrcAlpha) emitters.
-//   4c.Water pass     — copy HDR RT + depth; forward SrcAlpha blend into emissive FBO.
+//   4b.Water pass     — copy HDR RT + depth; forward SrcAlpha blend into emissive FBO.
+//                       Must run before the particle forward pass: forward particles do
+//                       not write depth, so running water after them would make the
+//                       water depth test pass at particle pixels and paint water over them.
+//   4c.Particle fwd   — HDR RT; kAdditive (ONE+ONE) and kAlphaBlend (SrcAlpha) emitters.
+//                       Runs after water so above-water particles appear on top.
 //   5. Composite pass — default framebuffer; gamma correction.
 //
 // Debug mode (SetDebugMode != kNone):
