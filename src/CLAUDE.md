@@ -20,6 +20,7 @@ The codebase is splitted in folders:
 * **core** contains common modules, functions and classes: linear algebra (vectors, matrices, quaternions, planes, etc.), abstract and concrete filesystems, yaml file parsing, geometry utilities (bouding boxes, bounding spheres, etc.), color utilities, etc.
 * **abstract** contains all abstract classes for rendering (video device, vertex and index buffers, textures, shaders, etc.), audio (sound, sound sources, listener, etc.) and input (window event, keyboard, mouse)
 * **gldevices** contains all concrete class for rendering (video device, vertex and index buffers, textures, shaders, etc.), audio (sound, sound sources, listener, etc.) and input (window event, keyboard, mouse) with OpenGL
+* **physics** wraps Jolt Physics; exposes a Jolt-free API consumed by `game/`; must not depend on `game/`, `renderer/`, `editor/`, or `gldevices/`
 
 Each folder includes a CLAUDE.md file providing details about commands and architecture. **Always read the folder-specific CLAUDE.md first** when working in a subdirectory.
 
