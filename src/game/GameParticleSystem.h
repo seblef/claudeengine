@@ -58,6 +58,12 @@ class GameParticleSystem : public GameObject {
 
   [[nodiscard]] particles::ParticleSystemTemplate* GetTemplate() const;
 
+  // Rebuilds all emitters and lights from the current template data.
+  // If the object is already in the scene (renderables registered) it
+  // unregisters, rebuilds, and re-registers transparently. Call this after
+  // ParticleSystemTemplate::Reload() to propagate changes to a live instance.
+  void ReloadFromTemplate();
+
  private:
   // cppcheck-suppress unusedStructMember
   particles::ParticleSystemTemplate*            template_;

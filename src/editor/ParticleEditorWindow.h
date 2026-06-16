@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -50,6 +51,13 @@ class ParticleEditorWindow {
   // delta used to advance the particle simulation.
   // Must be called between ImGui::NewFrame() and ImGui::Render().
   void Render(float time, float dt);
+
+  // Registers a callback invoked after a template is successfully saved to
+  // disk. The argument is the template basename without extension (e.g. "fire").
+  // Use this to reload the in-memory template and refresh live scene instances.
+  void SetOnTemplateSaved(std::function<void(const std::string&)> cb) {
+    on_template_saved_ = std::move(cb);
+  }
 
   [[nodiscard]] bool IsOpen() const { return open_; }
 
@@ -151,6 +159,9 @@ class ParticleEditorWindow {
   // Set by any property change; triggers RebuildPreview() at frame start.
   // cppcheck-suppress unusedStructMember
   bool                                                     preview_dirty_ = false;
+
+  // cppcheck-suppress unusedStructMember
+  std::function<void(const std::string&)>                  on_template_saved_;
 
   // cppcheck-suppress unusedStructMember
   static constexpr int kPreviewW        = 300;

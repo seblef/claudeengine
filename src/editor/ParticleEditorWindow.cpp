@@ -349,6 +349,10 @@ void ParticleEditorWindow::Save() {
     unsaved_ = false;
     LOG_F(INFO, "ParticleEditorWindow: saved '%s'",
           current_path_.string().c_str());
+    if (on_template_saved_) {
+      const std::string name = current_path_.stem().stem().string();
+      on_template_saved_(name);
+    }
   }
 }
 
@@ -382,6 +386,10 @@ void ParticleEditorWindow::SaveAs() {
     unsaved_      = false;
     LOG_F(INFO, "ParticleEditorWindow: saved '%s'",
           current_path_.string().c_str());
+    if (on_template_saved_) {
+      const std::string name = current_path_.stem().stem().string();
+      on_template_saved_(name);
+    }
   }
 }
 
