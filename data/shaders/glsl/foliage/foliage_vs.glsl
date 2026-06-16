@@ -52,8 +52,8 @@ void main() {
     vec2 wind_dir = (wind_strength > 0.0)
                     ? normalize(wind_xz)
                     : vec2(1.0, 0.0);
-    world_pos.x += sway * wind_dir.x;
-    world_pos.z += sway * wind_dir.y;
+    world_pos.x += sway * wind_dir.x * 2.0;
+    world_pos.z += sway * wind_dir.y * 2.0;
 
     gl_Position = view_proj * world_pos;
     v_uv        = in_uv;
