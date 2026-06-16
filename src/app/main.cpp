@@ -149,6 +149,8 @@ int main(int argc, char* argv[]) {
         wr.SetAbsorptionScale(env.absorption_scale);
         wr.SetFoamParams(env.foam_height_thresh, env.foam_shoreline_depth,
                          env.foam_steepness_thresh, env.foam_speed);
+        wr.SetFoamTexParams(env.foam_scale1, env.foam_scale2,
+                            env.foam_scroll_speed1, env.foam_scroll_speed2);
         wr.SetNormalMapParams(env.normal_scale1, env.normal_scale2,
                               env.normal_scroll_speed1, env.normal_scroll_speed2);
         renderer::Renderer::Instance().SetWaterRenderer(&wr);

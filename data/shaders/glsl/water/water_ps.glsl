@@ -18,8 +18,8 @@
 //   steep_foam  = smoothstep(st-0.1, st, 1-v_world_normal.y)                   // steepness
 //   sl_foam     = (1-smoothstep(0,shore_depth,depth)) * animRing * 0.8         // shoreline
 //   foam_amount = max(max(h_foam, steep_foam), sl_foam)
-//   s1          = foam_tex(v_uv*0.04 + t*0.015).r
-//   s2          = foam_tex(v_uv*0.07 - t*0.010).r
+//   s1          = foam_tex(v_uv*foam_tex_params.x + t*foam_tex_params.z).r
+//   s2          = foam_tex(v_uv*foam_tex_params.y + t*foam_tex_params.w).r
 //   ft          = s1*0.6 + s2*0.4
 //   foam_amount = clamp(foam_amount * ft * 2.5, 0, 1)
 //   final_color = mix(final_color, vec3(0.92,0.95,0.98), foam_amount*0.85)
@@ -185,8 +185,8 @@ void main() {
         foam_amount = max(max(h_foam, steep_foam), sl_foam);
 
         // Weighted blend preserves large-patch and fine-bubble detail simultaneously.
-        float s1 = texture(u_foam_tex, v_uv * 0.04 + time * 0.015).r;
-        float s2 = texture(u_foam_tex, v_uv * 0.07 - time * 0.010).r;
+        float s1 = texture(u_foam_tex, v_uv * foam_tex_params.x + time * foam_tex_params.z).r;
+        float s2 = texture(u_foam_tex, v_uv * foam_tex_params.y + time * foam_tex_params.w).r;
         float ft = s1 * 0.6 + s2 * 0.4;
         foam_amount = clamp(foam_amount * ft * 2.5, 0.0, 1.0);
     }

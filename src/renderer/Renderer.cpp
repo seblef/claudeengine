@@ -542,6 +542,10 @@ void Renderer::UpdateWaterRenderer() {
   wi.normal_dir1_y           = water_renderer_->GetNormalDir1Y();
   wi.normal_dir2_x           = water_renderer_->GetNormalDir2X();
   wi.normal_dir2_y           = water_renderer_->GetNormalDir2Y();
+  wi.foam_scale1             = water_renderer_->GetFoamScale1();
+  wi.foam_scale2             = water_renderer_->GetFoamScale2();
+  wi.foam_scroll_speed1      = water_renderer_->GetFoamScrollSpeed1();
+  wi.foam_scroll_speed2      = water_renderer_->GetFoamScrollSpeed2();
   water_infos_cb_->Fill(&wi);
 }
 

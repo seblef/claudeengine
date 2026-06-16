@@ -35,6 +35,12 @@ struct EnvironmentDesc {
     float foam_shoreline_depth = 2.0f;
     float foam_steepness_thresh = 0.70f;
     float foam_speed = 1.5f;
+    // Foam texture UV scales and signed scroll speeds for the two sampling passes.
+    // foam_scroll_speed2 is negative by default to produce counter-scrolling.
+    float foam_scale1        = 0.04f;
+    float foam_scale2        = 0.07f;
+    float foam_scroll_speed1 = 0.015f;
+    float foam_scroll_speed2 = -0.010f;
     // Normal map scale and scroll speed for two layers.
     float normal_scale1        = 0.03f;
     float normal_scale2        = 0.07f;

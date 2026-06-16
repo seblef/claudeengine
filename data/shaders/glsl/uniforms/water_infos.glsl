@@ -1,4 +1,4 @@
-// WaterInfosBlock — must match environment::WaterInfos exactly (112 bytes, 7 float4s).
+// WaterInfosBlock — must match environment::WaterInfos exactly (128 bytes, 8 float4s).
 // std140 offsets:
 //   [  0] water_params       vec4  (.rgb = water colour, .a = water level)
 //   [ 16] sky_zenith_color   vec4  (.rgb = sky zenith, .a = roughness)
@@ -11,6 +11,8 @@
 //                                   .z = lod_near_dist, .w = lod_far_dist)
 //   [ 96] dir_params         vec4  (.xy = normalised layer-1 scroll dir,
 //                                   .zw = normalised layer-2 scroll dir)
+//   [112] foam_tex_params    vec4  (.x = foam_scale1, .y = foam_scale2,
+//                                   .z = foam_scroll_speed1, .w = foam_scroll_speed2)
 layout(std140, binding = 9) uniform WaterInfosBlock {
     vec4  water_params;       // .rgb = water_color, .a = water_level
     vec4  sky_zenith_color;   // .rgb = sky zenith, .a = roughness
@@ -23,4 +25,6 @@ layout(std140, binding = 9) uniform WaterInfosBlock {
                               // .z = lod_near_dist, .w = lod_far_dist
     vec4  dir_params;         // .xy = layer-1 scroll direction (normalised),
                               // .zw = layer-2 scroll direction (normalised)
+    vec4  foam_tex_params;    // .x = foam_scale1, .y = foam_scale2,
+                              // .z = foam_scroll_speed1, .w = foam_scroll_speed2 (signed)
 };
