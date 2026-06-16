@@ -25,6 +25,15 @@ int HighestIndexForPrefix(const std::string& name, const std::string& prefix) {
 
 }  // namespace
 
+std::string BaseNameOf(const std::string& name) {
+  const std::size_t sep = name.rfind('_');
+  if (sep == std::string::npos || sep == 0) return name;
+  const std::string suffix = name.substr(sep + 1);
+  if (suffix.empty() || !std::all_of(suffix.begin(), suffix.end(), ::isdigit))
+    return name;
+  return name.substr(0, sep);
+}
+
 std::string GenerateObjectName(const EditorScene& scene,
                                const std::string& base_name,
                                bool use_groups) {

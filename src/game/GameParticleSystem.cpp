@@ -131,7 +131,7 @@ void GameParticleSystem::Update(float time, float dt) {
 std::unique_ptr<GameObject> GameParticleSystem::Copy(
     const core::Vec3f& position) const {
   auto clone = std::make_unique<GameParticleSystem>(template_, video_);
-  clone->SetName(GetName() + " (copy)");
+  clone->SetName(GetName());
   core::Mat4f t = GetWorldTransform();
   t(0, 3) = position.x;
   t(1, 3) = position.y;

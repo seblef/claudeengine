@@ -35,7 +35,7 @@ MeshTemplate* GameMesh::GetTemplate() const {
 
 std::unique_ptr<game::GameObject> GameMesh::Copy(const core::Vec3f& position) const {
   auto clone = std::make_unique<GameMesh>(template_);
-  clone->SetName(GetName() + " (copy)");
+  clone->SetName(GetName());
   core::Mat4f t = GetWorldTransform();
   t(0, 3) = position.x;
   t(1, 3) = position.y;

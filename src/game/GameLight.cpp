@@ -148,7 +148,7 @@ std::unique_ptr<game::GameObject> GameLight::Copy(const core::Vec3f& position) c
   }
 
   auto clone = std::make_unique<GameLight>(l->GetType(), desc);
-  clone->SetName(GetName() + " (copy)");
+  clone->SetName(GetName());
   core::Mat4f t = GetWorldTransform();
   t(0, 3) = position.x;
   t(1, 3) = position.y;

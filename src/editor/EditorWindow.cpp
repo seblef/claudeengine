@@ -1007,6 +1007,7 @@ void EditorWindow::PasteObject() {
     const core::Vec3f  paste_pos(ct(0, 3) + 1.f, ct(1, 3), ct(2, 3) + 1.f);
     auto clone = src->Copy(paste_pos);
     if (!clone) continue;
+    clone->SetName(GenerateObjectName(*scene_, BaseNameOf(src->GetName())));
     auto* raw = clone.get();
     history_.Push(std::make_unique<PlaceObjectCommand>(scene_.get(), std::move(clone)));
     pasted.push_back(raw);
@@ -1014,7 +1015,8 @@ void EditorWindow::PasteObject() {
   // Recreate the group for pasted objects when the source was a group.
   if (!clipboard_group_name_.empty() && pasted.size() >= 2) {
     const std::string new_group_name =
-        GenerateObjectName(*scene_, clipboard_group_name_, /*use_groups=*/true);
+        GenerateObjectName(*scene_, BaseNameOf(clipboard_group_name_),
+                           /*use_groups=*/true);
     const ObjectGroup* grp = scene_->CreateGroup(new_group_name, pasted);
     // Select the new group.
     scene_->ClearSelection();
