@@ -29,6 +29,12 @@ external/tinyexr-src/
 external/tinyexr-subbuild/
 external/ufbx-src/
 external/ufbx-subbuild/
+external/gli-build/
+external/gli-src/
+external/gli-subbuild/
+external/glm-build/
+external/glm-src/
+external/glm-subbuild/
 claude_engine.log
 .claude/settings.local.json
 imgui.ini
