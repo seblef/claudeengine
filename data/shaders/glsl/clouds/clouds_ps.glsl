@@ -28,8 +28,6 @@ uniform float cloud_density;
 const float kCloudAltitude = 800.0;
 // World-unit scale of the noise field — larger = bigger clouds.
 const float kCloudScale    = 400.0;
-// UV drift speed in UV-units per second at 1 m/s wind.
-const float kCloudSpeed    = 0.0001;
 // Strength of the domain warp displacement applied to density UVs.
 const float kWarpScale     = 0.8;
 
@@ -90,9 +88,9 @@ void main() {
     float t = kCloudAltitude / view_dir.y;
     vec2  cloud_plane_xz = eye_pos.xz + view_dir.xz * t;
 
-    // Scroll UVs with wind.
-    vec2 scroll = wind_xz * wind_time * kCloudSpeed;
-    vec2 uv     = cloud_plane_xz / kCloudScale + scroll;
+    // Scroll UVs with wind: UV offset = world offset / kCloudScale so clouds
+    // drift at exactly wind speed in world space (wind_xz in m/s, wind_time in s).
+    vec2 uv = cloud_plane_xz / kCloudScale + wind_xz * wind_time / kCloudScale;
 
     // Domain warping: sample two decorrelated FBM passes to produce a 2D warp
     // vector, then displace the UVs before the density evaluation.  The constant
