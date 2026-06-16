@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <unordered_set>
 
 #include <imgui.h>
 #include <ImGuizmo.h>
@@ -34,6 +35,7 @@
 #include "editor/MapSerializer.h"
 #include "editor/MaterialEditorWindow.h"
 #include "editor/MeshEditorWindow.h"
+#include "editor/ObjectGroup.h"
 #include "editor/ParticleEditorWindow.h"
 #include "editor/MeshSelectionModal.h"
 #include "editor/ParticleSystemSelectionModal.h"
@@ -114,6 +116,10 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   toolbar_->SetOnPaste([this]{ PasteObject(); });
   toolbar_->SetOnFallToTerrain([this]{ FallToTerrain(); });
   toolbar_->SetOnCenterOnObject([this]{ CenterCameraOnObject(); });
+  toolbar_->SetOnGroupObjects([this]{ GroupObjects(); });
+  toolbar_->SetOnUngroupObjects([this]{ UngroupObjects(); });
+  toolbar_->SetOnOpenGroup([this]{ OpenGroup(); });
+  toolbar_->SetOnCloseGroup([this]{ CloseGroup(); });
   viewport_->SetScene(scene_.get());
   viewport_->SetCommandHistory(&history_);
   viewport_->SetActiveTool(selection_tool_.get());
@@ -219,6 +225,19 @@ void EditorWindow::Render() {
           return o->GetType() == game::GameObjectType::kTerrain;
         });
     toolbar_->SetCanCenterOnObject(can_center);
+
+    // Group actions availability.
+    const ObjectGroup* sel_group = scene_->GetSelectionGroup();
+    // Can group: >=2 selected objects, none already in a group.
+    const bool can_group = sel.size() >= 2 &&
+        std::none_of(sel.begin(), sel.end(),
+            [this](const game::GameObject* o) {
+              return scene_->FindGroup(o) != nullptr;
+            });
+    toolbar_->SetCanGroup(can_group);
+    toolbar_->SetCanUngroup(sel_group != nullptr);
+    toolbar_->SetCanOpenGroup(sel_group != nullptr && !sel_group->is_open);
+    toolbar_->SetCanCloseGroup(sel_group != nullptr && sel_group->is_open);
   }
   toolbar_->Render();
   const EditorTool active_tool = toolbar_->GetActiveTool();
@@ -329,8 +348,14 @@ void EditorWindow::Render() {
   ImGui::End();
 
   // 6. Right panel — Properties.
-  if (ImGui::Begin("Properties"))
-    properties_panel_->Render(scene_->GetSelectedObject());
+  if (ImGui::Begin("Properties")) {
+    // cppcheck-suppress constVariablePointer
+    ObjectGroup* sel_group = scene_->GetSelectionGroup();
+    if (sel_group)
+      properties_panel_->RenderGroupProperties(sel_group);
+    else
+      properties_panel_->Render(scene_->GetSelectedObject());
+  }
   ImGui::End();
 
   // 7. Bottom panel — Logs (wired in issue #178).
@@ -951,6 +976,12 @@ void EditorWindow::RemoveTerrain() {
 
 void EditorWindow::CopySelectedObject() {
   clipboard_.clear();
+  clipboard_group_name_.clear();
+
+  // Record the group name if the selection is a closed group.
+  const ObjectGroup* sel_group = scene_->GetSelectionGroup();
+  if (sel_group) clipboard_group_name_ = sel_group->name;
+
   for (const game::GameObject* obj : scene_->GetSelection()) {
     const core::Mat4f& t = obj->GetWorldTransform();
     const core::Vec3f  pos(t(0, 3), t(1, 3), t(2, 3));
@@ -965,12 +996,25 @@ void EditorWindow::CopySelectedObject() {
 void EditorWindow::PasteObject() {
   if (clipboard_.empty()) return;
   scene_->ClearSelection();
+  std::vector<game::GameObject*> pasted;
   for (const auto& src : clipboard_) {
     const core::Mat4f& ct = src->GetWorldTransform();
     const core::Vec3f  paste_pos(ct(0, 3) + 1.f, ct(1, 3), ct(2, 3) + 1.f);
     auto clone = src->Copy(paste_pos);
     if (!clone) continue;
+    auto* raw = clone.get();
     history_.Push(std::make_unique<PlaceObjectCommand>(scene_.get(), std::move(clone)));
+    pasted.push_back(raw);
+  }
+  // Recreate the group for pasted objects when the source was a group.
+  if (!clipboard_group_name_.empty() && pasted.size() >= 2) {
+    const std::string new_group_name =
+        GenerateObjectName(*scene_, clipboard_group_name_, /*use_groups=*/true);
+    const ObjectGroup* grp = scene_->CreateGroup(new_group_name, pasted);
+    // Select the new group.
+    scene_->ClearSelection();
+    for (game::GameObject* obj : grp->objects)
+      scene_->AddToSelection(obj);
   }
   scene_dirty_ = true;
 }
@@ -1043,6 +1087,58 @@ void EditorWindow::CenterCameraOnObject() {
 
   viewport_->FrameObject(combined);
   LOG_F(INFO, "Camera centered on selection (%zu object(s))", sel.size());
+}
+
+void EditorWindow::GroupObjects() {
+  const auto& sel = scene_->GetSelection();
+  if (sel.size() < 2) return;
+
+  // Reject if any selected object is already in a group.
+  const bool any_grouped = std::any_of(sel.begin(), sel.end(),
+      [this](const game::GameObject* o) {
+        return scene_->FindGroup(o) != nullptr;
+      });
+  if (any_grouped) return;
+
+  const std::string name =
+      GenerateObjectName(*scene_, "group", /*use_groups=*/true);
+  const std::vector<game::GameObject*> members(sel.begin(), sel.end());
+  scene_->CreateGroup(name, members);
+  scene_dirty_ = true;
+  LOG_F(INFO, "Grouped %zu objects into '%s'", members.size(), name.c_str());
+}
+
+void EditorWindow::UngroupObjects() {
+  ObjectGroup* grp = scene_->GetSelectionGroup();
+  if (!grp) return;
+  const std::string name = grp->name;
+  const std::size_t count = grp->objects.size();
+  scene_->DeleteGroup(grp);
+  scene_dirty_ = true;
+  LOG_F(INFO, "Ungrouped '%s' (%zu objects)", name.c_str(), count);
+}
+
+void EditorWindow::OpenGroup() {
+  ObjectGroup* grp = scene_->GetSelectionGroup();
+  if (!grp || grp->is_open) return;
+  grp->is_open = true;
+  scene_dirty_ = true;
+  LOG_F(INFO, "Opened group '%s'", grp->name.c_str());
+}
+
+void EditorWindow::CloseGroup() {
+  // When the group is open the selection may be a single member; find its group.
+  const auto& sel = scene_->GetSelection();
+  if (sel.empty()) return;
+  ObjectGroup* grp = scene_->FindGroup(sel[0]);
+  if (!grp || !grp->is_open) return;
+  grp->is_open = false;
+  // Re-select whole group now that it is closed.
+  scene_->ClearSelection();
+  for (game::GameObject* obj : grp->objects)
+    scene_->AddToSelection(obj);
+  scene_dirty_ = true;
+  LOG_F(INFO, "Closed group '%s'", grp->name.c_str());
 }
 
 void EditorWindow::WireTerrainPanel() {

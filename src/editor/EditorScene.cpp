@@ -1,6 +1,7 @@
 #include "editor/EditorScene.h"
 
 #include <algorithm>
+#include <iterator>
 #include <memory>
 
 #include "core/BBox3.h"
@@ -106,6 +107,7 @@ void EditorScene::RemoveDynamicObject(game::GameObject* obj) {
   }
 
   RemoveFromSelection(obj);
+  RemoveFromGroup(obj);
 
   if (on_object_removed_) on_object_removed_(obj);
   game::GameSystem::Instance().RemoveObject(obj);
@@ -121,6 +123,7 @@ std::unique_ptr<game::GameObject> EditorScene::ReclaimDynamicObject(
   if (it == dynamic_objects_.end()) return nullptr;
 
   RemoveFromSelection(obj);
+  RemoveFromGroup(obj);
 
   if (on_object_removed_) on_object_removed_(obj);
   game::GameSystem::Instance().RemoveObject(obj);
@@ -187,7 +190,16 @@ game::GameObject* EditorScene::GetSelectedObject() const {
 
 void EditorScene::SetSelectedObject(game::GameObject* obj) {
   selection_.clear();
-  if (obj) selection_.push_back(obj);
+  if (!obj) return;
+
+  // If obj belongs to a closed group, select the whole group.
+  const ObjectGroup* grp = FindGroup(obj);
+  if (grp && !grp->is_open) {
+    std::copy(grp->objects.begin(), grp->objects.end(),
+              std::back_inserter(selection_));
+  } else {
+    selection_.push_back(obj);
+  }
 }
 
 bool EditorScene::IsSelected(const game::GameObject* obj) const {
@@ -195,8 +207,18 @@ bool EditorScene::IsSelected(const game::GameObject* obj) const {
 }
 
 void EditorScene::AddToSelection(game::GameObject* obj) {
-  if (!obj || IsSelected(obj)) return;
-  selection_.push_back(obj);
+  if (!obj) return;
+
+  // If obj belongs to a closed group, add all group members.
+  const ObjectGroup* grp = FindGroup(obj);
+  if (grp && !grp->is_open) {
+    std::copy_if(grp->objects.begin(), grp->objects.end(),
+                 std::back_inserter(selection_),
+                 [this](const game::GameObject* m) { return !IsSelected(m); });
+  } else {
+    if (!IsSelected(obj))
+      selection_.push_back(obj);
+  }
 }
 
 void EditorScene::RemoveFromSelection(game::GameObject* obj) {
@@ -206,6 +228,69 @@ void EditorScene::RemoveFromSelection(game::GameObject* obj) {
 
 void EditorScene::ClearSelection() {
   selection_.clear();
+}
+
+// ---- Group management -------------------------------------------------------
+
+ObjectGroup* EditorScene::CreateGroup(const std::string& name,
+                                      const std::vector<game::GameObject*>& objects) {
+  ObjectGroup grp;
+  grp.name = name;
+  for (game::GameObject* obj : objects) {
+    if (!FindGroup(obj))
+      grp.objects.push_back(obj);
+  }
+  groups_.push_back(std::move(grp));
+  return &groups_.back();
+}
+
+void EditorScene::DeleteGroup(ObjectGroup* group) {
+  auto it = std::find_if(groups_.begin(), groups_.end(),
+                         [group](const ObjectGroup& g) { return &g == group; });
+  if (it != groups_.end())
+    groups_.erase(it);
+}
+
+ObjectGroup* EditorScene::FindGroup(const game::GameObject* obj) {
+  for (ObjectGroup& grp : groups_) {
+    const auto it = std::find(grp.objects.begin(), grp.objects.end(), obj);
+    if (it != grp.objects.end()) return &grp;
+  }
+  return nullptr;
+}
+
+const ObjectGroup* EditorScene::FindGroup(const game::GameObject* obj) const {
+  for (const ObjectGroup& grp : groups_) {
+    const auto it = std::find(grp.objects.begin(), grp.objects.end(), obj);
+    if (it != grp.objects.end()) return &grp;
+  }
+  return nullptr;
+}
+
+ObjectGroup* EditorScene::GetSelectionGroup() {
+  if (selection_.empty()) return nullptr;
+
+  // Find the group of the first selected object.
+  ObjectGroup* grp = FindGroup(selection_[0]);
+  if (!grp || grp->is_open) return nullptr;
+
+  // All selected objects must belong to the same closed group and the selection
+  // must cover exactly the group's members.
+  if (selection_.size() != grp->objects.size()) return nullptr;
+  const bool all_in_group = std::all_of(
+      selection_.begin(), selection_.end(),
+      [this, grp](const game::GameObject* o) { return FindGroup(o) == grp; });
+  return all_in_group ? grp : nullptr;
+}
+
+void EditorScene::RemoveFromGroup(game::GameObject* obj) {
+  for (ObjectGroup& grp : groups_) {
+    auto it = std::find(grp.objects.begin(), grp.objects.end(), obj);
+    if (it != grp.objects.end()) {
+      grp.objects.erase(it);
+      return;
+    }
+  }
 }
 
 void EditorScene::SetGlobalLightDesc(const game::GameLightDesc& desc) {

@@ -12,14 +12,14 @@ namespace editor {
 
 class EditorCommandHistory;
 class EditorScene;
+struct ObjectGroup;
 
-// Left panel "Objects" tab: tree view of scene objects grouped by type.
+// Left panel "Objects" tab: tree view of scene objects.
 //
-// Meshes, lights, and cameras are shown in separate collapsible groups with
-// coloured inline icons. Clicking a leaf item selects the object via
-// EditorScene::SetSelectedObject(). Double-clicking a leaf starts an inline
-// rename; the rename is committed (and pushed to history) on Enter or focus
-// loss, and cancelled on Escape.
+// Objects that belong to a group are shown inside a collapsible folder for that
+// group. Ungrouped objects appear in their type categories (Meshes, Lights, …).
+// Clicking a leaf selects the object (or the whole group for closed groups).
+// Double-clicking a leaf starts an inline rename committed on Enter / focus loss.
 class ObjectsPanel {
  public:
   ObjectsPanel() = default;
@@ -30,16 +30,26 @@ class ObjectsPanel {
   void Render(EditorScene& scene);
 
  private:
-  static void RenderGroup(const char* icon, const char* group_name,
-                          game::GameObjectType type,
-                          const std::vector<game::GameObject*>& objects,
-                          EditorScene& scene,
-                          game::GameObject*& renaming_obj,
-                          char* rename_buf, std::size_t rename_buf_size,
-                          bool& rename_focus_needed,
-                          EditorCommandHistory* history);
+  // Renders a collapsible type-category node (Meshes, Lights, …) containing
+  // all ungrouped objects of the given type.
+  static void RenderTypeGroup(const char* icon, const char* group_name,
+                              game::GameObjectType type,
+                              const std::vector<game::GameObject*>& objects,
+                              EditorScene& scene,
+                              game::GameObject*& renaming_obj,
+                              char* rename_buf, std::size_t rename_buf_size,
+                              bool& rename_focus_needed,
+                              EditorCommandHistory* history);
 
-  void CommitRename(game::GameObject* obj, const std::string& old_name);
+  // Renders one ObjectGroup as a folder node with its members as children.
+  void RenderEditorGroup(ObjectGroup& grp, EditorScene& scene);
+
+  // Renders a single object leaf; handles selection, rename, double-click.
+  void RenderObjectLeaf(const char* icon, game::GameObject* obj,
+                        EditorScene& scene);
+
+  // Returns the icon string for the given object type.
+  static const char* IconForType(game::GameObjectType type);
 
   game::GameObject*     renaming_obj_        = nullptr;
   // cppcheck-suppress unusedStructMember
