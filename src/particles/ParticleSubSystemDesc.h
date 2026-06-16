@@ -41,6 +41,9 @@ struct ParticleSubSystemDesc {
   EmitterShape emitter_shape  = EmitterShape::kPoint;
   float        emitter_radius = 0.f;
 
+  // When false, no new particles are spawned; live particles still expire normally.
+  bool enabled = true;
+
   // Particles emitted per second.
   float emission_rate = 10.f;
   int   max_particles = 100;

@@ -69,8 +69,8 @@ ParticleEmitter::~ParticleEmitter() {
 void ParticleEmitter::Update(float dt) {
   elapsed_ += dt;
 
-  // Spawn phase — stopped after duration for one-shot emitters.
-  bool emitting = desc_.looping || elapsed_ <= desc_.duration;
+  // Spawn phase — stopped after duration for one-shot emitters, or when disabled.
+  bool emitting = desc_.enabled && (desc_.looping || elapsed_ <= desc_.duration);
   if (emitting) {
     spawn_accum_ += desc_.emission_rate * dt;
     int n = static_cast<int>(spawn_accum_);

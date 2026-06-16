@@ -67,6 +67,8 @@ ParticleSubSystemDesc ParseSubSystem(const YAML::Node& node) {
   if (node["emitter_radius"])
     desc.emitter_radius = node["emitter_radius"].as<float>(0.f);
 
+  if (node["enabled"])
+    desc.enabled = node["enabled"].as<bool>(true);
   if (node["emission_rate"])
     desc.emission_rate = node["emission_rate"].as<float>(10.f);
   if (node["max_particles"])
