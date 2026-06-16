@@ -8,6 +8,7 @@ namespace environment {
 
 namespace {
 constexpr float kTwoPi = 6.28318530f;
+constexpr float kWindFactor = 5.0f;
 }  // namespace
 
 WindSystem::WindSystem(const EnvironmentDesc& desc)
@@ -26,8 +27,8 @@ void WindSystem::Update(float dt) {
                      * std::sin(phase_ * kTwoPi * gust_frequency_);
   wind_vec_ = base_direction_ * (base_strength_ + gust);
 
-  wind_displacement_.x += wind_vec_.x * dt;
-  wind_displacement_.y += wind_vec_.z * dt;
+  wind_displacement_.x += wind_vec_.x * dt * kWindFactor;
+  wind_displacement_.y += wind_vec_.z * dt * kWindFactor;
 }
 
 core::Vec3f WindSystem::GetWindVector() const {
