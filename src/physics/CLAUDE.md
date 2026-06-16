@@ -14,7 +14,14 @@ app → game → physics → core
 
 | File(s) | Responsibility |
 |---|---|
-| *(to be filled in as downstream issues are implemented)* | |
+| `MotionType.h` | `enum class MotionType` — Static / Kinematic / Dynamic |
+| `PhysicsShapeType.h` | `enum class PhysicsShapeType` — primitive and mesh shape variants |
+| `PhysicsShapeDesc.h` | POD struct with per-shape union + factory helpers; no Jolt dependency |
+| `PhysicsMaterialDesc.h` | Surface/mass properties (friction, restitution, mass, damping, gravity) |
+| `CollisionLayer.h` | `uint16_t` layer constants + `kLayerCount`; Jolt filters stay in `.cpp` |
+| `PhysicsBodyDesc.h` | Aggregates shape, material, motion type, and collision layer/mask |
+| `RaycastResult.h` | Raycast hit result; forward-declares `PhysicsBody` |
+| `IPhysicsBodyListener.h` | Observer interface for body transform updates |
 
 ## Guidelines
 
