@@ -105,9 +105,7 @@ void EditorScene::RemoveDynamicObject(game::GameObject* obj) {
     return;  // not a dynamic object — no-op
   }
 
-  if (selected_ == obj) {
-    selected_ = nullptr;
-  }
+  RemoveFromSelection(obj);
 
   if (on_object_removed_) on_object_removed_(obj);
   game::GameSystem::Instance().RemoveObject(obj);
@@ -122,7 +120,7 @@ std::unique_ptr<game::GameObject> EditorScene::ReclaimDynamicObject(
                          [obj](const auto& p) { return p.get() == obj; });
   if (it == dynamic_objects_.end()) return nullptr;
 
-  if (selected_ == obj) selected_ = nullptr;
+  RemoveFromSelection(obj);
 
   if (on_object_removed_) on_object_removed_(obj);
   game::GameSystem::Instance().RemoveObject(obj);
@@ -182,6 +180,33 @@ void EditorScene::SetFilePath(const std::filesystem::path& p) { file_path_ = p; 
 
 // cppcheck-suppress returnByReference
 game::GameLightDesc EditorScene::GetGlobalLightDesc() const { return global_light_desc_; }
+
+game::GameObject* EditorScene::GetSelectedObject() const {
+  return selection_.size() == 1 ? selection_[0] : nullptr;
+}
+
+void EditorScene::SetSelectedObject(game::GameObject* obj) {
+  selection_.clear();
+  if (obj) selection_.push_back(obj);
+}
+
+bool EditorScene::IsSelected(const game::GameObject* obj) const {
+  return std::find(selection_.begin(), selection_.end(), obj) != selection_.end();
+}
+
+void EditorScene::AddToSelection(game::GameObject* obj) {
+  if (!obj || IsSelected(obj)) return;
+  selection_.push_back(obj);
+}
+
+void EditorScene::RemoveFromSelection(game::GameObject* obj) {
+  selection_.erase(std::remove(selection_.begin(), selection_.end(), obj),
+                   selection_.end());
+}
+
+void EditorScene::ClearSelection() {
+  selection_.clear();
+}
 
 void EditorScene::SetGlobalLightDesc(const game::GameLightDesc& desc) {
   global_light_desc_ = desc;

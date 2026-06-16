@@ -7,5 +7,6 @@ target_sources(editor PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/PlaceObjectCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/RenameObjectCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/SculptBrushCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/MultiTransformCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/TransformCommand.cpp
 )

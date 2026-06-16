@@ -247,10 +247,10 @@ class EditorWindow {
   // cppcheck-suppress unusedStructMember
   std::vector<std::string> recent_maps_;
 
-  // Clipboard — holds a master clone used to produce each paste.
-  // Never added to the scene; nullptr when nothing has been copied.
+  // Clipboard — holds master clones used to produce each paste.
+  // Never added to the scene; empty when nothing has been copied.
   // cppcheck-suppress unusedStructMember
-  std::unique_ptr<game::GameObject> clipboard_;
+  std::vector<std::unique_ptr<game::GameObject>> clipboard_;
 
   // Debug state.
   // cppcheck-suppress unusedStructMember
