@@ -26,10 +26,11 @@
 #include "renderer/WireframeRenderer.h"
 #include "terrain/TerrainRenderer.h"
 
-namespace environment { class CloudRenderer; }
-namespace environment { class SkyRenderer;   }
-namespace environment { class WaterRenderer; }
-namespace environment { class WindSystem;    }
+namespace environment { class CloudRenderer;       }
+namespace environment { class CloudShadowRenderer; }
+namespace environment { class SkyRenderer;         }
+namespace environment { class WaterRenderer;       }
+namespace environment { class WindSystem;          }
 namespace particles   { class ParticleRenderer; }
 
 namespace renderer {
@@ -154,6 +155,14 @@ class Renderer : public core::Singleton<Renderer> {
   // ownership.
   void SetCloudRenderer(environment::CloudRenderer* clouds) {
     cloud_renderer_ = clouds;
+  }
+
+  // Registers a CloudShadowRenderer that bakes the cloud density into a shadow
+  // texture each frame before the lighting pass.  The shadow texture is bound at
+  // sampler slot 13 during the GlobalLight draw.  Pass nullptr to detach.
+  // The caller retains ownership.
+  void SetCloudShadowRenderer(environment::CloudShadowRenderer* shadow) {
+    cloud_shadow_renderer_ = shadow;
   }
 
   // Sets the cloud coverage fraction forwarded to CloudRenderer each frame.
@@ -289,9 +298,13 @@ class Renderer : public core::Singleton<Renderer> {
   float                       sky_world_time_  = 12.f;  // hours, 0–24
   // Optional cloud renderer drawn after sky, before geometry. Not owned by Renderer.
   // cppcheck-suppress unusedStructMember
-  environment::CloudRenderer* cloud_renderer_  = nullptr;
+  environment::CloudRenderer*       cloud_renderer_        = nullptr;
+  // Optional cloud shadow renderer; bakes shadow texture before lighting pass.
+  // Not owned by Renderer.
   // cppcheck-suppress unusedStructMember
-  float                       cloud_density_   = 0.f;
+  environment::CloudShadowRenderer* cloud_shadow_renderer_ = nullptr;
+  // cppcheck-suppress unusedStructMember
+  float                             cloud_density_         = 0.f;
   // Optional wind system uploaded into slot 7 each frame. Not owned by Renderer.
   // cppcheck-suppress unusedStructMember
   environment::WindSystem*    wind_system_          = nullptr;
