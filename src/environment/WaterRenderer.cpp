@@ -29,6 +29,7 @@ namespace environment {
 namespace {
 
 constexpr int   kFoamTexSize    = 256;    // resolution of the procedural foam texture
+constexpr int   kWorleyCells    = 8;      // Worley noise seed-point grid for foam texture
 constexpr int   kCausticTexSize = 256;    // resolution of the procedural caustic texture
 constexpr int   kTileSize       = 8;      // grid cells per tile side for frustum culling
 
@@ -76,17 +77,40 @@ float CausticValue(float u, float v) {
   return std::max(0.f, (sum - kThresh) * kScale);
 }
 
-// Returns a foam intensity in [0,1] at texel (u,v) by taking the product of four
-// overlapping sine terms.  Peaks only occur where all four waves coincide, producing
-// sparse, isolated blobby bright patches that tile seamlessly.
+// Hash two cell coordinates and a component index to a float in [0, 1).
+float WorleyHash(int cx, int cy, int c) {
+  auto h = static_cast<uint32_t>(cx * 1619 + cy * 31337 + c * 6971);
+  h ^= h >> 16;
+  h *= 0x45d9f3bu;
+  h ^= h >> 16;
+  return static_cast<float>(h & 0xFFFFu) * (1.0f / 65536.0f);
+}
+
+// Worley (cellular) F1 noise — returns 1 minus the normalised distance to the
+// nearest random seed point, squared to sharpen bubble edges.  Tileable: cell
+// indices wrap toroidally while distances are computed in un-wrapped pixel space.
 float FoamValue(float u, float v) {
-  const float pi2 = 6.28318530f;
-  const float s   = pi2 / static_cast<float>(kFoamTexSize);
-  const float a   = (std::sin(u * s * 3.f + v * s * 2.f) + 1.0f) * 0.5f;
-  const float b   = (std::sin(u * s * 7.f - v * s * 5.f) + 1.0f) * 0.5f;
-  const float c   = (std::sin(u * s * 5.f + v * s * 9.f) + 1.0f) * 0.5f;
-  const float d   = (std::sin(u * s * 11.f - v * s * 3.f) + 1.0f) * 0.5f;
-  return a * b * c * d;
+  constexpr float kCellSize = static_cast<float>(kFoamTexSize) / kWorleyCells;
+  const int cu = static_cast<int>(u / kCellSize);
+  const int cv = static_cast<int>(v / kCellSize);
+
+  float min_dist2 = kCellSize * kCellSize * 8.0f;
+  for (int dv = -1; dv <= 1; ++dv) {
+    for (int du = -1; du <= 1; ++du) {
+      const int ncu = (cu + du + kWorleyCells) % kWorleyCells;
+      const int ncv = (cv + dv + kWorleyCells) % kWorleyCells;
+      const float su = (static_cast<float>(cu + du)
+                        + WorleyHash(ncu, ncv, 0)) * kCellSize;
+      const float sv = (static_cast<float>(cv + dv)
+                        + WorleyHash(ncu, ncv, 1)) * kCellSize;
+      const float ddu = u - su;
+      const float ddv = v - sv;
+      min_dist2 = std::min(min_dist2, ddu * ddu + ddv * ddv);
+    }
+  }
+  const float dist = std::sqrt(min_dist2) / (kCellSize * 0.5f);
+  const float val  = std::max(0.0f, 1.0f - dist);
+  return val * val;
 }
 
 }  // namespace
@@ -285,9 +309,7 @@ void WaterRenderer::BuildFoamTexture() {
   std::vector<uint8_t> pixels(static_cast<size_t>(size * size * 4));
   for (int y = 0; y < size; ++y) {
     for (int x = 0; x < size; ++x) {
-      // Boost sparse bright peaks into visible range, then clamp to [0,1].
-      float val = std::min(1.0f, FoamValue(static_cast<float>(x),
-                                           static_cast<float>(y)) * 6.0f);
+      float val = FoamValue(static_cast<float>(x), static_cast<float>(y));
       const auto  b8  = static_cast<uint8_t>(val * 255.0f);
       const int   idx = (y * size + x) * 4;
       pixels[static_cast<size_t>(idx + 0)] = b8;
