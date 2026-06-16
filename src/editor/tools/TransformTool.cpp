@@ -102,25 +102,33 @@ void TransformTool::OnRender(const EditorToolContext& ctx,
     gizmo_was_using_ = gizmo_using;
   } else {
     // Multi-object path: gizmo placed at the centre of the combined bbox.
-    // Compute the pivot centre from all selected objects' bboxes.
     core::BBox3 combined = selection[0]->GetWorldBBox();
     for (std::size_t i = 1; i < selection.size(); ++i)
       combined << selection[i]->GetWorldBBox();
     const core::Vec3f center = combined.GetCenter();
 
-    // Pivot matrix: identity rotation/scale at the group centre.
-    const core::Mat4f pivot = core::Mat4f::Translation(center);
-    const core::Mat4f pivot_t = pivot.Transpose();
+    // During a drag we pass the accumulated pivot so that ImGuizmo builds
+    // each frame's delta on top of the previous state — without this, the
+    // rotation part of the gizmo resets to identity orientation every frame
+    // and each frame only the per-frame angular delta is applied instead of
+    // the cumulative rotation since drag start.
+    // Outside a drag we always position the gizmo at the current centre.
     float model_im[16];
-    std::memcpy(model_im, pivot_t.Data(), sizeof(model_im));
+    if (gizmo_was_using_) {
+      std::memcpy(model_im, pivot_im_, sizeof(model_im));
+    } else {
+      const core::Mat4f pivot_t = core::Mat4f::Translation(center).Transpose();
+      std::memcpy(model_im, pivot_t.Data(), sizeof(model_im));
+    }
 
     ImGuizmo::Manipulate(view_im, proj_im, op_, ImGuizmo::WORLD, model_im);
 
     const bool gizmo_using = ImGuizmo::IsUsing();
 
     if (!gizmo_was_using_ && gizmo_using) {
-      // Drag start: snapshot all selected objects and the pivot centre.
+      // Drag start: snapshot objects, pivot centre, and current model_im.
       pivot_center_ = center;
+      std::memcpy(pivot_im_, model_im, sizeof(pivot_im_));
       drag_objects_ = selection;
       drag_before_.clear();
       drag_before_.reserve(selection.size());
@@ -132,7 +140,10 @@ void TransformTool::OnRender(const EditorToolContext& ctx,
     }
 
     if (gizmo_using && !drag_objects_.empty()) {
-      // Derive pivot_after and apply: new_T[i] = pivot_after * T(-centre) * T_before[i].
+      // Store the updated pivot for the next frame.
+      std::memcpy(pivot_im_, model_im, sizeof(pivot_im_));
+
+      // Apply: new_T[i] = pivot_after * T(-centre_init) * T_before[i].
       const core::Mat4f pivot_after = core::Mat4f(model_im).Transpose();
       const core::Mat4f pivot_before_inv =
           core::Mat4f::Translation(-pivot_center_);

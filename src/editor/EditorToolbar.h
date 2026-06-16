@@ -79,6 +79,26 @@ class EditorToolbar {
     on_center_on_object_ = std::move(cb);
   }
 
+  // Registers a callback fired when the "Group" button is clicked.
+  void SetOnGroupObjects(std::function<void()> cb) {
+    on_group_objects_ = std::move(cb);
+  }
+
+  // Registers a callback fired when the "Ungroup" button is clicked.
+  void SetOnUngroupObjects(std::function<void()> cb) {
+    on_ungroup_objects_ = std::move(cb);
+  }
+
+  // Registers a callback fired when the "Open Group" button is clicked.
+  void SetOnOpenGroup(std::function<void()> cb) {
+    on_open_group_ = std::move(cb);
+  }
+
+  // Registers a callback fired when the "Close Group" button is clicked.
+  void SetOnCloseGroup(std::function<void()> cb) {
+    on_close_group_ = std::move(cb);
+  }
+
   // Enables or greys out the Copy button.
   void SetCanCopy(bool b) { can_copy_ = b; }
 
@@ -92,6 +112,12 @@ class EditorToolbar {
   // Enables or greys out the "Center on Object" button.
   // Should be false when nothing is selected or terrain is selected.
   void SetCanCenterOnObject(bool b) { can_center_on_object_ = b; }
+
+  // Enables or greys out the group action buttons.
+  void SetCanGroup(bool b)       { can_group_ = b; }
+  void SetCanUngroup(bool b)     { can_ungroup_ = b; }
+  void SetCanOpenGroup(bool b)   { can_open_group_ = b; }
+  void SetCanCloseGroup(bool b)  { can_close_group_ = b; }
 
   // Reflects the scene dirty state; the Save button is greyed out when false.
   void SetDirty(bool dirty) { dirty_ = dirty; }
@@ -118,6 +144,14 @@ class EditorToolbar {
   // cppcheck-suppress unusedStructMember
   std::function<void()> on_center_on_object_;
   // cppcheck-suppress unusedStructMember
+  std::function<void()> on_group_objects_;
+  // cppcheck-suppress unusedStructMember
+  std::function<void()> on_ungroup_objects_;
+  // cppcheck-suppress unusedStructMember
+  std::function<void()> on_open_group_;
+  // cppcheck-suppress unusedStructMember
+  std::function<void()> on_close_group_;
+  // cppcheck-suppress unusedStructMember
   bool                  dirty_              = false;
   // cppcheck-suppress unusedStructMember
   bool                  can_copy_           = false;
@@ -127,6 +161,14 @@ class EditorToolbar {
   bool                  can_fall_to_terrain_ = false;
   // cppcheck-suppress unusedStructMember
   bool                  can_center_on_object_ = false;
+  // cppcheck-suppress unusedStructMember
+  bool                  can_group_          = false;
+  // cppcheck-suppress unusedStructMember
+  bool                  can_ungroup_        = false;
+  // cppcheck-suppress unusedStructMember
+  bool                  can_open_group_     = false;
+  // cppcheck-suppress unusedStructMember
+  bool                  can_close_group_    = false;
 };
 
 }  // namespace editor

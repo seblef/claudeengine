@@ -13,6 +13,7 @@
 #include "core/Vec3f.h"
 #include "editor/EditorCommandHistory.h"
 #include "editor/EditorUtils.h"
+#include "editor/ObjectGroup.h"
 #include "editor/commands/LightPropertyCommand.h"
 #include "editor/commands/RenameObjectCommand.h"
 #include "editor/commands/TransformCommand.h"
@@ -335,6 +336,24 @@ void PropertiesPanel::RenderParticleSystemProperties(
     if (ImGui::Button("Open in Particle Editor"))
       on_open_particle_editor_(tmpl->GetId());
   }
+}
+
+// static
+void PropertiesPanel::RenderGroupProperties(ObjectGroup* grp) {
+  ImGui::SeparatorText("Group");
+  char name_buf[256];
+  std::strncpy(name_buf, grp->name.c_str(), sizeof(name_buf) - 1);
+  name_buf[sizeof(name_buf) - 1] = '\0';
+
+  if (ImGui::InputText("Name##grpname", name_buf, sizeof(name_buf),
+                       ImGuiInputTextFlags_EnterReturnsTrue)) {
+    const std::string new_name(name_buf);
+    if (!new_name.empty())
+      grp->name = new_name;
+  }
+
+  ImGui::LabelText("Objects", "%zu", grp->objects.size());
+  ImGui::LabelText("State", grp->is_open ? "Open" : "Closed");
 }
 
 }  // namespace editor

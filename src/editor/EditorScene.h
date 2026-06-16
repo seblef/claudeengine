@@ -8,6 +8,7 @@
 
 #include "abstract/VideoDevice.h"
 #include "core/BBox3.h"
+#include "editor/ObjectGroup.h"
 #include "environment/EnvironmentDesc.h"
 #include "game/GameLight.h"
 #include "game/GameLightDesc.h"
@@ -80,6 +81,33 @@ class EditorScene {
 
   // Returns true if obj was added via AddDynamicObject (i.e. user-deletable).
   [[nodiscard]] bool IsDynamic(const game::GameObject* obj) const;
+
+  // ---- Group management -----------------------------------------------------
+
+  // Returns all groups in creation order.
+  [[nodiscard]] const std::vector<ObjectGroup>& GetGroups() const {
+    return groups_;
+  }
+  [[nodiscard]] std::vector<ObjectGroup>& GetGroups() { return groups_; }
+
+  // Creates a new group from the given objects and returns a pointer to it.
+  // Objects already in another group are silently skipped.
+  ObjectGroup* CreateGroup(const std::string& name,
+                           const std::vector<game::GameObject*>& objects);
+
+  // Removes the group. Its objects remain in the scene but are no longer grouped.
+  void DeleteGroup(ObjectGroup* group);
+
+  // Returns the group that contains obj, or nullptr if obj is not grouped.
+  [[nodiscard]] ObjectGroup* FindGroup(const game::GameObject* obj);
+  [[nodiscard]] const ObjectGroup* FindGroup(const game::GameObject* obj) const;
+
+  // Returns the group whose closed members form exactly the current selection,
+  // or nullptr if the selection does not correspond to a single closed group.
+  [[nodiscard]] ObjectGroup* GetSelectionGroup();
+
+  // Removes obj from whichever group it belongs to (no-op if not grouped).
+  void RemoveFromGroup(game::GameObject* obj);
 
   // Registers an imported game material. Stores it for lifetime management;
   // the material is released on EditorScene destruction.
@@ -160,6 +188,8 @@ class EditorScene {
   std::vector<game::MeshTemplate*>  mesh_templates_;
   // cppcheck-suppress unusedStructMember
   std::vector<game::GameObject*>   selection_;
+  // cppcheck-suppress unusedStructMember
+  std::vector<ObjectGroup>         groups_;
   // cppcheck-suppress unusedStructMember
   std::function<void(game::GameObject*)> on_object_added_;
   // cppcheck-suppress unusedStructMember

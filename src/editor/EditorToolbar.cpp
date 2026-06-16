@@ -180,6 +180,49 @@ void EditorToolbar::Render() {
     ImGui::SetItemTooltip("Select a non-terrain object first");
   ImGui::EndDisabled();
 
+  ImGui::SameLine();
+  ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+  ImGui::SameLine();
+
+  // Group action buttons.
+  ImGui::BeginDisabled(!can_group_);
+  if (ImGui::Button(ICON_FA_OBJECT_GROUP) && on_group_objects_)
+    on_group_objects_();
+  ImGui::SetItemTooltip("Group selected objects");
+  if (!can_group_)
+    ImGui::SetItemTooltip("Select 2 or more ungrouped objects to group");
+  ImGui::EndDisabled();
+
+  ImGui::SameLine();
+
+  ImGui::BeginDisabled(!can_ungroup_);
+  if (ImGui::Button(ICON_FA_OBJECT_UNGROUP) && on_ungroup_objects_)
+    on_ungroup_objects_();
+  ImGui::SetItemTooltip("Ungroup");
+  if (!can_ungroup_)
+    ImGui::SetItemTooltip("Select a group to ungroup");
+  ImGui::EndDisabled();
+
+  ImGui::SameLine();
+
+  ImGui::BeginDisabled(!can_open_group_);
+  if (ImGui::Button(ICON_FA_FOLDER_OPEN) && on_open_group_)
+    on_open_group_();
+  ImGui::SetItemTooltip("Open group (edit members independently)");
+  if (!can_open_group_)
+    ImGui::SetItemTooltip("Select a closed group first");
+  ImGui::EndDisabled();
+
+  ImGui::SameLine();
+
+  ImGui::BeginDisabled(!can_close_group_);
+  if (ImGui::Button(ICON_FA_FOLDER) && on_close_group_)
+    on_close_group_();
+  ImGui::SetItemTooltip("Close group");
+  if (!can_close_group_)
+    ImGui::SetItemTooltip("Select an open group first");
+  ImGui::EndDisabled();
+
   ImGui::End();
 }
 

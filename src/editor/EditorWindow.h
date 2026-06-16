@@ -75,6 +75,18 @@ class EditorWindow {
   // No-op when no terrain is present or nothing is selected.
   void FallToTerrain();
 
+  // Groups the current selection into a new named group.
+  void GroupObjects();
+
+  // Removes the group that contains the current selection.
+  void UngroupObjects();
+
+  // Opens the selected group so its members can be edited independently.
+  void OpenGroup();
+
+  // Closes the selected group so its members are transformed together.
+  void CloseGroup();
+
   // Moves the camera so the selected object's world bounding box fills the view.
   // No-op when nothing is selected or the selection is a terrain.
   void CenterCameraOnObject();
@@ -251,6 +263,9 @@ class EditorWindow {
   // Never added to the scene; empty when nothing has been copied.
   // cppcheck-suppress unusedStructMember
   std::vector<std::unique_ptr<game::GameObject>> clipboard_;
+  // When copying a group, the group name is stored here so paste can recreate it.
+  // cppcheck-suppress unusedStructMember
+  std::string                                    clipboard_group_name_;
 
   // Debug state.
   // cppcheck-suppress unusedStructMember

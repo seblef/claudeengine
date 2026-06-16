@@ -11,6 +11,7 @@
 
 #include "abstract/VideoDevice.h"
 #include "core/Config.h"
+#include "editor/ObjectGroup.h"
 #include "environment/EnvironmentDesc.h"
 #include "game/GameCamera.h"
 #include "game/GameLight.h"
@@ -470,6 +471,24 @@ bool MapSerializer::Save(const EditorScene& scene,
   out << YAML::Key << "distance"  << YAML::Value << cam.distance;
   out << YAML::EndMap;
   out << YAML::Key << "snap_grid"        << YAML::Value << 0.0f;
+
+  // Editor groups.
+  const auto& groups = scene.GetGroups();
+  if (!groups.empty()) {
+    out << YAML::Key << "groups" << YAML::Value << YAML::BeginSeq;
+    for (const editor::ObjectGroup& grp : groups) {
+      out << YAML::BeginMap;
+      out << YAML::Key << "name" << YAML::Value << grp.name;
+      out << YAML::Key << "open" << YAML::Value << grp.is_open;
+      out << YAML::Key << "objects" << YAML::Value << YAML::Flow << YAML::BeginSeq;
+      for (const game::GameObject* obj : grp.objects)
+        out << obj->GetName();
+      out << YAML::EndSeq;
+      out << YAML::EndMap;
+    }
+    out << YAML::EndSeq;
+  }
+
   out << YAML::EndMap;
 
   out << YAML::EndMap;
@@ -560,6 +579,33 @@ std::optional<MapLoadResult> MapSerializer::Load(
                 return o->GetName() == sel_name;
               });
           if (it != objs.end()) result.scene->SetSelectedObject(*it);
+        }
+      }
+
+      // Load editor groups.
+      const YAML::Node& groups_node = editor["groups"];
+      if (groups_node && groups_node.IsSequence()) {
+        const auto& objs = result.scene->GetObjects();
+        for (const YAML::Node& grp_node : groups_node) {
+          const std::string grp_name = grp_node["name"].as<std::string>("");
+          if (grp_name.empty()) continue;
+          const bool grp_open = grp_node["open"].as<bool>(false);
+          std::vector<game::GameObject*> members;
+          if (grp_node["objects"] && grp_node["objects"].IsSequence()) {
+            for (const YAML::Node& n : grp_node["objects"]) {
+              const std::string obj_name = n.as<std::string>("");
+              auto oit = std::find_if(objs.begin(), objs.end(),
+                  [&obj_name](const game::GameObject* o) {
+                    return o->GetName() == obj_name;
+                  });
+              if (oit != objs.end()) members.push_back(*oit);
+            }
+          }
+          if (!members.empty()) {
+            editor::ObjectGroup* grp =
+                result.scene->CreateGroup(grp_name, members);
+            grp->is_open = grp_open;
+          }
         }
       }
     }

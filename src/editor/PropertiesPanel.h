@@ -16,6 +16,7 @@ class GameParticleSystem;
 namespace editor {
 
 class EditorCommandHistory;
+struct ObjectGroup;
 
 // Right panel "Properties": editable fields for the currently selected object.
 //
@@ -45,6 +46,10 @@ class PropertiesPanel {
   // Renders the properties UI inside the current ImGui window.
   // obj may be nullptr (no selection).
   void Render(game::GameObject* obj);
+
+  // Renders group properties (name only) when a closed group is selected.
+  // grp must not be nullptr.
+  static void RenderGroupProperties(ObjectGroup* grp);
 
  private:
   void RenderTransformSection(game::GameObject* obj);
