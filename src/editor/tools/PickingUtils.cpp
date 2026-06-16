@@ -29,16 +29,18 @@ namespace editor {
 
 namespace {
 
-// Projects the 8 corners of bbox through vp and draws its 12 wireframe edges
-// onto dl. image_pos / image_size define the viewport rectangle for NDC → pixel
-// conversion. Edges where either endpoint falls behind the camera are skipped.
+// Projects the 8 corners of bbox (in local space) through model then vp and
+// draws its 12 wireframe edges onto dl. image_pos / image_size define the
+// viewport rectangle for NDC → pixel conversion. Edges where either endpoint
+// falls behind the camera are skipped.
 void DrawBBoxWireframe(ImDrawList* dl, const core::BBox3& bbox,
-                       const core::Mat4f& vp, ImVec2 image_pos,
-                       ImVec2 image_size, ImU32 color, float thickness) {
+                       const core::Mat4f& model, const core::Mat4f& vp,
+                       ImVec2 image_pos, ImVec2 image_size,
+                       ImU32 color, float thickness) {
   const core::Vec3f& mn = bbox.GetMin();
   const core::Vec3f& mx = bbox.GetMax();
 
-  const core::Vec3f corners[8] = {
+  const core::Vec3f local_corners[8] = {
     {mn.x, mn.y, mn.z}, {mx.x, mn.y, mn.z},
     {mx.x, mx.y, mn.z}, {mn.x, mx.y, mn.z},
     {mn.x, mn.y, mx.z}, {mx.x, mn.y, mx.z},
@@ -49,8 +51,9 @@ void DrawBBoxWireframe(ImDrawList* dl, const core::BBox3& bbox,
   ScreenPt sc[8];
 
   for (int i = 0; i < 8; ++i) {
-    const core::Vec4f clip =
-        core::Vec4f(corners[i].x, corners[i].y, corners[i].z, 1.f) * vp;
+    const core::Vec3f world = local_corners[i] * model;
+    const core::Vec4f clip  =
+        core::Vec4f(world.x, world.y, world.z, 1.f) * vp;
     if (clip.w <= 0.f) {
       sc[i].valid = false;
       continue;
@@ -359,7 +362,7 @@ void DrawSelectedBBox(const EditorToolContext& ctx, ImDrawList* dl,
                       ImVec2 image_pos, ImVec2 image_size) {
   const core::Mat4f& vp = ctx.camera->GetCamera()->GetViewProjectionMatrix();
   for (const game::GameObject* obj : ctx.scene->GetSelection()) {
-    DrawBBoxWireframe(dl, obj->GetWorldBBox(), vp,
+    DrawBBoxWireframe(dl, obj->GetLocalBBox(), obj->GetWorldTransform(), vp,
                       image_pos, image_size,
                       IM_COL32(255, 165, 0, 255), 1.5f);
   }
