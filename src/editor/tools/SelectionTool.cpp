@@ -35,6 +35,11 @@ void SelectionTool::OnEvent(const core::Event& event) {
   if (ImGuizmo::IsUsing()) return;
   if (!scene_) return;
 
+  // Capture the group before deletion: ReclaimDynamicObject strips each object
+  // from its group via RemoveFromGroup, so GetSelectionGroup() would return null
+  // after the first deletion.
+  ObjectGroup* sel_group = scene_->GetSelectionGroup();
+
   // Collect deletable (dynamic) objects from the current selection.
   const auto& sel = scene_->GetSelection();
   std::vector<game::GameObject*> to_delete;
@@ -46,6 +51,10 @@ void SelectionTool::OnEvent(const core::Event& event) {
     if (history_)
       history_->Push(std::make_unique<DeleteObjectCommand>(scene_, obj));
   }
+
+  // If the whole group was deleted (group is now empty), remove it from the scene.
+  if (sel_group && sel_group->objects.empty())
+    scene_->DeleteGroup(sel_group);
 }
 
 void SelectionTool::OnRender(const EditorToolContext& ctx,
