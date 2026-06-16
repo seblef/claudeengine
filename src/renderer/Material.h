@@ -86,6 +86,7 @@ class Material {
   void SetAmbientColor(core::Color color)  { ambient_color_  = color; }
   void SetShininess(float shininess)       { shininess_      = shininess; }
   void SetSpecular(float specular)         { specular_       = specular; }
+  void SetAlphaMask(bool alpha_mask)       { alpha_mask_     = alpha_mask; }
 
  private:
   void LoadDefaults(abstract::VideoDevice* video);
