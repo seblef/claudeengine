@@ -228,12 +228,14 @@ void EditorWindow::Render() {
 
     // Group actions availability.
     const ObjectGroup* sel_group = scene_->GetSelectionGroup();
-    // Can group: >=2 selected objects, none already in a group.
-    const bool can_group = sel.size() >= 2 &&
-        std::none_of(sel.begin(), sel.end(),
-            [this](const game::GameObject* o) {
-              return scene_->FindGroup(o) != nullptr;
-            });
+    // Can group: >=2 ungrouped objects (create new group), or exactly one
+    // closed group + at least one ungrouped object (add to existing group).
+    const bool all_ungrouped = std::none_of(sel.begin(), sel.end(),
+        [this](const game::GameObject* o) {
+          return scene_->FindGroup(o) != nullptr;
+        });
+    const bool can_group = (sel.size() >= 2 && all_ungrouped) ||
+                           (scene_->FindAddToGroupTarget() != nullptr);
     toolbar_->SetCanGroup(can_group);
     toolbar_->SetCanUngroup(sel_group != nullptr);
     toolbar_->SetCanOpenGroup(sel_group != nullptr && !sel_group->is_open);
@@ -1090,10 +1092,20 @@ void EditorWindow::CenterCameraOnObject() {
 }
 
 void EditorWindow::GroupObjects() {
+  // "Add to group" path: one closed group + extra ungrouped objects selected.
+  std::vector<game::GameObject*> ungrouped;
+  ObjectGroup* target = scene_->FindAddToGroupTarget(&ungrouped);
+  if (target) {
+    scene_->AddToGroup(target, ungrouped);
+    scene_dirty_ = true;
+    LOG_F(INFO, "Added %zu object(s) to group '%s'",
+          ungrouped.size(), target->name.c_str());
+    return;
+  }
+
+  // Original path: all selected objects are ungrouped — create a new group.
   const auto& sel = scene_->GetSelection();
   if (sel.size() < 2) return;
-
-  // Reject if any selected object is already in a group.
   const bool any_grouped = std::any_of(sel.begin(), sel.end(),
       [this](const game::GameObject* o) {
         return scene_->FindGroup(o) != nullptr;

@@ -109,6 +109,17 @@ class EditorScene {
   // Removes obj from whichever group it belongs to (no-op if not grouped).
   void RemoveFromGroup(game::GameObject* obj);
 
+  // Adds objects to an existing group. Objects already in any group are skipped.
+  void AddToGroup(ObjectGroup* group,
+                  const std::vector<game::GameObject*>& objects);
+
+  // Returns the single closed group whose members are all in the current
+  // selection, provided at least one other ungrouped object is also selected.
+  // Populates out_ungrouped (when non-null) with those ungrouped objects.
+  // Returns nullptr when the selection does not match this "add to group" pattern.
+  [[nodiscard]] ObjectGroup* FindAddToGroupTarget(
+      std::vector<game::GameObject*>* out_ungrouped = nullptr);
+
   // Registers an imported game material. Stores it for lifetime management;
   // the material is released on EditorScene destruction.
   void AddGameMaterial(game::GameMaterial* mat) {

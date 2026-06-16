@@ -293,6 +293,44 @@ void EditorScene::RemoveFromGroup(game::GameObject* obj) {
   }
 }
 
+void EditorScene::AddToGroup(ObjectGroup* group,
+                             const std::vector<game::GameObject*>& objects) {
+  for (game::GameObject* obj : objects) {
+    if (!FindGroup(obj))
+      group->objects.push_back(obj);
+  }
+}
+
+ObjectGroup* EditorScene::FindAddToGroupTarget(
+    std::vector<game::GameObject*>* out_ungrouped) {
+  if (selection_.empty()) return nullptr;
+
+  ObjectGroup* target = nullptr;
+  std::vector<game::GameObject*> ungrouped;
+
+  for (game::GameObject* obj : selection_) {
+    ObjectGroup* grp = FindGroup(obj);
+    if (!grp) {
+      ungrouped.push_back(obj);
+    } else if (!target) {
+      target = grp;
+    } else if (target != grp) {
+      return nullptr;  // Objects from two different groups — ambiguous.
+    }
+  }
+
+  if (!target || ungrouped.empty() || target->is_open) return nullptr;
+
+  // All group members must be present in the selection.
+  const bool all_in_sel = std::all_of(
+      target->objects.begin(), target->objects.end(),
+      [this](const game::GameObject* m) { return IsSelected(m); });
+  if (!all_in_sel) return nullptr;
+
+  if (out_ungrouped) *out_ungrouped = std::move(ungrouped);
+  return target;
+}
+
 void EditorScene::SetGlobalLightDesc(const game::GameLightDesc& desc) {
   global_light_desc_ = desc;
   renderer::Light* raw = light_->GetLight();
