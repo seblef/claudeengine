@@ -239,7 +239,10 @@ void EditorWindow::Render() {
     toolbar_->SetCanGroup(can_group);
     toolbar_->SetCanUngroup(sel_group != nullptr);
     toolbar_->SetCanOpenGroup(sel_group != nullptr && !sel_group->is_open);
-    toolbar_->SetCanCloseGroup(sel_group != nullptr && sel_group->is_open);
+    // Close group: the selection may be a single member of an open group, so
+    // check via FindGroup rather than GetSelectionGroup (which rejects open groups).
+    const ObjectGroup* close_grp = sel.empty() ? nullptr : scene_->FindGroup(sel[0]);
+    toolbar_->SetCanCloseGroup(close_grp != nullptr && close_grp->is_open);
   }
   toolbar_->Render();
   const EditorTool active_tool = toolbar_->GetActiveTool();
