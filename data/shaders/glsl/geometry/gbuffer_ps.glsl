@@ -29,7 +29,10 @@ layout(location = 2) out vec4 out_specular;
 
 void main() {
     // Albedo: diffuse texture tinted by material color.
-    vec3 albedo = texture(u_diffuse, v_uv).rgb * diffuse_color.rgb;
+    // When alpha_mask is set, discard fragments whose alpha is below the cutoff threshold.
+    vec4 diffuse = texture(u_diffuse, v_uv);
+    if (alpha_mask != 0 && diffuse.a < 0.5) discard;
+    vec3 albedo = diffuse.rgb * diffuse_color.rgb;
     out_albedo  = vec4(albedo, 0.0);
 
     // Normal: remap sampled tangent-space normal to world space via TBN.

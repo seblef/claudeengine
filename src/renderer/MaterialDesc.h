@@ -81,6 +81,11 @@ class MaterialDesc {
   MaterialDesc& SetCastShadow(bool b) { cast_shadow_ = b; return *this; }
   [[nodiscard]] bool GetCastShadow()  const { return cast_shadow_; }
 
+  // When true, fragments whose diffuse alpha is below 0.5 are discarded in
+  // both the GBuffer pass and all shadow depth passes.
+  MaterialDesc& SetAlphaMask(bool b) { alpha_mask_ = b; return *this; }
+  [[nodiscard]] bool GetAlphaMask()  const { return alpha_mask_; }
+
  private:
   std::array<std::string, kTextureSlotCount> names_{};
   core::Color diffuse_color_  = core::Color::kWhite;
@@ -89,6 +94,7 @@ class MaterialDesc {
   float       shininess_      = 32.f;
   float       specular_       = 1.f;
   bool        cast_shadow_    = true;
+  bool        alpha_mask_     = false;
 };
 
 }  // namespace renderer
