@@ -15,3 +15,5 @@ Read and implement the issue above.
 5. Run `cpplint` to ensure code is properly formated
 6. Commit with message matching conventional commits
 7. Open a Pull Request to `dev` with meaningful description and GitHub issue closing command (`Close #[ISSUE_ID]`)
+
+**CRITICAL** Do not hesitate to ask questions if the requirements are not clear enough or if key decisions have to be taken.
