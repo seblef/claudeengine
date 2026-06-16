@@ -32,7 +32,8 @@ namespace renderer {
 //
 // Both lists are cleared by BeginFrame() and uploaded by Render().
 // Callers push geometry with PushSegment / PushBox / PushSphere / PushCone /
-// PushLineList (depth-tested) and their PushOverlay* twins (overlay).
+// PushCylinder / PushCapsule / PushLineList (depth-tested) and their
+// PushOverlay* twins (overlay).
 //
 // Lifecycle: new WireframeRenderer(video) → BeginFrame/Render calls →
 //   Shutdown().  Created and destroyed by Renderer.
@@ -107,6 +108,16 @@ class WireframeRenderer : public core::Singleton<WireframeRenderer> {
   void PushCone(float half_angle, float range, const core::Color& color,
                 const core::Mat4f& transform = core::Mat4f::kIdentity);
 
+  // Appends a cylinder along local Y: two XZ-plane circles at ±half_height
+  // connected by 4 vertical edges at 0°, 90°, 180°, 270°.
+  void PushCylinder(float radius, float half_height, const core::Color& color,
+                    const core::Mat4f& transform = core::Mat4f::kIdentity);
+
+  // Appends a capsule along local Y: cylinder body plus two hemisphere caps
+  // (each drawn as two 180° arcs in the XY and ZY planes).
+  void PushCapsule(float radius, float half_height, const core::Color& color,
+                   const core::Mat4f& transform = core::Mat4f::kIdentity);
+
   // Appends a sequence of line segments connecting adjacent points in points[].
   void PushLineList(const std::vector<core::Vec3f>& points,
                     const core::Color& color,
@@ -126,6 +137,14 @@ class WireframeRenderer : public core::Singleton<WireframeRenderer> {
 
   void PushOverlayCone(float half_angle, float range, const core::Color& color,
                        const core::Mat4f& transform = core::Mat4f::kIdentity);
+
+  void PushOverlayCylinder(float radius, float half_height,
+                            const core::Color& color,
+                            const core::Mat4f& transform = core::Mat4f::kIdentity);
+
+  void PushOverlayCapsule(float radius, float half_height,
+                           const core::Color& color,
+                           const core::Mat4f& transform = core::Mat4f::kIdentity);
 
   void PushOverlayLineList(const std::vector<core::Vec3f>& points,
                            const core::Color& color,
@@ -160,6 +179,16 @@ class WireframeRenderer : public core::Singleton<WireframeRenderer> {
   static void AppendCone(std::vector<core::VertexBase>& list,
                           float half_angle, float range, const core::Color& color,
                           const core::Mat4f& transform);
+
+  static void AppendCylinder(std::vector<core::VertexBase>& list,
+                              float radius, float half_height,
+                              const core::Color& color,
+                              const core::Mat4f& transform);
+
+  static void AppendCapsule(std::vector<core::VertexBase>& list,
+                             float radius, float half_height,
+                             const core::Color& color,
+                             const core::Mat4f& transform);
 
   static void AppendLineList(std::vector<core::VertexBase>& list,
                               const std::vector<core::Vec3f>& points,
