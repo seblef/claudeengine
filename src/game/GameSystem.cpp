@@ -6,6 +6,7 @@
 #include "core/EventManager.h"
 #include "core/EventType.h"
 #include "game/GameParticleSystem.h"
+#include "physics/PhysicsSystem.h"
 #include "renderer/Renderer.h"
 
 namespace game {
@@ -40,6 +41,10 @@ void GameSystem::Update() {
 
   if (camera_controller_) {
     camera_controller_->Update(dt);
+  }
+
+  if (physics::PhysicsSystem::IsInstanced()) {
+    physics::PhysicsSystem::Instance().Step(dt);
   }
 
   for (GameObject* obj : objects_) {

@@ -15,4 +15,4 @@ add_library(game STATIC
 
 target_include_directories(game PUBLIC "${CMAKE_SOURCE_DIR}/src")
 
-target_link_libraries(game PUBLIC core abstract renderer terrain environment particles)
+target_link_libraries(game PUBLIC core abstract renderer terrain environment particles physics)
