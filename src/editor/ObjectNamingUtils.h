@@ -6,6 +6,10 @@ namespace editor {
 
 class EditorScene;
 
+// Strips a trailing "_NNN" numeric index from a name and returns the base.
+// "tree_001" → "tree", "group_007" → "group", "spotlight" → "spotlight".
+std::string BaseNameOf(const std::string& name);
+
 // Generates a unique name for a new scene object.
 //
 // Scans existing scene objects for names matching "<base_name>_NNN" (where NNN
