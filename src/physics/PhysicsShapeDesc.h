@@ -29,7 +29,7 @@ struct PhysicsShapeDesc {
         float half_height;  ///< Half the height of the cylindrical section (excluding caps).
     };
 
-    PhysicsShapeType type = PhysicsShapeType::Box;  ///< Active shape variant.
+    PhysicsShapeType type;  ///< Active shape variant.
 
     union {
         Box      box;
@@ -39,6 +39,11 @@ struct PhysicsShapeDesc {
         // ConvexHull, Exact, and Terrain carry no extra parameters here;
         // geometry is supplied via MeshData / TerrainData at body-creation time.
     };
+
+    // Vec3f has default member-initializers, making Box's default constructor
+    // non-trivial and the anonymous union's default constructor deleted.
+    // An explicit default constructor initialises the union through Box.
+    PhysicsShapeDesc() : type(PhysicsShapeType::Box), box{} {}
 
     // Factory helpers for concise construction.
 

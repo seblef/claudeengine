@@ -1,5 +1,6 @@
 add_library(physics STATIC
     Physics.cpp
+    PhysicsBody.cpp
     PhysicsSystem.cpp
 )
 
@@ -10,5 +11,5 @@ target_include_directories(physics PUBLIC "${CMAKE_SOURCE_DIR}/src")
 
 target_link_libraries(physics
     PUBLIC  core
-    PRIVATE Jolt
+    PRIVATE Jolt terrain
 )
