@@ -29,9 +29,11 @@ struct MaterialSnapshot {
   // cppcheck-suppress unusedStructMember
   core::Color ambient_color;
   // cppcheck-suppress unusedStructMember
-  float       shininess = 32.f;
+  float       shininess   = 32.f;
   // cppcheck-suppress unusedStructMember
-  float       specular  = 1.f;
+  float       specular    = 1.f;
+  // cppcheck-suppress unusedStructMember
+  bool        alpha_mask  = false;
 
   // Texture slot asset IDs, indexed by TextureSlot integer value.
   // cppcheck-suppress unusedStructMember

@@ -49,6 +49,7 @@ Material::Material(const MaterialDesc& desc, abstract::VideoDevice* video) {
   shininess_      = desc.GetShininess();
   specular_       = desc.GetSpecular();
   cast_shadow_    = desc.GetCastShadow();
+  alpha_mask_     = desc.GetAlphaMask();
 }
 
 Material::Material(const std::string& name, abstract::VideoDevice* video) {
@@ -84,6 +85,7 @@ void Material::Set(abstract::ConstantBuffer* colors_cb) const {
   mi.ambient_color  = ambient_color_;
   mi.shininess      = shininess_;
   mi.specular       = specular_;
+  mi.alpha_mask     = alpha_mask_ ? 1 : 0;
   colors_cb->Fill(&mi);
 }
 
@@ -155,6 +157,7 @@ void Material::LoadFromYaml(const YAML::Node& yaml, abstract::VideoDevice* video
   }
 
   if (yaml["cast_shadow"]) cast_shadow_ = yaml["cast_shadow"].as<bool>();
+  if (yaml["alpha_mask"])  alpha_mask_  = yaml["alpha_mask"].as<bool>();
 }
 
 }  // namespace renderer

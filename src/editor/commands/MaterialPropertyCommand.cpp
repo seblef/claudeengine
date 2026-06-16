@@ -16,6 +16,7 @@ bool MaterialSnapshot::operator==(const MaterialSnapshot& o) const {
       && ambient_color  == o.ambient_color
       && shininess      == o.shininess
       && specular       == o.specular
+      && alpha_mask     == o.alpha_mask
       && texture_slots  == o.texture_slots;
 }
 
@@ -27,6 +28,7 @@ MaterialSnapshot CaptureSnapshot(const game::GameMaterial* game_mat) {
   s.ambient_color  = mat->GetAmbientColor();
   s.shininess      = mat->GetShininess();
   s.specular       = mat->GetSpecular();
+  s.alpha_mask     = mat->GetAlphaMask();
   s.texture_slots.resize(renderer::kTextureSlotCount);
   for (int i = 0; i < renderer::kTextureSlotCount; ++i) {
     const auto* tex = mat->GetTexture(static_cast<renderer::TextureSlot>(i));
@@ -44,6 +46,7 @@ void ApplySnapshot(game::GameMaterial* game_mat, const MaterialSnapshot& s,
   mat->SetAmbientColor(s.ambient_color);
   mat->SetShininess(s.shininess);
   mat->SetSpecular(s.specular);
+  mat->SetAlphaMask(s.alpha_mask);
   for (int i = 0; i < renderer::kTextureSlotCount; ++i) {
     const std::string& id = s.texture_slots[i];
     if (id.empty()) continue;

@@ -28,11 +28,12 @@ out vec4 v_color;
 
 // Local UV for each corner of the quad.
 // Corner order: BL, BR, TR, TL
+// V=0 is the bottom of the texture (stb_image loads with flip, so V=0 = image bottom).
 const vec2 kCornerUV[4] = vec2[4](
-    vec2(0.0, 1.0),
-    vec2(1.0, 1.0),
+    vec2(0.0, 0.0),
     vec2(1.0, 0.0),
-    vec2(0.0, 0.0)
+    vec2(1.0, 1.0),
+    vec2(0.0, 1.0)
 );
 
 // Signed offsets in the billboard plane for each corner (half-extents).

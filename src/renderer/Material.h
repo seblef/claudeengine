@@ -57,6 +57,11 @@ class Material {
   // passes.  Corresponds to the YAML key `cast_shadow` (default true).
   [[nodiscard]] bool GetCastShadow() const { return cast_shadow_; }
 
+  // Returns true if fragments with diffuse alpha < 0.5 should be discarded in
+  // both the GBuffer pass and all shadow depth passes (cutout transparency).
+  // Corresponds to the YAML key `alpha_mask` (default false).
+  [[nodiscard]] bool GetAlphaMask() const { return alpha_mask_; }
+
   // Returns the texture at the given slot.
   [[nodiscard]] abstract::Texture* GetTexture(TextureSlot slot) const;
 
@@ -81,6 +86,7 @@ class Material {
   void SetAmbientColor(core::Color color)  { ambient_color_  = color; }
   void SetShininess(float shininess)       { shininess_      = shininess; }
   void SetSpecular(float specular)         { specular_       = specular; }
+  void SetAlphaMask(bool alpha_mask)       { alpha_mask_     = alpha_mask; }
 
  private:
   void LoadDefaults(abstract::VideoDevice* video);
@@ -98,6 +104,8 @@ class Material {
   float        specular_       = 1.f;
   // cppcheck-suppress unusedStructMember
   bool         cast_shadow_    = true;
+  // cppcheck-suppress unusedStructMember
+  bool         alpha_mask_     = false;
 };
 
 }  // namespace renderer

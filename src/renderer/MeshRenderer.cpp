@@ -120,12 +120,20 @@ void MeshRenderer::RenderDepth() {
 
   depth_shader_->Activate();
 
-  const GeometryData* current_geo = nullptr;
+  const Material*     current_material = nullptr;
+  const GeometryData* current_geo      = nullptr;
   for (const MeshInstance* inst : depth_instances_) {
-    const GeometryData* geo = inst->GetModel()->GetGeometryData();
+    const Mesh*         mesh = inst->GetModel();
+    const GeometryData* geo  = mesh->GetGeometryData();
+    const Material*     mat  = mesh->GetMaterial();
+
     if (geo != current_geo) {
       geo->Set();
       current_geo = geo;
+    }
+    if (mat != current_material) {
+      mat->Set(Renderer::Instance().GetMaterialInfosCB());
+      current_material = mat;
     }
     Renderer::Instance().SetRenderableInfos(inst->GetWorldMatrix());
     video_->RenderIndexed(geo->GetNumIndices());
@@ -143,12 +151,20 @@ void MeshRenderer::RenderDepthCube() {
 
   cube_depth_shader_->Activate();
 
-  const GeometryData* current_geo = nullptr;
+  const Material*     current_material = nullptr;
+  const GeometryData* current_geo      = nullptr;
   for (const MeshInstance* inst : depth_instances_) {
-    const GeometryData* geo = inst->GetModel()->GetGeometryData();
+    const Mesh*         mesh = inst->GetModel();
+    const GeometryData* geo  = mesh->GetGeometryData();
+    const Material*     mat  = mesh->GetMaterial();
+
     if (geo != current_geo) {
       geo->Set();
       current_geo = geo;
+    }
+    if (mat != current_material) {
+      mat->Set(Renderer::Instance().GetMaterialInfosCB());
+      current_material = mat;
     }
     Renderer::Instance().SetRenderableInfos(inst->GetWorldMatrix());
     video_->RenderIndexed(geo->GetNumIndices());

@@ -16,13 +16,15 @@ namespace renderer {
 //   [ 32] ambient_color   vec4  (16 B — RGBA ambient term)
 //   [ 48] shininess       float ( 4 B — Blinn-Phong exponent)
 //   [ 52] specular        float ( 4 B — specular intensity multiplier)
-//   [ 56] end / tail pad   8 B  (struct padded to alignof(Color) = 16)
+//   [ 56] alpha_mask      int   ( 4 B — 1 = discard fragments with alpha < 0.5)
+//   [ 60] end / tail pad   4 B  (struct padded to alignof(Color) = 16)
 struct MaterialInfos {
   core::Color diffuse_color;   // diffuse texture tint; defaults to white opaque
   core::Color emissive_color;  // emissive texture scale; defaults to transparent
   core::Color ambient_color;   // additive ambient term; defaults to transparent
   float       shininess;       // Blinn-Phong exponent; defaults to 32
   float       specular;        // multiplier applied to specular texture sample; defaults to 1
+  int         alpha_mask;      // when non-zero, fragments with diffuse alpha < 0.5 are discarded
 };
 
 static_assert(sizeof(MaterialInfos) == 64);
@@ -30,5 +32,6 @@ static_assert(offsetof(MaterialInfos, emissive_color) == 16);
 static_assert(offsetof(MaterialInfos, ambient_color)  == 32);
 static_assert(offsetof(MaterialInfos, shininess)      == 48);
 static_assert(offsetof(MaterialInfos, specular)       == 52);
+static_assert(offsetof(MaterialInfos, alpha_mask)     == 56);
 
 }  // namespace renderer

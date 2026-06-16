@@ -314,6 +314,24 @@ void MaterialEditorWindow::RenderRenderingSection() {
     mat->SetSpecular(specular);
   track();
 
+  ImGui::SeparatorText("Flags");
+
+  // Alpha mask is an instant toggle — push a command immediately on change,
+  // same pattern as texture slot changes (not the drag state machine above).
+  bool alpha_mask = mat->GetAlphaMask();
+  if (ImGui::Checkbox("Alpha mask", &alpha_mask)) {
+    if (history_) before_snapshot_ = CaptureSnapshot(material_);
+    mat->SetAlphaMask(alpha_mask);
+    if (history_) {
+      MaterialSnapshot after = CaptureSnapshot(material_);
+      if (after != before_snapshot_)
+        history_->Push(std::make_unique<MaterialPropertyCommand>(
+            material_, video_, before_snapshot_, after));
+    }
+  }
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Discard pixels with diffuse alpha < 0.5 (cutout transparency)");
+
   // State machine: detect edit-start and edit-end across frames.
   if (history_) {
     if (any_edited && !editing_) {
@@ -451,6 +469,8 @@ void MaterialEditorWindow::Save() {
   write_color("ambient_color",  mat->GetAmbientColor());
   out << YAML::Key << "shininess" << YAML::Value << mat->GetShininess();
   out << YAML::Key << "specular"  << YAML::Value << mat->GetSpecular();
+  if (mat->GetAlphaMask())
+    out << YAML::Key << "alpha_mask" << YAML::Value << true;
 
   out << YAML::EndMap;  // rendering
   out << YAML::EndMap;  // root
