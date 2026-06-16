@@ -411,6 +411,7 @@ bool ParticleEditorWindow::SerializeToFile(
     out << YAML::Key << "animation_fps" << YAML::Value << ss.animation_fps;
     out << YAML::Key << "animation_mode" << YAML::Value
         << AnimationModeLabel(ss.animation_mode);
+    out << YAML::Key << "smooth_transition" << YAML::Value << ss.smooth_transition;
     out << YAML::Key << "emitter_shape"  << YAML::Value
         << EmitterShapeLabel(ss.emitter_shape);
     out << YAML::Key << "emitter_radius" << YAML::Value << ss.emitter_radius;
@@ -680,6 +681,15 @@ void ParticleEditorWindow::RenderSubSystemProperties() {
     ss.animation_mode = static_cast<particles::ParticleAnimationMode>(anim_idx);
     changed            = true;
   }
+
+  // Smooth transition is only meaningful in sequential mode with fps > 0.
+  const bool interp_enabled =
+      ss.animation_mode == particles::ParticleAnimationMode::kSequential &&
+      ss.animation_fps > 0.f && ss.sprite_cols * ss.sprite_rows > 1;
+  ImGui::BeginDisabled(!interp_enabled);
+  if (ImGui::Checkbox("Smooth transition##ss_smooth", &ss.smooth_transition))
+    changed = true;
+  ImGui::EndDisabled();
 
   ImGui::SeparatorText("Emitter");
 

@@ -8,23 +8,31 @@
 // Billboard right and up vectors are extracted from the view matrix rows so
 // the quad always faces the camera regardless of world orientation.
 //
+// Smooth frame interpolation: when in_frame_blend > 0, the fragment shader blends
+// the sample at v_uv toward the sample at v_uv2 using mix(sample0, sample1, blend).
+//
 // UBO binding 2: SceneInfosBlock — view, proj matrices.
 
 #version 460 core
 
 // kParticle layout: location 0=center(vec3), 1=size(float),
-//                  2=color(vec4), 3=uv_offset(vec2), 4=rotation(float).
+//                  2=color(vec4), 3=uv_offset(vec2), 4=rotation(float),
+//                  5=uv_offset2(vec2), 6=frame_blend(float).
 layout(location = 0) in vec3  in_center;
 layout(location = 1) in float in_size;
 layout(location = 2) in vec4  in_color;
 layout(location = 3) in vec2  in_uv_offset;
 layout(location = 4) in float in_rotation;
+layout(location = 5) in vec2  in_uv_offset2;
+layout(location = 6) in float in_frame_blend;
 
 #include <uniforms/scene_infos.glsl>
 
 uniform vec2 u_uv_size;  // vec2(1/sprite_cols, 1/sprite_rows)
 
 out vec2 v_uv;
+out vec2 v_uv2;
+out float v_frame_blend;
 out vec4 v_color;
 
 // Local UV for each corner of the quad.
@@ -68,7 +76,10 @@ void main() {
 
     gl_Position = proj * view * vec4(world_pos, 1.0);
 
-    // Map local corner UV into the sprite-sheet cell.
-    v_uv    = in_uv_offset + kCornerUV[corner] * u_uv_size;
-    v_color = in_color;
+    // Map local corner UV into the sprite-sheet cells (current and next frame).
+    vec2 corner_uv = kCornerUV[corner] * u_uv_size;
+    v_uv          = in_uv_offset  + corner_uv;
+    v_uv2         = in_uv_offset2 + corner_uv;
+    v_frame_blend = in_frame_blend;
+    v_color       = in_color;
 }

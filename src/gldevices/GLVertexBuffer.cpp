@@ -100,6 +100,14 @@ void ConfigureAttributes(core::VertexType vertex_type) {
       glEnableVertexAttribArray(4);
       glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, stride,
           reinterpret_cast<const void*>(offsetof(core::VertexParticle, rotation)));
+      // location 5: uv_offset2 (vec2, next-frame sprite UV)
+      glEnableVertexAttribArray(5);
+      glVertexAttribPointer(5, 2, GL_FLOAT, GL_FALSE, stride,
+          reinterpret_cast<const void*>(offsetof(core::VertexParticle, uv_offset2)));
+      // location 6: frame_blend (float, [0,1] blend toward next frame)
+      glEnableVertexAttribArray(6);
+      glVertexAttribPointer(6, 1, GL_FLOAT, GL_FALSE, stride,
+          reinterpret_cast<const void*>(offsetof(core::VertexParticle, frame_blend)));
       break;
     }
     default:

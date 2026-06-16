@@ -60,6 +60,8 @@ ParticleSubSystemDesc ParseSubSystem(const YAML::Node& node) {
   if (node["animation_mode"])
     desc.animation_mode =
         ParseAnimationMode(node["animation_mode"].as<std::string>(""));
+  if (node["smooth_transition"])
+    desc.smooth_transition = node["smooth_transition"].as<bool>(false);
 
   if (node["emitter_shape"])
     desc.emitter_shape =

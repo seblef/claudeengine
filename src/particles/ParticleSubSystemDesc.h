@@ -38,6 +38,11 @@ struct ParticleSubSystemDesc {
 
   ParticleAnimationMode animation_mode = ParticleAnimationMode::kSequential;
 
+  // When true, the renderer linearly interpolates between consecutive sprite-sheet
+  // frames so transitions appear smooth. Only effective in kSequential mode with
+  // animation_fps > 0 and a sprite sheet with more than one frame.
+  bool smooth_transition = false;
+
   EmitterShape emitter_shape  = EmitterShape::kPoint;
   float        emitter_radius = 0.f;
 
