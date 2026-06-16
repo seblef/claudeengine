@@ -91,8 +91,10 @@ class EnvironmentEditorPanel {
   std::unique_ptr<environment::WindSystem> wind_system_;
 
   // ---- Panel UI state -------------------------------------------------------
-  bool  time_paused_   = true;
-  float wind_angle_deg_ = 0.f;   // cached compass angle for the direction widget
+  bool  time_paused_        = true;
+  float wind_angle_deg_    = 0.f;    // cached compass angle for the wind direction widget
+  float normal_dir1_angle_ = 31.f;   // cached UV-space angle for normal map layer 1 (degrees)
+  float normal_dir2_angle_ = 235.f;  // cached UV-space angle for normal map layer 2 (degrees)
 };
 
 }  // namespace editor

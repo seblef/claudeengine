@@ -93,6 +93,18 @@ void EmitEnvironment(YAML::Emitter& out,
     out << YAML::Key << "normal_scroll_speed1" << YAML::Value << env.normal_scroll_speed1;
   if (env.normal_scroll_speed2 != def.normal_scroll_speed2)
     out << YAML::Key << "normal_scroll_speed2" << YAML::Value << env.normal_scroll_speed2;
+  if (env.normal_dir1_x != def.normal_dir1_x || env.normal_dir1_y != def.normal_dir1_y) {
+    out << YAML::Key << "normal_dir1" << YAML::Value
+        << YAML::Flow << YAML::BeginSeq
+        << env.normal_dir1_x << env.normal_dir1_y
+        << YAML::EndSeq;
+  }
+  if (env.normal_dir2_x != def.normal_dir2_x || env.normal_dir2_y != def.normal_dir2_y) {
+    out << YAML::Key << "normal_dir2" << YAML::Value
+        << YAML::Flow << YAML::BeginSeq
+        << env.normal_dir2_x << env.normal_dir2_y
+        << YAML::EndSeq;
+  }
   if (env.cloud_enabled != def.cloud_enabled)
     out << YAML::Key << "cloud_enabled" << YAML::Value << env.cloud_enabled;
   if (env.cloud_density != def.cloud_density)

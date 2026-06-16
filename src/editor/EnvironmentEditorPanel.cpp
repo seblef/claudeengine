@@ -46,6 +46,20 @@ core::Vec3f AngleDegToDirection(float deg) {
   return core::Vec3f(std::cos(rad), 0.f, std::sin(rad));
 }
 
+// Converts a 2D UV direction to an angle in degrees [0, 360).
+// 0° = +X, 90° = +Y.
+float UVDirToAngleDeg(float dx, float dy) {
+  const float angle = std::atan2(dy, dx) * (180.f / static_cast<float>(M_PI));
+  return angle < 0.f ? angle + 360.f : angle;
+}
+
+// Converts an angle in degrees back to a normalised 2D UV direction.
+void AngleDegToUVDir(float deg, float* out_x, float* out_y) {
+  const float rad = deg * (static_cast<float>(M_PI) / 180.f);
+  *out_x = std::cos(rad);
+  *out_y = std::sin(rad);
+}
+
 }  // namespace
 
 // ---- Destructor --------------------------------------------------------------
@@ -74,8 +88,10 @@ void EnvironmentEditorPanel::SetContext(EditorScene* scene,
 
   const environment::EnvironmentDesc& env = scene_->GetEnvironmentDesc();
 
-  // Cache wind compass angle for the UI.
-  wind_angle_deg_ = DirectionToAngleDeg(env.wind_direction);
+  // Cache wind and normal map direction angles for the UI.
+  wind_angle_deg_    = DirectionToAngleDeg(env.wind_direction);
+  normal_dir1_angle_ = UVDirToAngleDeg(env.normal_dir1_x, env.normal_dir1_y);
+  normal_dir2_angle_ = UVDirToAngleDeg(env.normal_dir2_x, env.normal_dir2_y);
 
   if (env.sky_enabled)   EnableSky(env);
   if (env.water_enabled) EnableWater(env);
@@ -158,6 +174,8 @@ void EnvironmentEditorPanel::EnableWater(const environment::EnvironmentDesc& des
                    desc.foam_steepness_thresh, desc.foam_speed);
   wr.SetNormalMapParams(desc.normal_scale1, desc.normal_scale2,
                         desc.normal_scroll_speed1, desc.normal_scroll_speed2);
+  wr.SetNormalMapDirections(desc.normal_dir1_x, desc.normal_dir1_y,
+                            desc.normal_dir2_x, desc.normal_dir2_y);
   wr.SetNormalMapTextures(desc.normal_map_texture1, desc.normal_map_texture2);
   renderer::Renderer::Instance().SetWaterRenderer(&wr);
 }
@@ -570,6 +588,26 @@ bool EnvironmentEditorPanel::RenderWaterSection(
       environment::WaterRenderer::Instance().SetNormalMapParams(
           env.normal_scale1, env.normal_scale2,
           env.normal_scroll_speed1, env.normal_scroll_speed2);
+    changed = true;
+  }
+
+  if (ImGui::SliderFloat("Normal dir 1 angle", &normal_dir1_angle_,
+                          0.f, 360.f, "%.0f deg")) {
+    AngleDegToUVDir(normal_dir1_angle_, &env.normal_dir1_x, &env.normal_dir1_y);
+    if (environment::WaterRenderer::IsInstanced())
+      environment::WaterRenderer::Instance().SetNormalMapDirections(
+          env.normal_dir1_x, env.normal_dir1_y,
+          env.normal_dir2_x, env.normal_dir2_y);
+    changed = true;
+  }
+
+  if (ImGui::SliderFloat("Normal dir 2 angle", &normal_dir2_angle_,
+                          0.f, 360.f, "%.0f deg")) {
+    AngleDegToUVDir(normal_dir2_angle_, &env.normal_dir2_x, &env.normal_dir2_y);
+    if (environment::WaterRenderer::IsInstanced())
+      environment::WaterRenderer::Instance().SetNormalMapDirections(
+          env.normal_dir1_x, env.normal_dir1_y,
+          env.normal_dir2_x, env.normal_dir2_y);
     changed = true;
   }
 

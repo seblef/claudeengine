@@ -32,7 +32,11 @@ namespace environment {
 //   [ 84] normal_scroll_speed2  float
 //   [ 88] lod_near_dist         float  full quality below this XZ distance (metres)
 //   [ 92] lod_far_dist          float  minimal quality above this XZ distance (metres)
-// Total: 96 bytes (6 float4s).
+//   [ 96] normal_dir1_x         float  normalised UV scroll direction for layer 1, X
+//   [100] normal_dir1_y         float  normalised UV scroll direction for layer 1, Y
+//   [104] normal_dir2_x         float  normalised UV scroll direction for layer 2, X
+//   [108] normal_dir2_y         float  normalised UV scroll direction for layer 2, Y
+// Total: 112 bytes (7 float4s).
 struct WaterInfos {
     // float4 0
     // cppcheck-suppress unusedStructMember
@@ -93,8 +97,19 @@ struct WaterInfos {
     float lod_near_dist        = 50.f;   // full quality below this XZ distance (metres)
     // cppcheck-suppress unusedStructMember
     float lod_far_dist         = 100.f;  // minimal quality above this XZ distance (metres)
+
+    // float4 6 — normalised UV-space scroll directions for each normal map layer.
+    // Defaults reproduce the previous hardcoded vec2(1.0,0.6) and -vec2(0.7,1.0).
+    // cppcheck-suppress unusedStructMember
+    float normal_dir1_x = 0.8575f;   // layer 1 scroll direction, X
+    // cppcheck-suppress unusedStructMember
+    float normal_dir1_y = 0.5145f;   // layer 1 scroll direction, Y
+    // cppcheck-suppress unusedStructMember
+    float normal_dir2_x = -0.5735f;  // layer 2 scroll direction, X
+    // cppcheck-suppress unusedStructMember
+    float normal_dir2_y = -0.8192f;  // layer 2 scroll direction, Y
 };
 
-static_assert(sizeof(WaterInfos) == 96);
+static_assert(sizeof(WaterInfos) == 112);
 
 }  // namespace environment

@@ -85,6 +85,16 @@ environment::EnvironmentDesc ParseEnvironmentDesc(const YAML::Node& node) {
   if (node["normal_scroll_speed2"])
     desc.normal_scroll_speed2 =
         node["normal_scroll_speed2"].as<float>(desc.normal_scroll_speed2);
+  if (node["normal_dir1"] && node["normal_dir1"].IsSequence() &&
+      node["normal_dir1"].size() >= 2) {
+    desc.normal_dir1_x = node["normal_dir1"][0].as<float>(desc.normal_dir1_x);
+    desc.normal_dir1_y = node["normal_dir1"][1].as<float>(desc.normal_dir1_y);
+  }
+  if (node["normal_dir2"] && node["normal_dir2"].IsSequence() &&
+      node["normal_dir2"].size() >= 2) {
+    desc.normal_dir2_x = node["normal_dir2"][0].as<float>(desc.normal_dir2_x);
+    desc.normal_dir2_y = node["normal_dir2"][1].as<float>(desc.normal_dir2_y);
+  }
   if (node["start_time_of_day"])
     desc.start_time_of_day = node["start_time_of_day"].as<float>(desc.start_time_of_day);
   if (node["time_scale"])
