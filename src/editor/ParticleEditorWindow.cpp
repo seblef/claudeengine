@@ -414,6 +414,7 @@ bool ParticleEditorWindow::SerializeToFile(
     out << YAML::Key << "emitter_shape"  << YAML::Value
         << EmitterShapeLabel(ss.emitter_shape);
     out << YAML::Key << "emitter_radius" << YAML::Value << ss.emitter_radius;
+    out << YAML::Key << "enabled"        << YAML::Value << ss.enabled;
     out << YAML::Key << "emission_rate"  << YAML::Value << ss.emission_rate;
     out << YAML::Key << "max_particles"  << YAML::Value << ss.max_particles;
     out << YAML::Key << "looping"        << YAML::Value << ss.looping;
@@ -524,14 +525,27 @@ void ParticleEditorWindow::RenderSubSystemList() {
   if (ImGui::BeginChild("##ss_list", ImVec2(0.f, list_h),
                          ImGuiChildFlags_Borders)) {
     for (int i = 0; i < static_cast<int>(sub_systems_.size()); ++i) {
-      const auto& ss = sub_systems_[i];
+      auto& ss = sub_systems_[i];
+      ImGui::PushID(i);
+
+      // Inline enable/disable toggle before the selectable.
+      if (ImGui::Checkbox("##ss_en", &ss.enabled))
+        unsaved_ = preview_dirty_ = true;
+      ImGui::SameLine();
+
       const std::string label =
           (ss.name.empty() ? "(unnamed)" : ss.name) +
           "##ss" + std::to_string(i);
+      if (!ss.enabled)
+        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
       if (ImGui::Selectable(label.c_str(), i == selected_sub_system_)) {
         selected_sub_system_ = i;
         selected_light_      = -1;
       }
+      if (!ss.enabled)
+        ImGui::PopStyleColor();
+
+      ImGui::PopID();
     }
   }
   ImGui::EndChild();
@@ -597,6 +611,8 @@ void ParticleEditorWindow::RenderSubSystemProperties() {
     ss.name = name_buf;
     changed  = true;
   }
+
+  if (ImGui::Checkbox("Enabled##ss_enabled", &ss.enabled)) changed = true;
 
   ImGui::SeparatorText("Rendering");
 
