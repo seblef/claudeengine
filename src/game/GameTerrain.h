@@ -8,6 +8,7 @@
 #include "terrain/FoliageLayer.h"
 
 namespace abstract { class VideoDevice; }
+namespace physics { class PhysicsBody; }
 namespace terrain {
 class TerrainData;
 class TerrainMaterial;
@@ -46,8 +47,8 @@ class GameTerrain : public GameObject {
   // Calls TerrainRenderer::Deinit() and FoliageRenderer::Shutdown().
   void OnRemovedFromScene() override;
 
-  // Terrain has no movable transform; this is a no-op.
-  void OnWorldTransformUpdated() override {}
+  // Propagates any transform change to the physics body.
+  void OnWorldTransformUpdated() override;
 
   [[nodiscard]] const terrain::TerrainData&     GetData()     const;
   [[nodiscard]] const terrain::TerrainMaterial& GetMaterial() const;
@@ -70,6 +71,9 @@ class GameTerrain : public GameObject {
   // The paired OnRemovedFromScene() then owns the Shutdown() call.
   // cppcheck-suppress unusedStructMember
   bool owns_terrain_renderer_ = false;
+  // Non-owning; lifetime is managed by PhysicsSystem.
+  // cppcheck-suppress unusedStructMember
+  physics::PhysicsBody* terrain_body_ = nullptr;
 };
 
 }  // namespace game
