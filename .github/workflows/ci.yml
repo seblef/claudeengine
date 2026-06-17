@@ -128,7 +128,8 @@ jobs:
             cmake ninja-build \
             libgl1-mesa-dev libglu1-mesa-dev \
             libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
-            libtiff-dev
+            libtiff-dev \
+            libgtk-3-dev
 
       - name: Cache FetchContent dependencies
         uses: actions/cache@v4
