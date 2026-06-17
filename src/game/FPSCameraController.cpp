@@ -3,16 +3,27 @@
 #include <algorithm>
 #include <cmath>
 
+#include "core/AppConfig.h"
 #include "core/EventType.h"
 #include "core/Key.h"
 #include "core/Mat4f.h"
+#include "core/PlayerConfig.h"
 #include "game/GameCamera.h"
 #include "physics/CharacterController.h"
 #include "physics/PhysicsSystem.h"
 
 namespace game {
 
-FPSCameraController::FPSCameraController() : position_(core::Vec3f::kZero) {}
+FPSCameraController::FPSCameraController() : position_(core::Vec3f::kZero) {
+  const core::PlayerConfig& cfg = core::AppConfig::GetPlayer();
+  capsule_radius_      = cfg.GetCapsuleRadius();
+  capsule_half_height_ = cfg.GetCapsuleHalfHeight();
+  eye_offset_          = cfg.GetEyeOffset();
+  move_speed_          = cfg.GetMoveSpeed();
+  mouse_sensitivity_   = cfg.GetMouseSensitivity();
+  jump_speed_          = cfg.GetJumpSpeed();
+  gravity_             = cfg.GetGravity();
+}
 
 FPSCameraController::~FPSCameraController() {
   character_.reset();
@@ -51,8 +62,8 @@ void FPSCameraController::OnEvent(const core::Event& event) {
       break;
     case core::EventType::kMouseMoved:
       if (prev_mouse_x_ >= 0.f) {
-        yaw_   += (event.mouse_x - prev_mouse_x_) * kMouseSensitivity;
-        pitch_ += (event.mouse_y - prev_mouse_y_) * kMouseSensitivity;
+        yaw_   += (event.mouse_x - prev_mouse_x_) * mouse_sensitivity_;
+        pitch_ += (event.mouse_y - prev_mouse_y_) * mouse_sensitivity_;
         pitch_  = std::max(-1.5f, std::min(1.5f, pitch_));
       }
       prev_mouse_x_ = event.mouse_x;
@@ -81,7 +92,7 @@ void FPSCameraController::Update(float dt) {
         0.f, 0.f, 1.f, position_.z,
         0.f, 0.f, 0.f, 1.f);
     character_ = physics::PhysicsSystem::Instance().CreateCharacter(
-        kCapsuleRadius, kCapsuleHalfHeight, initial_transform);
+        capsule_radius_, capsule_half_height_, initial_transform);
   }
 
   const core::Vec3f look = {
@@ -92,7 +103,7 @@ void FPSCameraController::Update(float dt) {
   const core::Vec3f right = look.Cross(core::Vec3f::kAxisY).Normalized();
 
   // Horizontal velocity components shared by both physics and free-fly paths.
-  const float spd = kMoveSpeed;
+  const float spd = move_speed_;
   core::Vec3f hvel;
   if (k_forward_) hvel += look  * spd;
   if (k_back_)    hvel -= look  * spd;
@@ -108,12 +119,12 @@ void FPSCameraController::Update(float dt) {
     const bool grounded = character_->IsGrounded();
     if (grounded) {
       if (k_jump_) {
-        vel_y_ = kJumpSpeed;
+        vel_y_ = jump_speed_;
       } else {
         vel_y_ = 0.f;
       }
     } else {
-      vel_y_ -= kGravity * dt;
+      vel_y_ -= gravity_ * dt;
     }
 
     const core::Vec3f velocity(hvel.x, vel_y_, hvel.z);
@@ -124,12 +135,12 @@ void FPSCameraController::Update(float dt) {
     position = core::Vec3f(capsule_transform(0, 3),
                            capsule_transform(1, 3),
                            capsule_transform(2, 3));
-    position.y += kCapsuleHalfHeight + kEyeOffset;
+    position.y += capsule_half_height_ + eye_offset_;
   } else {
     // --- Free-fly fallback (no PhysicsSystem) ---
     position_ += hvel * dt;
-    if (k_up_)   position_ += core::Vec3f::kAxisY * (kMoveSpeed * dt);
-    if (k_down_) position_ -= core::Vec3f::kAxisY * (kMoveSpeed * dt);
+    if (k_up_)   position_ += core::Vec3f::kAxisY * (move_speed_ * dt);
+    if (k_down_) position_ -= core::Vec3f::kAxisY * (move_speed_ * dt);
     position = position_;
   }
 

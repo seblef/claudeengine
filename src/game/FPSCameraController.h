@@ -39,20 +39,21 @@ class FPSCameraController : public ICameraController {
   void SetPosition(core::Vec3f pos);
 
  private:
+  // Movement tuning — loaded from config.yaml [player] at construction time.
   // cppcheck-suppress unusedStructMember
-  static constexpr float kCapsuleRadius     = 0.4f;   // m
+  float capsule_radius_;
   // cppcheck-suppress unusedStructMember
-  static constexpr float kCapsuleHalfHeight = 0.9f;   // m
+  float capsule_half_height_;
   // cppcheck-suppress unusedStructMember
-  static constexpr float kEyeOffset         = 0.15f;  // m above capsule centre
+  float eye_offset_;
   // cppcheck-suppress unusedStructMember
-  static constexpr float kMoveSpeed         = 10.f;   // units/s
+  float move_speed_;
   // cppcheck-suppress unusedStructMember
-  static constexpr float kMouseSensitivity  = 0.002f;  // rad/px
+  float mouse_sensitivity_;
   // cppcheck-suppress unusedStructMember
-  static constexpr float kJumpSpeed         = 7.f;    // initial vertical velocity (m/s)
+  float jump_speed_;
   // cppcheck-suppress unusedStructMember
-  static constexpr float kGravity           = 9.81f;  // downward acceleration (m/s²)
+  float gravity_;
 
   // cppcheck-suppress unusedStructMember
   GameCamera* camera_ = nullptr;
