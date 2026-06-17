@@ -12,12 +12,15 @@
 #include "core/ProjectionType.h"
 #include "core/Vec3f.h"
 #include "editor/EditorScene.h"
+#include "editor/PhysicsGizmoRenderer.h"
 #include "editor/PickingAccelerator.h"
 #include "editor/PlayerStartGizmos.h"
+#include "editor/RenderingSettingsPanel.h"
 #include "editor/commands/PlaceObjectCommand.h"
 #include "editor/tools/SelectionTool.h"
 #include "editor/tools/ViewportRaycast.h"
 #include "game/GameMesh.h"
+#include "game/GameObjectType.h"
 #include "game/GameObject.h"
 #include "game/MeshTemplate.h"
 #include "renderer/Renderer.h"
@@ -140,6 +143,12 @@ void EditorViewport::Render() {
       scene_ ? scene_->GetSelectedObject() : nullptr);
   if (scene_)
     editor::EnqueuePlayerStartGizmos(scene_->GetObjects(), scene_->GetSelectedObject());
+  if (rendering_settings_panel_ && rendering_settings_panel_->IsPhysicsGizmosEnabled()
+      && scene_) {
+    game::GameObject* sel = scene_->GetSelectedObject();
+    if (sel && sel->GetType() == game::GameObjectType::kMesh)
+      editor::EnqueuePhysicsGizmo(*static_cast<game::GameMesh*>(sel));
+  }
   if (wireframe_fbo_ && render_fbo_)
     renderer::WireframeRenderer::Instance().Render(
         *camera_->GetCamera(), wireframe_fbo_.get(), render_fbo_.get());

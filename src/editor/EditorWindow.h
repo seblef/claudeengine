@@ -13,6 +13,7 @@
 #include "editor/EditorCommandHistory.h"
 #include "editor/EditorToolbar.h"
 #include "editor/EnvironmentEditorPanel.h"
+#include "editor/RenderingSettingsPanel.h"
 #include "editor/TerrainCreationDialog.h"
 #include "editor/TerrainEditorPanel.h"
 #include "editor/tools/PlacementTool.h"
@@ -250,6 +251,12 @@ class EditorWindow {
   // Post-process panel — shown via the View menu.
   // cppcheck-suppress unusedStructMember
   bool show_post_process_panel_ = false;
+
+  // Rendering settings panel — shown via the View menu.
+  // cppcheck-suppress unusedStructMember
+  RenderingSettingsPanel rendering_settings_panel_;
+  // cppcheck-suppress unusedStructMember
+  bool show_rendering_settings_panel_ = false;
 
   // Maximum number of entries kept in the recent maps list.
   // cppcheck-suppress unusedStructMember

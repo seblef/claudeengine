@@ -27,6 +27,7 @@ add_library(editor STATIC
     ObjectsPanel.cpp
     PickingAccelerator.cpp
     PropertiesPanel.cpp
+    RenderingSettingsPanel.cpp
     ResourcesPanel.cpp
     TerrainCreationDialog.cpp
     TerrainEditorPanel.cpp
