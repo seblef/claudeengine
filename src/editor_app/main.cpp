@@ -8,6 +8,7 @@
 #include "editor/EditorSystem.h"
 #include "game/GameSystem.h"
 #include "gldevices/GLDevices.h"
+#include "physics/PhysicsSystem.h"
 #include "renderer/Renderer.h"
 #include "terrain/TerrainRenderer.h"
 
@@ -36,6 +37,9 @@ int main(int argc, char* argv[]) {
   renderer::Renderer::Instance().SetTerrainRenderer(
       &terrain::TerrainRenderer::Instance());
 
+  new physics::PhysicsSystem();
+  physics::PhysicsSystem::Instance().Init();
+
   new game::GameSystem(&devices);
 
   new editor::EditorSystem(&devices);
@@ -43,6 +47,7 @@ int main(int argc, char* argv[]) {
 
   editor::EditorSystem::Shutdown();
   game::GameSystem::Shutdown();
+  physics::PhysicsSystem::Shutdown();
   terrain::TerrainRenderer::Shutdown();
   renderer::Renderer::Shutdown();
   core::EventManager::Shutdown();
