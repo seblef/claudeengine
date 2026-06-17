@@ -2,12 +2,15 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "core/Mat4f.h"
 #include "core/Singleton.h"
+#include "core/Vec3f.h"
 #include "physics/PhysicsBody.h"
 #include "physics/PhysicsBodyDesc.h"
+#include "physics/RaycastResult.h"
 
 // Forward-declare Jolt internals so Jolt headers never leak into consumers.
 namespace JPH {
@@ -92,6 +95,20 @@ class PhysicsSystem : public core::Singleton<PhysicsSystem> {
         float capsule_radius,
         float capsule_half_height,
         const core::Mat4f& initial_transform);
+
+    // ---- Query --------------------------------------------------------------
+
+    /// Cast a ray and return the closest hit, or std::nullopt if nothing is hit.
+    ///
+    /// The tested segment is origin + direction * [0, max_dist].
+    ///
+    /// @param layer_mask  Bitmask of kLayer* constants; only bodies whose
+    ///                    collision_layer bit is set are tested.
+    [[nodiscard]] std::optional<RaycastResult> Raycast(
+        const core::Vec3f& origin,
+        const core::Vec3f& direction,
+        float max_dist,
+        uint16_t layer_mask = 0xFFFF) const;
 
  private:
     // cppcheck-suppress unusedStructMember

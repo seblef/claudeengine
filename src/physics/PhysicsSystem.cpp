@@ -17,10 +17,14 @@
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyID.h>
 #include <Jolt/Physics/Body/BodyInterface.h>
+#include <Jolt/Physics/Body/BodyLock.h>
 #include <Jolt/Physics/Body/MotionType.h>
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayerInterfaceTable.h>
 #include <Jolt/Physics/Collision/BroadPhase/ObjectVsBroadPhaseLayerFilterTable.h>
+#include <Jolt/Physics/Collision/CastResult.h>
+#include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
 #include <Jolt/Physics/Collision/ObjectLayerPairFilterTable.h>
+#include <Jolt/Physics/Collision/RayCast.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
@@ -40,6 +44,7 @@
 #include "physics/MotionType.h"
 #include "physics/PhysicsBodyDesc.h"
 #include "physics/PhysicsShapeType.h"
+#include "physics/RaycastResult.h"
 #include "terrain/TerrainData.h"
 
 namespace physics {
@@ -138,6 +143,40 @@ void ApplyMaterialAndLayer(const PhysicsBodyDesc& desc,
         settings.mMassPropertiesOverride.mMass = desc.material.mass;
     }
 }
+
+/// Broad-phase layer filter for raycasting.
+/// Passes a bucket when at least one of its object layers is set in layer_mask.
+class RaycastBroadPhaseFilter final : public JPH::BroadPhaseLayerFilter {
+ public:
+    explicit RaycastBroadPhaseFilter(uint16_t layer_mask) : mask_(layer_mask) {}
+
+    bool ShouldCollide(JPH::BroadPhaseLayer in_layer) const override {
+        if (in_layer == kBPLayerStatic)
+            return (mask_ & (1u << kLayerWorld)) != 0u;
+        // kBPLayerDynamic covers kLayerPlayer, kLayerEnemy, kLayerProjectile.
+        constexpr uint16_t kDynamicBits =
+            (1u << kLayerPlayer) | (1u << kLayerEnemy) | (1u << kLayerProjectile);
+        return (mask_ & kDynamicBits) != 0u;
+    }
+
+ private:
+    uint16_t mask_;
+};
+
+/// Object-layer filter for raycasting.
+/// Passes a body only when its layer bit is set in layer_mask.
+class RaycastObjectLayerFilter final : public JPH::ObjectLayerFilter {
+ public:
+    explicit RaycastObjectLayerFilter(uint16_t layer_mask) : mask_(layer_mask) {}
+
+    bool ShouldCollide(JPH::ObjectLayer in_layer) const override {
+        if (in_layer >= kLayerCount) return false;
+        return (mask_ & (1u << in_layer)) != 0u;
+    }
+
+ private:
+    uint16_t mask_;
+};
 
 /// Extract unique edges from a triangle index buffer for debug wireframe rendering.
 /// Each edge is stored as a consecutive pair of Vec3f in the output vector.
@@ -431,6 +470,52 @@ std::unique_ptr<CharacterController> PhysicsSystem::CreateCharacter(
                                 initial_transform,
                                 jolt_system_.get(),
                                 temp_allocator_.get()));
+}
+
+std::optional<RaycastResult> PhysicsSystem::Raycast(
+        const core::Vec3f& origin,
+        const core::Vec3f& direction,
+        float max_dist,
+        uint16_t layer_mask) const {
+    const JPH::RVec3 jolt_origin(origin.x, origin.y, origin.z);
+    const JPH::Vec3  jolt_dir(direction.x * max_dist,
+                               direction.y * max_dist,
+                               direction.z * max_dist);
+    const JPH::RRayCast ray{ jolt_origin, jolt_dir };
+    JPH::RayCastResult  hit;
+
+    RaycastBroadPhaseFilter  broad_filter(layer_mask);
+    RaycastObjectLayerFilter obj_filter(layer_mask);
+
+    if (!jolt_system_->GetNarrowPhaseQuery().CastRay(ray, hit, broad_filter,
+                                                      obj_filter))
+        return std::nullopt;
+
+    RaycastResult result;
+    result.distance = hit.mFraction * max_dist;
+    result.position = origin + direction * result.distance;
+
+    // Retrieve surface normal by locking the hit body for reading.
+    const JPH::RVec3 jolt_hit_pos(result.position.x, result.position.y,
+                                   result.position.z);
+    {
+        JPH::BodyLockRead lock(jolt_system_->GetBodyLockInterface(), hit.mBodyID);
+        if (lock.Succeeded()) {
+            const JPH::Vec3 n = lock.GetBody().GetWorldSpaceSurfaceNormal(
+                hit.mSubShapeID2, jolt_hit_pos);
+            result.normal = { n.GetX(), n.GetY(), n.GetZ() };
+        }
+    }
+
+    // Resolve BodyID to an engine PhysicsBody* via linear scan.
+    const uint32_t target_id = hit.mBodyID.GetIndexAndSequenceNumber();
+    const auto it = std::find_if(bodies_.begin(), bodies_.end(),
+        [target_id](const std::unique_ptr<PhysicsBody>& b) {
+            return b->body_id_ == target_id;
+        });
+    result.body = (it != bodies_.end()) ? it->get() : nullptr;
+
+    return result;
 }
 
 }  // namespace physics
