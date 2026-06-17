@@ -34,6 +34,7 @@
 #include <Jolt/RegisterTypes.h>
 
 #include "core/Mat4f.h"
+#include "physics/CharacterController.h"
 #include "physics/CollisionLayer.h"
 #include "physics/IPhysicsBodyListener.h"
 #include "physics/MotionType.h"
@@ -419,6 +420,17 @@ void PhysicsSystem::DestroyBody(PhysicsBody* body) {
                            return p.get() == body;
                        }),
         bodies_.end());
+}
+
+std::unique_ptr<CharacterController> PhysicsSystem::CreateCharacter(
+        float capsule_radius,
+        float capsule_half_height,
+        const core::Mat4f& initial_transform) {
+    return std::unique_ptr<CharacterController>(
+        new CharacterController(capsule_radius, capsule_half_height,
+                                initial_transform,
+                                jolt_system_.get(),
+                                temp_allocator_.get()));
 }
 
 }  // namespace physics
