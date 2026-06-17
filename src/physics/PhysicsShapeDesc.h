@@ -42,8 +42,9 @@ struct PhysicsShapeDesc {
 
     // Vec3f has default member-initializers, making Box's default constructor
     // non-trivial and the anonymous union's default constructor deleted.
-    // An explicit default constructor initialises the union through Box.
-    PhysicsShapeDesc() : type(PhysicsShapeType::Box), box{} {}
+    // An explicit default constructor initialises the union through Box with
+    // safe non-zero half-extents (Jolt rejects zero-size shapes at runtime).
+    PhysicsShapeDesc() : type(PhysicsShapeType::Box), box{{0.5f, 0.5f, 0.5f}} {}
 
     // Factory helpers for concise construction.
 
