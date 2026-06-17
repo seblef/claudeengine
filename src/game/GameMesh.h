@@ -1,10 +1,17 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 
 #include "game/GameObject.h"
 #include "game/MeshTemplate.h"
+#include "physics/IPhysicsBodyListener.h"
+#include "physics/PhysicsBodyDesc.h"
 #include "renderer/MeshInstance.h"
+
+namespace physics {
+class PhysicsBody;
+}  // namespace physics
 
 namespace game {
 
@@ -16,12 +23,18 @@ namespace game {
 //
 // Multiple GameMesh objects may share the same MeshTemplate; the geometry and
 // material are loaded from disk only once.
-class GameMesh : public GameObject {
+//
+// An optional physics body can be attached via SetPhysicsDesc(). Primitive
+// shapes (Box, Sphere, Cylinder, Capsule) are created with CreateBody();
+// ConvexHull and Exact shapes are built from the template's CPU-side geometry.
+// For Dynamic bodies, OnBodyTransformUpdated() is called each Step() and
+// propagates the simulation result back to the game-side transform.
+class GameMesh : public GameObject, public physics::IPhysicsBodyListener {
  public:
   // tmpl must not be null. Calls tmpl->AddRef().
   explicit GameMesh(MeshTemplate* tmpl, bool always_visible = false);
 
-  // Calls template_->Release().
+  // Calls template_->Release() and destroys any live physics body.
   ~GameMesh() override;
 
   GameMesh(const GameMesh&)            = delete;
@@ -35,25 +48,44 @@ class GameMesh : public GameObject {
   [[nodiscard]] std::unique_ptr<game::GameObject> Copy(
       const core::Vec3f& position) const override;
 
-  // Registers the instance with the Renderer.
+  // Registers the instance with the Renderer and creates any pending physics body.
   void OnAddedToScene() override;
 
-  // Unregisters the instance from the Renderer.
+  // Destroys the physics body (if any) and unregisters the instance from the Renderer.
   void OnRemovedFromScene() override;
 
-  // Forwards the new world transform to the MeshInstance.
+  // Forwards the new world transform to the MeshInstance and, for Static or
+  // Kinematic bodies, pushes the transform into the physics simulation.
   void OnWorldTransformUpdated() override;
+
+  // Attaches a physics body description to this mesh.
+  // If the mesh is already in scene, the existing body is replaced immediately.
+  void SetPhysicsDesc(const physics::PhysicsBodyDesc& desc);
+
+  // IPhysicsBodyListener — called by PhysicsSystem::Step() for Dynamic bodies.
+  // Propagates the simulation-driven transform to the game-side world transform.
+  void OnBodyTransformUpdated(const core::Mat4f& transform) override;
 
   // Returns the shared template (e.g. so a material editor can call SetMaterial()).
   [[nodiscard]] MeshTemplate* GetTemplate() const;
 
  private:
+  void CreatePhysicsBody();
+  void DestroyPhysicsBody();
+
   // cppcheck-suppress unusedStructMember
   MeshTemplate* template_;
   // cppcheck-suppress unusedStructMember
   bool          always_visible_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<renderer::MeshInstance> instance_;
+  // cppcheck-suppress unusedStructMember
+  std::optional<physics::PhysicsBodyDesc> physics_desc_;
+  // Non-owning; lifetime is managed by PhysicsSystem.
+  // cppcheck-suppress unusedStructMember
+  physics::PhysicsBody* physics_body_ = nullptr;
+  // cppcheck-suppress unusedStructMember
+  bool in_scene_ = false;
 };
 
 }  // namespace game
