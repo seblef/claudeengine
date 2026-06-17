@@ -1,10 +1,12 @@
 #pragma once
 
 #include <functional>
+#include <optional>
 #include <string>
 
 #include "core/Mat4f.h"
 #include "editor/commands/LightPropertyCommand.h"
+#include "physics/PhysicsBodyDesc.h"
 
 namespace game {
 class GameObject;
@@ -54,17 +56,19 @@ class PropertiesPanel {
  private:
   void RenderTransformSection(game::GameObject* obj);
   void RenderLightProperties(game::GameLight* light);
-  static void RenderMeshProperties(const game::GameMesh* mesh);
+  void RenderMeshProperties(game::GameMesh* mesh);
   void RenderParticleSystemProperties(const game::GameParticleSystem* ps);
 
   // cppcheck-suppress unusedStructMember
-  EditorCommandHistory* history_         = nullptr;
+  EditorCommandHistory* history_              = nullptr;
   // cppcheck-suppress unusedStructMember
-  LightSnapshot         before_snapshot_ = {};
+  LightSnapshot         before_snapshot_      = {};
   // cppcheck-suppress unusedStructMember
   core::Mat4f           before_transform_;
   // cppcheck-suppress unusedStructMember
   std::string           before_name_;
+  // cppcheck-suppress unusedStructMember
+  std::optional<physics::PhysicsBodyDesc> before_physics_desc_;
   // cppcheck-suppress unusedStructMember
   std::function<void(const std::string&)>  on_open_particle_editor_;
   // cppcheck-suppress unusedStructMember

@@ -21,6 +21,17 @@ struct PhysicsBodyDesc {
     uint16_t            collision_layer = kLayerWorld;  ///< Layer this body belongs to.
     // cppcheck-suppress unusedStructMember
     uint16_t            collision_mask  = 0xFFFF;       ///< Bitmask of layers this body collides with.
+
+    [[nodiscard]] bool operator==(const PhysicsBodyDesc& o) const {
+        return shape           == o.shape
+            && material        == o.material
+            && motion_type     == o.motion_type
+            && collision_layer == o.collision_layer
+            && collision_mask  == o.collision_mask;
+    }
+    [[nodiscard]] bool operator!=(const PhysicsBodyDesc& o) const {
+        return !(*this == o);
+    }
 };
 
 }  // namespace physics

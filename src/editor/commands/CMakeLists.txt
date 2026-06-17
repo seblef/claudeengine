@@ -4,6 +4,7 @@ target_sources(editor PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialAssignCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialPropertyCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/PaintBrushCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/PhysicsPropertyCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/PlaceObjectCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/RenameObjectCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/SculptBrushCommand.cpp

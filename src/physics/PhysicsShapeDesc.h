@@ -42,8 +42,9 @@ struct PhysicsShapeDesc {
 
     // Vec3f has default member-initializers, making Box's default constructor
     // non-trivial and the anonymous union's default constructor deleted.
-    // An explicit default constructor initialises the union through Box.
-    PhysicsShapeDesc() : type(PhysicsShapeType::Box), box{} {}
+    // An explicit default constructor initialises the union through Box with
+    // safe non-zero half-extents (Jolt rejects zero-size shapes at runtime).
+    PhysicsShapeDesc() : type(PhysicsShapeType::Box), box{{0.5f, 0.5f, 0.5f}} {}
 
     // Factory helpers for concise construction.
 
@@ -93,6 +94,27 @@ struct PhysicsShapeDesc {
         PhysicsShapeDesc d;
         d.type = PhysicsShapeType::Exact;
         return d;
+    }
+
+    [[nodiscard]] bool operator==(const PhysicsShapeDesc& o) const {
+        if (type != o.type) return false;
+        switch (type) {
+            case PhysicsShapeType::Box:
+                return box.half_extents == o.box.half_extents;
+            case PhysicsShapeType::Sphere:
+                return sphere.radius == o.sphere.radius;
+            case PhysicsShapeType::Cylinder:
+                return cylinder.radius      == o.cylinder.radius
+                    && cylinder.half_height == o.cylinder.half_height;
+            case PhysicsShapeType::Capsule:
+                return capsule.radius      == o.capsule.radius
+                    && capsule.half_height == o.capsule.half_height;
+            default:
+                return true;  // Terrain / ConvexHull / Exact carry no parameters.
+        }
+    }
+    [[nodiscard]] bool operator!=(const PhysicsShapeDesc& o) const {
+        return !(*this == o);
     }
 };
 

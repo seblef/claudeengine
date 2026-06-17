@@ -10,6 +10,18 @@ struct PhysicsMaterialDesc {
     float linear_damping  = 0.05f;  ///< Linear velocity damping per second.
     float angular_damping = 0.05f;  ///< Angular velocity damping per second.
     float gravity_factor  = 1.0f;   ///< Multiplier applied to world gravity for this body.
+
+    [[nodiscard]] bool operator==(const PhysicsMaterialDesc& o) const {
+        return friction        == o.friction
+            && restitution     == o.restitution
+            && mass            == o.mass
+            && linear_damping  == o.linear_damping
+            && angular_damping == o.angular_damping
+            && gravity_factor  == o.gravity_factor;
+    }
+    [[nodiscard]] bool operator!=(const PhysicsMaterialDesc& o) const {
+        return !(*this == o);
+    }
 };
 
 }  // namespace physics
