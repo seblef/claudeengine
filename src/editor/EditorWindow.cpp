@@ -123,6 +123,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   viewport_->SetScene(scene_.get());
   viewport_->SetCommandHistory(&history_);
   viewport_->SetActiveTool(selection_tool_.get());
+  viewport_->SetRenderingSettingsPanel(&rendering_settings_panel_);
   properties_panel_->SetCommandHistory(&history_);
   material_editor_->SetCommandHistory(&history_);
   objects_panel_->SetCommandHistory(&history_);
@@ -478,7 +479,14 @@ void EditorWindow::Render() {
     ImGui::End();
   }
 
-  // 11f. Post-process panel — dockable, shown via View > Post-process.
+  // 11f. Rendering settings panel — dockable, shown via View > Rendering settings.
+  if (show_rendering_settings_panel_) {
+    if (ImGui::Begin("Rendering settings##panel", &show_rendering_settings_panel_))
+      rendering_settings_panel_.Render();
+    ImGui::End();
+  }
+
+  // 11g. Post-process panel — dockable, shown via View > Post-process.
   if (show_post_process_panel_) {
     if (ImGui::Begin("Post-process##panel", &show_post_process_panel_)) {
       renderer::PostProcessInfos& pp =
@@ -660,6 +668,8 @@ void EditorWindow::RenderMenuBar() {
   }
 
   if (ImGui::BeginMenu("View")) {
+    if (ImGui::MenuItem("Rendering settings", nullptr, show_rendering_settings_panel_))
+      show_rendering_settings_panel_ = !show_rendering_settings_panel_;
     if (ImGui::MenuItem("Post-process", nullptr, show_post_process_panel_))
       show_post_process_panel_ = !show_post_process_panel_;
     ImGui::EndMenu();

@@ -25,6 +25,7 @@ namespace terrain { class TerrainData; }
 namespace editor {
 
 class EditorScene;
+class RenderingSettingsPanel;
 class SelectionTool;
 
 // Viewport panel: owns the offscreen render target and camera, and drives the
@@ -83,6 +84,12 @@ class EditorViewport {
   // Pass nullptr when no terrain is in the scene.
   void SetTerrainData(const terrain::TerrainData* data) { terrain_data_ = data; }
 
+  // Wires the rendering settings panel so physics gizmos can be toggled.
+  // Non-owning; must outlive this viewport.
+  void SetRenderingSettingsPanel(RenderingSettingsPanel* panel) {
+    rendering_settings_panel_ = panel;
+  }
+
  private:
   void ResizeIfNeeded(int w, int h);
 
@@ -125,6 +132,10 @@ class EditorViewport {
   // Terrain heightmap for placement hit raycasts; nullptr when no terrain exists.
   // cppcheck-suppress unusedStructMember
   const terrain::TerrainData* terrain_data_ = nullptr;
+
+  // Non-owned; set by EditorWindow so the viewport can read render toggles.
+  // cppcheck-suppress unusedStructMember
+  RenderingSettingsPanel* rendering_settings_panel_ = nullptr;
 };
 
 }  // namespace editor
