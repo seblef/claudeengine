@@ -1,5 +1,6 @@
 #include "editor/PropertiesPanel.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <memory>
@@ -8,6 +9,7 @@
 #include <imgui.h>
 #include <ImGuizmo.h>
 
+#include "core/BBox3.h"
 #include "core/Color.h"
 #include "core/Mat4f.h"
 #include "core/Vec3f.h"
@@ -41,6 +43,32 @@ namespace {
 
 constexpr float kDeg2Rad = static_cast<float>(M_PI) / 180.f;
 constexpr float kRad2Deg = 180.f / static_cast<float>(M_PI);
+
+// Derives a PhysicsShapeDesc for a basic shape type from a local bounding box.
+// ConvexHull / Exact / Terrain carry no size parameters and are not handled here.
+// Cylinder and Capsule are assumed to be upright (Y axis).
+physics::PhysicsShapeDesc ShapeDescFromBBox(const core::BBox3& bbox,
+                                            physics::PhysicsShapeType type) {
+  const core::Vec3f half = bbox.GetSize() * 0.5f;
+  switch (type) {
+    case physics::PhysicsShapeType::Box:
+      return physics::PhysicsShapeDesc::MakeBox(half);
+    case physics::PhysicsShapeType::Sphere:
+      return physics::PhysicsShapeDesc::MakeSphere(
+          std::max({half.x, half.y, half.z}));
+    case physics::PhysicsShapeType::Cylinder: {
+      const float r = std::max(half.x, half.z);
+      return physics::PhysicsShapeDesc::MakeCylinder(r, std::max(half.y, 0.001f));
+    }
+    case physics::PhysicsShapeType::Capsule: {
+      const float r  = std::max(half.x, half.z);
+      const float hh = std::max(half.y - r, 0.001f);
+      return physics::PhysicsShapeDesc::MakeCapsule(r, hh);
+    }
+    default:
+      return physics::PhysicsShapeDesc{};
+  }
+}
 
 const char* LightTypeName(renderer::LightType type) {
   switch (type) {
@@ -337,7 +365,10 @@ void PropertiesPanel::RenderMeshProperties(game::GameMesh* mesh) {
   if (ImGui::Checkbox("Enable physics", &has_physics)) {
     const auto before = mesh->GetPhysicsDesc();
     if (has_physics) {
-      mesh->SetPhysicsDesc(physics::PhysicsBodyDesc{});
+      physics::PhysicsBodyDesc new_desc;
+      new_desc.shape = ShapeDescFromBBox(mesh->GetTemplate()->GetLocalBBox(),
+                                         physics::PhysicsShapeType::Box);
+      mesh->SetPhysicsDesc(new_desc);
     } else {
       mesh->ClearPhysicsDesc();
     }
@@ -387,19 +418,12 @@ void PropertiesPanel::RenderMeshProperties(game::GameMesh* mesh) {
   if (ImGui::Combo("Shape type", &shape_idx, kShapeNames, kShapeCount)) {
     const auto before = mesh->GetPhysicsDesc();
     const physics::PhysicsShapeType new_type = kShapeTypes[shape_idx];
-    // Preserve numeric parameters when switching between compatible shapes.
     switch (new_type) {
       case physics::PhysicsShapeType::Box:
-        desc.shape = physics::PhysicsShapeDesc::MakeBox({0.5f, 0.5f, 0.5f});
-        break;
       case physics::PhysicsShapeType::Sphere:
-        desc.shape = physics::PhysicsShapeDesc::MakeSphere(0.5f);
-        break;
       case physics::PhysicsShapeType::Cylinder:
-        desc.shape = physics::PhysicsShapeDesc::MakeCylinder(0.5f, 0.5f);
-        break;
       case physics::PhysicsShapeType::Capsule:
-        desc.shape = physics::PhysicsShapeDesc::MakeCapsule(0.5f, 0.5f);
+        desc.shape = ShapeDescFromBBox(mesh->GetTemplate()->GetLocalBBox(), new_type);
         break;
       case physics::PhysicsShapeType::ConvexHull:
         desc.shape = physics::PhysicsShapeDesc::MakeConvexHull();
