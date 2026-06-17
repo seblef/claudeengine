@@ -69,6 +69,17 @@ class GameMesh : public GameObject, public physics::IPhysicsBodyListener {
   // Returns the shared template (e.g. so a material editor can call SetMaterial()).
   [[nodiscard]] MeshTemplate* GetTemplate() const;
 
+  // Returns the physics body description, or nullopt if none has been set.
+  [[nodiscard]] const std::optional<physics::PhysicsBodyDesc>& GetPhysicsDesc() const {
+    return physics_desc_;
+  }
+
+  // Returns the live physics body, or nullptr if none exists (not yet in scene,
+  // or no physics desc set).
+  [[nodiscard]] const physics::PhysicsBody* GetPhysicsBody() const {
+    return physics_body_;
+  }
+
  private:
   void CreatePhysicsBody();
   void DestroyPhysicsBody();
