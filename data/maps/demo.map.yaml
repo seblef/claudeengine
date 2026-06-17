@@ -1,9 +1,9 @@
 name: untitled
 map_size: 8192
 global_light:
-  direction: [0.291537166, -0.676389754, -0.676389635]
+  direction: [0.392337322, -0.650412023, -0.650411963]
   color: [1, 0.949999988, 0.800000012]
-  intensity: 1.14788258
+  intensity: 1.10379648
   ambient_color: [0.207964599, 0.207964599, 0.207964599]
   cast_shadow: true
   shadow_resolution: 2048
@@ -32,15 +32,15 @@ environment:
   cloud_enabled: true
   cloud_density: 0.310000002
   wind_enabled: true
-  wind_direction: [0.484809637, 0, 0.874619842]
+  wind_direction: [0.484809577, 0, 0.874619722]
   wind_strength: 1.20000005
   start_time_of_day: 13.1300001
   time_scale: 60
   turbidity: 3.4000001
-  moon_texture: moon.png
-  night_sky_texture: sky.png
-  normal_map_texture1: water/normal01.jpg
-  normal_map_texture2: water/normal02.jpg
+  moon_texture: moon.dds
+  night_sky_texture: sky.dds
+  normal_map_texture1: water/normal01.dds
+  normal_map_texture2: water/normal02.dds
 objects:
   - name: Object
     type: player_start
@@ -158,20 +158,20 @@ terrain:
   max_height: 200
   material:
     layers:
-      - albedo: terrain/sandy_gravel_02_diff_1k.jpg
-        normal: terrain/sandy_gravel_02_nor_gl_1k.png
+      - albedo: terrain/sandy_gravel_02_diff_1k.dds
+        normal: terrain/sandy_gravel_02_nor_gl_1k.dds
         tiling: 256
-      - albedo: terrain/rocky_trail_diff_1k.jpg
-        normal: terrain/rocky_trail_nor_gl_1k.png
+      - albedo: terrain/rocky_trail_diff_1k.dds
+        normal: terrain/rocky_trail_nor_gl_1k.dds
         tiling: 128
-      - albedo: terrain/rocky_terrain_02_diff_1k.jpg
-        normal: terrain/rocky_terrain_02_nor_gl_1k.png
+      - albedo: terrain/rocky_terrain_02_diff_1k.dds
+        normal: terrain/rocky_terrain_02_nor_gl_1k.dds
         tiling: 192
     splatmap: demo_splat.png
   foliage_layers:
     - name: grass_001
       mesh: meshes/foliage/grass001.obj
-      texture: foliage/grass001.png
+      texture: foliage/grass001.dds
       density_map: demo_foliage0.r8
       density_width: 4096
       density_height: 4096
@@ -182,10 +182,10 @@ terrain:
       cull_distance: 80
       billboard_distance: 35
 editor:
-  selected_object: ~
+  selected_object: Object
   camera:
-    focus: [592.342651, 31.2416592, 1147.29333]
-    azimuth: -1.70771885
-    elevation: 0.179202959
-    distance: 34.1072502
+    focus: [584.116455, 34.9333687, 1125.92932]
+    azimuth: 4.48228598
+    elevation: 0.24920328
+    distance: 8.86600876
   snap_grid: 0

@@ -1,6 +1,6 @@
 rendering:
   textures:
-    diffuse: vehicles/destroyed_car01.png
+    diffuse: vehicles/destroyed_car01.dds
   diffuse_color: [1, 1, 1, 1]
   emissive_color: [0, 0, 0, 0]
   ambient_color: [0, 0, 0, 0]

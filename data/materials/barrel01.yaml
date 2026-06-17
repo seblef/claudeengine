@@ -1,6 +1,6 @@
 rendering:
   textures:
-    diffuse: objects/barrel01_diffuse.jpg
+    diffuse: objects/barrel01_diffuse.dds
   diffuse_color: [1, 1, 1, 1]
   emissive_color: [0, 0, 0, 0]
   ambient_color: [0, 0, 0, 0]

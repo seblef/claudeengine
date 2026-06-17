@@ -1,7 +1,7 @@
 rendering:
   textures:
-    diffuse: buildings/abandoned_shelter_1002_BaseColor.png
-    normal: buildings/abandoned_shelter_1002_Normal.png
+    diffuse: buildings/abandoned_shelter_1002_BaseColor.dds
+    normal: buildings/abandoned_shelter_1002_Normal.dds
   diffuse_color: [1, 1, 1, 1]
   emissive_color: [0, 0, 0, 0]
   ambient_color: [0, 0, 0, 0]

@@ -11,11 +11,11 @@ namespace renderer {
 namespace {
 
 constexpr const char* kDefaultPaths[kTextureSlotCount] = {
-    "default/diffuse.png",      // kDiffuse
-    "default/normal.png",       // kNormal
-    "default/specular.png",     // kSpecular
-    "default/emissive.png",     // kEmissive
-    "default/environment.png",  // kEnvironment
+    "default/diffuse.dds",      // kDiffuse
+    "default/normal.dds",       // kNormal
+    "default/specular.dds",     // kSpecular
+    "default/emissive.dds",     // kEmissive
+    "default/environment.dds",  // kEnvironment
 };
 
 const std::pair<const char*, TextureSlot> kSlotMap[] = {

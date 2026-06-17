@@ -355,7 +355,7 @@ bool EnvironmentEditorPanel::RenderSkySection(environment::EnvironmentDesc& env)
   if (ImGui::Button("Pick moon texture")) {
     const auto tex_dir = core::Config::GetDataFolder() / "textures";
     nfdu8char_t* path  = nullptr;
-    const nfdu8filteritem_t filters[] = {{"Image files", "png,jpg,jpeg,tga"}};
+    const nfdu8filteritem_t filters[] = {{"Image files", "png,jpg,jpeg,tga,dds"}};
     const nfdresult_t res =
         NFD_OpenDialogU8(&path, filters, 1, tex_dir.c_str());
     if (res == NFD_OKAY) {
@@ -387,7 +387,7 @@ bool EnvironmentEditorPanel::RenderSkySection(environment::EnvironmentDesc& env)
   if (ImGui::Button("Pick night sky texture")) {
     const auto tex_dir = core::Config::GetDataFolder() / "textures";
     nfdu8char_t* path  = nullptr;
-    const nfdu8filteritem_t filters[] = {{"Image files", "png,jpg,jpeg,tga"}};
+    const nfdu8filteritem_t filters[] = {{"Image files", "png,jpg,jpeg,tga,dds"}};
     const nfdresult_t res =
         NFD_OpenDialogU8(&path, filters, 1, tex_dir.c_str());
     if (res == NFD_OKAY) {
@@ -673,7 +673,7 @@ bool EnvironmentEditorPanel::RenderWaterSection(
     if (ImGui::Button(btn_id)) {
       const auto tex_dir = core::Config::GetDataFolder() / "textures";
       nfdu8char_t* path  = nullptr;
-      const nfdu8filteritem_t filters[] = {{"Image files", "png,jpg,jpeg,tga"}};
+      const nfdu8filteritem_t filters[] = {{"Image files", "png,jpg,jpeg,tga,dds"}};
       const nfdresult_t res =
           NFD_OpenDialogU8(&path, filters, 1, tex_dir.c_str());
       if (res == NFD_OKAY) {

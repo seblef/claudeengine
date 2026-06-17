@@ -5,6 +5,8 @@
 
 #include "core/Config.h"
 
+#include <filesystem>
+
 #include <loguru.hpp>
 #include <stb_image.h>
 
@@ -26,19 +28,26 @@ GLTexture::GLTexture(const std::string& name, abstract::BufferUsage usage)
   const auto path = core::Config::GetDataFolder() / "textures" / name;
   const std::string ext = path.extension().string();
 
+  LOG_F(INFO, "Loading texture %s", name.c_str());
+
   // -------------------------------------------------------------------------
   // Compressed path: DDS / KTX via GLI
   // -------------------------------------------------------------------------
   if (ext == ".dds" || ext == ".ktx" || ext == ".ktx2") {
+    if (!std::filesystem::exists(path)) {
+      LOG_F(ERROR, "GLTexture '%s': file not found: '%s'",
+            name.c_str(), path.string().c_str());
+      return;
+    }
     gli::texture raw = gli::load(path.string());
     if (raw.empty()) {
-      LOG_F(ERROR, "GLTexture '%s': GLI failed to load '%s'",
+      LOG_F(ERROR, "GLTexture '%s': GLI failed to parse '%s' (invalid/unsupported format)",
             name.c_str(), path.string().c_str());
       return;
     }
     if (raw.target() != gli::TARGET_2D) {
-      LOG_F(ERROR, "GLTexture '%s': '%s' is not a 2D texture",
-            name.c_str(), path.string().c_str());
+      LOG_F(ERROR, "GLTexture '%s': '%s' is not a 2D texture (target=%d)",
+            name.c_str(), path.string().c_str(), static_cast<int>(raw.target()));
       return;
     }
 
@@ -76,6 +85,16 @@ GLTexture::GLTexture(const std::string& name, abstract::BufferUsage usage)
                              mip_ext.x, mip_ext.y, 0,
                              static_cast<GLsizei>(tex.size(level)),
                              tex.data(0, 0, level));
+      GLenum gl_err = glGetError();
+      if (gl_err != GL_NO_ERROR) {
+        LOG_F(ERROR, "GLTexture '%s': glCompressedTexImage2D failed at mip %zu "
+              "(GL error 0x%x, internal format 0x%x, %dx%d)",
+              name.c_str(), level, gl_err, fmt.Internal, mip_ext.x, mip_ext.y);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDeleteTextures(1, &tex_id_);
+        tex_id_ = 0;
+        return;
+      }
     }
 
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -116,8 +135,13 @@ GLTexture::GLTexture(const std::string& name, abstract::BufferUsage usage)
   }
 
   if (!pixels) {
-    LOG_F(ERROR, "GLTexture '%s': failed to load '%s'",
-          name.c_str(), path.string().c_str());
+    if (!std::filesystem::exists(path)) {
+      LOG_F(ERROR, "GLTexture '%s': file not found: '%s'",
+            name.c_str(), path.string().c_str());
+    } else {
+      LOG_F(ERROR, "GLTexture '%s': failed to decode '%s' (unsupported format or corrupt file)",
+            name.c_str(), path.string().c_str());
+    }
     return;
   }
 

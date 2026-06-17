@@ -1,8 +1,8 @@
 rendering:
   textures:
-    diffuse: objects/campfire01_diffuse.jpg
-    normal: objects/campfire01_normal.jpg
-    emissive: objects/campfire01_emissive.jpg
+    diffuse: objects/campfire01_diffuse.dds
+    normal: objects/campfire01_normal.dds
+    emissive: objects/campfire01_emissive.dds
   diffuse_color: [1, 1, 1, 1]
   emissive_color: [1, 1, 0.996078432, 1]
   ambient_color: [0, 0, 0, 0]

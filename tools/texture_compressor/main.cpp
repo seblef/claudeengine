@@ -433,7 +433,7 @@ int main(int argc, char** argv) {
 
     // Load image (always as RGBA so all compressors get 4-channel input).
     int w = 0, h = 0, orig_channels = 0;
-    stbi_set_flip_vertically_on_load(0);
+    stbi_set_flip_vertically_on_load(1);
     uint8_t* pixels = stbi_load(file.c_str(), &w, &h, &orig_channels, 4);
     if (!pixels) {
       std::fprintf(stderr, "ERROR: stb_image failed to load '%s'\n",

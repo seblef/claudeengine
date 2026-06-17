@@ -203,7 +203,7 @@ endif()
 # Guarded by BUILD_EDITOR so claude_engine builds without these on machines
 # that lack the editor system requirements (e.g. libgtk-3-dev on Linux).
 # ---------------------------------------------------------------------------
-option(BUILD_EDITOR "Build the editor executable (requires libgtk-3-dev on Linux)" OFF)
+option(BUILD_EDITOR "Build the editor executable (requires libgtk-3-dev on Linux)" ON)
 
 if(BUILD_EDITOR)
     find_package(OpenGL REQUIRED)

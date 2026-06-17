@@ -1,7 +1,7 @@
 rendering:
   textures:
-    diffuse: vehicles/abandoned_car_02_diffuse.png
-    normal: vehicles/abandoned_car_02_normal.png
+    diffuse: vehicles/abandoned_car_02_diffuse.dds
+    normal: vehicles/abandoned_car_02_normal.dds
   diffuse_color: [1, 1, 1, 1]
   emissive_color: [0, 0, 0, 0]
   ambient_color: [0, 0, 0, 0]

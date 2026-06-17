@@ -41,11 +41,11 @@ constexpr const char* kSlotLabels[renderer::kTextureSlotCount] = {
     "Diffuse", "Normal", "Specular", "Emissive", "Environ.",
 };
 constexpr const char* kDefaultTextures[renderer::kTextureSlotCount] = {
-    "default/diffuse.png",
-    "default/normal.png",
-    "default/specular.png",
-    "default/emissive.png",
-    "default/environment.png",
+    "default/diffuse.dds",
+    "default/normal.dds",
+    "default/specular.dds",
+    "default/emissive.dds",
+    "default/environment.dds",
 };
 
 bool IsDefaultTexture(const abstract::Texture* tex) {
@@ -373,7 +373,7 @@ void MaterialEditorWindow::RenderTextureSlot(renderer::TextureSlot slot,
   if (ImGui::Button(disp, ImVec2(btn_w, 0.f))) {
     const auto tex_dir = core::Config::GetDataFolder() / "textures";
     nfdu8char_t* path  = nullptr;
-    const nfdu8filteritem_t filters[] = {{"Image files", "png,jpg,jpeg,tga"}};
+    const nfdu8filteritem_t filters[] = {{"Image files", "png,jpg,jpeg,tga,dds"}};
     const nfdresult_t res =
         NFD_OpenDialogU8(&path, filters, 1, tex_dir.c_str());
     if (res == NFD_OKAY) {

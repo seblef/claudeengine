@@ -2,7 +2,7 @@ sub_systems:
   - name: flame
     blend_mode: additive
     lit: false
-    texture: fx/fireflamepart01anim.png
+    texture: fx/fireflamepart01anim.dds
     sprite_cols: 8
     sprite_rows: 4
     animation_fps: 12
@@ -53,7 +53,7 @@ sub_systems:
   - name: smoke
     blend_mode: alpha_blend
     lit: false
-    texture: fx/smoke02.png
+    texture: fx/smoke02.dds
     sprite_cols: 4
     sprite_rows: 4
     animation_fps: 13

@@ -1,7 +1,7 @@
 rendering:
   textures:
-    diffuse: buildings/docker_01_diffuse.png
-    normal: buildings/docker_01_normal.png
+    diffuse: buildings/docker_01_diffuse.dds
+    normal: buildings/docker_01_normal.dds
   diffuse_color: [1, 1, 1, 1]
   emissive_color: [0, 0, 0, 0]
   ambient_color: [0, 0, 0, 0]

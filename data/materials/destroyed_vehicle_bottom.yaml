@@ -1,6 +1,6 @@
 rendering:
   textures:
-    diffuse: vehicles/da1_buttom_Diffuse.jpg
+    diffuse: vehicles/da1_buttom_Diffuse.dds
   diffuse_color: [1, 1, 1, 1]
   emissive_color: [0, 0, 0, 0]
   ambient_color: [0, 0, 0, 0]

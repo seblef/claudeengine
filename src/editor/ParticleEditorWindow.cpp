@@ -651,7 +651,7 @@ void ParticleEditorWindow::RenderSubSystemProperties() {
     if (ImGui::Button("Browse##tex")) {
       nfdu8char_t* path = nullptr;
       const auto fx_dir = core::Config::GetDataFolder() / "textures" / "fx";
-      const nfdu8filteritem_t filters[] = {{"Image", "png,jpg,jpeg,tga"}};
+      const nfdu8filteritem_t filters[] = {{"Image", "png,jpg,jpeg,tga,dds"}};
       const nfdresult_t res =
           NFD_OpenDialogU8(&path, filters, 1, fx_dir.c_str());
       if (res == NFD_OKAY) {

@@ -916,8 +916,8 @@ void EditorWindow::CreateTerrain() {
   // 2. Allocate TerrainMaterial with a single default layer.
   YAML::Node mat_node;
   YAML::Node layer0;
-  layer0["albedo"] = std::string("default/diffuse.png");
-  layer0["normal"] = std::string("default/normal.png");
+  layer0["albedo"] = std::string("default/diffuse.dds");
+  layer0["normal"] = std::string("default/normal.dds");
   layer0["tiling"] = 8.f;
   mat_node["layers"].push_back(layer0);
   auto material = std::make_unique<terrain::TerrainMaterial>();
@@ -949,8 +949,8 @@ void EditorWindow::CreateTerrainFromImport(std::vector<uint16_t> samples,
 
   YAML::Node mat_node;
   YAML::Node layer0;
-  layer0["albedo"] = std::string("default/diffuse.png");
-  layer0["normal"] = std::string("default/normal.png");
+  layer0["albedo"] = std::string("default/diffuse.dds");
+  layer0["normal"] = std::string("default/normal.dds");
   layer0["tiling"] = 8.f;
   mat_node["layers"].push_back(layer0);
   auto material = std::make_unique<terrain::TerrainMaterial>();

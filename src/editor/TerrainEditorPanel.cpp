@@ -270,7 +270,7 @@ std::string TerrainEditorPanel::BrowseTexture() {
   const std::string root_str = textures_root.string();
 
   nfdu8char_t* out_path = nullptr;
-  const nfdu8filteritem_t filter = {"Images", "png,jpg,jpeg,tga,bmp"};
+  const nfdu8filteritem_t filter = {"Images", "png,jpg,jpeg,tga,bmp,dds"};
   const nfdresult_t result = NFD_OpenDialogU8(&out_path, &filter, 1,
                                                root_str.c_str());
   if (result != NFD_OKAY) {

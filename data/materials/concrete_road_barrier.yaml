@@ -1,6 +1,6 @@
 rendering:
   textures:
-    diffuse: objects/concrete_road_barrier_diffuse.jpg
+    diffuse: objects/concrete_road_barrier_diffuse.dds
   diffuse_color: [1, 1, 1, 1]
   emissive_color: [0, 0, 0, 0]
   ambient_color: [0, 0, 0, 0]

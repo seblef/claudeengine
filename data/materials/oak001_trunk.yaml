@@ -1,7 +1,7 @@
 rendering:
   textures:
-    diffuse: trees/oak001_trunk_diffuse.jpg
-    normal: trees/oak001_trunk_normal.jpg
+    diffuse: trees/oak001_trunk_diffuse.dds
+    normal: trees/oak001_trunk_normal.dds
   diffuse_color: [1, 1, 1, 1]
   emissive_color: [0, 0, 0, 0]
   ambient_color: [0, 0, 0, 0]
