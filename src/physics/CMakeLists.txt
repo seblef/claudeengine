@@ -1,4 +1,5 @@
 add_library(physics STATIC
+    CharacterController.cpp
     Physics.cpp
     PhysicsBody.cpp
     PhysicsSystem.cpp

@@ -22,6 +22,7 @@ class TerrainData;
 
 namespace physics {
 
+class CharacterController;
 class IPhysicsBodyListener;
 
 /// Singleton that owns the Jolt world, all bodies, and drives the simulation.
@@ -78,6 +79,19 @@ class PhysicsSystem : public core::Singleton<PhysicsSystem> {
     /// Remove a body from the simulation and release its memory.
     /// Safe to call with nullptr.
     void DestroyBody(PhysicsBody* body);
+
+    // ---- Character factory ---------------------------------------------------
+
+    /// Create a kinematic character capsule using Jolt CharacterVirtual.
+    /// The caller owns the returned pointer; destroying it removes the character.
+    /// @param capsule_radius      Radius of the capsule hemisphere (metres).
+    /// @param capsule_half_height Half the height of the cylinder portion (metres).
+    /// @param initial_transform   World-space transform for the capsule base centre.
+    /// @returns                   Owning unique_ptr; reset it to destroy the character.
+    std::unique_ptr<CharacterController> CreateCharacter(
+        float capsule_radius,
+        float capsule_half_height,
+        const core::Mat4f& initial_transform);
 
  private:
     // cppcheck-suppress unusedStructMember
