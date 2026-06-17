@@ -4,6 +4,7 @@
 
 #include <yaml-cpp/yaml.h>
 
+#include "core/PlayerConfig.h"
 #include "core/PostProcessConfig.h"
 #include "core/ShadowConfig.h"
 
@@ -36,11 +37,13 @@ class AppConfig {
   [[nodiscard]] static const GraphicsConfig&    GetGraphics()    { return graphics_; }
   [[nodiscard]] static const ShadowConfig&      GetShadows()     { return shadows_; }
   [[nodiscard]] static const PostProcessConfig& GetPostProcess() { return post_process_; }
+  [[nodiscard]] static const PlayerConfig&      GetPlayer()      { return player_; }
 
  private:
   static GraphicsConfig    graphics_;
   static ShadowConfig      shadows_;
   static PostProcessConfig post_process_;
+  static PlayerConfig      player_;
 };
 
 }  // namespace core

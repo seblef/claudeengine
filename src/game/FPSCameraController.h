@@ -1,29 +1,35 @@
 #pragma once
 
+#include <memory>
+
 #include "core/Vec3f.h"
 #include "game/ICameraController.h"
 
-namespace terrain { class TerrainData; }
+namespace physics { class CharacterController; }
 
 namespace game {
 
-// FPS-style camera controller: mouse look with keyboard movement.
+// FPS-style camera controller: mouse look with physics-driven movement.
 //
 // Movement keys: arrow up/down = forward/back, left/right = strafe left/right,
-//                A = ascend, Z = descend (free-fly only), Space = jump.
+//                Space = jump.
 // Mouse: horizontal delta → yaw, vertical delta → pitch (clamped to ±1.5 rad).
 // Requires the platform cursor to be captured (SetCursorCapture(true) on
 // abstract::Devices) so look-direction updates at window and screen edges.
 //
-// When a terrain is bound via SetTerrain(), vertical position is gravity-driven:
-// Space triggers a jump impulse and gravity pulls the player back to the ground.
-// A/Z free-fly keys are suppressed in terrain mode.
+// When PhysicsSystem is initialized, movement is driven by a kinematic capsule
+// (CharacterController).  Gravity and collision are handled by Jolt; the camera
+// position is the capsule base + an eye-height offset.
+//
+// If PhysicsSystem is absent (e.g., unit tests), movement falls back to
+// free-fly: WASD / arrow keys move freely, A = ascend, Z = descend.
 //
 // Each call to Update() rebuilds the camera world transform from the current
 // yaw, pitch, and position, then calls SetWorldTransform() on the camera.
 class FPSCameraController : public ICameraController {
  public:
   FPSCameraController();
+  ~FPSCameraController() override;
 
   void SetCamera(GameCamera* camera) override;
   void OnEvent(const core::Event& event) override;
@@ -32,20 +38,22 @@ class FPSCameraController : public ICameraController {
   // Sets the initial world-space position. Call before the first Update().
   void SetPosition(core::Vec3f pos);
 
-  // Binds a terrain for automatic height clamping. Pass nullptr for free-fly.
-  void SetTerrain(const terrain::TerrainData* terrain);
-
  private:
+  // Movement tuning — loaded from config.yaml [player] at construction time.
   // cppcheck-suppress unusedStructMember
-  static constexpr float kPlayerHeight    = 1.8f;    // eye height above ground (m)
+  float capsule_radius_;
   // cppcheck-suppress unusedStructMember
-  static constexpr float kMoveSpeed       = 10.f;    // units/s
+  float capsule_half_height_;
   // cppcheck-suppress unusedStructMember
-  static constexpr float kMouseSensitivity = 0.002f;  // rad/px
+  float eye_offset_;
   // cppcheck-suppress unusedStructMember
-  static constexpr float kJumpSpeed       = 7.f;     // initial vertical velocity (m/s)
+  float move_speed_;
   // cppcheck-suppress unusedStructMember
-  static constexpr float kGravity         = 18.f;    // downward acceleration (m/s²)
+  float mouse_sensitivity_;
+  // cppcheck-suppress unusedStructMember
+  float jump_speed_;
+  // cppcheck-suppress unusedStructMember
+  float gravity_;
 
   // cppcheck-suppress unusedStructMember
   GameCamera* camera_ = nullptr;
@@ -55,6 +63,7 @@ class FPSCameraController : public ICameraController {
   // cppcheck-suppress unusedStructMember
   float pitch_ = 0.f;
 
+  // Used for free-fly fallback when no CharacterController is available.
   // cppcheck-suppress unusedStructMember
   core::Vec3f position_;
 
@@ -79,13 +88,13 @@ class FPSCameraController : public ICameraController {
   // cppcheck-suppress unusedStructMember
   bool k_jump_    = false;
 
+  // Vertical velocity (m/s) — used in both physics and free-fly modes.
   // cppcheck-suppress unusedStructMember
-  float vel_y_    = 0.f;   // vertical velocity (m/s), terrain mode only
-  // cppcheck-suppress unusedStructMember
-  bool grounded_  = true;
+  float vel_y_ = 0.f;
 
+  // Physics-driven kinematic capsule; null when PhysicsSystem is absent.
   // cppcheck-suppress unusedStructMember
-  const terrain::TerrainData* terrain_ = nullptr;
+  std::unique_ptr<physics::CharacterController> character_;
 };
 
 }  // namespace game

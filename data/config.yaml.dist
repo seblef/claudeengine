@@ -28,3 +28,11 @@ shadows:
 post_process:
   bloom: true
   eye_adaptation: true
+player:
+  capsule_radius: 0.8
+  capsule_half_height: 1.8
+  eye_offset: 0.3
+  move_speed: 10.0
+  mouse_sensitivity: 0.002
+  jump_speed: 7.0
+  gravity: 9.81
