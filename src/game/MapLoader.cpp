@@ -1,6 +1,7 @@
 #include "game/MapLoader.h"
 
 #include <fstream>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -20,6 +21,8 @@
 #include "game/GamePlayerStart.h"
 #include "game/GameTerrain.h"
 #include "game/MeshTemplate.h"
+#include "physics/CollisionLayer.h"
+#include "physics/PhysicsBodyDesc.h"
 #include "particles/ParticleSystemTemplate.h"
 #include "renderer/GeometryUtils.h"
 #include "renderer/Light.h"
@@ -172,6 +175,82 @@ GameMaterial* LoadMaterialWithFallback(const std::string& raw,
   return mat;
 }
 
+std::optional<physics::PhysicsBodyDesc> ParsePhysicsBodyDesc(
+    const YAML::Node& node) {
+  if (!node) return std::nullopt;
+
+  const std::string shape_str = node["shape"].as<std::string>("box");
+
+  physics::PhysicsShapeDesc shape;
+  if (shape_str == "box") {
+    const core::Vec3f he =
+        core::ParseVec3(node["half_extents"], core::Vec3f(0.5f, 0.5f, 0.5f));
+    shape = physics::PhysicsShapeDesc::MakeBox(he);
+  } else if (shape_str == "sphere") {
+    shape = physics::PhysicsShapeDesc::MakeSphere(
+        node["radius"].as<float>(0.5f));
+  } else if (shape_str == "cylinder") {
+    shape = physics::PhysicsShapeDesc::MakeCylinder(
+        node["radius"].as<float>(0.5f), node["half_height"].as<float>(1.0f));
+  } else if (shape_str == "capsule") {
+    shape = physics::PhysicsShapeDesc::MakeCapsule(
+        node["radius"].as<float>(0.5f), node["half_height"].as<float>(1.0f));
+  } else if (shape_str == "convex_hull") {
+    shape = physics::PhysicsShapeDesc::MakeConvexHull();
+  } else if (shape_str == "exact") {
+    shape = physics::PhysicsShapeDesc::MakeExact();
+  } else {
+    LOG_F(WARNING, "MapLoader: unknown physics shape '%s', defaulting to box",
+          shape_str.c_str());
+    shape = physics::PhysicsShapeDesc::MakeBox(core::Vec3f(0.5f, 0.5f, 0.5f));
+  }
+
+  const std::string motion_str =
+      node["motion_type"].as<std::string>("static");
+  physics::MotionType motion_type = physics::MotionType::Static;
+  if (motion_str == "kinematic") {
+    motion_type = physics::MotionType::Kinematic;
+  } else if (motion_str == "dynamic") {
+    motion_type = physics::MotionType::Dynamic;
+  } else if (motion_str != "static") {
+    LOG_F(WARNING, "MapLoader: unknown motion_type '%s', defaulting to static",
+          motion_str.c_str());
+  }
+
+  // exact and terrain shapes are static-only — enforce at parse time.
+  const bool shape_requires_static =
+      (shape.type == physics::PhysicsShapeType::Exact ||
+       shape.type == physics::PhysicsShapeType::Terrain);
+  if (shape_requires_static && motion_type != physics::MotionType::Static) {
+    LOG_F(WARNING,
+          "MapLoader: shape '%s' only supports static motion; "
+          "forcing MotionType::Static",
+          shape_str.c_str());
+    motion_type = physics::MotionType::Static;
+  }
+
+  physics::PhysicsMaterialDesc material;
+  material.friction        = node["friction"].as<float>(material.friction);
+  material.restitution     = node["restitution"].as<float>(material.restitution);
+  material.mass            = node["mass"].as<float>(material.mass);
+  material.linear_damping  =
+      node["linear_damping"].as<float>(material.linear_damping);
+  material.angular_damping =
+      node["angular_damping"].as<float>(material.angular_damping);
+  material.gravity_factor  =
+      node["gravity_factor"].as<float>(material.gravity_factor);
+
+  physics::PhysicsBodyDesc desc;
+  desc.shape           = shape;
+  desc.material        = material;
+  desc.motion_type     = motion_type;
+  desc.collision_layer = static_cast<uint16_t>(
+      node["collision_layer"].as<int>(physics::kLayerWorld));
+  desc.collision_mask  = static_cast<uint16_t>(
+      node["collision_mask"].as<int>(0xFFFF));
+  return desc;
+}
+
 std::unique_ptr<GameObject> ParseMesh(const YAML::Node& node,
                                       abstract::VideoDevice* video) {
   const std::string name      = node["name"].as<std::string>("Mesh");
@@ -203,6 +282,9 @@ std::unique_ptr<GameObject> ParseMesh(const YAML::Node& node,
 
   auto mesh = std::make_unique<GameMesh>(tmpl);
   tmpl->Release();  // GameMesh holds its own ref
+
+  if (auto desc = ParsePhysicsBodyDesc(node["physics"]))
+    mesh->SetPhysicsDesc(*desc);
 
   mesh->SetName(name);
   mesh->SetWorldTransform(transform);
