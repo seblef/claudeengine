@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include "physics/PhysicsSystem.h"
 #include "renderer/FoliageRenderer.h"
 #include "renderer/Renderer.h"
 #include "terrain/FoliageLayer.h"
@@ -31,6 +32,10 @@ void GameTerrain::OnAddedToScene() {
   terrain::TerrainRenderer::Instance().Init(video_, *data_);
   terrain::TerrainRenderer::Instance().SetMaterial(material_.get());
 
+  if (physics::PhysicsSystem::IsInstanced())
+    terrain_body_ = physics::PhysicsSystem::Instance().CreateTerrainBody(
+        data_.get(), GetWorldTransform());
+
   // Always create the FoliageRenderer singleton so the editor can add layers
   // and trigger builds interactively without needing a scene reload.
   std::vector<terrain::FoliageLayer*> ptrs;
@@ -47,6 +52,11 @@ void GameTerrain::OnAddedToScene() {
 }
 
 void GameTerrain::OnRemovedFromScene() {
+  if (terrain_body_) {
+    physics::PhysicsSystem::Instance().DestroyBody(terrain_body_);
+    terrain_body_ = nullptr;
+  }
+
   terrain::TerrainRenderer::Instance().Deinit();
   if (owns_terrain_renderer_) {
     renderer::Renderer::Instance().SetTerrainRenderer(nullptr);
@@ -56,6 +66,11 @@ void GameTerrain::OnRemovedFromScene() {
   if (renderer::FoliageRenderer::IsInstanced())
     renderer::FoliageRenderer::Shutdown();
   renderer::Renderer::Instance().SetFoliageEnabled(false);
+}
+
+void GameTerrain::OnWorldTransformUpdated() {
+  if (terrain_body_)
+    terrain_body_->SetWorldTransform(GetWorldTransform());
 }
 
 const terrain::TerrainData& GameTerrain::GetData() const {
