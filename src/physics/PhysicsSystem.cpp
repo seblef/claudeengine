@@ -1,6 +1,7 @@
 #include "physics/PhysicsSystem.h"
 
 #include <algorithm>
+#include <cmath>
 #include <set>
 #include <thread>
 #include <utility>
@@ -105,13 +106,15 @@ JPH::RVec3 ExtractPosition(const core::Mat4f& m) {
 }
 
 /// Extracts a rotation quaternion from the upper-left 3x3 of a row-major transform.
-/// JPH::Mat44 constructor takes *column* vectors.
+/// Normalizes each column to strip any scale before calling GetQuaternion(),
+/// which requires a pure rotation matrix (unit columns).
 JPH::Quat ExtractRotation(const core::Mat4f& m) {
-    JPH::Mat44 rot(
-        JPH::Vec4(m(0, 0), m(1, 0), m(2, 0), 0.0f),
-        JPH::Vec4(m(0, 1), m(1, 1), m(2, 1), 0.0f),
-        JPH::Vec4(m(0, 2), m(1, 2), m(2, 2), 0.0f),
-        JPH::Vec4(0.0f, 0.0f, 0.0f, 1.0f));
+    auto Col = [&](int c) {
+        const float x = m(0, c), y = m(1, c), z = m(2, c);
+        const float inv_len = 1.f / std::sqrt(x * x + y * y + z * z);
+        return JPH::Vec4(x * inv_len, y * inv_len, z * inv_len, 0.f);
+    };
+    JPH::Mat44 rot(Col(0), Col(1), Col(2), JPH::Vec4(0.f, 0.f, 0.f, 1.f));
     return rot.GetQuaternion();
 }
 
