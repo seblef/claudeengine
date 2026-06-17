@@ -54,6 +54,12 @@ void GameMesh::SetPhysicsDesc(const physics::PhysicsBodyDesc& desc) {
   }
 }
 
+void GameMesh::ClearPhysicsDesc() {
+  if (in_scene_)
+    DestroyPhysicsBody();
+  physics_desc_.reset();
+}
+
 void GameMesh::OnBodyTransformUpdated(const core::Mat4f& transform) {
   SetWorldTransform(transform);
 }

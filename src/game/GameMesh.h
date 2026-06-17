@@ -62,6 +62,10 @@ class GameMesh : public GameObject, public physics::IPhysicsBodyListener {
   // If the mesh is already in scene, the existing body is replaced immediately.
   void SetPhysicsDesc(const physics::PhysicsBodyDesc& desc);
 
+  // Removes the physics body description from this mesh.
+  // If the mesh is already in scene, the live physics body is destroyed.
+  void ClearPhysicsDesc();
+
   // IPhysicsBodyListener — called by PhysicsSystem::Step() for Dynamic bodies.
   // Propagates the simulation-driven transform to the game-side world transform.
   void OnBodyTransformUpdated(const core::Mat4f& transform) override;

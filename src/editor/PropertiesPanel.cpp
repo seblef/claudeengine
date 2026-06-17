@@ -15,6 +15,7 @@
 #include "editor/EditorUtils.h"
 #include "editor/ObjectGroup.h"
 #include "editor/commands/LightPropertyCommand.h"
+#include "editor/commands/PhysicsPropertyCommand.h"
 #include "editor/commands/RenameObjectCommand.h"
 #include "editor/commands/TransformCommand.h"
 #include "game/GameLight.h"
@@ -24,6 +25,10 @@
 #include "game/GameParticleSystem.h"
 #include "game/MeshTemplate.h"
 #include "particles/ParticleSystemTemplate.h"
+#include "physics/CollisionLayer.h"
+#include "physics/MotionType.h"
+#include "physics/PhysicsBodyDesc.h"
+#include "physics/PhysicsShapeType.h"
 #include "renderer/CircleSpotLight.h"
 #include "renderer/GlobalLight.h"
 #include "renderer/Light.h"
@@ -319,9 +324,254 @@ void PropertiesPanel::RenderLightProperties(game::GameLight* game_light) {
   ImGui::EndDisabled();
 }
 
-void PropertiesPanel::RenderMeshProperties(const game::GameMesh* mesh) {
+void PropertiesPanel::RenderMeshProperties(game::GameMesh* mesh) {
   ImGui::SeparatorText("Mesh");
   ImGui::LabelText("Template", "%s", mesh->GetTemplate()->GetId().c_str());
+
+  ImGui::Spacing();
+  if (!ImGui::CollapsingHeader("Physics"))
+    return;
+
+  // --- Enable checkbox ---------------------------------------------------
+  bool has_physics = mesh->GetPhysicsDesc().has_value();
+  if (ImGui::Checkbox("Enable physics", &has_physics)) {
+    const auto before = mesh->GetPhysicsDesc();
+    if (has_physics) {
+      mesh->SetPhysicsDesc(physics::PhysicsBodyDesc{});
+    } else {
+      mesh->ClearPhysicsDesc();
+    }
+    if (history_)
+      history_->Push(std::make_unique<PhysicsPropertyCommand>(
+          mesh, before, mesh->GetPhysicsDesc()));
+  }
+
+  if (!has_physics) return;
+
+  // Working copy of the current desc; written back via SetPhysicsDesc on change.
+  physics::PhysicsBodyDesc desc = *mesh->GetPhysicsDesc();
+
+  // Macro-like lambda: captures before on drag-start, pushes command on drag-end.
+  auto track = [&]() {
+    if (!history_) return;
+    if (ImGui::IsItemActivated())
+      before_physics_desc_ = mesh->GetPhysicsDesc();
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+      if (mesh->GetPhysicsDesc() != before_physics_desc_)
+        history_->Push(std::make_unique<PhysicsPropertyCommand>(
+            mesh, before_physics_desc_, mesh->GetPhysicsDesc()));
+    }
+  };
+
+  // --- Shape type -------------------------------------------------------
+  static const char* kShapeNames[] = {
+    "Box", "Sphere", "Cylinder", "Capsule", "ConvexHull", "Exact"
+  };
+  static const physics::PhysicsShapeType kShapeTypes[] = {
+    physics::PhysicsShapeType::Box,
+    physics::PhysicsShapeType::Sphere,
+    physics::PhysicsShapeType::Cylinder,
+    physics::PhysicsShapeType::Capsule,
+    physics::PhysicsShapeType::ConvexHull,
+    physics::PhysicsShapeType::Exact,
+  };
+  constexpr int kShapeCount = 6;
+
+  int shape_idx = 0;
+  for (int i = 0; i < kShapeCount; ++i) {
+    if (kShapeTypes[i] == desc.shape.type) {
+      shape_idx = i;
+      break;
+    }
+  }
+  if (ImGui::Combo("Shape type", &shape_idx, kShapeNames, kShapeCount)) {
+    const auto before = mesh->GetPhysicsDesc();
+    const physics::PhysicsShapeType new_type = kShapeTypes[shape_idx];
+    // Preserve numeric parameters when switching between compatible shapes.
+    switch (new_type) {
+      case physics::PhysicsShapeType::Box:
+        desc.shape = physics::PhysicsShapeDesc::MakeBox({0.5f, 0.5f, 0.5f});
+        break;
+      case physics::PhysicsShapeType::Sphere:
+        desc.shape = physics::PhysicsShapeDesc::MakeSphere(0.5f);
+        break;
+      case physics::PhysicsShapeType::Cylinder:
+        desc.shape = physics::PhysicsShapeDesc::MakeCylinder(0.5f, 0.5f);
+        break;
+      case physics::PhysicsShapeType::Capsule:
+        desc.shape = physics::PhysicsShapeDesc::MakeCapsule(0.5f, 0.5f);
+        break;
+      case physics::PhysicsShapeType::ConvexHull:
+        desc.shape = physics::PhysicsShapeDesc::MakeConvexHull();
+        break;
+      case physics::PhysicsShapeType::Exact:
+        desc.shape = physics::PhysicsShapeDesc::MakeExact();
+        break;
+      default:
+        break;
+    }
+    mesh->SetPhysicsDesc(desc);
+    if (history_)
+      history_->Push(std::make_unique<PhysicsPropertyCommand>(
+          mesh, before, mesh->GetPhysicsDesc()));
+  }
+
+  // --- Per-shape parameters ---------------------------------------------
+  const physics::PhysicsShapeType shape = desc.shape.type;
+  const bool is_primitive = (shape == physics::PhysicsShapeType::Box
+                          || shape == physics::PhysicsShapeType::Sphere
+                          || shape == physics::PhysicsShapeType::Cylinder
+                          || shape == physics::PhysicsShapeType::Capsule);
+
+  if (shape == physics::PhysicsShapeType::Box) {
+    float he[3] = {
+      desc.shape.box.half_extents.x,
+      desc.shape.box.half_extents.y,
+      desc.shape.box.half_extents.z,
+    };
+    if (ImGui::DragFloat3("Half extents", he, 0.01f, 0.001f, 1000.f)) {
+      desc.shape.box.half_extents = {he[0], he[1], he[2]};
+      mesh->SetPhysicsDesc(desc);
+    }
+    track();
+  }
+
+  const bool needs_radius = (shape == physics::PhysicsShapeType::Sphere
+                           || shape == physics::PhysicsShapeType::Cylinder
+                           || shape == physics::PhysicsShapeType::Capsule);
+  if (needs_radius) {
+    float radius = (shape == physics::PhysicsShapeType::Sphere)
+                 ? desc.shape.sphere.radius
+                 : (shape == physics::PhysicsShapeType::Cylinder)
+                     ? desc.shape.cylinder.radius
+                     : desc.shape.capsule.radius;
+    if (ImGui::DragFloat("Radius", &radius, 0.01f, 0.001f, 1000.f)) {
+      if (shape == physics::PhysicsShapeType::Sphere)
+        desc.shape.sphere.radius = radius;
+      else if (shape == physics::PhysicsShapeType::Cylinder)
+        desc.shape.cylinder.radius = radius;
+      else
+        desc.shape.capsule.radius = radius;
+      mesh->SetPhysicsDesc(desc);
+    }
+    track();
+  }
+
+  const bool needs_half_height = (shape == physics::PhysicsShapeType::Cylinder
+                               || shape == physics::PhysicsShapeType::Capsule);
+  if (needs_half_height) {
+    float hh = (shape == physics::PhysicsShapeType::Cylinder)
+             ? desc.shape.cylinder.half_height
+             : desc.shape.capsule.half_height;
+    if (ImGui::DragFloat("Half height", &hh, 0.01f, 0.001f, 1000.f)) {
+      if (shape == physics::PhysicsShapeType::Cylinder)
+        desc.shape.cylinder.half_height = hh;
+      else
+        desc.shape.capsule.half_height = hh;
+      mesh->SetPhysicsDesc(desc);
+    }
+    track();
+  }
+
+  if (!is_primitive)
+    ImGui::TextDisabled("Computed from mesh geometry");
+
+  ImGui::Spacing();
+
+  // --- Motion type ------------------------------------------------------
+  static const char* kMotionNames[] = {"Static", "Kinematic", "Dynamic"};
+  static const physics::MotionType kMotionTypes[] = {
+    physics::MotionType::Static,
+    physics::MotionType::Kinematic,
+    physics::MotionType::Dynamic,
+  };
+  constexpr int kMotionCount = 3;
+
+  // Exact and Terrain shapes may not use Dynamic or Kinematic.
+  const bool motion_restricted = (shape == physics::PhysicsShapeType::Exact
+                                || shape == physics::PhysicsShapeType::Terrain);
+
+  int motion_idx = 0;
+  for (int i = 0; i < kMotionCount; ++i) {
+    if (kMotionTypes[i] == desc.motion_type) {
+      motion_idx = i;
+      break;
+    }
+  }
+
+  ImGui::BeginDisabled(motion_restricted);
+  if (ImGui::Combo("Motion type", &motion_idx, kMotionNames, kMotionCount)) {
+    const auto before = mesh->GetPhysicsDesc();
+    desc.motion_type = kMotionTypes[motion_idx];
+    mesh->SetPhysicsDesc(desc);
+    if (history_)
+      history_->Push(std::make_unique<PhysicsPropertyCommand>(
+          mesh, before, mesh->GetPhysicsDesc()));
+  }
+  ImGui::EndDisabled();
+
+  ImGui::Spacing();
+
+  // --- Material properties ----------------------------------------------
+  if (ImGui::SliderFloat("Friction", &desc.material.friction, 0.f, 1.f)) {
+    mesh->SetPhysicsDesc(desc);
+  }
+  track();
+
+  if (ImGui::SliderFloat("Restitution", &desc.material.restitution, 0.f, 1.f)) {
+    mesh->SetPhysicsDesc(desc);
+  }
+  track();
+
+  if (ImGui::DragFloat("Mass", &desc.material.mass, 0.1f, 0.001f, 100000.f)) {
+    mesh->SetPhysicsDesc(desc);
+  }
+  track();
+
+  if (ImGui::SliderFloat("Lin. damping", &desc.material.linear_damping,
+                         0.f, 1.f)) {
+    mesh->SetPhysicsDesc(desc);
+  }
+  track();
+
+  if (ImGui::SliderFloat("Ang. damping", &desc.material.angular_damping,
+                         0.f, 1.f)) {
+    mesh->SetPhysicsDesc(desc);
+  }
+  track();
+
+  if (ImGui::SliderFloat("Gravity factor", &desc.material.gravity_factor,
+                         0.f, 4.f)) {
+    mesh->SetPhysicsDesc(desc);
+  }
+  track();
+
+  ImGui::Spacing();
+
+  // --- Collision layer / mask -------------------------------------------
+  int layer = static_cast<int>(desc.collision_layer);
+  if (ImGui::InputInt("Collision layer", &layer)) {
+    if (layer < 0) layer = 0;
+    if (layer >= physics::kLayerCount) layer = physics::kLayerCount - 1;
+    const auto before = mesh->GetPhysicsDesc();
+    desc.collision_layer = static_cast<uint16_t>(layer);
+    mesh->SetPhysicsDesc(desc);
+    if (history_)
+      history_->Push(std::make_unique<PhysicsPropertyCommand>(
+          mesh, before, mesh->GetPhysicsDesc()));
+  }
+
+  uint16_t mask = desc.collision_mask;
+  if (ImGui::InputScalar("Collision mask", ImGuiDataType_U16, &mask,
+                         nullptr, nullptr, "%04X",
+                         ImGuiInputTextFlags_CharsHexadecimal)) {
+    const auto before = mesh->GetPhysicsDesc();
+    desc.collision_mask = mask;
+    mesh->SetPhysicsDesc(desc);
+    if (history_)
+      history_->Push(std::make_unique<PhysicsPropertyCommand>(
+          mesh, before, mesh->GetPhysicsDesc()));
+  }
 }
 
 void PropertiesPanel::RenderParticleSystemProperties(
