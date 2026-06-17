@@ -34,9 +34,12 @@ unchanged; only the movement path was reworked.
 - Added includes: `physics/CharacterController.h`, `physics/PhysicsSystem.h`.
 - Removed: `terrain/TerrainData.h` include.
 - Added destructor: calls `character_.reset()`.
-- `SetCamera()`: if `PhysicsSystem::IsInstanced()`, creates the capsule at
-  `position_` via `PhysicsSystem::Instance().CreateCharacter(...)`.
+- `SetCamera()`: stores the camera pointer only; character creation is deferred
+  to `Update()` so that `SetPosition()` can be called between `SetCamera()` and
+  the first tick without the capsule spawning at the wrong location.
 - `Update()`:
+  - Lazy-inits `character_` on the first tick if `PhysicsSystem::IsInstanced()`
+    and `character_` is still null.
   - Computes horizontal velocity (`hvel`) from WASD; flattens Y so look-direction
     slope does not add unwanted vertical motion.
   - **Physics path** (`character_` valid):
@@ -51,6 +54,9 @@ unchanged; only the movement path was reworked.
 ### `src/app/main.cpp`
 
 - Removed the `controller.SetTerrain(...)` call (the method no longer exists).
+- Added `new physics::PhysicsSystem(); physics::PhysicsSystem::Instance().Init();`
+  before `GameSystem` construction (per `PhysicsSystem.h` lifecycle doc).
+- Added `physics::PhysicsSystem::Shutdown();` before `GameSystem::Shutdown()` in teardown.
 
 ---
 
@@ -63,6 +69,8 @@ unchanged; only the movement path was reworked.
 | Gravity = 9.81 m/s² (not 18) | With Jolt, gravity is applied to the capsule body's linear velocity inside `CharacterVirtual::Update()` using the world gravity vector. The external `vel_y_` only supplements the vertical intent signal. Using 18 previously compensated for missing physics; now it would over-accelerate. |
 | `hvel.y = 0` after building horizontal velocity | Camera `look` vector has a pitch component; without zeroing Y, moving forward on a slope adds unintended vertical velocity to the physics capsule. |
 | Removed `grounded_` bool member | Replaced by `character_->IsGrounded()` (authoritative Jolt result) in the physics path; the free-fly path never needed a proper grounded state. |
+| Defer character creation to first `Update()` | `GameSystem::SetCameraController()` calls `SetCamera()` immediately, before the caller can call `SetPosition()` with the player-start coordinates. Creating the capsule in `SetCamera()` would always spawn it at (0, 0, 0). |
+| `PhysicsSystem` init in `main.cpp` | The system was never instantiated — `IsInstanced()` was always false, so the character was never created and the terrain body was never registered. Physics is now always on in the game app; the `IsInstanced()` guards elsewhere protect the editor (which does not create `PhysicsSystem`). |
 
 ---
 

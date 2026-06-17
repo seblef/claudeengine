@@ -34,6 +34,7 @@
 #include "game/MapLoader.h"
 #include "game/MeshTemplate.h"
 #include "gldevices/GLDevices.h"
+#include "physics/PhysicsSystem.h"
 #include "renderer/GeometryUtils.h"
 #include "renderer/GlobalLight.h"
 #include "renderer/MaterialDesc.h"
@@ -75,6 +76,9 @@ int main(int argc, char* argv[]) {
 
   new renderer::Renderer(video);
   renderer::Renderer::Instance().InitVisibilitySystems(200.f);
+
+  new physics::PhysicsSystem();
+  physics::PhysicsSystem::Instance().Init();
 
   new game::GameSystem(&devices);
   game::GameSystem& game = game::GameSystem::Instance();
@@ -286,6 +290,7 @@ int main(int argc, char* argv[]) {
     environment::CloudShadowRenderer::Shutdown();
   }
 
+  physics::PhysicsSystem::Shutdown();
   game::GameSystem::Shutdown();
   renderer::Renderer::Shutdown();
   core::EventManager::Shutdown();

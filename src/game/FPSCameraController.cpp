@@ -24,18 +24,9 @@ void FPSCameraController::SetPosition(core::Vec3f pos) {
 
 void FPSCameraController::SetCamera(GameCamera* camera) {
   camera_ = camera;
-
-  if (physics::PhysicsSystem::IsInstanced()) {
-    // Build an identity-oriented transform at the stored spawn position.
-    const core::Mat4f initial_transform(
-        1.f, 0.f, 0.f, position_.x,
-        0.f, 1.f, 0.f, position_.y,
-        0.f, 0.f, 1.f, position_.z,
-        0.f, 0.f, 0.f, 1.f);
-
-    character_ = physics::PhysicsSystem::Instance().CreateCharacter(
-        kCapsuleRadius, kCapsuleHalfHeight, initial_transform);
-  }
+  // CharacterController creation is deferred to the first Update() so that
+  // SetPosition() can be called after SetCamera() without spawning the capsule
+  // at the wrong location.
 }
 
 void FPSCameraController::OnEvent(const core::Event& event) {
@@ -79,6 +70,19 @@ void FPSCameraController::OnEvent(const core::Event& event) {
 
 void FPSCameraController::Update(float dt) {
   if (!camera_) return;
+
+  // Lazy-init: create the capsule on the first tick, after SetPosition() has
+  // had a chance to run. Checked every frame in case PhysicsSystem is created
+  // after the controller (unlikely in practice but safe).
+  if (!character_ && physics::PhysicsSystem::IsInstanced()) {
+    const core::Mat4f initial_transform(
+        1.f, 0.f, 0.f, position_.x,
+        0.f, 1.f, 0.f, position_.y,
+        0.f, 0.f, 1.f, position_.z,
+        0.f, 0.f, 0.f, 1.f);
+    character_ = physics::PhysicsSystem::Instance().CreateCharacter(
+        kCapsuleRadius, kCapsuleHalfHeight, initial_transform);
+  }
 
   const core::Vec3f look = {
        std::sin(yaw_) * std::cos(pitch_),
