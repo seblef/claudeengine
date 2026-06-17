@@ -210,7 +210,6 @@ int main(int argc, char* argv[]) {
     camera.SetScreenCenter({gfx.GetWidth() * 0.5f, gfx.GetHeight() * 0.5f});
     game.SetCamera(&camera);
     game.SetCameraController(&controller);
-    controller.SetTerrain(map_terrain ? &map_terrain->GetData() : nullptr);
 
     if (map_player_start) {
       const core::Mat4f& t = map_player_start->GetWorldTransform();
