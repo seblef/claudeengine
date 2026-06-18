@@ -122,7 +122,7 @@ void JoltDebugRenderer::DrawGeometry(JPH::RMat44Arg inModelMatrix,
     const JPH::RMat44 scaled = inModelMatrix.PreScaled(
         JPH::Vec3::sReplicate(1.02f));
 
-    const LOD& lod = inGeometry->mLODs[0];
+    const LOD& lod = inGeometry->mLODs.back();
     const auto* batch =
         static_cast<const BatchImpl*>(lod.mTriangleBatch.GetPtr());
 

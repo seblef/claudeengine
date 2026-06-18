@@ -35,6 +35,8 @@
 #include <Jolt/Physics/Collision/Shape/CylinderShape.h>
 #include <Jolt/Physics/Collision/Shape/HeightFieldShape.h>
 #include <Jolt/Physics/Collision/Shape/MeshShape.h>
+#include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
+#include <Jolt/Physics/Collision/Shape/ScaledShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/EActivation.h>
 #include <Jolt/Physics/PhysicsSettings.h>
@@ -120,6 +122,52 @@ JPH::Quat ExtractRotation(const core::Mat4f& m) {
     };
     JPH::Mat44 rot(Col(0), Col(1), Col(2), JPH::Vec4(0.f, 0.f, 0.f, 1.f));
     return rot.GetQuaternion();
+}
+
+/// Extracts the per-axis scale from the upper-left 3x3 of a row-major transform
+/// (column lengths).
+core::Vec3f ExtractScale(const core::Mat4f& m) {
+    auto ColLen = [&](int c) {
+        const float x = m(0, c), y = m(1, c), z = m(2, c);
+        return std::sqrt(x * x + y * y + z * z);
+    };
+    return core::Vec3f(ColLen(0), ColLen(1), ColLen(2));
+}
+
+/// Wraps shape with a RotatedTranslatedShape when offset != (0,0,0); returns
+/// shape directly otherwise.
+JPH::ShapeRefC ApplyCenterOffset(const JPH::ShapeRefC& shape,
+                                  const core::Vec3f& offset) {
+    constexpr float kZero = 0.f;
+    if (std::abs(offset.x - kZero) < 1e-5f &&
+        std::abs(offset.y - kZero) < 1e-5f &&
+        std::abs(offset.z - kZero) < 1e-5f) {
+        return shape;
+    }
+    JPH::RotatedTranslatedShapeSettings rts(
+        JPH::Vec3(offset.x, offset.y, offset.z),
+        JPH::Quat::sIdentity(),
+        shape);
+    auto result = rts.Create();
+    if (result.HasError()) {
+        LOG_F(ERROR, "ApplyCenterOffset: RotatedTranslatedShape creation failed: %s",
+              result.GetError().c_str());
+        return shape;
+    }
+    return result.Get();
+}
+
+/// Wraps base_shape with a ScaledShape when scale != (1,1,1); returns base_shape
+/// directly otherwise.
+JPH::ShapeRefC ApplyScale(const JPH::ShapeRefC& base_shape,
+                          const core::Vec3f& scale) {
+    constexpr float kUnity = 1.f;
+    if (std::abs(scale.x - kUnity) < 1e-5f &&
+        std::abs(scale.y - kUnity) < 1e-5f &&
+        std::abs(scale.z - kUnity) < 1e-5f) {
+        return base_shape;
+    }
+    return new JPH::ScaledShape(base_shape, JPH::Vec3(scale.x, scale.y, scale.z));
 }
 
 /// Maps the engine's MotionType to the Jolt equivalent.
@@ -304,7 +352,10 @@ PhysicsBody* PhysicsSystem::CreateBody(const PhysicsBodyDesc& desc,
             return nullptr;
     }
 
-    JPH::BodyCreationSettings settings(shape,
+    shape = ApplyCenterOffset(shape, desc.shape.center_offset);
+
+    const core::Vec3f scale = ExtractScale(initial_transform);
+    JPH::BodyCreationSettings settings(ApplyScale(shape, scale),
                                        ExtractPosition(initial_transform),
                                        ExtractRotation(initial_transform),
                                        ToJoltMotionType(desc.motion_type),
@@ -319,7 +370,7 @@ PhysicsBody* PhysicsSystem::CreateBody(const PhysicsBodyDesc& desc,
 
     auto body = std::unique_ptr<PhysicsBody>(
         new PhysicsBody(id.GetIndexAndSequenceNumber(), desc.motion_type,
-                        listener, jolt_system_.get()));
+                        listener, jolt_system_.get(), shape.GetPtr(), scale));
     PhysicsBody* result = body.get();
     bodies_.push_back(std::move(body));
     return result;
@@ -384,7 +435,8 @@ PhysicsBody* PhysicsSystem::CreateBodyWithMesh(const PhysicsBodyDesc& desc,
         shape = result.Get();
     }
 
-    JPH::BodyCreationSettings settings(shape,
+    const core::Vec3f scale = ExtractScale(initial_transform);
+    JPH::BodyCreationSettings settings(ApplyScale(shape, scale),
                                        ExtractPosition(initial_transform),
                                        ExtractRotation(initial_transform),
                                        ToJoltMotionType(desc.motion_type),
@@ -399,7 +451,7 @@ PhysicsBody* PhysicsSystem::CreateBodyWithMesh(const PhysicsBodyDesc& desc,
 
     auto body = std::unique_ptr<PhysicsBody>(
         new PhysicsBody(id.GetIndexAndSequenceNumber(), desc.motion_type,
-                        listener, jolt_system_.get()));
+                        listener, jolt_system_.get(), shape.GetPtr(), scale));
 
     PhysicsBody* result = body.get();
     bodies_.push_back(std::move(body));
@@ -453,7 +505,8 @@ PhysicsBody* PhysicsSystem::CreateTerrainBody(const terrain::TerrainData* data,
 
     auto body = std::unique_ptr<PhysicsBody>(
         new PhysicsBody(id.GetIndexAndSequenceNumber(), MotionType::Static,
-                        nullptr, jolt_system_.get()));
+                        nullptr, jolt_system_.get(),
+                        nullptr, core::Vec3f(1.f, 1.f, 1.f)));
     PhysicsBody* terrain_body = body.get();
     terrain_body_ids_.insert(id.GetIndexAndSequenceNumber());
     bodies_.push_back(std::move(body));

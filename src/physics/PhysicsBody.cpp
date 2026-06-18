@@ -7,6 +7,8 @@
 #include <Jolt/Math/Mat44.h>
 #include <Jolt/Physics/Body/BodyID.h>
 #include <Jolt/Physics/Body/BodyInterface.h>
+#include <Jolt/Physics/Collision/Shape/ScaledShape.h>
+#include <Jolt/Physics/Collision/Shape/Shape.h>
 #include <Jolt/Physics/EActivation.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 
@@ -32,15 +34,35 @@ JPH::Quat ExtractRotation(const core::Mat4f& m) {
     return rot.GetQuaternion();
 }
 
+// Extract the per-axis scale from the upper-left 3x3 of a row-major transform
+// (column lengths).
+core::Vec3f ExtractScale(const core::Mat4f& m) {
+    auto ColLen = [&](int c) {
+        const float x = m(0, c), y = m(1, c), z = m(2, c);
+        return std::sqrt(x * x + y * y + z * z);
+    };
+    return core::Vec3f(ColLen(0), ColLen(1), ColLen(2));
+}
+
 }  // namespace
 
 PhysicsBody::PhysicsBody(uint32_t body_id, MotionType motion_type,
                          IPhysicsBodyListener* listener,
-                         JPH::PhysicsSystem* jolt)
+                         JPH::PhysicsSystem* jolt,
+                         const JPH::Shape* base_shape,
+                         const core::Vec3f& initial_scale)
     : body_id_(body_id),
       motion_type_(motion_type),
       listener_(listener),
-      jolt_system_(jolt) {}
+      jolt_system_(jolt),
+      base_shape_(base_shape),
+      current_scale_(initial_scale) {
+    if (base_shape_) base_shape_->AddRef();
+}
+
+PhysicsBody::~PhysicsBody() {
+    if (base_shape_) base_shape_->Release();
+}
 
 core::Mat4f PhysicsBody::GetWorldTransform() const {
     const JPH::RMat44 jm =
@@ -57,10 +79,28 @@ void PhysicsBody::SetWorldTransform(const core::Mat4f& transform) {
     assert(motion_type_ != MotionType::Dynamic &&
            "SetWorldTransform must not be called on Dynamic bodies");
 
-    const JPH::BodyID id(body_id_);
-    const JPH::RVec3  pos = ExtractPosition(transform);
-    const JPH::Quat   rot = ExtractRotation(transform);
+    const JPH::BodyID   id    = JPH::BodyID(body_id_);
+    const JPH::RVec3    pos   = ExtractPosition(transform);
+    const JPH::Quat     rot   = ExtractRotation(transform);
+    const core::Vec3f   scale = ExtractScale(transform);
     JPH::BodyInterface& iface = jolt_system_->GetBodyInterface();
+
+    if (base_shape_ && scale != current_scale_) {
+        current_scale_ = scale;
+        const JPH::EActivation act =
+            (motion_type_ == MotionType::Static) ? JPH::EActivation::DontActivate
+                                                 : JPH::EActivation::Activate;
+        constexpr float kUnity = 1.f;
+        const bool is_identity = (std::abs(scale.x - kUnity) < 1e-5f &&
+                                  std::abs(scale.y - kUnity) < 1e-5f &&
+                                  std::abs(scale.z - kUnity) < 1e-5f);
+        const JPH::ShapeRefC new_shape =
+            is_identity
+                ? JPH::ShapeRefC(base_shape_)
+                : JPH::ShapeRefC(new JPH::ScaledShape(
+                      base_shape_, JPH::Vec3(scale.x, scale.y, scale.z)));
+        iface.SetShape(id, new_shape, false, act);
+    }
 
     if (motion_type_ == MotionType::Static) {
         iface.SetPositionAndRotation(id, pos, rot, JPH::EActivation::DontActivate);

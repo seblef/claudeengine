@@ -40,6 +40,12 @@ struct PhysicsShapeDesc {
         // geometry is supplied via MeshData / TerrainData at body-creation time.
     };
 
+    /// Offset from the body's local origin to the shape centre, in local space.
+    /// Applied via RotatedTranslatedShape so the shape aligns with the mesh
+    /// geometry even when the mesh local origin is not at the geometry centre
+    /// (e.g. a tree whose pivot is at the base).
+    core::Vec3f center_offset{0.f, 0.f, 0.f};
+
     // Vec3f has default member-initializers, making Box's default constructor
     // non-trivial and the anonymous union's default constructor deleted.
     // An explicit default constructor initialises the union through Box with
@@ -98,6 +104,7 @@ struct PhysicsShapeDesc {
 
     [[nodiscard]] bool operator==(const PhysicsShapeDesc& o) const {
         if (type != o.type) return false;
+        if (center_offset != o.center_offset) return false;
         switch (type) {
             case PhysicsShapeType::Box:
                 return box.half_extents == o.box.half_extents;
