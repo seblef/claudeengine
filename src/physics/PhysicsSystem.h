@@ -35,6 +35,7 @@ struct PhysicsDebugDrawSettings {
     /// When null, all non-terrain bodies are drawn.
     const std::vector<const PhysicsBody*>* selectedBodies = nullptr;
 
+    bool drawShapes        = false;  ///< Draw body shape wireframes.
     bool drawConstraints   = false;  ///< Draw constraint joints.
     bool drawContactPoints = false;  ///< Draw contact manifolds (affects next Step).
     bool drawBroadPhase    = false;  ///< Draw the broadphase world AABB.

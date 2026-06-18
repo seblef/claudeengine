@@ -152,6 +152,8 @@ void EditorViewport::Render() {
   if (rendering_settings_panel_ && scene_
       && physics::PhysicsSystem::IsInstanced()) {
     physics::PhysicsDebugDrawSettings debug_settings;
+    debug_settings.drawShapes        =
+        rendering_settings_panel_->IsPhysicsDebugShapesEnabled();
     debug_settings.drawConstraints   =
         rendering_settings_panel_->IsPhysicsDebugConstraintsEnabled();
     debug_settings.drawContactPoints =

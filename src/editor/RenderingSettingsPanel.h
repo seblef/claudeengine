@@ -23,6 +23,9 @@ class RenderingSettingsPanel {
   [[nodiscard]] PhysicsDebugBodyMode GetPhysicsDebugBodyMode() const {
     return physics_debug_body_mode_;
   }
+  [[nodiscard]] bool IsPhysicsDebugShapesEnabled()         const {
+    return physics_debug_shapes_;
+  }
   [[nodiscard]] bool IsPhysicsDebugConstraintsEnabled()   const {
     return physics_debug_constraints_;
   }
@@ -37,6 +40,8 @@ class RenderingSettingsPanel {
   // Physics debug draw settings (passed to PhysicsSystem::DrawDebug each frame).
   // cppcheck-suppress unusedStructMember
   PhysicsDebugBodyMode physics_debug_body_mode_ = PhysicsDebugBodyMode::kSelectedOnly;
+  // cppcheck-suppress unusedStructMember
+  bool physics_debug_shapes_         = false;
   // cppcheck-suppress unusedStructMember
   bool physics_debug_constraints_    = false;
   // cppcheck-suppress unusedStructMember

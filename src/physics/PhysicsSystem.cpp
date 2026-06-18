@@ -537,11 +537,12 @@ void PhysicsSystem::DrawDebug(const PhysicsDebugDrawSettings& settings) {
 
     BodyDebugFilter filter(settings.selectedBodies != nullptr, selected_ids);
 
-    JPH::BodyManager::DrawSettings draw_settings;
-    draw_settings.mDrawShape = true;
-    draw_settings.mDrawShapeWireframe = true;
-
-    jolt_system_->DrawBodies(draw_settings, debug_renderer_.get(), &filter);
+    if (settings.drawShapes) {
+        JPH::BodyManager::DrawSettings draw_settings;
+        draw_settings.mDrawShape = true;
+        draw_settings.mDrawShapeWireframe = true;
+        jolt_system_->DrawBodies(draw_settings, debug_renderer_.get(), &filter);
+    }
 
     if (settings.drawConstraints)
         jolt_system_->DrawConstraints(debug_renderer_.get());
