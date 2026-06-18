@@ -3,6 +3,8 @@ add_library(audio STATIC
     Sound.cpp
     AudioDecoderUtils.cpp
     ResourceManager.cpp
+    VirtualSoundInstance.cpp
+    SoundManager.cpp
 )
 
 target_include_directories(audio PUBLIC "${CMAKE_SOURCE_DIR}/src")
