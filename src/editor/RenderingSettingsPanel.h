@@ -9,6 +9,12 @@ namespace editor {
 // responsible for wrapping it in ImGui::Begin() / ImGui::End().
 class RenderingSettingsPanel {
  public:
+  /// Selects which bodies PhysicsSystem::DrawDebug() should draw each frame.
+  enum class PhysicsDebugBodyMode {
+    kSelectedOnly,  ///< Draw only the currently selected entities' physics shapes.
+    kAllBodies,     ///< Draw all non-terrain physics shapes.
+  };
+
   RenderingSettingsPanel() = default;
 
   // Renders the panel body (checkboxes for each toggle).
@@ -17,9 +23,32 @@ class RenderingSettingsPanel {
   void SetPhysicsGizmosEnabled(bool enabled) { physics_gizmos_enabled_ = enabled; }
   [[nodiscard]] bool IsPhysicsGizmosEnabled() const { return physics_gizmos_enabled_; }
 
+  [[nodiscard]] PhysicsDebugBodyMode GetPhysicsDebugBodyMode() const {
+    return physics_debug_body_mode_;
+  }
+  [[nodiscard]] bool IsPhysicsDebugConstraintsEnabled()   const {
+    return physics_debug_constraints_;
+  }
+  [[nodiscard]] bool IsPhysicsDebugContactPointsEnabled() const {
+    return physics_debug_contact_points_;
+  }
+  [[nodiscard]] bool IsPhysicsDebugBroadPhaseEnabled()    const {
+    return physics_debug_broadphase_;
+  }
+
  private:
   // cppcheck-suppress unusedStructMember
   bool physics_gizmos_enabled_ = false;
+
+  // Physics debug draw settings (passed to PhysicsSystem::DrawDebug each frame).
+  // cppcheck-suppress unusedStructMember
+  PhysicsDebugBodyMode physics_debug_body_mode_ = PhysicsDebugBodyMode::kSelectedOnly;
+  // cppcheck-suppress unusedStructMember
+  bool physics_debug_constraints_    = false;
+  // cppcheck-suppress unusedStructMember
+  bool physics_debug_contact_points_ = false;
+  // cppcheck-suppress unusedStructMember
+  bool physics_debug_broadphase_     = false;
 };
 
 }  // namespace editor
