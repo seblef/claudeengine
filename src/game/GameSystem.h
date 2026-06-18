@@ -63,6 +63,12 @@ class GameSystem : public core::Singleton<GameSystem> {
   // Returns the total elapsed time in seconds since construction.
   [[nodiscard]] float GetElapsedTime() const { return elapsed_time_; }
 
+  // Resets the frame timer to now so the next Update() dt is near zero.
+  // Call this after all setup (map loading, object placement) and just before
+  // entering the main loop to prevent an artificially large first-frame dt from
+  // causing the physics character to overshoot the player-start position.
+  void ResetTimer();
+
  private:
   // cppcheck-suppress unusedStructMember
   abstract::Devices*  devices_;

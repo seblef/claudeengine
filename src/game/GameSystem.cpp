@@ -88,4 +88,8 @@ void GameSystem::SetEventCallback(
   event_callback_ = std::move(cb);
 }
 
+void GameSystem::ResetTimer() {
+  prev_time_ = std::chrono::steady_clock::now();
+}
+
 }  // namespace game
