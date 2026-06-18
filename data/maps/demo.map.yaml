@@ -32,7 +32,7 @@ environment:
   cloud_enabled: true
   cloud_density: 0.310000002
   wind_enabled: true
-  wind_direction: [0.484809577, 0, 0.874619722]
+  wind_direction: [0.484809637, 0, 0.874619842]
   wind_strength: 1.20000005
   start_time_of_day: 13.1300001
   time_scale: 60
@@ -136,6 +136,7 @@ objects:
       center_offset: [0, 0.427801967, -1.63912773e-07]
       motion_type: dynamic
       mass: 10
+      collision_layer: 4
   - name: Object
     type: mesh
     transform: [1.6559118, -0.116332039, -0.00480638258, 607.150085, 0.116431288, 1.65450013, 0.0683574528, 32.3528824, -0, -0.0685262084, 1.65858507, 1160.25916, 0, 0, 0, 1]
@@ -177,6 +178,7 @@ objects:
       center_offset: [0, 0.427801967, -1.63912773e-07]
       motion_type: dynamic
       mass: 10
+      collision_layer: 4
   - name: barrel01_01 (copy) (copy)_002
     type: mesh
     transform: [1.72700286, -0.101354256, -0.00937920529, 608.060303, 0.101687096, 1.72503436, 0.0825568363, 31.0911827, 0.00451558456, -0.0829650983, 1.72800386, 1130.91516, 0, 0, 0, 1]
@@ -189,6 +191,7 @@ objects:
       center_offset: [0, 0.427801967, -1.63912773e-07]
       motion_type: dynamic
       mass: 10
+      collision_layer: 4
   - name: barrel01_01 (copy) (copy)_003
     type: mesh
     transform: [1.72651565, -0.109380886, -0.00890658423, 603.52063, 0.109650008, 1.72513926, 0.069073692, 30.8948078, 0.00451431051, -0.0694990754, 1.72859788, 1133.21741, 0, 0, 0, 1]
@@ -201,6 +204,7 @@ objects:
       center_offset: [0, 0.427801967, -1.63912773e-07]
       motion_type: dynamic
       mass: 10
+      collision_layer: 4
   - name: barrel01_01 (copy) (copy)_004
     type: mesh
     transform: [1.7260102, -0.117092684, -0.0088176392, 612.13092, 0.11733748, 1.72485828, 0.0632123426, 31.4484882, 0.00451298943, -0.0636646152, 1.72882247, 1133.21741, 0, 0, 0, 1]
@@ -211,7 +215,7 @@ objects:
       radius: 0.296283662
       half_height: 0.427801967
       center_offset: [0, 0.427801967, -1.63912773e-07]
-      motion_type: static
+      motion_type: dynamic
       mass: 10
   - name: barrel01_01 (copy) (copy)_005
     type: mesh
@@ -225,6 +229,7 @@ objects:
       center_offset: [0, 0.427801967, -1.63912773e-07]
       motion_type: dynamic
       mass: 10
+      collision_layer: 4
 terrain:
   heightmap: demo.r16
   heightmap_width: 4096
@@ -258,7 +263,7 @@ terrain:
       cull_distance: 80
       billboard_distance: 35
 editor:
-  selected_object: ~
+  selected_object: barrel01_01 (copy) (copy)_004
   camera:
     focus: [598.637146, 33.4397964, 1135.35474]
     azimuth: 4.57727528
