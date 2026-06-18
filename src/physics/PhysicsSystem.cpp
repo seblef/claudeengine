@@ -268,6 +268,12 @@ class BodyDebugFilter final : public JPH::BodyDrawFilter {
 PhysicsSystem::PhysicsSystem() = default;
 
 PhysicsSystem::~PhysicsSystem() {
+    // Release cached mesh shapes (heap-allocated JPH::ShapeRefC*) before
+    // destroying bodies; each body still holds its own ref via base_shape_.
+    for (auto& [key, ptr] : mesh_shape_cache_)
+        delete static_cast<JPH::ShapeRefC*>(ptr);
+    mesh_shape_cache_.clear();
+
     // Destroy all bodies before tearing down the Jolt world.
     bodies_.clear();
     jolt_system_.reset();
@@ -381,7 +387,8 @@ PhysicsBody* PhysicsSystem::CreateBodyWithMesh(const PhysicsBodyDesc& desc,
                                                const float* vertices,
                                                int vertex_count,
                                                const uint32_t* indices,
-                                               int index_count) {
+                                               int index_count,
+                                               const void* shape_cache_key) {
     if (desc.shape.type == PhysicsShapeType::Exact &&
         desc.motion_type != MotionType::Static) {
         LOG_F(FATAL, "CreateBodyWithMesh: Exact shapes must use MotionType::Static");
@@ -389,49 +396,62 @@ PhysicsBody* PhysicsSystem::CreateBodyWithMesh(const PhysicsBodyDesc& desc,
     }
 
     JPH::ShapeRefC shape;
-    if (desc.shape.type == PhysicsShapeType::ConvexHull) {
-        std::vector<JPH::Vec3> jolt_pts;
-        jolt_pts.reserve(vertex_count);
-        for (int i = 0; i < vertex_count; ++i) {
-            jolt_pts.push_back(JPH::Vec3(vertices[i * 3],
-                                         vertices[i * 3 + 1],
-                                         vertices[i * 3 + 2]));
+
+    // Reuse an already-built Jolt shape for this mesh template if available.
+    if (shape_cache_key) {
+        const auto it = mesh_shape_cache_.find(shape_cache_key);
+        if (it != mesh_shape_cache_.end())
+            shape = *static_cast<JPH::ShapeRefC*>(it->second);
+    }
+
+    if (shape.GetPtr() == nullptr) {
+        if (desc.shape.type == PhysicsShapeType::ConvexHull) {
+            std::vector<JPH::Vec3> jolt_pts;
+            jolt_pts.reserve(vertex_count);
+            for (int i = 0; i < vertex_count; ++i) {
+                jolt_pts.push_back(JPH::Vec3(vertices[i * 3],
+                                             vertices[i * 3 + 1],
+                                             vertices[i * 3 + 2]));
+            }
+            JPH::ConvexHullShapeSettings hull_settings(jolt_pts.data(),
+                                                        static_cast<int>(jolt_pts.size()));
+            auto result = hull_settings.Create();
+            if (result.HasError()) {
+                LOG_F(FATAL, "CreateBodyWithMesh: ConvexHull creation failed: %s",
+                      result.GetError().c_str());
+                return nullptr;
+            }
+            shape = result.Get();
+        } else {
+            // Exact triangle mesh.
+            JPH::VertexList jolt_verts;
+            jolt_verts.reserve(vertex_count);
+            for (int i = 0; i < vertex_count; ++i) {
+                jolt_verts.push_back(JPH::Float3(vertices[i * 3],
+                                                  vertices[i * 3 + 1],
+                                                  vertices[i * 3 + 2]));
+            }
+            JPH::IndexedTriangleList jolt_tris;
+            const int tri_count = index_count / 3;
+            jolt_tris.reserve(tri_count);
+            for (int t = 0; t < tri_count; ++t) {
+                jolt_tris.push_back(JPH::IndexedTriangle(indices[t * 3],
+                                                          indices[t * 3 + 1],
+                                                          indices[t * 3 + 2]));
+            }
+            JPH::MeshShapeSettings mesh_settings(std::move(jolt_verts),
+                                                  std::move(jolt_tris));
+            auto result = mesh_settings.Create();
+            if (result.HasError()) {
+                LOG_F(FATAL, "CreateBodyWithMesh: Mesh creation failed: %s",
+                      result.GetError().c_str());
+                return nullptr;
+            }
+            shape = result.Get();
         }
-        JPH::ConvexHullShapeSettings hull_settings(jolt_pts.data(),
-                                                    static_cast<int>(jolt_pts.size()));
-        auto result = hull_settings.Create();
-        if (result.HasError()) {
-            LOG_F(FATAL, "CreateBodyWithMesh: ConvexHull creation failed: %s",
-                  result.GetError().c_str());
-            return nullptr;
-        }
-        shape = result.Get();
-    } else {
-        // Exact triangle mesh.
-        JPH::VertexList jolt_verts;
-        jolt_verts.reserve(vertex_count);
-        for (int i = 0; i < vertex_count; ++i) {
-            jolt_verts.push_back(JPH::Float3(vertices[i * 3],
-                                              vertices[i * 3 + 1],
-                                              vertices[i * 3 + 2]));
-        }
-        JPH::IndexedTriangleList jolt_tris;
-        const int tri_count = index_count / 3;
-        jolt_tris.reserve(tri_count);
-        for (int t = 0; t < tri_count; ++t) {
-            jolt_tris.push_back(JPH::IndexedTriangle(indices[t * 3],
-                                                      indices[t * 3 + 1],
-                                                      indices[t * 3 + 2]));
-        }
-        JPH::MeshShapeSettings mesh_settings(std::move(jolt_verts),
-                                              std::move(jolt_tris));
-        auto result = mesh_settings.Create();
-        if (result.HasError()) {
-            LOG_F(FATAL, "CreateBodyWithMesh: Mesh creation failed: %s",
-                  result.GetError().c_str());
-            return nullptr;
-        }
-        shape = result.Get();
+
+        if (shape_cache_key)
+            mesh_shape_cache_[shape_cache_key] = new JPH::ShapeRefC(shape);
     }
 
     const core::Vec3f scale = ExtractScale(initial_transform);

@@ -103,7 +103,8 @@ void GameMesh::CreatePhysicsBody() {
         reinterpret_cast<const float*>(positions.data()),
         static_cast<int>(positions.size()),
         indices.data(),
-        static_cast<int>(indices.size()));
+        static_cast<int>(indices.size()),
+        template_);
   } else if (shape == physics::PhysicsShapeType::Terrain) {
     LOG_F(WARNING,
           "GameMesh: Terrain shape type is not supported; "
