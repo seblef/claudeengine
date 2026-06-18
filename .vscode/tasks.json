@@ -14,6 +14,19 @@
             }
         },
         {
+            "label": "Build Engine (dev)",
+            "type": "shell",
+            "command": "cmake --build _build --target claude_engine -- -j$(nproc)",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        },
+        {
             "type": "cppbuild",
             "label": "C/C++: gcc build active file",
             "command": "/usr/bin/gcc",

@@ -284,7 +284,7 @@ void PhysicsSystem::Init() {
     JPH::Factory::sInstance = new JPH::Factory();
     JPH::RegisterTypes();
 
-    constexpr int kTempAllocatorSizeBytes = 8 * 1024 * 1024;  // 8 MB
+    constexpr int kTempAllocatorSizeBytes = 16 * 1024 * 1024;  // 16 MB
     temp_allocator_ =
         std::make_unique<JPH::TempAllocatorImpl>(kTempAllocatorSizeBytes);
 
