@@ -10,6 +10,10 @@
 #include "game/GameObject.h"
 
 namespace abstract { class VideoDevice; }
+namespace audio {
+class ResourceManager;
+class SoundManager;
+}  // namespace audio
 
 namespace game {
 
@@ -35,10 +39,16 @@ struct MapData {
 // Objects are NOT added to GameSystem — the caller does that.
 // Missing assets: LOG_F(WARNING, ...) + fallback (default material / unit-cube mesh).
 // Returns empty MapData (name="", map_size=120, objects empty) on parse failure.
+//
+// sound_manager and resource_manager are optional. When non-null, sound_emitter
+// objects in the YAML are instantiated as GameSoundEmitter. When null, any
+// sound_emitter entries in the YAML are silently skipped.
 class MapLoader {
  public:
   static MapData Load(const std::filesystem::path& path,
-                      abstract::VideoDevice* video);
+                      abstract::VideoDevice* video,
+                      audio::SoundManager*    sound_manager    = nullptr,
+                      audio::ResourceManager* resource_manager = nullptr);
 };
 
 }  // namespace game

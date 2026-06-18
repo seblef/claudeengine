@@ -13,6 +13,8 @@
 #include "game/ICameraController.h"
 #include "particles/ParticleRenderer.h"
 
+namespace audio { class SoundManager; }
+
 namespace game {
 
 // Singleton orchestrating the game loop.
@@ -69,6 +71,11 @@ class GameSystem : public core::Singleton<GameSystem> {
   // causing the physics character to overshoot the player-start position.
   void ResetTimer();
 
+  // Registers the SoundManager to be ticked each frame.
+  // SetListenerTransform (from the active camera) and Update(dt) are called
+  // automatically from Update(). Pass nullptr to detach.
+  void SetSoundManager(audio::SoundManager* sound_manager);
+
  private:
   // cppcheck-suppress unusedStructMember
   abstract::Devices*  devices_;
@@ -87,6 +94,8 @@ class GameSystem : public core::Singleton<GameSystem> {
   std::function<void(const core::Event&)> event_callback_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<particles::ParticleRenderer> particle_renderer_;
+  // cppcheck-suppress unusedStructMember
+  audio::SoundManager* sound_manager_ = nullptr;
 };
 
 }  // namespace game

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 
+#include "audio/SoundManager.h"
 #include "core/EventManager.h"
 #include "core/EventType.h"
 #include "game/GameParticleSystem.h"
@@ -53,10 +54,19 @@ void GameSystem::Update() {
     }
   }
 
+  if (sound_manager_ && active_camera_) {
+    sound_manager_->SetListenerTransform(active_camera_->GetWorldTransform());
+    sound_manager_->Update(dt);
+  }
+
   if (active_camera_) {
     renderer::Renderer::Instance().Update(elapsed_time_,
                                           active_camera_->GetCamera());
   }
+}
+
+void GameSystem::SetSoundManager(audio::SoundManager* sound_manager) {
+  sound_manager_ = sound_manager;
 }
 
 void GameSystem::AddObject(GameObject* obj) {

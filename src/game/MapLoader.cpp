@@ -8,6 +8,8 @@
 #include <loguru.hpp>
 #include <yaml-cpp/yaml.h>
 
+#include "audio/ResourceManager.h"
+#include "audio/SoundManager.h"
 #include "core/Config.h"
 #include "core/CoordinateSystem.h"
 #include "core/Mat4f.h"
@@ -19,6 +21,7 @@
 #include "game/GameMesh.h"
 #include "game/GameParticleSystem.h"
 #include "game/GamePlayerStart.h"
+#include "game/GameSoundEmitter.h"
 #include "game/GameTerrain.h"
 #include "game/MeshTemplate.h"
 #include "physics/CollisionLayer.h"
@@ -368,6 +371,28 @@ std::unique_ptr<GameObject> ParseParticleSystem(const YAML::Node& node,
   return go;
 }
 
+std::unique_ptr<GameObject> ParseSoundEmitter(
+    const YAML::Node& node,
+    audio::SoundManager* sound_manager,
+    audio::ResourceManager* resource_manager) {
+  const std::string name         = node["name"].as<std::string>("SoundEmitter");
+  const std::string sound_name   = node["sound"].as<std::string>("");
+  const float       volume_scale = node["volume_scale"].as<float>(1.f);
+  const core::Mat4f transform    = core::ParseMat4(node["transform"]);
+
+  if (sound_name.empty()) {
+    LOG_F(WARNING, "MapLoader: sound_emitter '%s' has no sound field, skipping",
+          name.c_str());
+    return nullptr;
+  }
+
+  auto emitter = std::make_unique<GameSoundEmitter>(
+      sound_name, sound_manager, resource_manager, volume_scale);
+  emitter->SetName(name);
+  emitter->SetWorldTransform(transform);
+  return emitter;
+}
+
 std::unique_ptr<GameObject> ParseTerrain(const YAML::Node& node,
                                          const std::filesystem::path& map_path,
                                          abstract::VideoDevice* video) {
@@ -469,7 +494,9 @@ std::unique_ptr<GameObject> ParseTerrain(const YAML::Node& node,
 
 // static
 MapData MapLoader::Load(const std::filesystem::path& path,
-                        abstract::VideoDevice* video) {
+                        abstract::VideoDevice* video,
+                        audio::SoundManager* sound_manager,
+                        audio::ResourceManager* resource_manager) {
   MapData result;
 
   YAML::Node root;
@@ -517,6 +544,9 @@ MapData MapLoader::Load(const std::filesystem::path& path,
         result.objects.push_back(ParsePlayerStart(obj));
       } else if (type == "particle_system") {
         auto go = ParseParticleSystem(obj, video);
+        if (go) result.objects.push_back(std::move(go));
+      } else if (type == "sound_emitter") {
+        auto go = ParseSoundEmitter(obj, sound_manager, resource_manager);
         if (go) result.objects.push_back(std::move(go));
       } else {
         LOG_F(WARNING, "MapLoader: unknown object type '%s', skipping",
