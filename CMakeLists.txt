@@ -296,6 +296,7 @@ set(JPH_BUILD_PERFORMANCE_TEST OFF CACHE BOOL "" FORCE)
 set(JPH_BUILD_UNIT_TESTS     OFF CACHE BOOL "" FORCE)
 set(JPH_BUILD_DOCS           OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(JoltPhysics)
+target_compile_definitions(Jolt PUBLIC JPH_DEBUG_RENDERER)
 message(STATUS "[ClaudeEngine] Jolt Physics v5.5.0 fetched")
 
 add_subdirectory(src)
