@@ -1,5 +1,6 @@
 add_subdirectory(core)
 add_subdirectory(abstract)
+add_subdirectory(audio)
 add_subdirectory(mesh)
 add_subdirectory(terrain)
 add_subdirectory(environment)
