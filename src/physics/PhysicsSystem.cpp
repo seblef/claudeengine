@@ -79,6 +79,7 @@ struct LayerFilters {
         bp_iface->MapObjectToBroadPhaseLayer(kLayerPlayer,     kBPLayerDynamic);
         bp_iface->MapObjectToBroadPhaseLayer(kLayerEnemy,      kBPLayerDynamic);
         bp_iface->MapObjectToBroadPhaseLayer(kLayerProjectile, kBPLayerDynamic);
+        bp_iface->MapObjectToBroadPhaseLayer(kLayerDynamic,    kBPLayerDynamic);
 
         // Object-layer pair filter: static–static never collide; all else do.
         obj_filter =
@@ -208,9 +209,10 @@ class RaycastBroadPhaseFilter final : public JPH::BroadPhaseLayerFilter {
     bool ShouldCollide(JPH::BroadPhaseLayer in_layer) const override {
         if (in_layer == kBPLayerStatic)
             return (mask_ & (1u << kLayerWorld)) != 0u;
-        // kBPLayerDynamic covers kLayerPlayer, kLayerEnemy, kLayerProjectile.
+        // kBPLayerDynamic covers kLayerPlayer, kLayerEnemy, kLayerProjectile, kLayerDynamic.
         constexpr uint16_t kDynamicBits =
-            (1u << kLayerPlayer) | (1u << kLayerEnemy) | (1u << kLayerProjectile);
+            (1u << kLayerPlayer) | (1u << kLayerEnemy) |
+            (1u << kLayerProjectile) | (1u << kLayerDynamic);
         return (mask_ & kDynamicBits) != 0u;
     }
 
@@ -313,15 +315,12 @@ void PhysicsSystem::Init() {
 void PhysicsSystem::Step(float dt) {
     jolt_system_->Update(dt, 1, temp_allocator_.get(), job_system_.get());
 
-    JPH::BodyInterface& body_iface = jolt_system_->GetBodyInterface();
     for (const auto& body : bodies_) {
         if (body->motion_type_ != MotionType::Dynamic) continue;
         const JPH::BodyID id(body->body_id_);
         if (id.IsInvalid()) continue;
-        if (body->listener_) {
-            body->listener_->OnBodyTransformUpdated(
-                JoltMatToMat4f(body_iface.GetWorldTransform(id)));
-        }
+        if (body->listener_)
+            body->listener_->OnBodyTransformUpdated(body->GetWorldTransform());
     }
 }
 
