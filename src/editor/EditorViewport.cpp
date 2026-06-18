@@ -5,6 +5,7 @@
 #include <memory>
 #include <span>
 #include <utility>
+#include <vector>
 
 #include "abstract/TextureFormat.h"
 #include "core/CoordinateSystem.h"
@@ -23,6 +24,8 @@
 #include "game/GameObjectType.h"
 #include "game/GameObject.h"
 #include "game/MeshTemplate.h"
+#include "physics/PhysicsBody.h"
+#include "physics/PhysicsSystem.h"
 #include "renderer/Renderer.h"
 #include "renderer/WireframeRenderer.h"
 #include "terrain/TerrainData.h"
@@ -152,6 +155,32 @@ void EditorViewport::Render() {
   if (wireframe_fbo_ && render_fbo_)
     renderer::WireframeRenderer::Instance().Render(
         *camera_->GetCamera(), wireframe_fbo_.get(), render_fbo_.get());
+
+  if (rendering_settings_panel_ && scene_
+      && physics::PhysicsSystem::IsInstanced()) {
+    physics::PhysicsDebugDrawSettings debug_settings;
+    debug_settings.drawConstraints   =
+        rendering_settings_panel_->IsPhysicsDebugConstraintsEnabled();
+    debug_settings.drawContactPoints =
+        rendering_settings_panel_->IsPhysicsDebugContactPointsEnabled();
+    debug_settings.drawBroadPhase    =
+        rendering_settings_panel_->IsPhysicsDebugBroadPhaseEnabled();
+
+    std::vector<const physics::PhysicsBody*> selected_bodies;
+    if (rendering_settings_panel_->GetPhysicsDebugBodyMode() ==
+        RenderingSettingsPanel::PhysicsDebugBodyMode::kSelectedOnly) {
+      for (game::GameObject* obj : scene_->GetSelection()) {
+        if (obj->GetType() == game::GameObjectType::kMesh) {
+          const physics::PhysicsBody* body =
+              static_cast<game::GameMesh*>(obj)->GetPhysicsBody();
+          if (body) selected_bodies.push_back(body);
+        }
+      }
+      debug_settings.selectedBodies = &selected_bodies;
+    }
+
+    physics::PhysicsSystem::Instance().DrawDebug(debug_settings);
+  }
 
   // XYZ axis overlay — bottom-right corner of the viewport panel.
   // ImGuizmo uses row-major storage with row-vector convention (translation in
