@@ -7,6 +7,7 @@ class GameLight;
 class GameMesh;
 class GameParticleSystem;
 class GamePlayerStart;
+class GameSoundEmitter;
 class GameTerrain;
 
 // Abstract visitor for all concrete GameObject subclasses.
@@ -22,6 +23,7 @@ class GameObjectVisitor {
   virtual void Visit(GameMesh& mesh)                      = 0;
   virtual void Visit(GameParticleSystem& particle_system) = 0;
   virtual void Visit(GamePlayerStart& player_start)       = 0;
+  virtual void Visit(GameSoundEmitter& sound_emitter)     = 0;
   virtual void Visit(GameTerrain& terrain)                = 0;
 };
 
