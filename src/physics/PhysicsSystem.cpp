@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <set>
 #include <thread>
 #include <unordered_set>
 #include <utility>
@@ -209,32 +208,6 @@ class BodyDebugFilter final : public JPH::BodyDrawFilter {
     const std::unordered_set<uint32_t>& selected_ids_;
 };
 
-/// Extract unique edges from a triangle index buffer for debug wireframe rendering.
-/// Each edge is stored as a consecutive pair of Vec3f in the output vector.
-std::vector<core::Vec3f> BuildDebugEdges(const float* vertices, int vertex_count,
-                                          const uint32_t* indices, int index_count) {
-    (void)vertex_count;
-    // Deduplicate by storing canonical (min, max) index pairs.
-    std::set<std::pair<uint32_t, uint32_t>> edge_set;
-    const int tri_count = index_count / 3;
-    for (int t = 0; t < tri_count; ++t) {
-        uint32_t i0 = indices[t * 3 + 0];
-        uint32_t i1 = indices[t * 3 + 1];
-        uint32_t i2 = indices[t * 3 + 2];
-        edge_set.insert({std::min(i0, i1), std::max(i0, i1)});
-        edge_set.insert({std::min(i1, i2), std::max(i1, i2)});
-        edge_set.insert({std::min(i2, i0), std::max(i2, i0)});
-    }
-
-    std::vector<core::Vec3f> edges;
-    edges.reserve(edge_set.size() * 2);
-    for (const auto& [a, b] : edge_set) {
-        edges.push_back({vertices[a * 3], vertices[a * 3 + 1], vertices[a * 3 + 2]});
-        edges.push_back({vertices[b * 3], vertices[b * 3 + 1], vertices[b * 3 + 2]});
-    }
-    return edges;
-}
-
 }  // namespace
 
 PhysicsSystem::PhysicsSystem() = default;
@@ -422,7 +395,6 @@ PhysicsBody* PhysicsSystem::CreateBodyWithMesh(const PhysicsBodyDesc& desc,
     auto body = std::unique_ptr<PhysicsBody>(
         new PhysicsBody(id.GetIndexAndSequenceNumber(), desc.motion_type,
                         listener, jolt_system_.get()));
-    body->debug_edges_ = BuildDebugEdges(vertices, vertex_count, indices, index_count);
 
     PhysicsBody* result = body.get();
     bodies_.push_back(std::move(body));

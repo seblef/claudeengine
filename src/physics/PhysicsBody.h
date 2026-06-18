@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <vector>
 
 #include "core/Mat4f.h"
 #include "core/Vec3f.h"
@@ -45,13 +44,6 @@ class PhysicsBody {
     /// Dynamic bodies only — asserts in debug builds otherwise.
     void SetLinearVelocity(const core::Vec3f& velocity);
 
-    /// Returns the cached wireframe edge list for debug rendering.
-    /// Populated for ConvexHull and Exact shapes; empty for primitives.
-    /// Consecutive pairs of Vec3f define line segments.
-    [[nodiscard]] const std::vector<core::Vec3f>& GetDebugEdges() const {
-        return debug_edges_;
-    }
-
     [[nodiscard]] MotionType            GetMotionType() const { return motion_type_; }
     [[nodiscard]] IPhysicsBodyListener* GetListener()   const { return listener_; }
 
@@ -70,8 +62,6 @@ class PhysicsBody {
     IPhysicsBodyListener* listener_;    // non-owning
     // cppcheck-suppress unusedStructMember
     JPH::PhysicsSystem*   jolt_system_;  // non-owning
-    // cppcheck-suppress unusedStructMember
-    std::vector<core::Vec3f> debug_edges_;  // populated for ConvexHull/Exact
 };
 
 }  // namespace physics
