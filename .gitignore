@@ -40,6 +40,9 @@ external/bc7enc-subbuild/
 external/joltphysics-build/
 external/joltphysics-src/
 external/joltphysics-subbuild/
+external/dr_libs-build/
+external/dr_libs-src/
+external/dr_libs-subbuild/
 claude_engine.log
 .claude/settings.local.json
 imgui.ini

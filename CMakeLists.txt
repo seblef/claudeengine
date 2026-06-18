@@ -181,6 +181,37 @@ else()
     target_compile_options(bc7enc_lib PRIVATE -w)
 endif()
 
+# ---------------------------------------------------------------------------
+# dr_libs (header-only audio decoders: WAV, MP3, FLAC)
+# No CMakeLists.txt — populate headers only and create an INTERFACE target.
+# ---------------------------------------------------------------------------
+FetchContent_Declare(
+    dr_libs
+    GIT_REPOSITORY https://github.com/mackron/dr_libs.git
+    GIT_TAG        master
+    GIT_SHALLOW    TRUE
+)
+FetchContent_GetProperties(dr_libs)
+if(NOT dr_libs_POPULATED)
+    FetchContent_Populate(dr_libs)
+endif()
+
+add_library(dr_libs INTERFACE)
+target_include_directories(dr_libs INTERFACE ${dr_libs_SOURCE_DIR})
+
+# ---------------------------------------------------------------------------
+# Optional OPUS file support via system opusfile
+# ---------------------------------------------------------------------------
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(OPUSFILE QUIET opusfile)
+    if(OPUSFILE_FOUND)
+        message(STATUS "[ClaudeEngine] opusfile found — OPUS audio support enabled")
+    else()
+        message(STATUS "[ClaudeEngine] opusfile not found — OPUS audio support disabled")
+    endif()
+endif()
+
 # Optional TIFF support via system libtiff
 find_package(TIFF QUIET)
 if(TIFF_FOUND AND TARGET TIFF::TIFF)
