@@ -29,6 +29,17 @@ class CharacterController;
 class IPhysicsBodyListener;
 class JoltDebugRenderer;
 
+/// Controls which debug geometry PhysicsSystem::DrawDebug() renders each frame.
+struct PhysicsDebugDrawSettings {
+    /// When non-null, only these bodies are drawn.
+    /// When null, all non-terrain bodies are drawn.
+    const std::vector<const PhysicsBody*>* selectedBodies = nullptr;
+
+    bool drawConstraints   = false;  ///< Draw constraint joints.
+    bool drawContactPoints = false;  ///< Draw contact manifolds (affects next Step).
+    bool drawBroadPhase    = false;  ///< Draw the broadphase world AABB.
+};
+
 /// Singleton that owns the Jolt world, all bodies, and drives the simulation.
 ///
 /// Lifecycle (constructed by the app entry point, before GameSystem):
@@ -96,6 +107,12 @@ class PhysicsSystem : public core::Singleton<PhysicsSystem> {
         float capsule_radius,
         float capsule_half_height,
         const core::Mat4f& initial_transform);
+
+    // ---- Debug rendering ----------------------------------------------------
+
+    /// Trigger Jolt's built-in debug draw passes.  Must be called each frame
+    /// (typically after Step()) to keep contact-point flags in sync.
+    void DrawDebug(const PhysicsDebugDrawSettings& settings);
 
     // ---- Query --------------------------------------------------------------
 

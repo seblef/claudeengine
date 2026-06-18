@@ -4,6 +4,7 @@
 #include <cmath>
 #include <set>
 #include <thread>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -20,7 +21,10 @@
 #include <Jolt/Physics/Body/BodyInterface.h>
 #include <Jolt/Physics/Body/BodyLock.h>
 #include <Jolt/Physics/Body/MotionType.h>
+#include <Jolt/Physics/Body/BodyFilter.h>
+#include <Jolt/Physics/Body/BodyManager.h>
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayerInterfaceTable.h>
+#include <Jolt/Physics/Collision/BroadPhase/BroadPhaseQuery.h>
 #include <Jolt/Physics/Collision/BroadPhase/ObjectVsBroadPhaseLayerFilterTable.h>
 #include <Jolt/Physics/Collision/CastResult.h>
 #include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
@@ -180,6 +184,29 @@ class RaycastObjectLayerFilter final : public JPH::ObjectLayerFilter {
 
  private:
     uint16_t mask_;
+};
+
+/// BodyDrawFilter that always excludes terrain-layer bodies and optionally
+/// restricts rendering to a pre-computed set of body IDs.
+class BodyDebugFilter final : public JPH::BodyDrawFilter {
+ public:
+    /// @param has_selection  True when only a subset of bodies should be drawn.
+    /// @param selected_ids   Pre-computed set of JPH BodyID packed values.
+    BodyDebugFilter(bool has_selection,
+                    const std::unordered_set<uint32_t>& selected_ids)
+        : has_selection_(has_selection), selected_ids_(selected_ids) {}
+
+    bool ShouldDraw(const JPH::Body& inBody) const override {
+        if (inBody.GetObjectLayer() == kLayerWorld) return false;
+        if (has_selection_)
+            return selected_ids_.count(
+                       inBody.GetID().GetIndexAndSequenceNumber()) > 0;
+        return true;
+    }
+
+ private:
+    bool has_selection_;
+    const std::unordered_set<uint32_t>& selected_ids_;
 };
 
 /// Extract unique edges from a triangle index buffer for debug wireframe rendering.
@@ -526,6 +553,35 @@ std::optional<RaycastResult> PhysicsSystem::Raycast(
     result.body = (it != bodies_.end()) ? it->get() : nullptr;
 
     return result;
+}
+
+void PhysicsSystem::DrawDebug(const PhysicsDebugDrawSettings& settings) {
+    // Build a lookup set from the selected bodies (uses body_id_ via friend access).
+    std::unordered_set<uint32_t> selected_ids;
+    if (settings.selectedBodies) {
+        for (const PhysicsBody* b : *settings.selectedBodies)
+            selected_ids.insert(b->body_id_);
+    }
+
+    BodyDebugFilter filter(settings.selectedBodies != nullptr, selected_ids);
+
+    JPH::BodyManager::DrawSettings draw_settings;
+    draw_settings.mDrawShape = true;
+    draw_settings.mDrawShapeWireframe = true;
+
+    jolt_system_->DrawBodies(draw_settings, debug_renderer_.get(), &filter);
+
+    if (settings.drawConstraints)
+        jolt_system_->DrawConstraints(debug_renderer_.get());
+
+    // Contact points are rendered by the physics solver during Step(); the flag
+    // is set here so it takes effect on the next simulation tick.
+    JPH::ContactConstraintManager::sDrawContactPoint = settings.drawContactPoints;
+
+    if (settings.drawBroadPhase)
+        debug_renderer_->DrawWireBox(
+            jolt_system_->GetBroadPhaseQuery().GetBounds(),
+            JPH::Color::sGreen);
 }
 
 }  // namespace physics
