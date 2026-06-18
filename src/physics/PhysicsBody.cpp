@@ -72,6 +72,13 @@ core::Mat4f PhysicsBody::GetWorldTransform() const {
         for (int col = 0; col < 4; ++col)
             result(row, col) = jm(static_cast<JPH::uint>(row),
                                   static_cast<JPH::uint>(col));
+    // Jolt stores only rotation+translation; re-inject the scale that was
+    // baked into the shape at creation time (column lengths = scale factors).
+    for (int row = 0; row < 3; ++row) {
+        result(row, 0) *= current_scale_.x;
+        result(row, 1) *= current_scale_.y;
+        result(row, 2) *= current_scale_.z;
+    }
     return result;
 }
 

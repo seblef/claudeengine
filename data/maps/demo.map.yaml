@@ -32,7 +32,7 @@ environment:
   cloud_enabled: true
   cloud_density: 0.310000002
   wind_enabled: true
-  wind_direction: [0.484809637, 0, 0.874619842]
+  wind_direction: [0.484809577, 0, 0.874619722]
   wind_strength: 1.20000005
   start_time_of_day: 13.1300001
   time_scale: 60
@@ -203,7 +203,7 @@ objects:
       mass: 10
   - name: barrel01_01 (copy) (copy)_004
     type: mesh
-    transform: [1.72650385, -0.109835476, -0.0045195967, 612.13092, 0.109928422, 1.72504401, 0.0709834695, 30.8230515, 0, -0.0711272061, 1.72853732, 1133.21741, 0, 0, 0, 1]
+    transform: [1.7260102, -0.117092684, -0.0088176392, 612.13092, 0.11733748, 1.72485828, 0.0632123426, 31.4484882, 0.00451298943, -0.0636646152, 1.72882247, 1133.21741, 0, 0, 0, 1]
     mesh: meshes/barrel01.emesh
     material: materials/barrel01.yaml
     physics:
@@ -260,8 +260,8 @@ terrain:
 editor:
   selected_object: ~
   camera:
-    focus: [598.50061, 32.8415451, 1133.90576]
-    azimuth: 4.69727564
-    elevation: 0.414203167
+    focus: [598.637146, 33.4397964, 1135.35474]
+    azimuth: 4.57727528
+    elevation: 0.364203215
     distance: 12.933526
   snap_grid: 0

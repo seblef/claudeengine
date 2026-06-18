@@ -247,8 +247,11 @@ std::optional<physics::PhysicsBodyDesc> ParsePhysicsBodyDesc(
   desc.shape           = shape;
   desc.material        = material;
   desc.motion_type     = motion_type;
+  const uint16_t default_layer = (motion_type != physics::MotionType::Static)
+      ? physics::kLayerDynamic
+      : physics::kLayerWorld;
   desc.collision_layer = static_cast<uint16_t>(
-      node["collision_layer"].as<int>(physics::kLayerWorld));
+      node["collision_layer"].as<int>(default_layer));
   desc.collision_mask  = static_cast<uint16_t>(
       node["collision_mask"].as<int>(0xFFFF));
   return desc;
