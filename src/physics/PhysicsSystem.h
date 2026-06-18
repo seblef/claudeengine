@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -75,10 +76,16 @@ class PhysicsSystem : public core::Singleton<PhysicsSystem> {
                             const core::Mat4f& initial_transform);
 
     /// Create a body backed by a ConvexHull or Exact triangle-mesh shape.
-    /// @param vertices      Flat float array: {x0,y0,z0, x1,y1,z1, …}.
-    /// @param vertex_count  Number of vertices (array length = vertex_count * 3).
-    /// @param indices       Triangle index array, three indices per triangle.
-    /// @param index_count   Number of indices (= triangle_count * 3).
+    /// @param vertices        Flat float array: {x0,y0,z0, x1,y1,z1, …}.
+    /// @param vertex_count    Number of vertices (array length = vertex_count * 3).
+    /// @param indices         Triangle index array, three indices per triangle.
+    /// @param index_count     Number of indices (= triangle_count * 3).
+    /// @param shape_cache_key Opaque pointer used as a cache key so that all
+    ///                        instances sharing the same geometry (e.g. the same
+    ///                        MeshTemplate*) reuse a single Jolt shape instead of
+    ///                        rebuilding it per instance.  Pass nullptr to skip
+    ///                        caching.  Callers must use a consistent shape type
+    ///                        (ConvexHull vs Exact) for the same key.
     ///
     /// Exact shapes enforce MotionType::Static; a non-Static motion type in desc
     /// triggers LOG_F(FATAL).
@@ -86,7 +93,8 @@ class PhysicsSystem : public core::Singleton<PhysicsSystem> {
                                     IPhysicsBodyListener* listener,
                                     const core::Mat4f& initial_transform,
                                     const float* vertices, int vertex_count,
-                                    const uint32_t* indices, int index_count);
+                                    const uint32_t* indices, int index_count,
+                                    const void* shape_cache_key = nullptr);
 
     /// Create a static terrain body from a TerrainData heightmap.
     /// Always Static, kLayerWorld layer, no listener.
@@ -143,6 +151,11 @@ class PhysicsSystem : public core::Singleton<PhysicsSystem> {
     std::unordered_set<uint32_t>              terrain_body_ids_;
     // cppcheck-suppress unusedStructMember
     std::unique_ptr<JoltDebugRenderer> debug_renderer_;
+    // Maps opaque shape_cache_key pointers to heap-allocated JPH::ShapeRefC*
+    // so each unique mesh geometry builds its Jolt shape only once.
+    // Values are void* to avoid exposing JPH types in this header.
+    // cppcheck-suppress unusedStructMember
+    std::unordered_map<const void*, void*>    mesh_shape_cache_;
 };
 
 }  // namespace physics
