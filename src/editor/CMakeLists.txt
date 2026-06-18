@@ -8,7 +8,6 @@ add_library(editor STATIC
     EditorScene.cpp
     EditorSystem.cpp
     EnvironmentEditorPanel.cpp
-    PhysicsGizmoRenderer.cpp
     PlayerStartGizmos.cpp
     MapPropertiesWindow.cpp
     MapSerializer.cpp

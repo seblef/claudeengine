@@ -5,10 +5,6 @@
 namespace editor {
 
 void RenderingSettingsPanel::Render() {
-  ImGui::Checkbox("Physics shapes", &physics_gizmos_enabled_);
-
-  ImGui::Separator();
-
   if (ImGui::CollapsingHeader("Physics Debug Draw")) {
     int body_mode = static_cast<int>(physics_debug_body_mode_);
     ImGui::RadioButton("Selected only", &body_mode,
