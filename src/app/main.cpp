@@ -275,7 +275,7 @@ int main(int argc, char* argv[]) {
     video->ClearRenderTargets(core::Color::kBlack);
     renderer::Renderer::Instance().SetDebugMode(debug_mode);
     if (physics_debug_enabled)
-      physics::PhysicsSystem::Instance().DrawDebug({});
+      physics::PhysicsSystem::Instance().DrawDebug({.drawShapes = true});
     game.Update();
   }
 
