@@ -246,6 +246,11 @@ int main(int argc, char* argv[]) {
   // Capture the cursor so mouse deltas are delivered even at window/screen edges.
   devices.SetCursorCapture(true);
 
+  // Reset the frame timer so the first Update() dt is near zero; without this,
+  // map loading time inflates the first dt and the physics character overshoots
+  // the player-start position.
+  game.ResetTimer();
+
   // ---- Main loop ------------------------------------------------------------
   float prev_elapsed = 0.f;
   while (game.IsRunning()) {
