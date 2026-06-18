@@ -5,7 +5,7 @@
 // UBO binding 2: scene infos (inv_view_proj, eye_pos, view).
 // UBO binding 4: light infos (color, intensity, direction, ambient, cast_shadow, shadow_bias).
 // UBO binding 5: CSM infos (cascade_vp[4], split_distances).
-// Samplers: binding 5=albedo, 6=normal, 7=specular, 8=depth,
+// Samplers: binding 5=albedo (a=spec_intensity), 6=normal (a=shininess/256), 8=depth,
 //           binding 9–12=cascade shadow maps,
 //           binding 13=cloud shadow map (world-space R16F, centred on camera).
 // Uniforms: cloud_shadow_intensity [0,1]  — max shadow darkening from clouds.
@@ -18,7 +18,6 @@
 
 layout(binding = 5)  uniform sampler2D        u_albedo;
 layout(binding = 6)  uniform sampler2D        u_normal;
-layout(binding = 7)  uniform sampler2D        u_specular;
 layout(binding = 8)  uniform sampler2D        u_depth;
 layout(binding = 9)  uniform sampler2DShadow  u_shadow_cascade0;
 layout(binding = 10) uniform sampler2DShadow  u_shadow_cascade1;
@@ -49,12 +48,13 @@ void main() {
     vec2 v_screen_uv = gl_FragCoord.xy * inv_screen_size;
 
     // Decode G-buffer.
-    vec3  albedo    = texture(u_albedo,   v_screen_uv).rgb;
-    vec2  spec_shine = texture(u_specular, v_screen_uv).rg;
-    float spec_int  = spec_shine.r;
-    float shininess = spec_shine.g * 256.0;
+    vec4  albedo_s  = texture(u_albedo, v_screen_uv);
+    vec3  albedo    = albedo_s.rgb;
+    float spec_int  = albedo_s.a;
+    vec4  normal_s  = texture(u_normal, v_screen_uv);
+    float shininess = normal_s.a * 256.0;
     // Decode normal: stored as N * 0.5 + 0.5.
-    vec3  N = normalize(texture(u_normal, v_screen_uv).rgb * 2.0 - 1.0);
+    vec3  N = normalize(normal_s.rgb * 2.0 - 1.0);
 
     // Reconstruct world position from the depth buffer.
     // ndc.z in [-1, 1] for GL clip space.

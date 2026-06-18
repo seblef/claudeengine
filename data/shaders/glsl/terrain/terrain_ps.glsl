@@ -1,9 +1,10 @@
 // Terrain fragment shader — G-buffer geometry pass.
 //
-// Writes to 3 render targets:
-//   location 0 (Albedo,  RGBA8)   — splatmap-blended layer albedo × optional macro
-//   location 1 (Normal,  RGBA16F) — world-space normal encoded as N * 0.5 + 0.5
-//   location 2 (Specular, RGBA8)  — R=specular intensity (wet boost), G=shininess/256
+// Writes to 2 render targets:
+//   location 0 (Albedo,  RGBA8)   — rgb=splatmap-blended layer albedo × optional macro,
+//                                    a=specular intensity (wet boost)
+//   location 1 (Normal,  RGBA16F) — rgb=world-space normal encoded as N * 0.5 + 0.5,
+//                                    a=shininess/256
 //
 // Texture slot layout:
 //   0     — heightmap    (VS / TESE, not used here)
@@ -51,7 +52,6 @@ in vec2 v_world_uv;
 
 layout(location = 0) out vec4 out_albedo;
 layout(location = 1) out vec4 out_normal;
-layout(location = 2) out vec4 out_specular;
 
 // Coarse UV scale applied to the macro texture.
 const float kMacroScale = 0.05;
@@ -165,7 +165,6 @@ void main() {
     albedo = mix(albedo, albedo * kWetDarken, wet);
     float specular_intensity = mix(0.0, kWetSpecular, wet);
 
-    out_albedo   = vec4(albedo, 0.0);
-    out_normal   = vec4(world_n * 0.5 + 0.5, 0.0);
-    out_specular = vec4(specular_intensity, 0.02, 0.0, 0.0);
+    out_albedo = vec4(albedo, specular_intensity);
+    out_normal = vec4(world_n * 0.5 + 0.5, 0.02);
 }

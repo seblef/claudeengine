@@ -94,7 +94,7 @@ void PreviewRenderer::Render(float time, const core::Camera& camera,
   emissive_fbo_.BindForWriting();
   video_->SetDepthWriteEnabled(false);
   video_->ClearRenderTargets(core::Color::kBlack);
-  gbuffer_.BindForReading(5);           // albedo=5, normal=6, specular=7
+  gbuffer_.BindForReading(5);           // albedo=5, normal=6
   gbuffer_.GetDepthRT()->BindAsSampler(8);
   video_->SetBlendEnabled(true, abstract::BlendFactor::kOne,
                           abstract::BlendFactor::kOne);

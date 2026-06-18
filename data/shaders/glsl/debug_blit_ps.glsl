@@ -5,7 +5,7 @@
 // u_debug_mode values:
 //   1 = albedo   — RGB pass-through
 //   2 = normal   — encoded [0,1] → decoded [-1,1] displayed as colour
-//   3 = specular — R = specular intensity, G = shininess (×4 for visibility)
+//   3 = specular — albedo.a = spec_intensity displayed as greyscale
 //   4 = depth    — linearized from NDC depth using z_near/z_far from SceneInfos
 
 #version 460 core
@@ -27,8 +27,8 @@ void main() {
         // Normal: encoded as N*0.5+0.5 in G-buffer — decode to [-1,1] for display.
         out_color = vec4(s.rgb * 2.0 - 1.0, 1.0);
     } else if (u_debug_mode == 3) {
-        // Specular: R = specular intensity, G = shininess (scaled for visibility).
-        out_color = vec4(s.r, s.g * 4.0, 0.0, 1.0);
+        // Specular: spec_intensity packed in albedo.a — display as greyscale.
+        out_color = vec4(vec3(s.a), 1.0);
     } else {
         // Depth: NDC z → linear view-space depth → normalized [0,1].
         //   lin = (2 * near * far) / (far + near - z_ndc * (far - near))
