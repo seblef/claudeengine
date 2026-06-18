@@ -240,6 +240,9 @@ std::optional<physics::PhysicsBodyDesc> ParsePhysicsBodyDesc(
   material.gravity_factor  =
       node["gravity_factor"].as<float>(material.gravity_factor);
 
+  shape.center_offset =
+      core::ParseVec3(node["center_offset"], core::Vec3f(0.f, 0.f, 0.f));
+
   physics::PhysicsBodyDesc desc;
   desc.shape           = shape;
   desc.material        = material;

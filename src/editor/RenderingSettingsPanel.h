@@ -23,6 +23,9 @@ class RenderingSettingsPanel {
   [[nodiscard]] PhysicsDebugBodyMode GetPhysicsDebugBodyMode() const {
     return physics_debug_body_mode_;
   }
+  [[nodiscard]] bool IsPhysicsDebugShapesEnabled()         const {
+    return physics_debug_shapes_;
+  }
   [[nodiscard]] bool IsPhysicsDebugConstraintsEnabled()   const {
     return physics_debug_constraints_;
   }
@@ -33,10 +36,18 @@ class RenderingSettingsPanel {
     return physics_debug_broadphase_;
   }
 
+  void SetPhysicsDebugBodyMode(PhysicsDebugBodyMode m)  { physics_debug_body_mode_    = m; }
+  void SetPhysicsDebugShapesEnabled(bool v)             { physics_debug_shapes_        = v; }
+  void SetPhysicsDebugConstraintsEnabled(bool v)        { physics_debug_constraints_   = v; }
+  void SetPhysicsDebugContactPointsEnabled(bool v)      { physics_debug_contact_points_ = v; }
+  void SetPhysicsDebugBroadPhaseEnabled(bool v)         { physics_debug_broadphase_    = v; }
+
  private:
   // Physics debug draw settings (passed to PhysicsSystem::DrawDebug each frame).
   // cppcheck-suppress unusedStructMember
   PhysicsDebugBodyMode physics_debug_body_mode_ = PhysicsDebugBodyMode::kSelectedOnly;
+  // cppcheck-suppress unusedStructMember
+  bool physics_debug_shapes_         = false;
   // cppcheck-suppress unusedStructMember
   bool physics_debug_constraints_    = false;
   // cppcheck-suppress unusedStructMember

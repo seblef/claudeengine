@@ -49,25 +49,33 @@ constexpr float kRad2Deg = 180.f / static_cast<float>(M_PI);
 // Cylinder and Capsule are assumed to be upright (Y axis).
 physics::PhysicsShapeDesc ShapeDescFromBBox(const core::BBox3& bbox,
                                             physics::PhysicsShapeType type) {
-  const core::Vec3f half = bbox.GetSize() * 0.5f;
+  const core::Vec3f half   = bbox.GetSize() * 0.5f;
+  const core::Vec3f center = bbox.GetCenter();
+  physics::PhysicsShapeDesc desc;
   switch (type) {
     case physics::PhysicsShapeType::Box:
-      return physics::PhysicsShapeDesc::MakeBox(half);
+      desc = physics::PhysicsShapeDesc::MakeBox(half);
+      break;
     case physics::PhysicsShapeType::Sphere:
-      return physics::PhysicsShapeDesc::MakeSphere(
+      desc = physics::PhysicsShapeDesc::MakeSphere(
           std::max({half.x, half.y, half.z}));
+      break;
     case physics::PhysicsShapeType::Cylinder: {
       const float r = std::max(half.x, half.z);
-      return physics::PhysicsShapeDesc::MakeCylinder(r, std::max(half.y, 0.001f));
+      desc = physics::PhysicsShapeDesc::MakeCylinder(r, std::max(half.y, 0.001f));
+      break;
     }
     case physics::PhysicsShapeType::Capsule: {
       const float r  = std::max(half.x, half.z);
       const float hh = std::max(half.y - r, 0.001f);
-      return physics::PhysicsShapeDesc::MakeCapsule(r, hh);
+      desc = physics::PhysicsShapeDesc::MakeCapsule(r, hh);
+      break;
     }
     default:
-      return physics::PhysicsShapeDesc{};
+      break;
   }
+  desc.center_offset = center;
+  return desc;
 }
 
 const char* LightTypeName(renderer::LightType type) {

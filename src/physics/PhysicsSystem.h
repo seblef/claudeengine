@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <unordered_set>
 #include <vector>
 
 #include "core/Mat4f.h"
@@ -35,6 +36,7 @@ struct PhysicsDebugDrawSettings {
     /// When null, all non-terrain bodies are drawn.
     const std::vector<const PhysicsBody*>* selectedBodies = nullptr;
 
+    bool drawShapes        = false;  ///< Draw body shape wireframes.
     bool drawConstraints   = false;  ///< Draw constraint joints.
     bool drawContactPoints = false;  ///< Draw contact manifolds (affects next Step).
     bool drawBroadPhase    = false;  ///< Draw the broadphase world AABB.
@@ -137,6 +139,8 @@ class PhysicsSystem : public core::Singleton<PhysicsSystem> {
     std::unique_ptr<JPH::PhysicsSystem>       jolt_system_;
     // cppcheck-suppress unusedStructMember
     std::vector<std::unique_ptr<PhysicsBody>> bodies_;  // owns all bodies
+    // cppcheck-suppress unusedStructMember
+    std::unordered_set<uint32_t>              terrain_body_ids_;
     // cppcheck-suppress unusedStructMember
     std::unique_ptr<JoltDebugRenderer> debug_renderer_;
 };

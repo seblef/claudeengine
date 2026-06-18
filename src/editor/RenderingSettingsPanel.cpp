@@ -6,6 +6,10 @@ namespace editor {
 
 void RenderingSettingsPanel::Render() {
   if (ImGui::CollapsingHeader("Physics Debug Draw")) {
+    ImGui::Checkbox("Shapes", &physics_debug_shapes_);
+
+    ImGui::Separator();
+
     int body_mode = static_cast<int>(physics_debug_body_mode_);
     ImGui::RadioButton("Selected only", &body_mode,
                        static_cast<int>(PhysicsDebugBodyMode::kSelectedOnly));

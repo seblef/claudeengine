@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <set>
 #include <thread>
 #include <unordered_set>
 #include <utility>
@@ -36,6 +35,8 @@
 #include <Jolt/Physics/Collision/Shape/CylinderShape.h>
 #include <Jolt/Physics/Collision/Shape/HeightFieldShape.h>
 #include <Jolt/Physics/Collision/Shape/MeshShape.h>
+#include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
+#include <Jolt/Physics/Collision/Shape/ScaledShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/EActivation.h>
 #include <Jolt/Physics/PhysicsSettings.h>
@@ -123,6 +124,52 @@ JPH::Quat ExtractRotation(const core::Mat4f& m) {
     return rot.GetQuaternion();
 }
 
+/// Extracts the per-axis scale from the upper-left 3x3 of a row-major transform
+/// (column lengths).
+core::Vec3f ExtractScale(const core::Mat4f& m) {
+    auto ColLen = [&](int c) {
+        const float x = m(0, c), y = m(1, c), z = m(2, c);
+        return std::sqrt(x * x + y * y + z * z);
+    };
+    return core::Vec3f(ColLen(0), ColLen(1), ColLen(2));
+}
+
+/// Wraps shape with a RotatedTranslatedShape when offset != (0,0,0); returns
+/// shape directly otherwise.
+JPH::ShapeRefC ApplyCenterOffset(const JPH::ShapeRefC& shape,
+                                  const core::Vec3f& offset) {
+    constexpr float kZero = 0.f;
+    if (std::abs(offset.x - kZero) < 1e-5f &&
+        std::abs(offset.y - kZero) < 1e-5f &&
+        std::abs(offset.z - kZero) < 1e-5f) {
+        return shape;
+    }
+    JPH::RotatedTranslatedShapeSettings rts(
+        JPH::Vec3(offset.x, offset.y, offset.z),
+        JPH::Quat::sIdentity(),
+        shape);
+    auto result = rts.Create();
+    if (result.HasError()) {
+        LOG_F(ERROR, "ApplyCenterOffset: RotatedTranslatedShape creation failed: %s",
+              result.GetError().c_str());
+        return shape;
+    }
+    return result.Get();
+}
+
+/// Wraps base_shape with a ScaledShape when scale != (1,1,1); returns base_shape
+/// directly otherwise.
+JPH::ShapeRefC ApplyScale(const JPH::ShapeRefC& base_shape,
+                          const core::Vec3f& scale) {
+    constexpr float kUnity = 1.f;
+    if (std::abs(scale.x - kUnity) < 1e-5f &&
+        std::abs(scale.y - kUnity) < 1e-5f &&
+        std::abs(scale.z - kUnity) < 1e-5f) {
+        return base_shape;
+    }
+    return new JPH::ScaledShape(base_shape, JPH::Vec3(scale.x, scale.y, scale.z));
+}
+
 /// Maps the engine's MotionType to the Jolt equivalent.
 JPH::EMotionType ToJoltMotionType(MotionType mt) {
     switch (mt) {
@@ -186,54 +233,33 @@ class RaycastObjectLayerFilter final : public JPH::ObjectLayerFilter {
     uint16_t mask_;
 };
 
-/// BodyDrawFilter that always excludes terrain-layer bodies and optionally
-/// restricts rendering to a pre-computed set of body IDs.
+/// BodyDrawFilter that excludes terrain bodies and optionally restricts
+/// rendering to a pre-computed set of body IDs.
 class BodyDebugFilter final : public JPH::BodyDrawFilter {
  public:
-    /// @param has_selection  True when only a subset of bodies should be drawn.
-    /// @param selected_ids   Pre-computed set of JPH BodyID packed values.
+    /// @param has_selection   True when only a subset of bodies should be drawn.
+    /// @param selected_ids    Pre-computed set of JPH BodyID packed values.
+    /// @param terrain_ids     Set of terrain body IDs to always skip.
     BodyDebugFilter(bool has_selection,
-                    const std::unordered_set<uint32_t>& selected_ids)
-        : has_selection_(has_selection), selected_ids_(selected_ids) {}
+                    const std::unordered_set<uint32_t>& selected_ids,
+                    const std::unordered_set<uint32_t>& terrain_ids)
+        : has_selection_(has_selection),
+          selected_ids_(selected_ids),
+          terrain_ids_(terrain_ids) {}
 
     bool ShouldDraw(const JPH::Body& inBody) const override {
-        if (inBody.GetObjectLayer() == kLayerWorld) return false;
+        const uint32_t id = inBody.GetID().GetIndexAndSequenceNumber();
+        if (terrain_ids_.count(id)) return false;
         if (has_selection_)
-            return selected_ids_.count(
-                       inBody.GetID().GetIndexAndSequenceNumber()) > 0;
+            return selected_ids_.count(id) > 0;
         return true;
     }
 
  private:
     bool has_selection_;
     const std::unordered_set<uint32_t>& selected_ids_;
+    const std::unordered_set<uint32_t>& terrain_ids_;
 };
-
-/// Extract unique edges from a triangle index buffer for debug wireframe rendering.
-/// Each edge is stored as a consecutive pair of Vec3f in the output vector.
-std::vector<core::Vec3f> BuildDebugEdges(const float* vertices, int vertex_count,
-                                          const uint32_t* indices, int index_count) {
-    (void)vertex_count;
-    // Deduplicate by storing canonical (min, max) index pairs.
-    std::set<std::pair<uint32_t, uint32_t>> edge_set;
-    const int tri_count = index_count / 3;
-    for (int t = 0; t < tri_count; ++t) {
-        uint32_t i0 = indices[t * 3 + 0];
-        uint32_t i1 = indices[t * 3 + 1];
-        uint32_t i2 = indices[t * 3 + 2];
-        edge_set.insert({std::min(i0, i1), std::max(i0, i1)});
-        edge_set.insert({std::min(i1, i2), std::max(i1, i2)});
-        edge_set.insert({std::min(i2, i0), std::max(i2, i0)});
-    }
-
-    std::vector<core::Vec3f> edges;
-    edges.reserve(edge_set.size() * 2);
-    for (const auto& [a, b] : edge_set) {
-        edges.push_back({vertices[a * 3], vertices[a * 3 + 1], vertices[a * 3 + 2]});
-        edges.push_back({vertices[b * 3], vertices[b * 3 + 1], vertices[b * 3 + 2]});
-    }
-    return edges;
-}
 
 }  // namespace
 
@@ -326,7 +352,10 @@ PhysicsBody* PhysicsSystem::CreateBody(const PhysicsBodyDesc& desc,
             return nullptr;
     }
 
-    JPH::BodyCreationSettings settings(shape,
+    shape = ApplyCenterOffset(shape, desc.shape.center_offset);
+
+    const core::Vec3f scale = ExtractScale(initial_transform);
+    JPH::BodyCreationSettings settings(ApplyScale(shape, scale),
                                        ExtractPosition(initial_transform),
                                        ExtractRotation(initial_transform),
                                        ToJoltMotionType(desc.motion_type),
@@ -341,7 +370,7 @@ PhysicsBody* PhysicsSystem::CreateBody(const PhysicsBodyDesc& desc,
 
     auto body = std::unique_ptr<PhysicsBody>(
         new PhysicsBody(id.GetIndexAndSequenceNumber(), desc.motion_type,
-                        listener, jolt_system_.get()));
+                        listener, jolt_system_.get(), shape.GetPtr(), scale));
     PhysicsBody* result = body.get();
     bodies_.push_back(std::move(body));
     return result;
@@ -406,7 +435,8 @@ PhysicsBody* PhysicsSystem::CreateBodyWithMesh(const PhysicsBodyDesc& desc,
         shape = result.Get();
     }
 
-    JPH::BodyCreationSettings settings(shape,
+    const core::Vec3f scale = ExtractScale(initial_transform);
+    JPH::BodyCreationSettings settings(ApplyScale(shape, scale),
                                        ExtractPosition(initial_transform),
                                        ExtractRotation(initial_transform),
                                        ToJoltMotionType(desc.motion_type),
@@ -421,8 +451,7 @@ PhysicsBody* PhysicsSystem::CreateBodyWithMesh(const PhysicsBodyDesc& desc,
 
     auto body = std::unique_ptr<PhysicsBody>(
         new PhysicsBody(id.GetIndexAndSequenceNumber(), desc.motion_type,
-                        listener, jolt_system_.get()));
-    body->debug_edges_ = BuildDebugEdges(vertices, vertex_count, indices, index_count);
+                        listener, jolt_system_.get(), shape.GetPtr(), scale));
 
     PhysicsBody* result = body.get();
     bodies_.push_back(std::move(body));
@@ -476,8 +505,10 @@ PhysicsBody* PhysicsSystem::CreateTerrainBody(const terrain::TerrainData* data,
 
     auto body = std::unique_ptr<PhysicsBody>(
         new PhysicsBody(id.GetIndexAndSequenceNumber(), MotionType::Static,
-                        nullptr, jolt_system_.get()));
+                        nullptr, jolt_system_.get(),
+                        nullptr, core::Vec3f(1.f, 1.f, 1.f)));
     PhysicsBody* terrain_body = body.get();
+    terrain_body_ids_.insert(id.GetIndexAndSequenceNumber());
     bodies_.push_back(std::move(body));
     return terrain_body;
 }
@@ -489,6 +520,7 @@ void PhysicsSystem::DestroyBody(PhysicsBody* body) {
     JPH::BodyInterface& iface = jolt_system_->GetBodyInterface();
     iface.RemoveBody(id);
     iface.DestroyBody(id);
+    terrain_body_ids_.erase(id.GetIndexAndSequenceNumber());
 
     bodies_.erase(
         std::remove_if(bodies_.begin(), bodies_.end(),
@@ -563,13 +595,15 @@ void PhysicsSystem::DrawDebug(const PhysicsDebugDrawSettings& settings) {
             selected_ids.insert(b->body_id_);
     }
 
-    BodyDebugFilter filter(settings.selectedBodies != nullptr, selected_ids);
+    BodyDebugFilter filter(settings.selectedBodies != nullptr, selected_ids,
+                           terrain_body_ids_);
 
-    JPH::BodyManager::DrawSettings draw_settings;
-    draw_settings.mDrawShape = true;
-    draw_settings.mDrawShapeWireframe = true;
-
-    jolt_system_->DrawBodies(draw_settings, debug_renderer_.get(), &filter);
+    if (settings.drawShapes) {
+        JPH::BodyManager::DrawSettings draw_settings;
+        draw_settings.mDrawShape = true;
+        draw_settings.mDrawShapeWireframe = true;
+        jolt_system_->DrawBodies(draw_settings, debug_renderer_.get(), &filter);
+    }
 
     if (settings.drawConstraints)
         jolt_system_->DrawConstraints(debug_renderer_.get());
