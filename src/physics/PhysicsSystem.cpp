@@ -40,6 +40,7 @@
 
 #include "core/Mat4f.h"
 #include "physics/CharacterController.h"
+#include "physics/JoltDebugRenderer.h"
 #include "physics/CollisionLayer.h"
 #include "physics/IPhysicsBodyListener.h"
 #include "physics/MotionType.h"
@@ -217,6 +218,9 @@ PhysicsSystem::~PhysicsSystem() {
     jolt_system_.reset();
     job_system_.reset();
     temp_allocator_.reset();
+    // Clear sInstance before destroying the renderer to avoid dangling pointer.
+    JPH::DebugRenderer::sInstance = nullptr;
+    debug_renderer_.reset();
     JPH::UnregisterTypes();
     delete JPH::Factory::sInstance;
     JPH::Factory::sInstance = nullptr;
@@ -248,6 +252,9 @@ void PhysicsSystem::Init() {
                        kMaxContactConstraints, *filters.bp_iface,
                        *filters.obj_vs_bp, *filters.obj_filter);
     jolt_system_->SetGravity(JPH::Vec3(0.f, -9.81f, 0.f));
+
+    debug_renderer_ = std::make_unique<JoltDebugRenderer>();
+    JPH::DebugRenderer::sInstance = debug_renderer_.get();
 }
 
 void PhysicsSystem::Step(float dt) {
