@@ -1,0 +1,21 @@
+# Sound resource template — rename and adjust for each audio asset.
+#
+# file         : path to the audio file, relative to the data folder.
+#                Supported formats: .wav, .mp3, .flac, .ogg, .opus (optional).
+# loop         : true to loop indefinitely when played.
+# priority     : integer scheduling priority (higher = preferred when sources
+#                are scarce and the backend must drop sounds).
+# rolloff      : distance-attenuation model — "linear", "inverse", "exponential".
+# min_distance : reference distance at which gain equals the volume value.
+# max_distance : distance at which gain reaches its minimum.
+# volume       : default playback gain [0, 1].
+# pitch        : default pitch multiplier (1.0 = original).
+
+file: sounds/example.wav
+loop: false
+priority: 0
+rolloff: inverse
+min_distance: 1.0
+max_distance: 100.0
+volume: 1.0
+pitch: 1.0
