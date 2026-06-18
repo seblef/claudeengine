@@ -182,10 +182,26 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
                      std::back_inserter(recent_maps_),
                      [](const YAML::Node& n) { return n.as<std::string>(); });
     }
+    if (auto pd = editor["physics_debug"]) {
+      if (auto v = pd["shapes"])
+        rendering_settings_panel_.SetPhysicsDebugShapesEnabled(v.as<bool>());
+      if (auto v = pd["constraints"])
+        rendering_settings_panel_.SetPhysicsDebugConstraintsEnabled(v.as<bool>());
+      if (auto v = pd["contact_points"])
+        rendering_settings_panel_.SetPhysicsDebugContactPointsEnabled(v.as<bool>());
+      if (auto v = pd["broadphase"])
+        rendering_settings_panel_.SetPhysicsDebugBroadPhaseEnabled(v.as<bool>());
+      if (auto v = pd["body_mode"]) {
+        if (v.as<std::string>() == "all_bodies")
+          rendering_settings_panel_.SetPhysicsDebugBodyMode(
+              RenderingSettingsPanel::PhysicsDebugBodyMode::kAllBodies);
+      }
+    }
   }
 }
 
 EditorWindow::~EditorWindow() {
+  SavePhysicsDebugSettings();
   loguru::remove_callback("editor_log");
 }
 
@@ -802,6 +818,30 @@ void EditorWindow::SaveRecentMaps() {
   } catch (...) {}
 
   root["editor"]["recent_maps"] = recent_maps_;
+
+  std::ofstream out(config_path);
+  out << root;
+}
+
+void EditorWindow::SavePhysicsDebugSettings() {
+  const auto config_path = core::Config::GetDataFolder() / "config.yaml";
+  YAML::Node root;
+  try {
+    root = core::LoadYamlFile(config_path);
+  } catch (...) {}
+
+  root["editor"]["physics_debug"]["shapes"] =
+      rendering_settings_panel_.IsPhysicsDebugShapesEnabled();
+  root["editor"]["physics_debug"]["constraints"] =
+      rendering_settings_panel_.IsPhysicsDebugConstraintsEnabled();
+  root["editor"]["physics_debug"]["contact_points"] =
+      rendering_settings_panel_.IsPhysicsDebugContactPointsEnabled();
+  root["editor"]["physics_debug"]["broadphase"] =
+      rendering_settings_panel_.IsPhysicsDebugBroadPhaseEnabled();
+  root["editor"]["physics_debug"]["body_mode"] =
+      (rendering_settings_panel_.GetPhysicsDebugBodyMode() ==
+       RenderingSettingsPanel::PhysicsDebugBodyMode::kAllBodies)
+          ? "all_bodies" : "selected_only";
 
   std::ofstream out(config_path);
   out << root;

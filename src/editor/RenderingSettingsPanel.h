@@ -36,6 +36,12 @@ class RenderingSettingsPanel {
     return physics_debug_broadphase_;
   }
 
+  void SetPhysicsDebugBodyMode(PhysicsDebugBodyMode m)  { physics_debug_body_mode_    = m; }
+  void SetPhysicsDebugShapesEnabled(bool v)             { physics_debug_shapes_        = v; }
+  void SetPhysicsDebugConstraintsEnabled(bool v)        { physics_debug_constraints_   = v; }
+  void SetPhysicsDebugContactPointsEnabled(bool v)      { physics_debug_contact_points_ = v; }
+  void SetPhysicsDebugBroadPhaseEnabled(bool v)         { physics_debug_broadphase_    = v; }
+
  private:
   // Physics debug draw settings (passed to PhysicsSystem::DrawDebug each frame).
   // cppcheck-suppress unusedStructMember
