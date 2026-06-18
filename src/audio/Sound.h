@@ -45,6 +45,11 @@ class Sound : public core::Resource<std::string, Sound> {
   // Returns the playback metadata parsed from the .sound.yaml file.
   [[nodiscard]] const SoundDesc& GetDesc() const { return desc_; }
 
+  // Hot-reload: re-parses the .sound.yaml and recreates ISoundBuffer in-place.
+  // Existing Sound* pointers remain valid; callers must re-fetch GetBuffer()
+  // after this call as the buffer object is replaced.
+  void Reload(abstract::ISoundSystem* sound_system);
+
  private:
   void InitFromDesc(abstract::ISoundSystem* sound_system);
 

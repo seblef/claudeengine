@@ -68,6 +68,21 @@ abstract::ISoundBuffer* Sound::GetBuffer() const {
     return buffer_.get();
 }
 
+void Sound::Reload(abstract::ISoundSystem* sound_system) {
+    const auto yaml_path =
+        core::Config::GetDataFolder() / "sounds" / (GetId() + ".sound.yaml");
+    try {
+        const YAML::Node root = core::LoadYamlFile(yaml_path);
+        desc_ = ParseDesc(root);
+    } catch (const std::exception& e) {
+        LOG_F(ERROR, "Sound '%s': reload YAML error: %s", GetId().c_str(), e.what());
+        return;
+    }
+    buffer_.reset();
+    initialized_ = false;
+    InitFromDesc(sound_system);
+}
+
 void Sound::InitFromDesc(abstract::ISoundSystem* sound_system) {
     if (desc_.file.empty()) {
         LOG_F(ERROR, "Sound '%s': no audio file specified", GetId().c_str());
