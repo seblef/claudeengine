@@ -1,8 +1,9 @@
 // Fragment shader for the G-buffer geometry pass.
-// Writes to 3 render targets simultaneously:
-//   location 0 (Albedo, RGBA8)   — diffuse_texture.rgb × diffuse_color.rgb
-//   location 1 (Normal, RGBA16F) — world-space normal encoded as N × 0.5 + 0.5
-//   location 2 (Specular, RGBA8) — R=specular intensity, G=shininess/256
+// Writes to 2 render targets simultaneously:
+//   location 0 (Albedo, RGBA8)   — rgb=diffuse_texture.rgb × diffuse_color.rgb,
+//                                   a=spec_intensity
+//   location 1 (Normal, RGBA16F) — rgb=world-space normal encoded as N × 0.5 + 0.5,
+//                                   a=shininess/256
 //
 // TBN normal mapping is always active. When no custom normal map is assigned
 // the default flat normal texture (tangent-space (0,0,1)) decodes to the
@@ -25,7 +26,6 @@ layout(binding = 2) uniform sampler2D u_specular;
 
 layout(location = 0) out vec4 out_albedo;
 layout(location = 1) out vec4 out_normal;
-layout(location = 2) out vec4 out_specular;
 
 void main() {
     // Albedo: diffuse texture tinted by material color.
@@ -33,7 +33,10 @@ void main() {
     vec4 diffuse = texture(u_diffuse, v_uv);
     if (alpha_mask != 0 && diffuse.a < 0.5) discard;
     vec3 albedo = diffuse.rgb * diffuse_color.rgb;
-    out_albedo  = vec4(albedo, 0.0);
+    // Specular: intensity in R (texture × material multiplier), packed shininess in G.
+    // Equation: final_specular = texture_sample * specular_multiplier
+    float spec_intensity = texture(u_specular, v_uv).r * specular;
+    out_albedo  = vec4(albedo, spec_intensity);
 
     // Normal: remap sampled tangent-space normal to world space via TBN.
     // BC5 normal maps store only RG (XY); Z is reconstructed to stay compatible
@@ -43,10 +46,5 @@ void main() {
     vec3 tangent_normal = vec3(n_xy, sqrt(max(0.0, 1.0 - dot(n_xy, n_xy))));
     mat3 tbn            = mat3(v_tangent_world, v_binormal_world, v_normal_world);
     vec3 world_normal   = normalize(tbn * tangent_normal);
-    out_normal = vec4(world_normal * 0.5 + 0.5, 0.0);
-
-    // Specular: intensity in R (texture × material multiplier), packed shininess in G.
-    // Equation: final_specular = texture_sample * specular_multiplier
-    float spec_intensity = texture(u_specular, v_uv).r * specular;
-    out_specular = vec4(spec_intensity, shininess / 256.0, 0.0, 0.0);
+    out_normal = vec4(world_normal * 0.5 + 0.5, shininess / 256.0);
 }

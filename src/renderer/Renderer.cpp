@@ -245,7 +245,7 @@ void Renderer::Update(float time, const core::Camera* camera,
     switch (debug_mode_) {
       case DebugMode::kAlbedo:   rt = gbuffer_.GetAlbedoRT();   break;
       case DebugMode::kNormal:   rt = gbuffer_.GetNormalRT();   break;
-      case DebugMode::kSpecular: rt = gbuffer_.GetSpecularRT(); break;
+      case DebugMode::kSpecular: rt = gbuffer_.GetAlbedoRT(); break;
       case DebugMode::kDepth:    rt = gbuffer_.GetDepthRT();    break;
       default: break;
     }
@@ -282,13 +282,12 @@ void Renderer::Update(float time, const core::Camera* camera,
   emissive_fbo_.BindForWriting();
   video_->SetDepthWriteEnabled(false);
   video_->ClearRenderTargets(core::Color::kBlack);
-  gbuffer_.BindForReading(5);                    // albedo=5, normal=6, specular=7
+  gbuffer_.BindForReading(5);                    // albedo=5, normal=6
   gbuffer_.GetDepthRT()->BindAsSampler(8);       // depth=8 (position reconstruction)
   video_->SetBlendEnabled(true, abstract::BlendFactor::kOne, abstract::BlendFactor::kOne);
   LightRenderer::Instance().Render();
   video_->UnbindSampler(5);
   video_->UnbindSampler(6);
-  video_->UnbindSampler(7);
   video_->UnbindSampler(8);
   video_->SetBlendEnabled(false);
   emissive_fbo_.UnbindForWriting();

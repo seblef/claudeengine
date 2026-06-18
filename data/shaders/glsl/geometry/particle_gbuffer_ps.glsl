@@ -1,11 +1,10 @@
 // Fragment shader for the particle G-buffer geometry pass (kGBuffer blend mode).
-// Solid particles are written into the three G-buffer MRTs so they receive
+// Solid particles are written into the two G-buffer MRTs so they receive
 // full deferred lighting for free.
 //
 // Outputs:
-//   location 0 (Albedo,  RGBA8)   — texture_color.rgb * color.rgb
-//   location 1 (Normal,  RGBA16F) — world-space camera-facing normal, encoded [0,1]
-//   location 2 (Specular, RGBA8)  — zero (particles are non-specular by default)
+//   location 0 (Albedo,  RGBA8)   — rgb=texture_color.rgb * color.rgb, a=0 (non-specular)
+//   location 1 (Normal,  RGBA16F) — rgb=world-space camera-facing normal encoded [0,1], a=0
 //
 // Frame interpolation: samples both the current (v_uv) and next (v_uv2) sprite-sheet
 // frames and blends between them:
@@ -33,7 +32,6 @@ layout(binding = 0) uniform sampler2D u_texture;
 
 layout(location = 0) out vec4 out_albedo;
 layout(location = 1) out vec4 out_normal;
-layout(location = 2) out vec4 out_specular;
 
 void main() {
     // Blend between the current and next sprite-sheet frame.
@@ -52,6 +50,5 @@ void main() {
     vec3 world_normal = -normalize(vec3(view[2][0], view[2][1], view[2][2]));
     out_normal = vec4(world_normal * 0.5 + 0.5, 0.0);
 
-    // Particles carry no specular contribution.
-    out_specular = vec4(0.0);
+    // Particles carry no specular contribution (spec_intensity=0, shininess=0 in alpha).
 }
