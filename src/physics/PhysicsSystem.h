@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <unordered_set>
 #include <vector>
 
 #include "core/Mat4f.h"
@@ -138,6 +139,8 @@ class PhysicsSystem : public core::Singleton<PhysicsSystem> {
     std::unique_ptr<JPH::PhysicsSystem>       jolt_system_;
     // cppcheck-suppress unusedStructMember
     std::vector<std::unique_ptr<PhysicsBody>> bodies_;  // owns all bodies
+    // cppcheck-suppress unusedStructMember
+    std::unordered_set<uint32_t>              terrain_body_ids_;
     // cppcheck-suppress unusedStructMember
     std::unique_ptr<JoltDebugRenderer> debug_renderer_;
 };

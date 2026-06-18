@@ -185,27 +185,32 @@ class RaycastObjectLayerFilter final : public JPH::ObjectLayerFilter {
     uint16_t mask_;
 };
 
-/// BodyDrawFilter that always excludes terrain-layer bodies and optionally
-/// restricts rendering to a pre-computed set of body IDs.
+/// BodyDrawFilter that excludes terrain bodies and optionally restricts
+/// rendering to a pre-computed set of body IDs.
 class BodyDebugFilter final : public JPH::BodyDrawFilter {
  public:
-    /// @param has_selection  True when only a subset of bodies should be drawn.
-    /// @param selected_ids   Pre-computed set of JPH BodyID packed values.
+    /// @param has_selection   True when only a subset of bodies should be drawn.
+    /// @param selected_ids    Pre-computed set of JPH BodyID packed values.
+    /// @param terrain_ids     Set of terrain body IDs to always skip.
     BodyDebugFilter(bool has_selection,
-                    const std::unordered_set<uint32_t>& selected_ids)
-        : has_selection_(has_selection), selected_ids_(selected_ids) {}
+                    const std::unordered_set<uint32_t>& selected_ids,
+                    const std::unordered_set<uint32_t>& terrain_ids)
+        : has_selection_(has_selection),
+          selected_ids_(selected_ids),
+          terrain_ids_(terrain_ids) {}
 
     bool ShouldDraw(const JPH::Body& inBody) const override {
-        if (inBody.GetObjectLayer() == kLayerWorld) return false;
+        const uint32_t id = inBody.GetID().GetIndexAndSequenceNumber();
+        if (terrain_ids_.count(id)) return false;
         if (has_selection_)
-            return selected_ids_.count(
-                       inBody.GetID().GetIndexAndSequenceNumber()) > 0;
+            return selected_ids_.count(id) > 0;
         return true;
     }
 
  private:
     bool has_selection_;
     const std::unordered_set<uint32_t>& selected_ids_;
+    const std::unordered_set<uint32_t>& terrain_ids_;
 };
 
 }  // namespace
@@ -450,6 +455,7 @@ PhysicsBody* PhysicsSystem::CreateTerrainBody(const terrain::TerrainData* data,
         new PhysicsBody(id.GetIndexAndSequenceNumber(), MotionType::Static,
                         nullptr, jolt_system_.get()));
     PhysicsBody* terrain_body = body.get();
+    terrain_body_ids_.insert(id.GetIndexAndSequenceNumber());
     bodies_.push_back(std::move(body));
     return terrain_body;
 }
@@ -461,6 +467,7 @@ void PhysicsSystem::DestroyBody(PhysicsBody* body) {
     JPH::BodyInterface& iface = jolt_system_->GetBodyInterface();
     iface.RemoveBody(id);
     iface.DestroyBody(id);
+    terrain_body_ids_.erase(id.GetIndexAndSequenceNumber());
 
     bodies_.erase(
         std::remove_if(bodies_.begin(), bodies_.end(),
@@ -535,7 +542,8 @@ void PhysicsSystem::DrawDebug(const PhysicsDebugDrawSettings& settings) {
             selected_ids.insert(b->body_id_);
     }
 
-    BodyDebugFilter filter(settings.selectedBodies != nullptr, selected_ids);
+    BodyDebugFilter filter(settings.selectedBodies != nullptr, selected_ids,
+                           terrain_body_ids_);
 
     if (settings.drawShapes) {
         JPH::BodyManager::DrawSettings draw_settings;
