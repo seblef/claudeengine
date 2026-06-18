@@ -1,6 +1,6 @@
 ---
 description: Plans a high-level milestone, split it into small GitHub issues
-disable-model-invocation: true
+disable-model-invocation: false
 argument-hint: <milestone ID>
 ---
 
