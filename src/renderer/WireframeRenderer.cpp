@@ -223,7 +223,7 @@ void WireframeRenderer::AppendCone(std::vector<core::VertexBase>& list,
   // Base circle in the XY plane at z=range.
   // Offset the transform to draw at the base center.
   // We handle this by building a composite transform that translates by range
-  // along Z inside local space — instead, we pass the base_center offset into
+  // along Z inside local space — instead, we pass the base_center offset p1
   // AppendCircle by constructing a shifted transform.
   // Simpler: pre-transform base circle points manually.
   for (int i = 0; i < kCircleSegments; ++i) {

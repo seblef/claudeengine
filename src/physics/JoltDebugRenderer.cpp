@@ -23,7 +23,10 @@ core::Vec3f ToVec3f(JPH::RVec3Arg v) {
 /// Converts a Jolt Color (uint8 RGBA) to engine Color (float RGBA).
 core::Color ToColor(JPH::ColorArg c) {
     constexpr float kInv255 = 1.f / 255.f;
-    return {c.r * kInv255, c.g * kInv255, c.b * kInv255, c.a * kInv255};
+    return {static_cast<float>(c.r) * kInv255,
+            static_cast<float>(c.g) * kInv255,
+            static_cast<float>(c.b) * kInv255,
+            static_cast<float>(c.a) * kInv255};
 }
 
 /// Triangle batch stored per geometry LOD.  Mirrors DebugRendererSimple's
@@ -53,7 +56,7 @@ JoltDebugRenderer::JoltDebugRenderer() {
 void JoltDebugRenderer::DrawLine(JPH::RVec3Arg inFrom, JPH::RVec3Arg inTo,
                                   JPH::ColorArg inColor) {
     if (!renderer::WireframeRenderer::IsInstanced()) return;
-    renderer::WireframeRenderer::Instance().PushSegment(
+    renderer::WireframeRenderer::Instance().PushOverlaySegment(
         ToVec3f(inFrom), ToVec3f(inTo), ToColor(inColor));
 }
 
