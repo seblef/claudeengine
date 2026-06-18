@@ -1,5 +1,8 @@
 add_subdirectory(core)
 add_subdirectory(abstract)
+if(UNIX)
+    add_subdirectory(openal)
+endif()
 add_subdirectory(audio)
 add_subdirectory(mesh)
 add_subdirectory(terrain)
