@@ -226,8 +226,10 @@ int main(int argc, char* argv[]) {
   // ---- Debug mode -----------------------------------------------------------
   // Keys 0/Esc = full pipeline, 1-4 = G-buffer channels.
   // Tab = cycle shadow-map debug overlay (one entry per light with shadows).
+  // P   = toggle physics body wireframe overlay.
   renderer::DebugMode debug_mode = renderer::DebugMode::kNone;
-  game.SetEventCallback([&debug_mode](const core::Event& e) {
+  bool physics_debug_enabled = false;
+  game.SetEventCallback([&debug_mode, &physics_debug_enabled](const core::Event& e) {
     if (e.type != core::EventType::kKeyDown) return;
     if (e.key == core::Key::kEscape || e.key == core::Key::k0)
       debug_mode = renderer::DebugMode::kNone;
@@ -237,6 +239,8 @@ int main(int argc, char* argv[]) {
     if (e.key == core::Key::k4) debug_mode = renderer::DebugMode::kDepth;
     if (e.key == core::Key::kTab)
       renderer::Renderer::Instance().CycleShadowDebug();
+    if (e.key == core::Key::kP)
+      physics_debug_enabled = !physics_debug_enabled;
   });
 
   // Capture the cursor so mouse deltas are delivered even at window/screen edges.
@@ -270,6 +274,8 @@ int main(int argc, char* argv[]) {
     video->BeginFrame();
     video->ClearRenderTargets(core::Color::kBlack);
     renderer::Renderer::Instance().SetDebugMode(debug_mode);
+    if (physics_debug_enabled)
+      physics::PhysicsSystem::Instance().DrawDebug({});
     game.Update();
   }
 
