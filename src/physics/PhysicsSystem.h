@@ -27,6 +27,7 @@ namespace physics {
 
 class CharacterController;
 class IPhysicsBodyListener;
+class JoltDebugRenderer;
 
 /// Singleton that owns the Jolt world, all bodies, and drives the simulation.
 ///
@@ -119,6 +120,8 @@ class PhysicsSystem : public core::Singleton<PhysicsSystem> {
     std::unique_ptr<JPH::PhysicsSystem>       jolt_system_;
     // cppcheck-suppress unusedStructMember
     std::vector<std::unique_ptr<PhysicsBody>> bodies_;  // owns all bodies
+    // cppcheck-suppress unusedStructMember
+    std::unique_ptr<JoltDebugRenderer> debug_renderer_;
 };
 
 }  // namespace physics

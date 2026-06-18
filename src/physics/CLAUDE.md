@@ -22,6 +22,7 @@ app → game → physics → core
 | `PhysicsBodyDesc.h` | Aggregates shape, material, motion type, and collision layer/mask |
 | `RaycastResult.h` | Raycast hit result; forward-declares `PhysicsBody` |
 | `IPhysicsBodyListener.h` | Observer interface for body transform updates |
+| `JoltDebugRenderer.h/.cpp` | `JPH::DebugRenderer` bridge; forwards draw calls to `WireframeRenderer` |
 
 ## Guidelines
 
@@ -30,5 +31,7 @@ Follow all rules in `src/CLAUDE.md`. Additionally:
 - **Jolt types must not appear in any `physics/*.h` included by `game/` or `editor/`.**  
   Keep all `#include <Jolt/...>` in `physics/*.cpp` and private headers (e.g. `physics/internal/`).
 - Public headers expose only engine-native types (e.g. `core::Vec3`, plain POD structs, or forward declarations of opaque handles).
-- `physics/` must not include any header from `game/`, `renderer/`, `editor/`, or `gldevices/`.
+- `physics/` must not include any header from `game/`, `renderer/`, `editor/`, or `gldevices/`.  
+  **Exception:** `JoltDebugRenderer.cpp` PRIVATE-links against `renderer` to forward draw calls to `WireframeRenderer::PushSegment`. No renderer type appears in any public physics header.
+- `JoltDebugRenderer.cpp` must be compiled with `-fno-rtti` (Jolt requires it). This is enforced via `set_source_files_properties` in `CMakeLists.txt`.
 - One class per `.h` / `.cpp` pair; utility functions go in `*Utils.cpp`.
