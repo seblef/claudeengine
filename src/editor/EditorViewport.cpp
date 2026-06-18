@@ -141,14 +141,6 @@ void EditorViewport::Render() {
     active_tool_base_->OnRender(ctx, image_pos, avail);
   }
 
-  renderer::WireframeRenderer::Instance().SetHighlightedObject(
-      scene_ ? scene_->GetSelectedObject() : nullptr);
-  if (scene_)
-    editor::EnqueuePlayerStartGizmos(scene_->GetObjects(), scene_->GetSelectedObject());
-  if (wireframe_fbo_ && render_fbo_)
-    renderer::WireframeRenderer::Instance().Render(
-        *camera_->GetCamera(), wireframe_fbo_.get(), render_fbo_.get());
-
   if (rendering_settings_panel_ && scene_
       && physics::PhysicsSystem::IsInstanced()) {
     physics::PhysicsDebugDrawSettings debug_settings;
@@ -176,6 +168,14 @@ void EditorViewport::Render() {
 
     physics::PhysicsSystem::Instance().DrawDebug(debug_settings);
   }
+
+  renderer::WireframeRenderer::Instance().SetHighlightedObject(
+      scene_ ? scene_->GetSelectedObject() : nullptr);
+  if (scene_)
+    editor::EnqueuePlayerStartGizmos(scene_->GetObjects(), scene_->GetSelectedObject());
+  if (wireframe_fbo_ && render_fbo_)
+    renderer::WireframeRenderer::Instance().Render(
+        *camera_->GetCamera(), wireframe_fbo_.get(), render_fbo_.get());
 
   // XYZ axis overlay — bottom-right corner of the viewport panel.
   // ImGuizmo uses row-major storage with row-vector convention (translation in
