@@ -77,6 +77,8 @@ std::unique_ptr<game::GameObject> GameMesh::Copy(
   t(1, 3) = position.y;
   t(2, 3) = position.z;
   clone->SetWorldTransform(t);
+  if (physics_desc_)
+    clone->SetPhysicsDesc(*physics_desc_);
   return clone;
 }
 

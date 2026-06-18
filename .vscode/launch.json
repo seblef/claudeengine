@@ -22,6 +22,26 @@
             "preLaunchTask": "Build Editor (dev)"
         },
         {
+            "name": "Debug Engine",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/claude_engine",
+            "args": ["--map", "./maps/demo.map.yaml"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/data",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "Build Engine (dev)"
+        },
+        {
             "name": "Debug Editor (no build)",
             "type": "cppdbg",
             "request": "launch",

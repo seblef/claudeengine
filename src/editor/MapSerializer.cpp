@@ -23,6 +23,9 @@
 #include "game/GameTerrain.h"
 #include "particles/ParticleSystemTemplate.h"
 #include "game/MapLoader.h"
+#include "physics/MotionType.h"
+#include "physics/PhysicsBodyDesc.h"
+#include "physics/PhysicsShapeType.h"
 #include "renderer/CircleSpotLight.h"
 #include "renderer/GlobalLight.h"
 #include "renderer/Light.h"
@@ -147,6 +150,95 @@ void EmitEnvironment(YAML::Emitter& out,
   out << YAML::EndMap;
 }
 
+std::string ShapeTypeToString(physics::PhysicsShapeType type) {
+  switch (type) {
+    case physics::PhysicsShapeType::Box:        return "box";
+    case physics::PhysicsShapeType::Sphere:     return "sphere";
+    case physics::PhysicsShapeType::Cylinder:   return "cylinder";
+    case physics::PhysicsShapeType::Capsule:    return "capsule";
+    case physics::PhysicsShapeType::ConvexHull: return "convex_hull";
+    case physics::PhysicsShapeType::Exact:      return "exact";
+    case physics::PhysicsShapeType::Terrain:    return "terrain";
+  }
+  return "box";
+}
+
+std::string MotionTypeToString(physics::MotionType type) {
+  switch (type) {
+    case physics::MotionType::Static:    return "static";
+    case physics::MotionType::Kinematic: return "kinematic";
+    case physics::MotionType::Dynamic:   return "dynamic";
+  }
+  return "static";
+}
+
+void EmitPhysicsBodyDesc(YAML::Emitter& out,
+                         const physics::PhysicsBodyDesc& desc) {
+  out << YAML::Key << "physics" << YAML::Value << YAML::BeginMap;
+  out << YAML::Key << "shape" << YAML::Value
+      << ShapeTypeToString(desc.shape.type);
+
+  switch (desc.shape.type) {
+    case physics::PhysicsShapeType::Box:
+      out << YAML::Key << "half_extents" << YAML::Value;
+      EmitVec3(out, desc.shape.box.half_extents);
+      break;
+    case physics::PhysicsShapeType::Sphere:
+      out << YAML::Key << "radius" << YAML::Value << desc.shape.sphere.radius;
+      break;
+    case physics::PhysicsShapeType::Cylinder:
+      out << YAML::Key << "radius"      << YAML::Value
+          << desc.shape.cylinder.radius;
+      out << YAML::Key << "half_height" << YAML::Value
+          << desc.shape.cylinder.half_height;
+      break;
+    case physics::PhysicsShapeType::Capsule:
+      out << YAML::Key << "radius"      << YAML::Value
+          << desc.shape.capsule.radius;
+      out << YAML::Key << "half_height" << YAML::Value
+          << desc.shape.capsule.half_height;
+      break;
+    default:
+      break;  // ConvexHull / Exact / Terrain carry no extra parameters.
+  }
+
+  const core::Vec3f zero{0.f, 0.f, 0.f};
+  if (desc.shape.center_offset != zero) {
+    out << YAML::Key << "center_offset" << YAML::Value;
+    EmitVec3(out, desc.shape.center_offset);
+  }
+
+  out << YAML::Key << "motion_type" << YAML::Value
+      << MotionTypeToString(desc.motion_type);
+
+  const physics::PhysicsMaterialDesc def;
+  if (desc.material.friction != def.friction)
+    out << YAML::Key << "friction" << YAML::Value << desc.material.friction;
+  if (desc.material.restitution != def.restitution)
+    out << YAML::Key << "restitution" << YAML::Value
+        << desc.material.restitution;
+  if (desc.material.mass != def.mass)
+    out << YAML::Key << "mass" << YAML::Value << desc.material.mass;
+  if (desc.material.linear_damping != def.linear_damping)
+    out << YAML::Key << "linear_damping" << YAML::Value
+        << desc.material.linear_damping;
+  if (desc.material.angular_damping != def.angular_damping)
+    out << YAML::Key << "angular_damping" << YAML::Value
+        << desc.material.angular_damping;
+  if (desc.material.gravity_factor != def.gravity_factor)
+    out << YAML::Key << "gravity_factor" << YAML::Value
+        << desc.material.gravity_factor;
+
+  if (desc.collision_layer != physics::kLayerWorld)
+    out << YAML::Key << "collision_layer" << YAML::Value
+        << static_cast<int>(desc.collision_layer);
+  if (desc.collision_mask != 0xFFFF)
+    out << YAML::Key << "collision_mask" << YAML::Value
+        << static_cast<int>(desc.collision_mask);
+
+  out << YAML::EndMap;
+}
+
 std::string LightTypeToString(renderer::LightType type) {
   switch (type) {
     case renderer::LightType::kGlobal:     return "global";
@@ -184,6 +276,8 @@ void MapSerializer::SerializeVisitor::Visit(game::GameMesh& mesh) {
   EmitTransform(out_, mesh.GetWorldTransform());
   out_ << YAML::Key << "mesh"      << YAML::Value << mesh_path;
   out_ << YAML::Key << "material"  << YAML::Value << mat_path;
+  if (const auto& phys = mesh.GetPhysicsDesc())
+    EmitPhysicsBodyDesc(out_, *phys);
   out_ << YAML::EndMap;
 }
 
