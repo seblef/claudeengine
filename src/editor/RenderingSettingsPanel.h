@@ -20,9 +20,6 @@ class RenderingSettingsPanel {
   // Renders the panel body (checkboxes for each toggle).
   void Render();
 
-  void SetPhysicsGizmosEnabled(bool enabled) { physics_gizmos_enabled_ = enabled; }
-  [[nodiscard]] bool IsPhysicsGizmosEnabled() const { return physics_gizmos_enabled_; }
-
   [[nodiscard]] PhysicsDebugBodyMode GetPhysicsDebugBodyMode() const {
     return physics_debug_body_mode_;
   }
@@ -37,9 +34,6 @@ class RenderingSettingsPanel {
   }
 
  private:
-  // cppcheck-suppress unusedStructMember
-  bool physics_gizmos_enabled_ = false;
-
   // Physics debug draw settings (passed to PhysicsSystem::DrawDebug each frame).
   // cppcheck-suppress unusedStructMember
   PhysicsDebugBodyMode physics_debug_body_mode_ = PhysicsDebugBodyMode::kSelectedOnly;
