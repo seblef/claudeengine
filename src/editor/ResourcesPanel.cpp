@@ -1,11 +1,14 @@
 #include "editor/ResourcesPanel.h"
 
 #include <cstring>
+#include <filesystem>
 #include <string>
+#include <vector>
 
 #include <IconsFontAwesome6.h>
 #include <imgui.h>
 
+#include "core/Config.h"
 #include "game/GameMaterial.h"
 #include "game/MeshTemplate.h"
 #include "particles/ParticleSystemTemplate.h"
@@ -88,6 +91,37 @@ void ResourcesPanel::Render() {
     ImGui::TreePop();
   }
 
+  // ---- Sound templates -------------------------------------------------
+  bool snd_open = ImGui::TreeNodeEx("##snd_header", kRootFlags,
+                                    "%s Sounds", ICON_FA_MUSIC);
+  ImGui::SameLine(ImGui::GetWindowWidth() - 30.f);
+  if (ImGui::SmallButton(ICON_FA_PLUS "##snd")) {
+    std::strncpy(new_sound_name_buf_, "new_sound", sizeof(new_sound_name_buf_));
+    show_new_sound_modal_ = true;
+  }
+  if (snd_open) {
+    const auto sounds_dir = core::Config::GetDataFolder() / "sounds";
+    std::vector<std::string> names;
+    std::error_code ec;
+    for (const auto& entry :
+         std::filesystem::directory_iterator(sounds_dir, ec)) {
+      if (!entry.is_regular_file()) continue;
+      const auto& p = entry.path();
+      if (p.extension() == ".yaml" && p.stem().extension() == ".sound")
+        names.push_back(p.stem().stem().string());
+    }
+    std::sort(names.begin(), names.end());
+    for (const auto& name : names) {
+      const std::string label = std::string(ICON_FA_MUSIC) + " " + name;
+      ImGui::TreeNodeEx(label.c_str(), kLeafFlags);
+      if (ImGui::IsItemHovered() &&
+          ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+        if (on_sound_open_) on_sound_open_(name);
+      }
+    }
+    ImGui::TreePop();
+  }
+
   // ---- New Material modal ----------------------------------------------
   if (show_new_mat_modal_) {
     ImGui::OpenPopup("New Material##modal");
@@ -98,6 +132,23 @@ void ResourcesPanel::Render() {
     ImGui::InputText("Name", new_mat_name_buf_, sizeof(new_mat_name_buf_));
     if (ImGui::Button("Create") && std::strlen(new_mat_name_buf_) > 0) {
       if (on_new_material_) on_new_material_(new_mat_name_buf_);
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+    ImGui::EndPopup();
+  }
+
+  // ---- New Sound Template modal ----------------------------------------
+  if (show_new_sound_modal_) {
+    ImGui::OpenPopup("New Sound Template##modal");
+    show_new_sound_modal_ = false;
+  }
+  if (ImGui::BeginPopupModal("New Sound Template##modal", nullptr,
+                             ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImGui::InputText("Name", new_sound_name_buf_, sizeof(new_sound_name_buf_));
+    if (ImGui::Button("Create") && std::strlen(new_sound_name_buf_) > 0) {
+      if (on_new_sound_) on_new_sound_(new_sound_name_buf_);
       ImGui::CloseCurrentPopup();
     }
     ImGui::SameLine();

@@ -20,6 +20,7 @@
 #include "game/GameObjectType.h"
 #include "game/GameParticleSystem.h"
 #include "game/GamePlayerStart.h"
+#include "game/GameSoundEmitter.h"
 #include "game/GameTerrain.h"
 #include "particles/ParticleSystemTemplate.h"
 #include "game/MapLoader.h"
@@ -364,6 +365,18 @@ void MapSerializer::SerializeVisitor::Visit(
   out_ << YAML::Key << "template"  << YAML::Value << tmpl->GetId();
   out_ << YAML::Key << "transform" << YAML::Value;
   EmitTransform(out_, particle_system.GetWorldTransform());
+  out_ << YAML::EndMap;
+}
+
+void MapSerializer::SerializeVisitor::Visit(
+    game::GameSoundEmitter& sound_emitter) {
+  out_ << YAML::BeginMap;
+  out_ << YAML::Key << "name"         << YAML::Value << sound_emitter.GetName();
+  out_ << YAML::Key << "type"         << YAML::Value << "sound_emitter";
+  out_ << YAML::Key << "sound"        << YAML::Value << sound_emitter.GetSoundName();
+  out_ << YAML::Key << "volume_scale" << YAML::Value << sound_emitter.GetVolumeScale();
+  out_ << YAML::Key << "transform"    << YAML::Value;
+  EmitTransform(out_, sound_emitter.GetWorldTransform());
   out_ << YAML::EndMap;
 }
 

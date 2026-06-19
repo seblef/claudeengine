@@ -30,6 +30,7 @@ class MapPropertiesWindow;
 class MaterialEditorWindow;
 class MeshEditorWindow;
 class ParticleEditorWindow;
+class SoundEditorWindow;
 class MeshSelectionModal;
 class ParticleSystemSelectionModal;
 class PropertiesPanel;
@@ -165,6 +166,8 @@ class EditorWindow {
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<ParticleEditorWindow>  particle_editor_;
   // cppcheck-suppress unusedStructMember
+  std::unique_ptr<SoundEditorWindow>     sound_editor_;
+  // cppcheck-suppress unusedStructMember
   std::unique_ptr<MeshSelectionModal>              mesh_modal_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<ParticleSystemSelectionModal>    particle_modal_;
@@ -205,6 +208,10 @@ class EditorWindow {
   // True when the Particle Editor window should be shown.
   // cppcheck-suppress unusedStructMember
   bool                                   show_particle_editor_ = false;
+
+  // True when the Sound Editor window should be shown.
+  // cppcheck-suppress unusedStructMember
+  bool                                   show_sound_editor_ = false;
 
   // True when scene has unsaved changes; gates File > Save and the toolbar Save button.
   // cppcheck-suppress unusedStructMember

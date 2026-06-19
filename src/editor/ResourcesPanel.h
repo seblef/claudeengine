@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <string>
 #include <string_view>
 
 namespace game {
@@ -10,10 +11,12 @@ class MeshTemplate;
 
 namespace editor {
 
-// Left panel "Resources" tab: tree view of loaded materials and mesh templates.
+// Left panel "Resources" tab: tree view of loaded materials, mesh templates,
+// particle effects, and sound templates.
 //
 // Materials come from game::GameMaterial::GetRegistry() (procedural "__proc_"
 // entries are excluded). Mesh templates come from MeshTemplate::GetAll().
+// Sound templates are discovered by scanning data/sounds/*.sound.yaml on disk.
 // Double-clicking a material leaf invokes the on_material_open_ callback.
 class ResourcesPanel {
  public:
@@ -52,6 +55,18 @@ class ResourcesPanel {
     on_particle_open_ = std::move(cb);
   }
 
+  // Sets the callback invoked when the user double-clicks a sound template leaf.
+  // Receives the template name (basename without .sound.yaml extension).
+  void SetOnSoundOpen(std::function<void(const std::string&)> cb) {
+    on_sound_open_ = std::move(cb);
+  }
+
+  // Sets the callback invoked when the user confirms the "New Sound Template"
+  // dialog. Receives the chosen name (without extension).
+  void SetOnNewSound(std::function<void(std::string_view)> cb) {
+    on_new_sound_ = std::move(cb);
+  }
+
   // Renders the resources tree inside the current ImGui tab item.
   void Render();
 
@@ -63,11 +78,20 @@ class ResourcesPanel {
   std::function<void(const game::MeshTemplate*)> on_mesh_edit_;
   // cppcheck-suppress unusedStructMember
   std::function<void(const std::string&)>  on_particle_open_;
+  // cppcheck-suppress unusedStructMember
+  std::function<void(const std::string&)>  on_sound_open_;
+  // cppcheck-suppress unusedStructMember
+  std::function<void(std::string_view)>    on_new_sound_;
 
   // cppcheck-suppress unusedStructMember
   bool show_new_mat_modal_    = false;
   // cppcheck-suppress unusedStructMember
   char new_mat_name_buf_[128] = {};
+
+  // cppcheck-suppress unusedStructMember
+  bool show_new_sound_modal_    = false;
+  // cppcheck-suppress unusedStructMember
+  char new_sound_name_buf_[128] = {};
 };
 
 }  // namespace editor
