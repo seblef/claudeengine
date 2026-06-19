@@ -121,6 +121,18 @@ class EditorToolbar {
   void SetCanOpenGroup(bool b)   { can_open_group_ = b; }
   void SetCanCloseGroup(bool b)  { can_close_group_ = b; }
 
+  // Registers a callback fired when the sound-enable toggle is clicked.
+  // The bool argument is the new enabled state.
+  void SetOnSoundToggle(std::function<void(bool)> cb) {
+    on_sound_toggle_ = std::move(cb);
+  }
+
+  // Sets the current sound-enable state (reflected in the toggle button).
+  void SetSoundEnabled(bool enabled) { sound_enabled_ = enabled; }
+
+  // Returns true when the sound-enable toggle is on.
+  [[nodiscard]] bool IsSoundEnabled() const { return sound_enabled_; }
+
   // Reflects the scene dirty state; the Save button is greyed out when false.
   void SetDirty(bool dirty) { dirty_ = dirty; }
 
@@ -171,6 +183,10 @@ class EditorToolbar {
   bool                  can_open_group_     = false;
   // cppcheck-suppress unusedStructMember
   bool                  can_close_group_    = false;
+  // cppcheck-suppress unusedStructMember
+  std::function<void(bool)> on_sound_toggle_;
+  // cppcheck-suppress unusedStructMember
+  bool                  sound_enabled_      = false;
 };
 
 }  // namespace editor

@@ -32,6 +32,12 @@ class SoundPreviewPlayer {
   // Returns true if the audio backend initialised successfully.
   [[nodiscard]] bool IsReady() const { return is_ready_; }
 
+  // Returns the underlying sound system for sharing with other audio consumers.
+  // Nullptr when the backend failed to initialise.
+  [[nodiscard]] abstract::ISoundSystem* GetSoundSystem() const {
+    return sound_system_.get();
+  }
+
   // Plays sound_name at gain (0–1 range typical). Stops any in-progress
   // preview first. No-op if not ready or the sound cannot be loaded.
   void Play(const std::string& sound_name, float gain);

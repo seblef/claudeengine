@@ -240,6 +240,10 @@ EditorCameraController::CameraState EditorViewport::GetCameraState() const {
   return camera_ctrl_->GetState();
 }
 
+const core::Mat4f& EditorViewport::GetCameraWorldTransform() const {
+  return camera_->GetWorldTransform();
+}
+
 void EditorViewport::SetCameraState(const EditorCameraController::CameraState& state) {
   camera_ctrl_->SetState(state);
 }

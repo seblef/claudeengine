@@ -8,6 +8,8 @@
 #include <vector>
 
 #include "abstract/VideoDevice.h"
+#include "audio/ResourceManager.h"
+#include "audio/SoundManager.h"
 #include "core/Event.h"
 #include "editor/EditorCommand.h"
 #include "editor/EditorCommandHistory.h"
@@ -98,6 +100,14 @@ class EditorWindow {
   // Pastes the clipboard object into the scene with a small position offset.
   // Pushes a PlaceObjectCommand so the paste is undoable.
   void PasteObject();
+
+  // Activates 3D spatial audio for all GameSoundEmitter objects in the scene.
+  // Wires each emitter to the editor sound manager and starts looping playback.
+  void EnableSceneSound();
+
+  // Deactivates 3D spatial audio: stops all running sound instances and
+  // removes the managers from every GameSoundEmitter in the scene.
+  void DisableSceneSound();
 
   // Saves to scene_->GetFilePath(); falls through to SaveAs() when empty.
   void SaveCurrent();
@@ -233,6 +243,14 @@ class EditorWindow {
   // Audio preview player — used by the Sound Emitter properties "Play Once" button.
   // cppcheck-suppress unusedStructMember
   SoundPreviewPlayer                     sound_preview_;
+
+  // Editor-level 3D spatial audio — active when the sound toggle is on.
+  // Shares the ISoundSystem owned by sound_preview_ to avoid multiple OpenAL
+  // contexts (alcMakeContextCurrent is global; two contexts cannot coexist).
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<audio::SoundManager>     editor_sound_manager_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<audio::ResourceManager>  editor_sound_resources_;
 
   // Autosave state — see TickAutosave().
   // cppcheck-suppress unusedStructMember

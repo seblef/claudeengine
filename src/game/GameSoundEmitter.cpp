@@ -47,6 +47,7 @@ GameSoundEmitter::~GameSoundEmitter() {
 }
 
 void GameSoundEmitter::OnAddedToScene() {
+  in_scene_ = true;
   if (!sound_manager_ || !sound_) return;
 
   const core::Mat4f& wt = GetWorldTransform();
@@ -63,9 +64,40 @@ void GameSoundEmitter::OnAddedToScene() {
 }
 
 void GameSoundEmitter::OnRemovedFromScene() {
+  in_scene_ = false;
   if (instance_) {
     instance_->Stop();
     instance_ = nullptr;
+  }
+}
+
+void GameSoundEmitter::SetManagers(audio::SoundManager* sm,
+                                   audio::ResourceManager* rm) {
+  if (instance_) {
+    instance_->Stop();
+    instance_ = nullptr;
+  }
+  if (sound_) {
+    sound_->Release();
+    sound_ = nullptr;
+  }
+
+  sound_manager_    = sm;
+  resource_manager_ = rm;
+
+  if (resource_manager_ && !sound_name_.empty()) {
+    sound_ = resource_manager_->LoadSound(sound_name_);
+    if (!sound_) {
+      LOG_F(WARNING, "GameSoundEmitter::SetManagers: sound '%s' failed to load",
+            sound_name_.c_str());
+    }
+  }
+
+  if (in_scene_ && sound_manager_ && sound_) {
+    const core::Mat4f& wt = GetWorldTransform();
+    const core::Vec3f  pos{wt(0, 3), wt(1, 3), wt(2, 3)};
+    instance_ = sound_manager_->PlaySound(sound_, pos, /*loop=*/true,
+                                          /*priority=*/0, volume_scale_);
   }
 }
 
