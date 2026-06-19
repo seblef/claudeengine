@@ -390,7 +390,7 @@ void PickObjectAt(const EditorToolContext& ctx, ImVec2 mouse_pos,
   float best_se_dist_px = kSoundEmitterPickThresholdPx;
   game::GameObject* best_sound_emitter = nullptr;
 
-  for (game::GameObject* obj : candidates) {
+  for (game::GameObject* obj : ctx.scene->GetObjects()) {
     if (obj->GetType() != game::GameObjectType::kSoundEmitter) continue;
 
     const auto*        emitter = static_cast<const game::GameSoundEmitter*>(obj);
