@@ -41,6 +41,7 @@ const char* ObjectsPanel::IconForType(game::GameObjectType type) {
     case game::GameObjectType::kCamera:        return ICON_FA_CAMERA;
     case game::GameObjectType::kPlayerStart:   return ICON_FA_FLAG;
     case game::GameObjectType::kParticleSystem: return ICON_FA_FIRE;
+    case game::GameObjectType::kSoundEmitter:  return ICON_FA_VOLUME_HIGH;
     default:                                   return ICON_FA_CIRCLE;
   }
 }
@@ -262,7 +263,10 @@ void ObjectsPanel::Render(EditorScene& scene) {
   RenderTypeGroup(ICON_FA_FLAG,      "Player Starts",    game::GameObjectType::kPlayerStart,
                   objects, scene, renaming_obj_, rename_buf_, sizeof(rename_buf_),
                   rename_focus_needed_, history_);
-  RenderTypeGroup(ICON_FA_FIRE,      "Particle Systems", game::GameObjectType::kParticleSystem,
+  RenderTypeGroup(ICON_FA_FIRE,        "Particle Systems", game::GameObjectType::kParticleSystem,
+                  objects, scene, renaming_obj_, rename_buf_, sizeof(rename_buf_),
+                  rename_focus_needed_, history_);
+  RenderTypeGroup(ICON_FA_VOLUME_HIGH, "Sound Emitters",   game::GameObjectType::kSoundEmitter,
                   objects, scene, renaming_obj_, rename_buf_, sizeof(rename_buf_),
                   rename_focus_needed_, history_);
 }

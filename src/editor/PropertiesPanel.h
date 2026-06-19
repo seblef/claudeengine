@@ -13,6 +13,7 @@ class GameObject;
 class GameLight;
 class GameMesh;
 class GameParticleSystem;
+class GameSoundEmitter;
 }  // namespace game
 
 namespace editor {
@@ -58,6 +59,7 @@ class PropertiesPanel {
   void RenderLightProperties(game::GameLight* light);
   void RenderMeshProperties(game::GameMesh* mesh);
   void RenderParticleSystemProperties(const game::GameParticleSystem* ps);
+  static void RenderSoundEmitterProperties(const game::GameSoundEmitter* emitter);
 
   // cppcheck-suppress unusedStructMember
   EditorCommandHistory* history_              = nullptr;
