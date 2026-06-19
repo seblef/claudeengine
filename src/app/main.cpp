@@ -3,6 +3,9 @@
 
 #include "abstract/PrimitiveType.h"
 #include "abstract/VideoDevice.h"
+#include "audio/ResourceManager.h"
+#include "audio/SoundManager.h"
+#include "audio/SoundSystemFactory.h"
 #include "core/AppConfig.h"
 #include "core/Color.h"
 #include "core/Config.h"
@@ -83,6 +86,20 @@ int main(int argc, char* argv[]) {
   new game::GameSystem(&devices);
   game::GameSystem& game = game::GameSystem::Instance();
 
+  // ---- Audio ---------------------------------------------------------------
+  auto sound_system = audio::SoundSystemFactory::Create();
+  std::unique_ptr<audio::SoundManager>    sound_manager;
+  std::unique_ptr<audio::ResourceManager> sound_resources;
+  if (sound_system && sound_system->Initialize()) {
+    sound_manager    = std::make_unique<audio::SoundManager>(sound_system.get());
+    sound_resources  = std::make_unique<audio::ResourceManager>(sound_system.get());
+    game.SetSoundManager(sound_manager.get());
+    LOG_F(INFO, "Audio system initialised");
+  } else {
+    LOG_F(WARNING, "Audio system unavailable — sound emitters will be silent");
+    sound_system.reset();
+  }
+
   // ---- Objects whose lifetime spans the main loop -------------------------
   // Camera + controller for the default (no map / no map camera) path.
   game::GameCamera        camera(core::ProjectionType::kPerspective,
@@ -101,7 +118,8 @@ int main(int argc, char* argv[]) {
 
   // ---- Attempt map load ----------------------------------------------------
   if (!map_path.empty()) {
-    game::MapData map_data = game::MapLoader::Load(map_path, video);
+    game::MapData map_data = game::MapLoader::Load(
+        map_path, video, sound_manager.get(), sound_resources.get());
     if (map_data.name.empty() && map_data.objects.empty()) {
       LOG_F(ERROR, "Failed to load map '%s', falling back to demo scene",
             map_path.c_str());
@@ -303,6 +321,12 @@ int main(int argc, char* argv[]) {
 
   physics::PhysicsSystem::Shutdown();
   game::GameSystem::Shutdown();
+
+  // Destroy SoundManager and ResourceManager before shutting down the backend.
+  sound_resources.reset();
+  sound_manager.reset();
+  if (sound_system) sound_system->Shutdown();
+
   renderer::Renderer::Shutdown();
   core::EventManager::Shutdown();
 
