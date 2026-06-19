@@ -57,6 +57,12 @@ class SoundManager {
                                                 int   priority = 0,
                                                 float gain     = 1.0f);
 
+  // Fires a one-shot sound at world-space position. The instance auto-releases
+  // when the sound plays to its natural end. No handle is returned; use
+  // PlaySound() if early stopping is needed.
+  void PlayOnce(Sound* sound, const core::Vec3f& position,
+                int priority = 0, float gain = 1.0f);
+
   // Updates the listener world-space transform. Extracts listener position for
   // distance culling and forwards the full matrix to ISoundSystem.
   // Call once per frame, before Update().
