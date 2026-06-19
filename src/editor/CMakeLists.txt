@@ -19,6 +19,7 @@ add_library(editor STATIC
     MaterialEditorWindow.cpp
     MeshEditorWindow.cpp
     ParticleEditorWindow.cpp
+    SoundEditorWindow.cpp
     MeshPreview.cpp
     MeshSelectionModal.cpp
     ParticleSystemSelectionModal.cpp

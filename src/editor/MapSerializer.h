@@ -14,6 +14,7 @@
 #include "game/GameObjectVisitor.h"
 #include "game/GameParticleSystem.h"
 #include "game/GamePlayerStart.h"
+#include "game/GameSoundEmitter.h"
 #include "game/GameTerrain.h"
 
 namespace abstract { class VideoDevice; }
@@ -60,6 +61,7 @@ class MapSerializer {
     void Visit(game::GameMesh& mesh)                    override;
     void Visit(game::GameParticleSystem& particle_system) override;
     void Visit(game::GamePlayerStart& player_start)     override;
+    void Visit(game::GameSoundEmitter& sound_emitter)   override;
     // Skipped from the objects sequence — terrain is at root level.
     void Visit(game::GameTerrain& terrain)              override {}
 

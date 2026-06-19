@@ -37,6 +37,7 @@
 #include "editor/MeshEditorWindow.h"
 #include "editor/ObjectGroup.h"
 #include "editor/ParticleEditorWindow.h"
+#include "editor/SoundEditorWindow.h"
 #include "editor/MeshSelectionModal.h"
 #include "editor/ParticleSystemSelectionModal.h"
 #include "editor/ObjectNamingUtils.h"
@@ -104,6 +105,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       mesh_editor_(std::make_unique<MeshEditorWindow>(video,
                                                        material_editor_.get())),
       particle_editor_(std::make_unique<ParticleEditorWindow>(video)),
+      sound_editor_(std::make_unique<SoundEditorWindow>()),
       mesh_modal_(std::make_unique<MeshSelectionModal>()),
       particle_modal_(std::make_unique<ParticleSystemSelectionModal>()),
       properties_panel_(std::make_unique<PropertiesPanel>()),
@@ -138,6 +140,26 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   resources_panel_->SetOnParticleOpen([this](const std::string& name) {
     show_particle_editor_ = true;
     particle_editor_->OpenTemplate(name);
+  });
+  resources_panel_->SetOnSoundOpen([this](const std::string& name) {
+    show_sound_editor_ = true;
+    sound_editor_->OpenTemplate(name);
+  });
+  resources_panel_->SetOnNewSound([this](std::string_view name) {
+    const auto path = core::Config::GetDataFolder() / "sounds" /
+                      (std::string(name) + ".sound.yaml");
+    // Write a default .sound.yaml so the file exists before opening the editor.
+    if (!std::filesystem::exists(path)) {
+      std::ofstream out(path);
+      out << "file: sounds/" << name << ".wav\n"
+          << "loop: false\npriority: 0\nrolloff: inverse\n"
+          << "min_distance: 1.0\nmax_distance: 100.0\n"
+          << "volume: 1.0\npitch: 1.0\n";
+    }
+    show_sound_editor_ = true;
+    sound_editor_->OpenTemplate(std::string(name));
+    LOG_F(INFO, "Created sound template '%.*s'",
+          static_cast<int>(name.size()), name.data());
   });
   properties_panel_->SetOnOpenParticleEditor([this](const std::string& name) {
     show_particle_editor_ = true;
@@ -398,6 +420,12 @@ void EditorWindow::Render() {
         static_cast<float>(ImGui::GetTime()),
         ImGui::GetIO().DeltaTime);
     show_particle_editor_ = particle_editor_->IsOpen();
+  }
+
+  // 8c. Sound editor — floating window, toggled via the Audio menu.
+  if (show_sound_editor_) {
+    sound_editor_->Render();
+    show_sound_editor_ = sound_editor_->IsOpen();
   }
 
   // 9. Map properties panel — toggled via the Map menu.
@@ -679,6 +707,14 @@ void EditorWindow::RenderMenuBar() {
                          show_particle_editor_)) {
       show_particle_editor_ = !show_particle_editor_;
       if (show_particle_editor_) particle_editor_->Open();
+    }
+    ImGui::EndMenu();
+  }
+
+  if (ImGui::BeginMenu("Audio")) {
+    if (ImGui::MenuItem("Sound Editor", nullptr, show_sound_editor_)) {
+      show_sound_editor_ = !show_sound_editor_;
+      if (show_sound_editor_) sound_editor_->Open();
     }
     ImGui::EndMenu();
   }
