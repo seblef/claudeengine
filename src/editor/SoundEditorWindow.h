@@ -75,10 +75,6 @@ class SoundEditorWindow {
   // Currently open file path; empty when the template has never been saved.
   // cppcheck-suppress unusedStructMember
   std::filesystem::path current_path_;
-
-  // Buffer for the file path field (desc_.file).
-  // cppcheck-suppress unusedStructMember
-  char file_buf_[256] = {};
 };
 
 }  // namespace editor

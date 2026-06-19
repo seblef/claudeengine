@@ -1,6 +1,5 @@
 #include "editor/SoundEditorWindow.h"
 
-#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -18,7 +17,8 @@ namespace editor {
 
 namespace {
 
-constexpr const char* kSoundFilter  = "sound.yaml";
+constexpr const char* kSoundFilter   = "sound.yaml";
+constexpr const char* kAudioFilter   = "wav,mp3,flac,ogg,opus";
 constexpr const char* kRolloffNames[] = {"Linear", "Inverse", "Exponential"};
 
 audio::RolloffType ParseRolloff(const std::string& s) {
@@ -73,7 +73,7 @@ void SoundEditorWindow::OpenTemplate(const std::string& name) {
 void SoundEditorWindow::Render() {
   if (!open_) return;
 
-  ImGui::SetNextWindowSize({480.f, 320.f}, ImGuiCond_FirstUseEver);
+  ImGui::SetNextWindowSize({480.f, 300.f}, ImGuiCond_FirstUseEver);
   const std::string title = std::string(ICON_FA_MUSIC) + " Sound Editor";
   if (!ImGui::Begin(title.c_str(), &open_)) {
     ImGui::End();
@@ -104,16 +104,36 @@ void SoundEditorWindow::RenderToolbar() {
 }
 
 void SoundEditorWindow::RenderProperties() {
-  ImGui::PushItemWidth(-160.f);
-
-  // File path — editable text field.
-  if (ImGui::InputText("Audio file", file_buf_, sizeof(file_buf_))) {
-    desc_.file = file_buf_;
-    unsaved_   = true;
+  // Audio file — button showing the current path; click opens a file dialog.
+  {
+    constexpr float kLabelW = 160.f;
+    const float btn_w = ImGui::GetContentRegionAvail().x - kLabelW
+                        - ImGui::GetStyle().ItemSpacing.x;
+    const std::string disp =
+        desc_.file.empty() ? "(none)" : desc_.file;
+    if (ImGui::Button(disp.c_str(), ImVec2(btn_w, 0.f))) {
+      const auto data_dir = core::Config::GetDataFolder();
+      nfdu8char_t* path   = nullptr;
+      const nfdu8filteritem_t filter = {"Audio files", kAudioFilter};
+      const nfdresult_t res =
+          NFD_OpenDialogU8(&path, &filter, 1, data_dir.string().c_str());
+      if (res == NFD_OKAY) {
+        desc_.file = std::filesystem::relative(
+            std::filesystem::path(path), data_dir).generic_string();
+        NFD_FreePathU8(path);
+        unsaved_ = true;
+      } else if (res == NFD_ERROR) {
+        LOG_F(ERROR, "Sound editor: NFD error opening audio file dialog");
+      }
+    }
+    ImGui::SetItemTooltip(
+        "Path to the audio file, relative to the data folder.\n"
+        "Supported formats: .wav, .mp3, .flac, .ogg, .opus");
+    ImGui::SameLine();
+    ImGui::TextUnformatted("Audio file");
   }
-  ImGui::SetItemTooltip(
-      "Path to the audio file, relative to the data folder.\n"
-      "Supported formats: .wav, .mp3, .flac, .ogg, .opus");
+
+  ImGui::PushItemWidth(-160.f);
 
   if (ImGui::Checkbox("Loop", &desc_.loop))         unsaved_ = true;
   ImGui::SetItemTooltip("Loop the sound indefinitely when played.");
@@ -157,10 +177,9 @@ void SoundEditorWindow::RenderProperties() {
 }
 
 void SoundEditorWindow::NewFile() {
-  desc_         = audio::SoundDesc{};
+  desc_ = audio::SoundDesc{};
   current_path_.clear();
-  std::memset(file_buf_, 0, sizeof(file_buf_));
-  unsaved_      = false;
+  unsaved_ = false;
 }
 
 void SoundEditorWindow::LoadFromFile() {
@@ -261,8 +280,6 @@ bool SoundEditorWindow::LoadFromPath(const std::filesystem::path& path) {
     if (root["volume"])       d.volume       = root["volume"].as<float>();
     if (root["pitch"])        d.pitch        = root["pitch"].as<float>();
     desc_ = d;
-    std::strncpy(file_buf_, desc_.file.c_str(), sizeof(file_buf_) - 1);
-    file_buf_[sizeof(file_buf_) - 1] = '\0';
     return true;
   } catch (const std::exception& e) {
     LOG_F(ERROR, "Sound editor: YAML load error from '%s': %s",
