@@ -76,6 +76,14 @@ void GameSoundEmitter::OnWorldTransformUpdated() {
   instance_->SetPosition({wt(0, 3), wt(1, 3), wt(2, 3)});
 }
 
+float GameSoundEmitter::GetMinDistance() const {
+  return sound_ ? sound_->GetDesc().min_distance : 1.0f;
+}
+
+float GameSoundEmitter::GetMaxDistance() const {
+  return sound_ ? sound_->GetDesc().max_distance : 100.0f;
+}
+
 std::unique_ptr<GameObject> GameSoundEmitter::Copy(
     const core::Vec3f& position) const {
   auto clone = std::make_unique<GameSoundEmitter>(

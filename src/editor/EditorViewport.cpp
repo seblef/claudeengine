@@ -15,6 +15,7 @@
 #include "editor/EditorScene.h"
 #include "editor/PickingAccelerator.h"
 #include "editor/PlayerStartGizmos.h"
+#include "editor/SoundEmitterGizmos.h"
 #include "editor/RenderingSettingsPanel.h"
 #include "editor/commands/PlaceObjectCommand.h"
 #include "editor/tools/SelectionTool.h"
@@ -171,8 +172,12 @@ void EditorViewport::Render() {
 
   renderer::WireframeRenderer::Instance().SetHighlightedObject(
       scene_ ? scene_->GetSelectedObject() : nullptr);
-  if (scene_)
+  if (scene_) {
+    const float cam_dist = camera_ctrl_->GetDistance();
     editor::EnqueuePlayerStartGizmos(scene_->GetObjects(), scene_->GetSelectedObject());
+    editor::EnqueueSoundEmitterGizmos(scene_->GetObjects(), scene_->GetSelectedObject(),
+                                      cam_dist);
+  }
   if (wireframe_fbo_ && render_fbo_)
     renderer::WireframeRenderer::Instance().Render(
         *camera_->GetCamera(), wireframe_fbo_.get(), render_fbo_.get());
