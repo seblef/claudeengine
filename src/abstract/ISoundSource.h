@@ -37,6 +37,12 @@ class ISoundSource {
   // 0.5 halves it. Valid range is backend-dependent; OpenAL accepts [0.5, 2.0].
   virtual void SetPitch(float pitch) = 0;
 
+  // When relative is true the source position is interpreted relative to the
+  // listener rather than in world space. Setting position to (0,0,0) with
+  // relative=true produces flat 2D audio with no distance attenuation or
+  // stereo panning — useful for UI sounds and editor preview playback.
+  virtual void SetRelative(bool relative) = 0;
+
   // ---- Playback control ----------------------------------------------------
 
   // Enables or disables looping. When true, the buffer restarts on exhaustion.

@@ -25,6 +25,7 @@ add_library(editor STATIC
     MeshSelectionModal.cpp
     ParticleSystemSelectionModal.cpp
     SoundEmitterSelectionModal.cpp
+    SoundPreviewPlayer.cpp
     ObjectNamingUtils.cpp
     ObjectsPanel.cpp
     PickingAccelerator.cpp
@@ -47,4 +48,4 @@ target_include_directories(editor PUBLIC
     PRIVATE ${tinyexr_SOURCE_DIR}/deps/miniz
 )
 
-target_link_libraries(editor PUBLIC game renderer gldevices core mesh imgui imguizmo nfd)
+target_link_libraries(editor PUBLIC game renderer gldevices audio openal core mesh imgui imguizmo nfd)

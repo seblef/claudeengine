@@ -84,6 +84,34 @@ float GameSoundEmitter::GetMaxDistance() const {
   return sound_ ? sound_->GetDesc().max_distance : 100.0f;
 }
 
+void GameSoundEmitter::SetSoundName(const std::string& name) {
+  if (name == sound_name_) return;
+
+  if (instance_) {
+    instance_->Stop();
+    instance_ = nullptr;
+  }
+  if (sound_) {
+    sound_->Release();
+    sound_ = nullptr;
+  }
+
+  sound_name_ = name;
+
+  if (resource_manager_ && !sound_name_.empty()) {
+    sound_ = resource_manager_->LoadSound(sound_name_);
+    if (!sound_) {
+      LOG_F(WARNING, "GameSoundEmitter: sound '%s' failed to load",
+            sound_name_.c_str());
+    }
+  }
+}
+
+void GameSoundEmitter::SetVolumeScale(float scale) {
+  volume_scale_ = scale;
+  if (instance_) instance_->SetGain(scale);
+}
+
 std::unique_ptr<GameObject> GameSoundEmitter::Copy(
     const core::Vec3f& position) const {
   auto clone = std::make_unique<GameSoundEmitter>(

@@ -5,6 +5,7 @@
 #include <string>
 
 #include "core/Mat4f.h"
+#include "editor/SoundEmitterSelectionModal.h"
 #include "editor/commands/LightPropertyCommand.h"
 #include "physics/PhysicsBodyDesc.h"
 
@@ -46,6 +47,14 @@ class PropertiesPanel {
     on_transform_changed_ = std::move(cb);
   }
 
+  // Sets the callback invoked when the "Play Once" button is pressed on a
+  // selected SoundEmitter. Receives the sound name and volume scale so the
+  // caller can forward them to a SoundPreviewPlayer.
+  void SetOnPlaySoundOnce(
+      std::function<void(const std::string&, float)> cb) {
+    on_play_sound_once_ = std::move(cb);
+  }
+
   // Renders the properties UI inside the current ImGui window.
   // obj may be nullptr (no selection).
   void Render(game::GameObject* obj);
@@ -59,7 +68,7 @@ class PropertiesPanel {
   void RenderLightProperties(game::GameLight* light);
   void RenderMeshProperties(game::GameMesh* mesh);
   void RenderParticleSystemProperties(const game::GameParticleSystem* ps);
-  static void RenderSoundEmitterProperties(const game::GameSoundEmitter* emitter);
+  void RenderSoundEmitterProperties(game::GameSoundEmitter* emitter);
 
   // cppcheck-suppress unusedStructMember
   EditorCommandHistory* history_              = nullptr;
@@ -75,6 +84,10 @@ class PropertiesPanel {
   std::function<void(const std::string&)>  on_open_particle_editor_;
   // cppcheck-suppress unusedStructMember
   std::function<void(game::GameObject*)>   on_transform_changed_;
+  // cppcheck-suppress unusedStructMember
+  std::function<void(const std::string&, float)> on_play_sound_once_;
+  // cppcheck-suppress unusedStructMember
+  SoundEmitterSelectionModal               sound_picker_modal_{"Change Sound"};
 };
 
 }  // namespace editor

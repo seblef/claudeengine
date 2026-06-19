@@ -10,6 +10,9 @@
 
 namespace editor {
 
+SoundEmitterSelectionModal::SoundEmitterSelectionModal(const char* title)
+    : title_(title) {}
+
 void SoundEmitterSelectionModal::Open() {
   entries_.clear();
   selected_ = -1;
@@ -31,11 +34,11 @@ void SoundEmitterSelectionModal::Open() {
 
 std::string SoundEmitterSelectionModal::Render() {
   if (is_open_) {
-    ImGui::OpenPopup("Select Sound Template");
+    ImGui::OpenPopup(title_.c_str());
     is_open_ = false;
   }
 
-  if (!ImGui::BeginPopupModal("Select Sound Template", nullptr,
+  if (!ImGui::BeginPopupModal(title_.c_str(), nullptr,
                               ImGuiWindowFlags_AlwaysAutoResize)) {
     return {};
   }

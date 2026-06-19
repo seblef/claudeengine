@@ -168,6 +168,10 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
     show_particle_editor_ = true;
     particle_editor_->OpenTemplate(name);
   });
+  properties_panel_->SetOnPlaySoundOnce(
+      [this](const std::string& sound_name, float volume_scale) {
+        sound_preview_.Play(sound_name, volume_scale);
+      });
   particle_editor_->SetOnTemplateSaved([this](const std::string& name) {
     particles::ParticleSystemTemplate* tmpl =
         particles::ParticleSystemTemplate::Get(name);
@@ -236,6 +240,7 @@ void EditorWindow::OnEvent(const core::Event& event) {
 
 void EditorWindow::Render() {
   TickAutosave();
+  sound_preview_.Update();
   environment_panel_.Tick(ImGui::GetIO().DeltaTime);
   scene_->Update(static_cast<float>(ImGui::GetTime()), ImGui::GetIO().DeltaTime);
 

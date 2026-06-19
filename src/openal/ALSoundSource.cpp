@@ -38,6 +38,10 @@ void ALSoundSource::SetPitch(float pitch) {
     alSourcef(source_id_, AL_PITCH, pitch);
 }
 
+void ALSoundSource::SetRelative(bool relative) {
+    alSourcei(source_id_, AL_SOURCE_RELATIVE, relative ? AL_TRUE : AL_FALSE);
+}
+
 void ALSoundSource::SetLoop(bool loop) {
     alSourcei(source_id_, AL_LOOPING, loop ? AL_TRUE : AL_FALSE);
 }
