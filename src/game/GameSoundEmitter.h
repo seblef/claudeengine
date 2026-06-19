@@ -60,6 +60,16 @@ class GameSoundEmitter : public GameObject {
   [[nodiscard]] const std::string& GetSoundName()  const { return sound_name_; }
   [[nodiscard]] float              GetVolumeScale() const { return volume_scale_; }
 
+  // Updates the sound asset referenced by this emitter. The running instance
+  // (if any) is stopped and the new sound is loaded on the next
+  // OnAddedToScene() call. Safe to call with null managers (edit-time use).
+  void SetSoundName(const std::string& name);
+
+  // Updates the volume scale. Immediately applies to the live
+  // VirtualSoundInstance when the emitter is in scene, otherwise deferred
+  // until the next OnAddedToScene().
+  void SetVolumeScale(float scale);
+
   // Returns the sound's reference distance (gain == 1 at this range).
   // Falls back to 1.0 when no sound is loaded.
   [[nodiscard]] float GetMinDistance() const;

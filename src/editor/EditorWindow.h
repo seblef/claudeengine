@@ -16,6 +16,7 @@
 #include "editor/RenderingSettingsPanel.h"
 #include "editor/TerrainCreationDialog.h"
 #include "editor/TerrainEditorPanel.h"
+#include "editor/SoundPreviewPlayer.h"
 #include "editor/tools/PlacementTool.h"
 #include "editor/tools/SelectionTool.h"
 #include "editor/tools/TerrainSculptTool.h"
@@ -228,6 +229,10 @@ class EditorWindow {
   // Callback to run after the user resolves the "Unsaved Changes" modal.
   // cppcheck-suppress unusedStructMember
   std::function<void()>                  pending_after_save_;
+
+  // Audio preview player — used by the Sound Emitter properties "Play Once" button.
+  // cppcheck-suppress unusedStructMember
+  SoundPreviewPlayer                     sound_preview_;
 
   // Autosave state — see TickAutosave().
   // cppcheck-suppress unusedStructMember

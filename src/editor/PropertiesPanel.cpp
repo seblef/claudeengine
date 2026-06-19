@@ -128,7 +128,7 @@ void PropertiesPanel::Render(game::GameObject* obj) {
       break;
     case game::GameObjectType::kSoundEmitter:
       RenderSoundEmitterProperties(
-          static_cast<const game::GameSoundEmitter*>(obj));
+          static_cast<game::GameSoundEmitter*>(obj));
       break;
     default:
       break;
@@ -625,12 +625,31 @@ void PropertiesPanel::RenderParticleSystemProperties(
   }
 }
 
-// static
 void PropertiesPanel::RenderSoundEmitterProperties(
-    const game::GameSoundEmitter* emitter) {
+    game::GameSoundEmitter* emitter) {
   ImGui::SeparatorText("Sound Emitter");
-  ImGui::LabelText("Sound", "%s", emitter->GetSoundName().c_str());
-  ImGui::LabelText("Volume scale", "%.2f", emitter->GetVolumeScale());
+
+  // ---- Sound resource picker -----------------------------------------------
+  const std::string& snd = emitter->GetSoundName();
+  ImGui::LabelText("Sound", "%s", snd.empty() ? "(none)" : snd.c_str());
+  if (ImGui::Button("Change...##sound"))
+    sound_picker_modal_.Open();
+
+  if (const std::string picked = sound_picker_modal_.Render(); !picked.empty())
+    emitter->SetSoundName(picked);
+
+  // ---- Volume scale --------------------------------------------------------
+  float vol = emitter->GetVolumeScale();
+  if (ImGui::DragFloat("Volume scale##se", &vol, 0.01f, 0.f, 4.f, "%.2f"))
+    emitter->SetVolumeScale(vol);
+
+  // ---- Preview -------------------------------------------------------------
+  ImGui::Spacing();
+  const bool can_preview = !snd.empty();
+  if (!can_preview) ImGui::BeginDisabled();
+  if (ImGui::Button("Play Once") && on_play_sound_once_)
+    on_play_sound_once_(snd, vol);
+  if (!can_preview) ImGui::EndDisabled();
 }
 
 // static

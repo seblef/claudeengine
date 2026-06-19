@@ -23,6 +23,7 @@ class ALSoundSource : public abstract::ISoundSource {
   void SetVelocity(const core::Vec3f& velocity) override;
   void SetGain(float gain) override;
   void SetPitch(float pitch) override;
+  void SetRelative(bool relative) override;
   void SetLoop(bool loop) override;
   void Play() override;
   void Pause() override;
