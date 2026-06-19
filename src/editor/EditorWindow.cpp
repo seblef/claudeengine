@@ -16,7 +16,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include "abstract/VideoDevice.h"
-#include "audio/SoundSystemFactory.h"
+#include "abstract/ISoundSystem.h"
 #include "core/AppConfig.h"
 #include "core/BBox3.h"
 #include "core/Config.h"
@@ -203,20 +203,16 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
         CreateTerrainFromImport(std::move(s), w, h, mn, mx);
       });
 
-  // Initialise the editor 3D audio system (used by the sound-enable toggle).
-  {
-    auto sys = audio::SoundSystemFactory::Create();
-    if (sys && sys->Initialize()) {
-      editor_sound_system_   = std::move(sys);
-      editor_sound_manager_  =
-          std::make_unique<audio::SoundManager>(editor_sound_system_.get());
-      editor_sound_resources_ =
-          std::make_unique<audio::ResourceManager>(editor_sound_system_.get());
-      LOG_F(INFO, "Editor 3D audio system initialised");
-    } else {
-      LOG_F(WARNING, "Editor 3D audio system unavailable — "
-                     "sound toggle will be a no-op");
-    }
+  // Initialise the editor 3D audio (sound-enable toggle).
+  // Reuse SoundPreviewPlayer's ISoundSystem: OpenAL's alcMakeContextCurrent is
+  // global per-thread, so two concurrent contexts cause sources from one to be
+  // silently ignored when the other's context is current.
+  if (abstract::ISoundSystem* sys = sound_preview_.GetSoundSystem()) {
+    editor_sound_manager_   = std::make_unique<audio::SoundManager>(sys);
+    editor_sound_resources_ = std::make_unique<audio::ResourceManager>(sys);
+    LOG_F(INFO, "Editor 3D audio ready (shared OpenAL context)");
+  } else {
+    LOG_F(WARNING, "Editor 3D audio unavailable — sound toggle will be a no-op");
   }
 
   loguru::add_callback("editor_log", &LogPanel::LogCallback,

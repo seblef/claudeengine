@@ -7,7 +7,6 @@
 #include <string>
 #include <vector>
 
-#include "abstract/ISoundSystem.h"
 #include "abstract/VideoDevice.h"
 #include "audio/ResourceManager.h"
 #include "audio/SoundManager.h"
@@ -246,8 +245,8 @@ class EditorWindow {
   SoundPreviewPlayer                     sound_preview_;
 
   // Editor-level 3D spatial audio — active when the sound toggle is on.
-  // cppcheck-suppress unusedStructMember
-  std::unique_ptr<abstract::ISoundSystem>  editor_sound_system_;
+  // Shares the ISoundSystem owned by sound_preview_ to avoid multiple OpenAL
+  // contexts (alcMakeContextCurrent is global; two contexts cannot coexist).
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<audio::SoundManager>     editor_sound_manager_;
   // cppcheck-suppress unusedStructMember
