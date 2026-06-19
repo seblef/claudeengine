@@ -2,4 +2,4 @@ add_executable(claude_engine
     main.cpp
 )
 
-target_link_libraries(claude_engine PRIVATE core gldevices renderer game)
+target_link_libraries(claude_engine PRIVATE core gldevices renderer game audio openal)
