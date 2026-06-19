@@ -17,6 +17,7 @@
 #include "game/GameMesh.h"
 #include "game/GameObject.h"
 #include "game/GameObjectType.h"
+#include "game/GameSoundEmitter.h"
 #include "game/MeshTemplate.h"
 #include "renderer/CircleSpotLight.h"
 #include "renderer/Light.h"
@@ -197,6 +198,46 @@ float LightPickDistPx(const core::Vec3f& world_pos,
   return best;
 }
 
+// Must match kMinGizmoScale in SoundEmitterGizmos.cpp.
+constexpr float kSoundEmitterMinGizmoScale = 0.04f;
+
+// Returns the minimum screen-space distance (pixels) from cursor to the inner
+// wireframe sphere of a sound emitter (three orthogonal great circles).
+// camera_to_emitter_dist is used to apply the same zoom-adaptive radius clamping
+// as EnqueueSoundEmitterGizmos().
+float SoundEmitterPickDistPx(const core::Vec3f& world_pos,
+                              float min_distance,
+                              float camera_to_emitter_dist,
+                              const core::Mat4f& vp,
+                              ImVec2 image_pos, ImVec2 image_size,
+                              ImVec2 cursor) {
+  constexpr int kSegments = 32;
+  const float r = std::max(min_distance,
+                            camera_to_emitter_dist * kSoundEmitterMinGizmoScale);
+  float best = std::numeric_limits<float>::max();
+
+  auto seg_dist = [&](const core::Vec3f& p0, const core::Vec3f& p1) {
+    const ScreenPt s0 = ProjectToScreen(p0, vp, image_pos, image_size);
+    const ScreenPt s1 = ProjectToScreen(p1, vp, image_pos, image_size);
+    if (!s0.valid || !s1.valid) return;
+    best = std::min(best, ScreenDistToSegment(cursor, s0.pos, s1.pos));
+  };
+
+  auto circle_dist = [&](const core::Vec3f& ax, const core::Vec3f& ay) {
+    for (int i = 0; i < kSegments; ++i) {
+      const float a0 = static_cast<float>(i)     / kSegments * 6.28318530f;
+      const float a1 = static_cast<float>(i + 1) / kSegments * 6.28318530f;
+      seg_dist(world_pos + ax * (std::cos(a0) * r) + ay * (std::sin(a0) * r),
+               world_pos + ax * (std::cos(a1) * r) + ay * (std::sin(a1) * r));
+    }
+  };
+
+  circle_dist(core::Vec3f::kAxisX, core::Vec3f::kAxisY);
+  circle_dist(core::Vec3f::kAxisX, core::Vec3f::kAxisZ);
+  circle_dist(core::Vec3f::kAxisY, core::Vec3f::kAxisZ);
+  return best;
+}
+
 }  // namespace
 
 void PickObjectAt(const EditorToolContext& ctx, ImVec2 mouse_pos,
@@ -344,23 +385,22 @@ void PickObjectAt(const EditorToolContext& ctx, ImVec2 mouse_pos,
 
   if (best_particle) hit = best_particle;
 
-  // Sound-emitter pass: screen-space proximity against world position.
-  constexpr float kSoundEmitterPickThresholdPx = 12.f;
+  // Sound-emitter pass: screen-space proximity against the inner sphere circles.
+  constexpr float kSoundEmitterPickThresholdPx = 8.f;
   float best_se_dist_px = kSoundEmitterPickThresholdPx;
   game::GameObject* best_sound_emitter = nullptr;
 
   for (game::GameObject* obj : candidates) {
     if (obj->GetType() != game::GameObjectType::kSoundEmitter) continue;
 
-    const core::Mat4f& wt  = obj->GetWorldTransform();
+    const auto*        emitter = static_cast<const game::GameSoundEmitter*>(obj);
+    const core::Mat4f& wt      = emitter->GetWorldTransform();
     const core::Vec3f  pos(wt(0, 3), wt(1, 3), wt(2, 3));
 
-    const ScreenPt sp = ProjectToScreen(pos, vp, image_pos, image_size);
-    if (!sp.valid) continue;
-
-    const float dx = sp.pos.x - mouse_pos.x;
-    const float dy = sp.pos.y - mouse_pos.y;
-    const float dist_px = std::sqrt(dx * dx + dy * dy);
+    const float cam_dist = (pos - ray_origin).Length();
+    const float dist_px  = SoundEmitterPickDistPx(pos, emitter->GetMinDistance(),
+                                                   cam_dist, vp,
+                                                   image_pos, image_size, mouse_pos);
     if (dist_px < best_se_dist_px) {
       best_se_dist_px = dist_px;
       best_sound_emitter = obj;
