@@ -60,6 +60,14 @@ class GameSoundEmitter : public GameObject {
   [[nodiscard]] const std::string& GetSoundName()  const { return sound_name_; }
   [[nodiscard]] float              GetVolumeScale() const { return volume_scale_; }
 
+  // Returns the sound's reference distance (gain == 1 at this range).
+  // Falls back to 1.0 when no sound is loaded.
+  [[nodiscard]] float GetMinDistance() const;
+
+  // Returns the sound's maximum attenuation distance (gain falls to 0).
+  // Falls back to 100.0 when no sound is loaded.
+  [[nodiscard]] float GetMaxDistance() const;
+
  private:
   // cppcheck-suppress unusedStructMember
   std::string             sound_name_;

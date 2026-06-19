@@ -9,6 +9,7 @@ add_library(editor STATIC
     EditorSystem.cpp
     EnvironmentEditorPanel.cpp
     PlayerStartGizmos.cpp
+    SoundEmitterGizmos.cpp
     MapPropertiesWindow.cpp
     MapSerializer.cpp
     EditorTheme.cpp
