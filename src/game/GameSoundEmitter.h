@@ -78,6 +78,13 @@ class GameSoundEmitter : public GameObject {
   // Falls back to 100.0 when no sound is loaded.
   [[nodiscard]] float GetMaxDistance() const;
 
+  // Swaps the audio managers. Stops any running instance, releases the current
+  // sound, reloads from the new resource manager, and restarts playback if the
+  // emitter is currently in the scene.
+  // Pass null pointers to silence the emitter without removing it from the scene.
+  void SetManagers(audio::SoundManager* sound_manager,
+                   audio::ResourceManager* resource_manager);
+
  private:
   // cppcheck-suppress unusedStructMember
   std::string             sound_name_;
@@ -92,6 +99,8 @@ class GameSoundEmitter : public GameObject {
   // Non-owning handle; valid between OnAddedToScene() and OnRemovedFromScene().
   // cppcheck-suppress unusedStructMember
   audio::VirtualSoundInstance* instance_ = nullptr;
+  // cppcheck-suppress unusedStructMember
+  bool in_scene_ = false;
 };
 
 }  // namespace game

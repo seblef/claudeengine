@@ -70,6 +70,10 @@ class EditorViewport {
   [[nodiscard]] EditorCameraController::CameraState GetCameraState() const;
   void SetCameraState(const EditorCameraController::CameraState& state);
 
+  // Returns the viewport camera's current world-space transform.
+  // Useful for updating the audio listener each frame.
+  [[nodiscard]] const core::Mat4f& GetCameraWorldTransform() const;
+
   // Adjusts the camera focus and distance so the given bounding box fills the view.
   void FrameObject(const core::BBox3& bbox);
 

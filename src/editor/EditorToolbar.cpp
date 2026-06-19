@@ -224,6 +224,22 @@ void EditorToolbar::Render() {
     ImGui::SetItemTooltip("Select an open group first");
   ImGui::EndDisabled();
 
+  ImGui::SameLine();
+  ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+  ImGui::SameLine();
+
+  // Sound enable/disable toggle.
+  if (sound_enabled_)
+    ImGui::PushStyleColor(ImGuiCol_Button, kActiveColour);
+  if (ImGui::Button(sound_enabled_ ? ICON_FA_VOLUME_HIGH : ICON_FA_VOLUME_XMARK)) {
+    sound_enabled_ = !sound_enabled_;
+    if (on_sound_toggle_) on_sound_toggle_(sound_enabled_);
+  }
+  ImGui::SetItemTooltip(sound_enabled_ ? "Sound enabled (click to disable)"
+                                       : "Sound disabled (click to enable)");
+  if (sound_enabled_)
+    ImGui::PopStyleColor();
+
   ImGui::End();
 }
 

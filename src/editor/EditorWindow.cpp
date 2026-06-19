@@ -16,6 +16,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include "abstract/VideoDevice.h"
+#include "audio/SoundSystemFactory.h"
 #include "core/AppConfig.h"
 #include "core/BBox3.h"
 #include "core/Config.h"
@@ -117,6 +118,10 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       log_panel_(std::make_unique<LogPanel>()) {
   toolbar_->SetCommandHistory(&history_);
   toolbar_->SetOnSave([this]{ SaveCurrent(); });
+  toolbar_->SetOnSoundToggle([this](bool enabled) {
+    if (enabled) EnableSceneSound();
+    else         DisableSceneSound();
+  });
   toolbar_->SetOnCopy([this]{ CopySelectedObject(); });
   toolbar_->SetOnPaste([this]{ PasteObject(); });
   toolbar_->SetOnFallToTerrain([this]{ FallToTerrain(); });
@@ -198,6 +203,22 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
         CreateTerrainFromImport(std::move(s), w, h, mn, mx);
       });
 
+  // Initialise the editor 3D audio system (used by the sound-enable toggle).
+  {
+    auto sys = audio::SoundSystemFactory::Create();
+    if (sys && sys->Initialize()) {
+      editor_sound_system_   = std::move(sys);
+      editor_sound_manager_  =
+          std::make_unique<audio::SoundManager>(editor_sound_system_.get());
+      editor_sound_resources_ =
+          std::make_unique<audio::ResourceManager>(editor_sound_system_.get());
+      LOG_F(INFO, "Editor 3D audio system initialised");
+    } else {
+      LOG_F(WARNING, "Editor 3D audio system unavailable — "
+                     "sound toggle will be a no-op");
+    }
+  }
+
   loguru::add_callback("editor_log", &LogPanel::LogCallback,
                        log_panel_.get(), loguru::Verbosity_INFO);
 
@@ -230,6 +251,9 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
 }
 
 EditorWindow::~EditorWindow() {
+  // Silence and detach all emitters before the scene is destroyed so that
+  // GameSoundEmitter::OnRemovedFromScene() does not use dangling manager pointers.
+  DisableSceneSound();
   SavePhysicsDebugSettings();
   loguru::remove_callback("editor_log");
 }
@@ -241,6 +265,13 @@ void EditorWindow::OnEvent(const core::Event& event) {
 void EditorWindow::Render() {
   TickAutosave();
   sound_preview_.Update();
+
+  if (toolbar_->IsSoundEnabled() && editor_sound_manager_) {
+    editor_sound_manager_->SetListenerTransform(
+        viewport_->GetCameraWorldTransform());
+    editor_sound_manager_->Update(ImGui::GetIO().DeltaTime);
+  }
+
   environment_panel_.Tick(ImGui::GetIO().DeltaTime);
   scene_->Update(static_cast<float>(ImGui::GetTime()), ImGui::GetIO().DeltaTime);
 
@@ -380,9 +411,11 @@ void EditorWindow::Render() {
 
   // Sound emitter selection modal — open when kCreateSoundEmitter activated.
   if (const std::string snd_name = sound_modal_->Render(); !snd_name.empty()) {
-    // null managers: emitter is silent in the editor; audio is active at runtime.
+    const bool use_audio = toolbar_->IsSoundEnabled() && editor_sound_manager_;
     auto emitter = std::make_unique<game::GameSoundEmitter>(
-        snd_name, /*sound_manager=*/nullptr, /*resource_manager=*/nullptr);
+        snd_name,
+        use_audio ? editor_sound_manager_.get()  : nullptr,
+        use_audio ? editor_sound_resources_.get() : nullptr);
     emitter->SetName(GenerateObjectName(*scene_, snd_name));
     placement_tool_ = std::make_unique<PlacementTool>(
         std::move(emitter), 0.f,
@@ -857,6 +890,7 @@ void EditorWindow::LoadMap(const std::filesystem::path& path) {
   WireTerrainPanel();
   environment_panel_.SetContext(scene_.get(), video_);
   scene_dirty_ = false;
+  if (toolbar_->IsSoundEnabled()) EnableSceneSound();
   AddToRecentMaps(path);
   LOG_F(INFO, "Map loaded from '%s'", path.string().c_str());
 }
@@ -1300,6 +1334,30 @@ void EditorWindow::WireTerrainPanel() {
       },
       [this]() { terrain_panel_.OnFoliageEnd(); });
   terrain_panel_.SetSculptTool(sculpt_tool_.get());
+}
+
+void EditorWindow::EnableSceneSound() {
+  if (!editor_sound_manager_ || !editor_sound_resources_) return;
+
+  for (game::GameObject* obj : scene_->GetObjects()) {
+    if (obj->GetType() != game::GameObjectType::kSoundEmitter) continue;
+    auto* emitter = static_cast<game::GameSoundEmitter*>(obj);
+    emitter->SetManagers(editor_sound_manager_.get(),
+                         editor_sound_resources_.get());
+  }
+  LOG_F(INFO, "Editor sound enabled");
+}
+
+void EditorWindow::DisableSceneSound() {
+  if (editor_sound_manager_) editor_sound_manager_->StopAll();
+
+  if (!scene_) return;
+  for (game::GameObject* obj : scene_->GetObjects()) {
+    if (obj->GetType() != game::GameObjectType::kSoundEmitter) continue;
+    auto* emitter = static_cast<game::GameSoundEmitter*>(obj);
+    emitter->SetManagers(nullptr, nullptr);
+  }
+  LOG_F(INFO, "Editor sound disabled");
 }
 
 }  // namespace editor
