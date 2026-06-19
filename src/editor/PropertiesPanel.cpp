@@ -25,6 +25,7 @@
 #include "game/GameObject.h"
 #include "game/GameObjectType.h"
 #include "game/GameParticleSystem.h"
+#include "game/GameSoundEmitter.h"
 #include "game/MeshTemplate.h"
 #include "particles/ParticleSystemTemplate.h"
 #include "physics/CollisionLayer.h"
@@ -124,6 +125,10 @@ void PropertiesPanel::Render(game::GameObject* obj) {
     case game::GameObjectType::kParticleSystem:
       RenderParticleSystemProperties(
           static_cast<const game::GameParticleSystem*>(obj));
+      break;
+    case game::GameObjectType::kSoundEmitter:
+      RenderSoundEmitterProperties(
+          static_cast<const game::GameSoundEmitter*>(obj));
       break;
     default:
       break;
@@ -618,6 +623,14 @@ void PropertiesPanel::RenderParticleSystemProperties(
     if (ImGui::Button("Open in Particle Editor"))
       on_open_particle_editor_(tmpl->GetId());
   }
+}
+
+// static
+void PropertiesPanel::RenderSoundEmitterProperties(
+    const game::GameSoundEmitter* emitter) {
+  ImGui::SeparatorText("Sound Emitter");
+  ImGui::LabelText("Sound", "%s", emitter->GetSoundName().c_str());
+  ImGui::LabelText("Volume scale", "%.2f", emitter->GetVolumeScale());
 }
 
 // static

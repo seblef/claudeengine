@@ -40,6 +40,7 @@
 #include "editor/SoundEditorWindow.h"
 #include "editor/MeshSelectionModal.h"
 #include "editor/ParticleSystemSelectionModal.h"
+#include "editor/SoundEmitterSelectionModal.h"
 #include "editor/ObjectNamingUtils.h"
 #include "editor/ObjectsPanel.h"
 #include "editor/PropertiesPanel.h"
@@ -51,6 +52,7 @@
 #include "game/GameObjectType.h"
 #include "game/GameParticleSystem.h"
 #include "game/GamePlayerStart.h"
+#include "game/GameSoundEmitter.h"
 #include "game/GameTerrain.h"
 #include "game/MeshTemplate.h"
 #include "particles/ParticleSystemTemplate.h"
@@ -108,6 +110,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       sound_editor_(std::make_unique<SoundEditorWindow>()),
       mesh_modal_(std::make_unique<MeshSelectionModal>()),
       particle_modal_(std::make_unique<ParticleSystemSelectionModal>()),
+      sound_modal_(std::make_unique<SoundEmitterSelectionModal>()),
       properties_panel_(std::make_unique<PropertiesPanel>()),
       resources_panel_(std::make_unique<ResourcesPanel>()),
       objects_panel_(std::make_unique<ObjectsPanel>()),
@@ -249,7 +252,8 @@ void EditorWindow::Render() {
     const bool can_copy = std::any_of(sel.begin(), sel.end(),
         [](const game::GameObject* o) {
           return o->GetType() == game::GameObjectType::kMesh ||
-                 o->GetType() == game::GameObjectType::kLight;
+                 o->GetType() == game::GameObjectType::kLight ||
+                 o->GetType() == game::GameObjectType::kSoundEmitter;
         });
     toolbar_->SetCanCopy(can_copy);
     toolbar_->SetCanPaste(!clipboard_.empty());
@@ -330,6 +334,8 @@ void EditorWindow::Render() {
         LOG_F(INFO, "Player start creation tool activated, click viewport to place");
       } else if (active_tool == EditorTool::kCreateParticleSystem) {
         particle_modal_->Open();
+      } else if (active_tool == EditorTool::kCreateSoundEmitter) {
+        sound_modal_->Open();
       }
     }
   }
@@ -365,6 +371,21 @@ void EditorWindow::Render() {
     }
     LOG_F(INFO, "Particle system '%s' selected, click viewport to place",
           ps_name.c_str());
+  }
+
+  // Sound emitter selection modal — open when kCreateSoundEmitter activated.
+  if (const std::string snd_name = sound_modal_->Render(); !snd_name.empty()) {
+    // null managers: emitter is silent in the editor; audio is active at runtime.
+    auto emitter = std::make_unique<game::GameSoundEmitter>(
+        snd_name, /*sound_manager=*/nullptr, /*resource_manager=*/nullptr);
+    emitter->SetName(GenerateObjectName(*scene_, snd_name));
+    placement_tool_ = std::make_unique<PlacementTool>(
+        std::move(emitter), 0.f,
+        ImGuiMouseCursor_ResizeAll,
+        [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
+    viewport_->SetActiveTool(placement_tool_.get());
+    LOG_F(INFO, "Sound emitter '%s' selected, click viewport to place",
+          snd_name.c_str());
   }
 
   // 4. Viewport panel.

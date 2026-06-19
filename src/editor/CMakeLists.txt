@@ -23,6 +23,7 @@ add_library(editor STATIC
     MeshPreview.cpp
     MeshSelectionModal.cpp
     ParticleSystemSelectionModal.cpp
+    SoundEmitterSelectionModal.cpp
     ObjectNamingUtils.cpp
     ObjectsPanel.cpp
     PickingAccelerator.cpp
