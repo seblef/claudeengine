@@ -344,6 +344,31 @@ void PickObjectAt(const EditorToolContext& ctx, ImVec2 mouse_pos,
 
   if (best_particle) hit = best_particle;
 
+  // Sound-emitter pass: screen-space proximity against world position.
+  constexpr float kSoundEmitterPickThresholdPx = 12.f;
+  float best_se_dist_px = kSoundEmitterPickThresholdPx;
+  game::GameObject* best_sound_emitter = nullptr;
+
+  for (game::GameObject* obj : candidates) {
+    if (obj->GetType() != game::GameObjectType::kSoundEmitter) continue;
+
+    const core::Mat4f& wt  = obj->GetWorldTransform();
+    const core::Vec3f  pos(wt(0, 3), wt(1, 3), wt(2, 3));
+
+    const ScreenPt sp = ProjectToScreen(pos, vp, image_pos, image_size);
+    if (!sp.valid) continue;
+
+    const float dx = sp.pos.x - mouse_pos.x;
+    const float dy = sp.pos.y - mouse_pos.y;
+    const float dist_px = std::sqrt(dx * dx + dy * dy);
+    if (dist_px < best_se_dist_px) {
+      best_se_dist_px = dist_px;
+      best_sound_emitter = obj;
+    }
+  }
+
+  if (best_sound_emitter) hit = best_sound_emitter;
+
   if (ctrl_held) {
     // Ctrl-click: toggle the hit in/out of the current selection.
     if (hit) {

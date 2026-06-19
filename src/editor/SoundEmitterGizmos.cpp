@@ -47,7 +47,8 @@ void EnqueueSoundEmitterGizmos(const std::vector<game::GameObject*>& objects,
                                    std::max(r_inner * 1.5f, 2.f * min_vis));
 
     wr.PushOverlaySphere(r_inner, color, t);
-    wr.PushOverlaySphere(r_outer, color, t);
+    if (selected_key == obj)
+      wr.PushOverlaySphere(r_outer, color, t);
   }
 }
 
