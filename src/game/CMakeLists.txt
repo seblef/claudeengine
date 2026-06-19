@@ -8,6 +8,7 @@ add_library(game STATIC
     GameParticleSystem.cpp
     GamePlayerStart.cpp
     GameSoundEmitter.cpp
+    SoundEffectComponent.cpp
     GameSystem.cpp
     GameTerrain.cpp
     MapLoader.cpp

@@ -30,6 +30,11 @@ VirtualSoundInstance* SoundManager::PlaySound(Sound* sound,
     return instances_.back().get();
 }
 
+void SoundManager::PlayOnce(Sound* sound, const core::Vec3f& position,
+                             int priority, float gain) {
+  (void)PlaySound(sound, position, /*loop=*/false, priority, gain);
+}
+
 void SoundManager::SetListenerTransform(const core::Mat4f& transform) {
     // Row-major matrix: translation lives in column 3 — m(row, 3) = data[row*4+3].
     listener_pos_ = {transform(0, 3), transform(1, 3), transform(2, 3)};

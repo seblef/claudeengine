@@ -79,10 +79,16 @@ audio::SoundManager mgr(sound_system, 32);  // 32 hardware sources
 mgr.SetListenerTransform(camera_matrix);    // must be called before Update()
 mgr.Update(dt);
 
-// Spawn a one-shot:
+// Fire-and-forget one-shot (footstep, explosion, UI event) — preferred for
+// sounds that need no further control after firing:
 Sound* s = resources.LoadSound("explosion");
-VirtualSoundInstance* h = mgr.PlaySound(s, emitter_pos);
+mgr.PlayOnce(s, emitter_pos);               // auto-releases on completion
+mgr.PlayOnce(s, emitter_pos, /*priority=*/2, /*gain=*/0.8f);
 s->Release();  // SoundManager holds its own ref
+
+// One-shot with a handle (use when early stopping is needed):
+VirtualSoundInstance* h = mgr.PlaySound(s, emitter_pos);
+s->Release();
 
 // Looping ambient emitter:
 VirtualSoundInstance* h = mgr.PlaySound(s, pos, /*loop=*/true, /*priority=*/1);
@@ -93,6 +99,8 @@ h->SetPosition(new_pos);
 // Stop early:
 h->Stop();  // handle is invalid after next mgr.Update()
 ```
+
+**`PlayOnce` vs `PlaySound`**: use `PlayOnce` when the caller does not need to stop or reposition the sound after firing. It returns `void` to prevent accidental handle capture. Use `PlaySound` when you need a `VirtualSoundInstance*` handle (looping emitters, sounds that must be stoppable mid-play).
 
 ## Key invariants
 
