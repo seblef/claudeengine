@@ -1,0 +1,8 @@
+file: sounds/crickets01.mp3
+loop: true
+priority: 0
+rolloff: inverse
+min_distance: 0.100000001
+max_distance: 10
+volume: 1
+pitch: 1
