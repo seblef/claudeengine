@@ -1,11 +1,14 @@
 #include "game/GamePivot.h"
 
+#include "core/BBox3.h"
+#include "core/Vec3f.h"
 #include "game/GameObjectVisitor.h"
 
 namespace game {
 
 GamePivot::GamePivot()
-    : GameObject(GameObjectType::kPivot, core::BBox3{}) {}
+    : GameObject(GameObjectType::kPivot,
+                 core::BBox3(core::Vec3f::kZero, core::Vec3f::kZero)) {}
 
 void GamePivot::Accept(GameObjectVisitor& visitor) {
   visitor.Visit(*this);

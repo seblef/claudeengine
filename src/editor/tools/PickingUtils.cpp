@@ -360,6 +360,31 @@ void PickObjectAt(const EditorToolContext& ctx, ImVec2 mouse_pos,
 
   if (best_ps) hit = best_ps;
 
+  // Pivot pass: screen-space proximity against world origin.
+  constexpr float kPivotPickThresholdPx = 12.f;
+  float best_pivot_dist_px = kPivotPickThresholdPx;
+  game::GameObject* best_pivot = nullptr;
+
+  for (game::GameObject* obj : ctx.scene->GetObjects()) {
+    if (obj->GetType() != game::GameObjectType::kPivot) continue;
+
+    const core::Mat4f& wt  = obj->GetWorldTransform();
+    const core::Vec3f  pos(wt(0, 3), wt(1, 3), wt(2, 3));
+
+    const ScreenPt sp = ProjectToScreen(pos, vp, image_pos, image_size);
+    if (!sp.valid) continue;
+
+    const float dx = sp.pos.x - mouse_pos.x;
+    const float dy = sp.pos.y - mouse_pos.y;
+    const float dist_px = std::sqrt(dx * dx + dy * dy);
+    if (dist_px < best_pivot_dist_px) {
+      best_pivot_dist_px = dist_px;
+      best_pivot = obj;
+    }
+  }
+
+  if (best_pivot) hit = best_pivot;
+
   // Particle-system pass: screen-space proximity against world position.
   constexpr float kParticlePickThresholdPx = 12.f;
   float best_ps2_dist_px = kParticlePickThresholdPx;
