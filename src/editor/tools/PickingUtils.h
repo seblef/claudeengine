@@ -2,6 +2,8 @@
 
 #include <imgui.h>
 
+namespace game { class GameObject; }
+
 namespace editor {
 
 struct EditorToolContext;
@@ -16,9 +18,20 @@ struct EditorToolContext;
 void PickObjectAt(const EditorToolContext& ctx, ImVec2 mouse_pos,
                   ImVec2 image_pos, ImVec2 image_size, bool ctrl_held = false);
 
+// Same ray-cast as PickObjectAt() but returns the nearest hit object without
+// modifying the scene selection. Returns nullptr on a miss.
+game::GameObject* PickHitAt(const EditorToolContext& ctx, ImVec2 mouse_pos,
+                             ImVec2 image_pos, ImVec2 image_size);
+
 // Draws orange wireframe bounding boxes around all selected objects.
 // dl must be a valid ImDrawList. No-op when nothing is selected.
 void DrawSelectedBBox(const EditorToolContext& ctx, ImDrawList* dl,
                       ImVec2 image_pos, ImVec2 image_size);
+
+// Draws a semi-transparent white wireframe bounding box around obj for hover
+// feedback. dl must be a valid ImDrawList. obj must not be nullptr.
+void DrawHoverBBox(const EditorToolContext& ctx, ImDrawList* dl,
+                   ImVec2 image_pos, ImVec2 image_size,
+                   const game::GameObject* obj);
 
 }  // namespace editor
