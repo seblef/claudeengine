@@ -1,5 +1,6 @@
 add_library(ui STATIC
     FontAtlas.cpp
+    UIRenderer.cpp
     UISprite.cpp
     UIText.cpp
 )
