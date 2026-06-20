@@ -52,6 +52,7 @@
 #include "game/GameMesh.h"
 #include "game/GameObjectType.h"
 #include "game/GameParticleSystem.h"
+#include "game/GamePivot.h"
 #include "game/GamePlayerStart.h"
 #include "game/GameSoundEmitter.h"
 #include "game/GameTerrain.h"
@@ -366,6 +367,15 @@ void EditorWindow::Render() {
             [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
         viewport_->SetActiveTool(placement_tool_.get());
         LOG_F(INFO, "Light creation tool activated, click viewport to place");
+      } else if (active_tool == EditorTool::kCreatePivot) {
+        auto pivot = std::make_unique<game::GamePivot>();
+        pivot->SetName(GenerateObjectName(*scene_, "pivot"));
+        placement_tool_ = std::make_unique<PlacementTool>(
+            std::move(pivot), 0.f,
+            ImGuiMouseCursor_ResizeAll,
+            [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
+        viewport_->SetActiveTool(placement_tool_.get());
+        LOG_F(INFO, "Pivot creation tool activated, click viewport to place");
       } else if (active_tool == EditorTool::kCreatePlayerStart) {
         auto ps = std::make_unique<game::GamePlayerStart>();
         ps->SetName(GenerateObjectName(*scene_, "player_start"));

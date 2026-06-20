@@ -15,13 +15,16 @@ namespace {
 
 // Returns true for objects eligible for picking acceleration.
 // GlobalLight is excluded: it has no meaningful world position/bbox.
+// GamePivot has a valid point bbox (min == max == world origin) and is included
+// so the grid tracks its position for broad-phase picking.
 bool IsPickable(const game::GameObject* obj) {
   if (obj->GetType() == game::GameObjectType::kLight) {
     const auto* gl = static_cast<const game::GameLight*>(obj);
     const renderer::Light* light = gl->GetLight();
     return light && light->GetType() != renderer::LightType::kGlobal;
   }
-  return obj->GetType() == game::GameObjectType::kMesh;
+  return obj->GetType() == game::GameObjectType::kMesh ||
+         obj->GetType() == game::GameObjectType::kPivot;
 }
 
 }  // namespace

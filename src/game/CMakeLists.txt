@@ -6,6 +6,7 @@ add_library(game STATIC
     GameMaterial.cpp
     GameMesh.cpp
     GameParticleSystem.cpp
+    GamePivot.cpp
     GamePlayerStart.cpp
     GameSoundEmitter.cpp
     SoundEffectComponent.cpp

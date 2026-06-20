@@ -8,6 +8,7 @@ add_library(editor STATIC
     EditorScene.cpp
     EditorSystem.cpp
     EnvironmentEditorPanel.cpp
+    PivotGizmos.cpp
     PlayerStartGizmos.cpp
     SoundEmitterGizmos.cpp
     MapPropertiesWindow.cpp
