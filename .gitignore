@@ -37,6 +37,7 @@ external/glm-src/
 external/glm-subbuild/
 external/bc7enc-src/
 external/bc7enc-subbuild/
+external/bc7enc-build/
 external/joltphysics-build/
 external/joltphysics-src/
 external/joltphysics-subbuild/
