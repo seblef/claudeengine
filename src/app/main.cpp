@@ -14,6 +14,7 @@
 #include "core/EventType.h"
 #include "core/Key.h"
 #include "core/Logger.h"
+#include "core/Profiler.h"
 #include "core/Mat4f.h"
 #include "core/ProjectionType.h"
 #include "core/Vec3f.h"
@@ -53,6 +54,8 @@
 int main(int argc, char* argv[]) {
   core::Logger::Init(argc, argv);
   core::Config::Init(argc, argv);
+  if (core::Config::IsProfilingEnabled())
+    new core::Profiler(core::Config::GetProfileInterval());
   LOG_F(INFO, "ClaudeEngine starting up");
   LOG_F(INFO, "Data folder: %s", core::Config::GetDataFolder().c_str());
   core::AppConfig::Init(core::Config::GetDataFolder() / "config.yaml");
@@ -300,6 +303,8 @@ int main(int argc, char* argv[]) {
     if (physics_debug_enabled)
       physics::PhysicsSystem::Instance().DrawDebug({.drawShapes = true});
     game.Update();
+    if (core::Profiler::IsInstanced())
+      core::Profiler::Instance().MarkFrame();
   }
 
   if (environment::SkyRenderer::IsInstanced()) {
@@ -329,6 +334,9 @@ int main(int argc, char* argv[]) {
 
   renderer::Renderer::Shutdown();
   core::EventManager::Shutdown();
+
+  if (core::Profiler::IsInstanced())
+    core::Profiler::Shutdown();
 
   LOG_F(INFO, "ClaudeEngine shutting down");
   core::Logger::Shutdown();
