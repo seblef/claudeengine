@@ -16,8 +16,13 @@ GameSystem::GameSystem(abstract::Devices* devices)
     : devices_(devices),
       prev_time_(std::chrono::steady_clock::now()),
       particle_renderer_(std::make_unique<particles::ParticleRenderer>(
-          devices->GetVideoDevice())) {
+          devices->GetVideoDevice())),
+      hud_screen_(std::make_unique<ui::HUDScreen>()),
+      loading_screen_(std::make_unique<ui::LoadingScreen>()) {
   renderer::Renderer::Instance().SetParticleRenderer(particle_renderer_.get());
+  abstract::VideoDevice* video = devices->GetVideoDevice();
+  hud_screen_->Build(video);
+  loading_screen_->Build(video);
 }
 
 void GameSystem::Update() {

@@ -12,6 +12,8 @@
 #include "game/GameObject.h"
 #include "game/ICameraController.h"
 #include "particles/ParticleRenderer.h"
+#include "ui/HUDScreen.h"
+#include "ui/LoadingScreen.h"
 
 namespace audio { class SoundManager; }
 
@@ -76,6 +78,14 @@ class GameSystem : public core::Singleton<GameSystem> {
   // automatically from Update(). Pass nullptr to detach.
   void SetSoundManager(audio::SoundManager* sound_manager);
 
+  // Returns the in-game HUD overlay (crosshair, health, ammo).
+  // Build() has already been called; call Show()/Hide() as needed.
+  [[nodiscard]] ui::HUDScreen*     GetHUDScreen()     const { return hud_screen_.get(); }
+
+  // Returns the level-transition loading overlay (black background, progress bar).
+  // Build() has already been called; call Show()/Hide() as needed.
+  [[nodiscard]] ui::LoadingScreen* GetLoadingScreen() const { return loading_screen_.get(); }
+
  private:
   // cppcheck-suppress unusedStructMember
   abstract::Devices*  devices_;
@@ -96,6 +106,10 @@ class GameSystem : public core::Singleton<GameSystem> {
   std::unique_ptr<particles::ParticleRenderer> particle_renderer_;
   // cppcheck-suppress unusedStructMember
   audio::SoundManager* sound_manager_ = nullptr;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<ui::HUDScreen>     hud_screen_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<ui::LoadingScreen> loading_screen_;
 };
 
 }  // namespace game
