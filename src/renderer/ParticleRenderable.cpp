@@ -48,7 +48,7 @@ void ParticleRenderable::Enqueue() {
       Renderer::Instance().GetParticleRenderer();
   if (pr) pr->EnqueueEmitter(emitter_);
 
-  if (WireframeRenderer::Instance().AreGizmosEnabled()) {
+  if (WireframeRenderer::Instance().AreParticleGizmosEnabled()) {
     const auto& desc = emitter_->GetDesc();
     const float radius = (desc.emitter_shape == particles::EmitterShape::kPoint)
                          ? kDefaultRadius : desc.emitter_radius;

@@ -28,7 +28,7 @@ Light::Light(LightType type, const core::Color& color, float intensity,
 
 void Light::Enqueue() {
   LightRenderer::Instance().AddLight(this);
-  if (WireframeRenderer::Instance().AreGizmosEnabled() && type_ != LightType::kGlobal) {
+  if (WireframeRenderer::Instance().AreLightGizmosEnabled() && type_ != LightType::kGlobal) {
     const core::Color color = WireframeRenderer::Instance().IsHighlighted(gizmo_key_)
                               ? kHighlightBlue : color_;
     EnqueueWireframe(color);

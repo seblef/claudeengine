@@ -5,6 +5,13 @@
 namespace editor {
 
 void RenderingSettingsPanel::Render() {
+  if (ImGui::CollapsingHeader("Overlay")) {
+    ImGui::Checkbox("Lights",         &overlay_lights_);
+    ImGui::Checkbox("Sounds",         &overlay_sounds_);
+    ImGui::Checkbox("Particle systems", &overlay_particles_);
+    ImGui::Checkbox("Player starts",  &overlay_player_starts_);
+  }
+
   if (ImGui::CollapsingHeader("Physics Debug Draw")) {
     ImGui::Checkbox("Shapes", &physics_debug_shapes_);
 

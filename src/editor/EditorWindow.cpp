@@ -243,6 +243,16 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
               RenderingSettingsPanel::PhysicsDebugBodyMode::kAllBodies);
       }
     }
+    if (auto ov = editor["overlay"]) {
+      if (auto v = ov["lights"])
+        rendering_settings_panel_.SetOverlayLightsEnabled(v.as<bool>());
+      if (auto v = ov["sounds"])
+        rendering_settings_panel_.SetOverlaySoundsEnabled(v.as<bool>());
+      if (auto v = ov["particles"])
+        rendering_settings_panel_.SetOverlayParticlesEnabled(v.as<bool>());
+      if (auto v = ov["player_starts"])
+        rendering_settings_panel_.SetOverlayPlayerStartsEnabled(v.as<bool>());
+    }
   }
 }
 
@@ -251,6 +261,7 @@ EditorWindow::~EditorWindow() {
   // GameSoundEmitter::OnRemovedFromScene() does not use dangling manager pointers.
   DisableSceneSound();
   SavePhysicsDebugSettings();
+  SaveOverlaySettings();
   loguru::remove_callback("editor_log");
 }
 
@@ -934,6 +945,26 @@ void EditorWindow::SavePhysicsDebugSettings() {
       (rendering_settings_panel_.GetPhysicsDebugBodyMode() ==
        RenderingSettingsPanel::PhysicsDebugBodyMode::kAllBodies)
           ? "all_bodies" : "selected_only";
+
+  std::ofstream out(config_path);
+  out << root;
+}
+
+void EditorWindow::SaveOverlaySettings() {
+  const auto config_path = core::Config::GetDataFolder() / "config.yaml";
+  YAML::Node root;
+  try {
+    root = core::LoadYamlFile(config_path);
+  } catch (...) {}
+
+  root["editor"]["overlay"]["lights"] =
+      rendering_settings_panel_.IsOverlayLightsEnabled();
+  root["editor"]["overlay"]["sounds"] =
+      rendering_settings_panel_.IsOverlaySoundsEnabled();
+  root["editor"]["overlay"]["particles"] =
+      rendering_settings_panel_.IsOverlayParticlesEnabled();
+  root["editor"]["overlay"]["player_starts"] =
+      rendering_settings_panel_.IsOverlayPlayerStartsEnabled();
 
   std::ofstream out(config_path);
   out << root;

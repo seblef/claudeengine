@@ -42,6 +42,18 @@ class RenderingSettingsPanel {
   void SetPhysicsDebugContactPointsEnabled(bool v)      { physics_debug_contact_points_ = v; }
   void SetPhysicsDebugBroadPhaseEnabled(bool v)         { physics_debug_broadphase_    = v; }
 
+  // ---- Overlay gizmo visibility -----------------------------------------------
+
+  [[nodiscard]] bool IsOverlayLightsEnabled()         const { return overlay_lights_;    }
+  [[nodiscard]] bool IsOverlaySoundsEnabled()         const { return overlay_sounds_;    }
+  [[nodiscard]] bool IsOverlayParticlesEnabled()      const { return overlay_particles_; }
+  [[nodiscard]] bool IsOverlayPlayerStartsEnabled()   const { return overlay_player_starts_; }
+
+  void SetOverlayLightsEnabled(bool v)       { overlay_lights_        = v; }
+  void SetOverlaySoundsEnabled(bool v)       { overlay_sounds_        = v; }
+  void SetOverlayParticlesEnabled(bool v)    { overlay_particles_     = v; }
+  void SetOverlayPlayerStartsEnabled(bool v) { overlay_player_starts_ = v; }
+
  private:
   // Physics debug draw settings (passed to PhysicsSystem::DrawDebug each frame).
   // cppcheck-suppress unusedStructMember
@@ -54,6 +66,16 @@ class RenderingSettingsPanel {
   bool physics_debug_contact_points_ = false;
   // cppcheck-suppress unusedStructMember
   bool physics_debug_broadphase_     = false;
+
+  // Overlay wireframe gizmo visibility (one flag per object type).
+  // cppcheck-suppress unusedStructMember
+  bool overlay_lights_        = true;
+  // cppcheck-suppress unusedStructMember
+  bool overlay_sounds_        = true;
+  // cppcheck-suppress unusedStructMember
+  bool overlay_particles_     = true;
+  // cppcheck-suppress unusedStructMember
+  bool overlay_player_starts_ = true;
 };
 
 }  // namespace editor
