@@ -61,7 +61,7 @@ void GameMesh::ClearPhysicsDesc() {
 }
 
 void GameMesh::OnBodyTransformUpdated(const core::Mat4f& transform) {
-  SetWorldTransform(transform);
+  SetWorldTransformPhysics(transform);
 }
 
 MeshTemplate* GameMesh::GetTemplate() const {
