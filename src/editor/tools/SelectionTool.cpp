@@ -24,8 +24,10 @@ void SelectionTool::OnActivate(const EditorToolContext& ctx) {
 }
 
 void SelectionTool::OnDeactivate() {
-  scene_   = nullptr;
-  history_ = nullptr;
+  scene_              = nullptr;
+  history_            = nullptr;
+  hovered_object_     = nullptr;
+  last_hover_mouse_pos_ = {-1.f, -1.f};
 }
 
 void SelectionTool::OnEvent(const core::Event& event) {
@@ -63,6 +65,24 @@ void SelectionTool::OnRender(const EditorToolContext& ctx,
     PickObjectAt(ctx, ImGui::GetMousePos(), image_pos, image_size,
                  ImGui::GetIO().KeyCtrl);
   }
+
+  // Hover bbox: white semi-transparent wireframe around the object under the
+  // cursor, only when it is not already selected. Ray cast is skipped when the
+  // mouse has not moved since the last frame.
+  const ImVec2 mouse_pos = ImGui::GetMousePos();
+  const bool hoverable = ImGui::IsWindowHovered() &&
+                         !ImGuizmo::IsOver() &&
+                         !ImGuizmo::IsUsing();
+  if (!hoverable) {
+    hovered_object_ = nullptr;
+  } else if (mouse_pos.x != last_hover_mouse_pos_.x ||
+             mouse_pos.y != last_hover_mouse_pos_.y) {
+    last_hover_mouse_pos_ = mouse_pos;
+    hovered_object_ = PickHitAt(ctx, mouse_pos, image_pos, image_size);
+  }
+  if (hovered_object_ && !ctx.scene->IsSelected(hovered_object_))
+    DrawHoverBBox(ctx, ImGui::GetWindowDrawList(), image_pos, image_size,
+                  hovered_object_);
 
   // Orange wireframe bounding boxes for all selected objects.
   if (!ctx.scene->GetSelection().empty())

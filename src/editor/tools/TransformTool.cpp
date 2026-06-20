@@ -27,9 +27,33 @@ namespace editor {
 
 TransformTool::TransformTool(ImGuizmo::OPERATION op) : op_(op) {}
 
+void TransformTool::OnDeactivate() {
+  hovered_object_       = nullptr;
+  last_hover_mouse_pos_ = {-1.f, -1.f};
+}
+
 void TransformTool::OnRender(const EditorToolContext& ctx,
                               ImVec2 image_pos, ImVec2 image_size) {
   if (!ctx.scene || !ctx.camera) return;
+
+  // Hover bbox: white semi-transparent wireframe around the object under the
+  // cursor, only when it is not already selected. Ray cast is skipped when the
+  // gizmo is active or the mouse has not moved since the last frame. Runs
+  // unconditionally so it is also visible with an empty selection.
+  const ImVec2 mouse_pos = ImGui::GetMousePos();
+  const bool hoverable = ImGui::IsWindowHovered() &&
+                         !ImGuizmo::IsOver() &&
+                         !ImGuizmo::IsUsing();
+  if (!hoverable) {
+    hovered_object_ = nullptr;
+  } else if (mouse_pos.x != last_hover_mouse_pos_.x ||
+             mouse_pos.y != last_hover_mouse_pos_.y) {
+    last_hover_mouse_pos_ = mouse_pos;
+    hovered_object_ = PickHitAt(ctx, mouse_pos, image_pos, image_size);
+  }
+  if (hovered_object_ && !ctx.scene->IsSelected(hovered_object_))
+    DrawHoverBBox(ctx, ImGui::GetWindowDrawList(), image_pos, image_size,
+                  hovered_object_);
 
   const std::vector<game::GameObject*>& selection = ctx.scene->GetSelection();
   if (selection.empty()) {

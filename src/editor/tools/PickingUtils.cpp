@@ -240,8 +240,8 @@ float SoundEmitterPickDistPx(const core::Vec3f& world_pos,
 
 }  // namespace
 
-void PickObjectAt(const EditorToolContext& ctx, ImVec2 mouse_pos,
-                  ImVec2 image_pos, ImVec2 image_size, bool ctrl_held) {
+game::GameObject* PickHitAt(const EditorToolContext& ctx, ImVec2 mouse_pos,
+                             ImVec2 image_pos, ImVec2 image_size) {
   // Normalised device coordinates: x in [-1,1], y in [-1,1] (Y flipped).
   const float ndc_x = (mouse_pos.x - image_pos.x) / image_size.x * 2.f - 1.f;
   const float ndc_y = 1.f - (mouse_pos.y - image_pos.y) / image_size.y * 2.f;
@@ -254,7 +254,7 @@ void PickObjectAt(const EditorToolContext& ctx, ImVec2 mouse_pos,
 
   const core::Vec4f clip(ndc_x, ndc_y, -1.f, 1.f);
   const core::Vec4f world4 = clip * vp_inv;
-  if (std::abs(world4.w) < 1e-6f) return;
+  if (std::abs(world4.w) < 1e-6f) return nullptr;
   const core::Vec3f world3(world4.x / world4.w,
                            world4.y / world4.w,
                            world4.z / world4.w);
@@ -434,6 +434,13 @@ void PickObjectAt(const EditorToolContext& ctx, ImVec2 mouse_pos,
 
   if (best_sound_emitter) hit = best_sound_emitter;
 
+  return hit;
+}
+
+void PickObjectAt(const EditorToolContext& ctx, ImVec2 mouse_pos,
+                  ImVec2 image_pos, ImVec2 image_size, bool ctrl_held) {
+  game::GameObject* hit = PickHitAt(ctx, mouse_pos, image_pos, image_size);
+
   if (ctrl_held) {
     // Ctrl-click: toggle the hit in/out of the current selection.
     if (hit) {
@@ -456,6 +463,15 @@ void DrawSelectedBBox(const EditorToolContext& ctx, ImDrawList* dl,
                       image_pos, image_size,
                       IM_COL32(255, 165, 0, 255), 1.5f);
   }
+}
+
+void DrawHoverBBox(const EditorToolContext& ctx, ImDrawList* dl,
+                   ImVec2 image_pos, ImVec2 image_size,
+                   const game::GameObject* obj) {
+  const core::Mat4f& vp = ctx.camera->GetCamera()->GetViewProjectionMatrix();
+  DrawBBoxWireframe(dl, obj->GetLocalBBox(), obj->GetWorldTransform(), vp,
+                    image_pos, image_size,
+                    IM_COL32(255, 255, 255, 160), 1.0f);
 }
 
 }  // namespace editor
