@@ -113,6 +113,13 @@ void EditorViewport::Render() {
 
   ResizeIfNeeded(w, h);
 
+  if (rendering_settings_panel_) {
+    renderer::WireframeRenderer::Instance().SetLightGizmosEnabled(
+        rendering_settings_panel_->IsOverlayLightsEnabled());
+    renderer::WireframeRenderer::Instance().SetParticleGizmosEnabled(
+        rendering_settings_panel_->IsOverlayParticlesEnabled());
+  }
+
   renderer::Renderer::Instance().Update(
       static_cast<float>(ImGui::GetTime()),
       camera_->GetCamera(),
@@ -174,9 +181,15 @@ void EditorViewport::Render() {
       scene_ ? scene_->GetSelectedObject() : nullptr);
   if (scene_) {
     const float cam_dist = camera_ctrl_->GetDistance();
-    editor::EnqueuePlayerStartGizmos(scene_->GetObjects(), scene_->GetSelectedObject());
-    editor::EnqueueSoundEmitterGizmos(scene_->GetObjects(), scene_->GetSelectedObject(),
-                                      cam_dist);
+    if (!rendering_settings_panel_ ||
+        rendering_settings_panel_->IsOverlayPlayerStartsEnabled()) {
+      editor::EnqueuePlayerStartGizmos(scene_->GetObjects(), scene_->GetSelectedObject());
+    }
+    if (!rendering_settings_panel_ ||
+        rendering_settings_panel_->IsOverlaySoundsEnabled()) {
+      editor::EnqueueSoundEmitterGizmos(scene_->GetObjects(), scene_->GetSelectedObject(),
+                                        cam_dist);
+    }
   }
   if (wireframe_fbo_ && render_fbo_)
     renderer::WireframeRenderer::Instance().Render(

@@ -131,6 +131,9 @@ class EditorWindow {
   // Persists physics debug draw settings to the editor section of config.yaml.
   void SavePhysicsDebugSettings();
 
+  // Persists overlay gizmo visibility settings to the editor section of config.yaml.
+  void SaveOverlaySettings();
+
   // Shows the "Unsaved Changes" modal if dirty, then fires on_proceed.
   // Stores on_proceed in pending_after_save_ and sets the open flag.
   void CheckDirtyThenRun(std::function<void()> on_proceed);

@@ -70,6 +70,8 @@ class WireframeRenderer : public core::Singleton<WireframeRenderer> {
   // ---- Configuration ---------------------------------------------------------
 
   void SetGizmosEnabled(bool enabled) { gizmos_enabled_ = enabled; }
+  void SetLightGizmosEnabled(bool enabled)    { light_gizmos_enabled_    = enabled; }
+  void SetParticleGizmosEnabled(bool enabled) { particle_gizmos_enabled_ = enabled; }
   void SetTerrainWireframeEnabled(bool enabled) {
     terrain_wireframe_enabled_ = enabled;
   }
@@ -83,7 +85,13 @@ class WireframeRenderer : public core::Singleton<WireframeRenderer> {
   // IsHighlighted().
   void SetHighlightedObject(const void* key) { highlighted_key_ = key; }
 
-  [[nodiscard]] bool AreGizmosEnabled() const { return gizmos_enabled_; }
+  [[nodiscard]] bool AreGizmosEnabled()        const { return gizmos_enabled_; }
+  [[nodiscard]] bool AreLightGizmosEnabled()    const {
+    return gizmos_enabled_ && light_gizmos_enabled_;
+  }
+  [[nodiscard]] bool AreParticleGizmosEnabled() const {
+    return gizmos_enabled_ && particle_gizmos_enabled_;
+  }
   [[nodiscard]] bool IsHighlighted(const void* key) const {
     return key != nullptr && key == highlighted_key_;
   }
@@ -223,6 +231,10 @@ class WireframeRenderer : public core::Singleton<WireframeRenderer> {
 
   // cppcheck-suppress unusedStructMember
   bool                    gizmos_enabled_           = false;
+  // cppcheck-suppress unusedStructMember
+  bool                    light_gizmos_enabled_     = true;
+  // cppcheck-suppress unusedStructMember
+  bool                    particle_gizmos_enabled_  = true;
   // cppcheck-suppress unusedStructMember
   bool                    terrain_wireframe_enabled_ = false;
   // cppcheck-suppress unusedStructMember
