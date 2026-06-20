@@ -14,6 +14,7 @@
 #include "core/Vec3f.h"
 #include "editor/EditorScene.h"
 #include "editor/PickingAccelerator.h"
+#include "editor/PivotGizmos.h"
 #include "editor/PlayerStartGizmos.h"
 #include "editor/SoundEmitterGizmos.h"
 #include "editor/RenderingSettingsPanel.h"
@@ -181,6 +182,7 @@ void EditorViewport::Render() {
       scene_ ? scene_->GetSelectedObject() : nullptr);
   if (scene_) {
     const float cam_dist = camera_ctrl_->GetDistance();
+    editor::EnqueuePivotGizmos(scene_->GetObjects(), scene_->GetSelectedObject());
     if (!rendering_settings_panel_ ||
         rendering_settings_panel_->IsOverlayPlayerStartsEnabled()) {
       editor::EnqueuePlayerStartGizmos(scene_->GetObjects(), scene_->GetSelectedObject());

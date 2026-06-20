@@ -39,7 +39,7 @@ const char* ObjectsPanel::IconForType(game::GameObjectType type) {
     case game::GameObjectType::kMesh:          return ICON_FA_CUBE;
     case game::GameObjectType::kLight:         return ICON_FA_LIGHTBULB;
     case game::GameObjectType::kCamera:        return ICON_FA_CAMERA;
-    case game::GameObjectType::kPivot:          return ICON_FA_CROSSHAIRS;
+    case game::GameObjectType::kPivot:          return ICON_FA_LOCATION_CROSSHAIRS;
     case game::GameObjectType::kPlayerStart:   return ICON_FA_FLAG;
     case game::GameObjectType::kParticleSystem: return ICON_FA_FIRE;
     case game::GameObjectType::kSoundEmitter:  return ICON_FA_VOLUME_HIGH;
@@ -261,7 +261,7 @@ void ObjectsPanel::Render(EditorScene& scene) {
   RenderTypeGroup(ICON_FA_CAMERA,    "Cameras",          game::GameObjectType::kCamera,
                   objects, scene, renaming_obj_, rename_buf_, sizeof(rename_buf_),
                   rename_focus_needed_, history_);
-  RenderTypeGroup(ICON_FA_CROSSHAIRS, "Pivots",           game::GameObjectType::kPivot,
+  RenderTypeGroup(ICON_FA_LOCATION_CROSSHAIRS, "Pivots",  game::GameObjectType::kPivot,
                   objects, scene, renaming_obj_, rename_buf_, sizeof(rename_buf_),
                   rename_focus_needed_, history_);
   RenderTypeGroup(ICON_FA_FLAG,      "Player Starts",    game::GameObjectType::kPlayerStart,
