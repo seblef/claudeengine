@@ -1,5 +1,7 @@
 add_library(ui STATIC
     FontAtlas.cpp
+    UISprite.cpp
+    UIText.cpp
 )
 
 target_include_directories(ui PUBLIC  "${CMAKE_SOURCE_DIR}/src"
