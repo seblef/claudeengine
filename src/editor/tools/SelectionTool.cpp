@@ -42,7 +42,6 @@ void SelectionTool::OnEvent(const core::Event& event) {
                [this](const game::GameObject* o) { return scene_->IsDynamic(o); });
 
   for (game::GameObject* obj : to_delete) {
-    LOG_F(INFO, "Deleting object '%s'", obj->GetName().c_str());
     if (history_)
       history_->Push(std::make_unique<DeleteObjectCommand>(scene_, obj));
   }

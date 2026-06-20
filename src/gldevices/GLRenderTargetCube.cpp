@@ -28,7 +28,7 @@ GLRenderTargetCube::GLRenderTargetCube(int size)
   glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 
   glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-  LOG_F(INFO, "GLRenderTargetCube: created cube %dx%d tex=%u", size, size, tex_id_);
+  LOG_F(5, "GLRenderTargetCube: created cube %dx%d tex=%u", size, size, tex_id_);
 }
 
 GLRenderTargetCube::~GLRenderTargetCube() {

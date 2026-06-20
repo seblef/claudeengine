@@ -227,15 +227,15 @@ void Renderer::Update(float time, const core::Camera* camera,
   MeshRenderer::Instance().Render();
   if (terrain_renderer_ && terrain_renderer_->IsReady())
     terrain_renderer_->Render(*camera_);
+  if (particle_renderer_)
+    particle_renderer_->RenderGeometryPass(*camera_,
+                                           renderable_infos_cb_.get());
   if (foliage_enabled_ && FoliageRenderer::IsInstanced() &&
       FoliageRenderer::Instance().IsReady())
     FoliageRenderer::Instance().Render(*camera_);
   if (tree_enabled_ && TreeRenderer::IsInstanced() &&
       TreeRenderer::Instance().IsReady())
     TreeRenderer::Instance().Render(*camera_);
-  if (particle_renderer_)
-    particle_renderer_->RenderGeometryPass(*camera_,
-                                           renderable_infos_cb_.get());
   gbuffer_.UnbindForWriting();
 
   // Debug bypass — blit a chosen G-buffer RT to the default framebuffer and skip

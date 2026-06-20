@@ -133,7 +133,7 @@ bool EmeshReader::Read(const std::string& path, MeshData* mesh) const {
     }
   }
 
-  LOG_F(INFO, "EmeshReader: loaded %u vertices, %u indices, %u submeshes from '%s'",
+  LOG_F(5, "EmeshReader: loaded %u vertices, %u indices, %u submeshes from '%s'",
         vertex_count, index_count,
         static_cast<uint32_t>(mesh->lod.submeshes.size()), path.c_str());
   return true;

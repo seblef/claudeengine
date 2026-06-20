@@ -70,7 +70,6 @@ void PlacementTool::PlaceObject(const EditorToolContext& ctx) {
     preview_object_ = nullptr;
   }
 
-  LOG_F(INFO, "Object placed");
   if (on_done_) on_done_();
 }
 

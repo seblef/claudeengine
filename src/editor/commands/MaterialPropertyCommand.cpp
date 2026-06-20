@@ -73,9 +73,6 @@ void MaterialPropertyCommand::Execute() {
 
 void MaterialPropertyCommand::Undo() {
   ApplySnapshot(mat_, before_, video_);
-  LOG_F(INFO,
-        "Undo reverts the in-memory material state. "
-        "The saved YAML file is unchanged.");
 }
 
 void MaterialPropertyCommand::Redo() {

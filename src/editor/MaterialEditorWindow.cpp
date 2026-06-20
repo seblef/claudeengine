@@ -502,8 +502,6 @@ void MaterialEditorWindow::ApplyToSelection(const EditorScene& scene) {
   } else {
     mesh->GetTemplate()->SetMaterial(material_);
   }
-  LOG_F(INFO, "Applied material '%s' to '%s'",
-        material_->GetId().c_str(), sel->GetName().c_str());
 }
 
 }  // namespace editor

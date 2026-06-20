@@ -28,8 +28,6 @@ GLTexture::GLTexture(const std::string& name, abstract::BufferUsage usage)
   const auto path = core::Config::GetDataFolder() / "textures" / name;
   const std::string ext = path.extension().string();
 
-  LOG_F(INFO, "Loading texture %s", name.c_str());
-
   // -------------------------------------------------------------------------
   // Compressed path: DDS / KTX via GLI
   // -------------------------------------------------------------------------
@@ -99,7 +97,7 @@ GLTexture::GLTexture(const std::string& name, abstract::BufferUsage usage)
 
     glBindTexture(GL_TEXTURE_2D, 0);
     initialized_ = true;
-    LOG_F(INFO, "GLTexture '%s': loaded %dx%d (compressed, %zu mips)",
+    LOG_F(5, "GLTexture '%s': loaded %dx%d (compressed, %zu mips)",
           name.c_str(), width_, height_, tex.levels());
     return;
   }
@@ -168,7 +166,7 @@ GLTexture::GLTexture(const std::string& name, abstract::BufferUsage usage)
   }
 
   initialized_ = true;
-  LOG_F(INFO, "GLTexture '%s': loaded %dx%d", name.c_str(), w, h);
+  LOG_F(5, "GLTexture '%s': loaded %dx%d", name.c_str(), w, h);
 }
 
 GLTexture::~GLTexture() {

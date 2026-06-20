@@ -31,13 +31,13 @@ GLRenderTargetGroup::GLRenderTargetGroup(
   // A completely empty FBO is valid for deferred attachment (e.g. cube shadow
   // maps attach each face dynamically before rendering).
   if (color_targets_.empty() && !depth_target_) {
-    LOG_F(INFO, "GLRenderTargetGroup: FBO %u created (deferred attachment)", fbo_);
+    LOG_F(5, "GLRenderTargetGroup: FBO %u created (deferred attachment)", fbo_);
   } else {
     const GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (status != GL_FRAMEBUFFER_COMPLETE) {
       LOG_F(ERROR, "GLRenderTargetGroup: FBO incomplete (status=0x%x)", status);
     } else {
-      LOG_F(INFO, "GLRenderTargetGroup: FBO %u created (%zu color + %s depth)",
+      LOG_F(5, "GLRenderTargetGroup: FBO %u created (%zu color + %s depth)",
             fbo_, color_targets_.size(), depth_target_ ? "1" : "no");
     }
   }

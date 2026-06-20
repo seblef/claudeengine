@@ -528,11 +528,18 @@ MapData MapLoader::Load(const std::filesystem::path& path,
   if (root["global_light"])
     result.global_light = ParseGlobalLightDesc(root["global_light"]);
 
+  // Parallel vector of parent names; resolved in a second pass after all
+  // objects are instantiated so ordering in the file does not matter.
+  std::vector<std::string> parent_names;
+
   // Terrain is optional; backwards-compatible if the key is absent.
   if (root["terrain"]) {
     try {
       auto gt = ParseTerrain(root["terrain"], path, video);
-      if (gt) result.objects.push_back(std::move(gt));
+      if (gt) {
+        result.objects.push_back(std::move(gt));
+        parent_names.push_back("");
+      }
     } catch (const std::exception& e) {
       LOG_F(WARNING, "MapLoader: error parsing terrain: %s", e.what());
     }
@@ -542,9 +549,6 @@ MapData MapLoader::Load(const std::filesystem::path& path,
   if (!objects || !objects.IsSequence())
     return result;
 
-  // Parallel vector of parent names; resolved in a second pass after all
-  // objects are instantiated so ordering in the file does not matter.
-  std::vector<std::string> parent_names;
 
   for (const YAML::Node& obj : objects) {
     const std::string type = obj["type"].as<std::string>("");

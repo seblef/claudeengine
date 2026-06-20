@@ -64,7 +64,6 @@ void SoundEditorWindow::OpenTemplate(const std::string& name) {
     current_path_ = path;
     unsaved_      = false;
     open_         = true;
-    LOG_F(INFO, "Sound editor: opened '%s'", name.c_str());
   } else {
     LOG_F(ERROR, "Sound editor: failed to load '%s'", path.string().c_str());
   }
@@ -195,7 +194,6 @@ void SoundEditorWindow::LoadFromFile() {
     if (LoadFromPath(path)) {
       current_path_ = path;
       unsaved_      = false;
-      LOG_F(INFO, "Sound editor: loaded '%s'", path.string().c_str());
     }
   } else if (result == NFD_ERROR) {
     LOG_F(ERROR, "Sound editor: NFD error opening load dialog");

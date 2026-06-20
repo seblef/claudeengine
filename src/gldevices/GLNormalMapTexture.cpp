@@ -18,7 +18,7 @@ GLNormalMapTexture::GLNormalMapTexture(int width, int height,
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0,
                GL_RGBA, GL_UNSIGNED_BYTE, data);
   glBindTexture(GL_TEXTURE_2D, 0);
-  LOG_F(INFO, "GLNormalMapTexture: uploaded normal map %dx%d", width, height);
+  LOG_F(5, "GLNormalMapTexture: uploaded normal map %dx%d", width, height);
 }
 
 GLNormalMapTexture::~GLNormalMapTexture() {

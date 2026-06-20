@@ -20,7 +20,7 @@ GLTileableTexture::GLTileableTexture(int width, int height,
                GL_RGBA, GL_UNSIGNED_BYTE, data);
   glGenerateMipmap(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D, 0);
-  LOG_F(INFO, "GLTileableTexture: uploaded %dx%d", width, height);
+  LOG_F(5, "GLTileableTexture: uploaded %dx%d", width, height);
 }
 
 GLTileableTexture::~GLTileableTexture() {

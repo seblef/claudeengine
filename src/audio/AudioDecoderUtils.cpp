@@ -197,8 +197,6 @@ DecodedAudio DecodeAudioFile(const std::filesystem::path& path) {
     }
 
     if (result.channels > 1) {
-        LOG_F(INFO, "AudioDecoder: downmixing %d-ch to mono: %s",
-              result.channels, path.c_str());
         DownmixToMono(result);
     }
     return result;

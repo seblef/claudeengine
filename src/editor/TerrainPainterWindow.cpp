@@ -258,9 +258,6 @@ void TerrainPainterWindow::ApplyPainting() {
         std::move(post_snapshot)));
   }
 
-  LOG_F(INFO, "TerrainPainterWindow: painted %d×%d splatmap, %zu ranges, "
-        "noise=%.2f", sw, sh, ranges_.size(), noise_level_);
-
   status_msg_ = "Terrain painted successfully.";
   status_ok_  = true;
 }

@@ -151,8 +151,6 @@ void ParticleEditorWindow::OpenTemplate(const std::string& name) {
                          (name + ".particles.yaml");
   unsaved_             = false;
   preview_dirty_       = true;
-
-  LOG_F(INFO, "ParticleEditorWindow: opened template '%s'", name.c_str());
 }
 
 void ParticleEditorWindow::Render(float time, float dt) {
@@ -335,9 +333,6 @@ void ParticleEditorWindow::LoadFromFile() {
   current_path_        = std::move(path);
   unsaved_             = false;
   preview_dirty_       = true;
-
-  LOG_F(INFO, "ParticleEditorWindow: loaded '%s'",
-        current_path_.string().c_str());
 }
 
 void ParticleEditorWindow::Save() {

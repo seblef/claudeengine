@@ -18,7 +18,7 @@ GLRawTexture::GLRawTexture(int width, int height, const uint16_t* data) {
   glTexImage2D(GL_TEXTURE_2D, 0, GL_R16, width, height, 0,
                GL_RED, GL_UNSIGNED_SHORT, data);
   glBindTexture(GL_TEXTURE_2D, 0);
-  LOG_F(INFO, "GLRawTexture: uploaded heightmap %dx%d", width, height);
+  LOG_F(5, "GLRawTexture: uploaded heightmap %dx%d", width, height);
 }
 
 GLRawTexture::~GLRawTexture() {

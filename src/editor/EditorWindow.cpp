@@ -362,7 +362,6 @@ void EditorWindow::Render() {
             ImGuiMouseCursor_ResizeAll,
             [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
         viewport_->SetActiveTool(placement_tool_.get());
-        LOG_F(INFO, "Light creation tool activated, click viewport to place");
       } else if (active_tool == EditorTool::kCreatePivot) {
         auto pivot = std::make_unique<game::GamePivot>();
         pivot->SetName(GenerateObjectName(*scene_, "pivot"));
@@ -371,7 +370,6 @@ void EditorWindow::Render() {
             ImGuiMouseCursor_ResizeAll,
             [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
         viewport_->SetActiveTool(placement_tool_.get());
-        LOG_F(INFO, "Pivot creation tool activated, click viewport to place");
       } else if (active_tool == EditorTool::kCreatePlayerStart) {
         auto ps = std::make_unique<game::GamePlayerStart>();
         ps->SetName(GenerateObjectName(*scene_, "player_start"));
@@ -380,7 +378,6 @@ void EditorWindow::Render() {
             ImGuiMouseCursor_ResizeAll,
             [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
         viewport_->SetActiveTool(placement_tool_.get());
-        LOG_F(INFO, "Player start creation tool activated, click viewport to place");
       } else if (active_tool == EditorTool::kCreateParticleSystem) {
         particle_modal_->Open();
       } else if (active_tool == EditorTool::kCreateSoundEmitter) {
@@ -401,7 +398,6 @@ void EditorWindow::Render() {
         ImGuiMouseCursor_None,
         [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
     viewport_->SetActiveTool(placement_tool_.get());
-    LOG_F(INFO, "Mesh template selected, click viewport to place");
   }
 
   // Particle system selection modal — open when kCreateParticleSystem activated.
@@ -418,8 +414,6 @@ void EditorWindow::Render() {
           [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
       viewport_->SetActiveTool(placement_tool_.get());
     }
-    LOG_F(INFO, "Particle system '%s' selected, click viewport to place",
-          ps_name.c_str());
   }
 
   // Sound emitter selection modal — open when kCreateSoundEmitter activated.
@@ -435,8 +429,6 @@ void EditorWindow::Render() {
         ImGuiMouseCursor_ResizeAll,
         [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
     viewport_->SetActiveTool(placement_tool_.get());
-    LOG_F(INFO, "Sound emitter '%s' selected, click viewport to place",
-          snd_name.c_str());
   }
 
   // 4. Viewport panel.
@@ -659,7 +651,6 @@ void EditorWindow::TickAutosave() {
                     / "maps"
                     / (map_name + ".autosave.map.yaml");
   if (MapSerializer::Save(*scene_, viewport_->GetCameraState(), path)) {
-    LOG_F(INFO, "Autosaved to %s", path.string().c_str());
     last_autosave_msg_ = "Autosaved";
     autosave_msg_timer_ = 3.f;
   } else {
@@ -1165,7 +1156,6 @@ void EditorWindow::CopySelectedObject() {
     } else {
       auto clone = obj->Copy(pos);
       if (clone) {
-        LOG_F(INFO, "Copied '%s'", clone->GetName().c_str());
         clipboard_parent_names_.push_back("");
         clipboard_.push_back(std::move(clone));
       }
@@ -1284,9 +1274,6 @@ void EditorWindow::FallToTerrain() {
     const core::Mat4f before = wt;
     obj->SetWorldTransform(new_transform);
     history_.Push(std::make_unique<TransformCommand>(obj, before, new_transform));
-
-    LOG_F(INFO, "Fell '%s' to terrain: y=%.2f, normal=(%.2f, %.2f, %.2f)",
-          obj->GetName().c_str(), terrain_h, N.x, N.y, N.z);
   }
 
   if (!scene_->GetSelection().empty()) scene_dirty_ = true;
@@ -1301,7 +1288,6 @@ void EditorWindow::CenterCameraOnObject() {
     combined << sel[i]->GetWorldBBox();
 
   viewport_->FrameObject(combined);
-  LOG_F(INFO, "Camera centered on selection (%zu object(s))", sel.size());
 }
 
 void EditorWindow::GroupUnderPivot() {
@@ -1365,7 +1351,6 @@ void EditorWindow::EnableSceneSound() {
     emitter->SetManagers(editor_sound_manager_.get(),
                          editor_sound_resources_.get());
   }
-  LOG_F(INFO, "Editor sound enabled");
 }
 
 void EditorWindow::DisableSceneSound() {
@@ -1377,7 +1362,6 @@ void EditorWindow::DisableSceneSound() {
     auto* emitter = static_cast<game::GameSoundEmitter*>(obj);
     emitter->SetManagers(nullptr, nullptr);
   }
-  LOG_F(INFO, "Editor sound disabled");
 }
 
 }  // namespace editor
