@@ -42,6 +42,14 @@ void ALSoundSource::SetRelative(bool relative) {
     alSourcei(source_id_, AL_SOURCE_RELATIVE, relative ? AL_TRUE : AL_FALSE);
 }
 
+void ALSoundSource::SetReferenceDistance(float distance) {
+    alSourcef(source_id_, AL_REFERENCE_DISTANCE, distance);
+}
+
+void ALSoundSource::SetMaxDistance(float distance) {
+    alSourcef(source_id_, AL_MAX_DISTANCE, distance);
+}
+
 void ALSoundSource::SetLoop(bool loop) {
     alSourcei(source_id_, AL_LOOPING, loop ? AL_TRUE : AL_FALSE);
 }

@@ -36,6 +36,8 @@ bool ALSoundSystem::Initialize() {
         return false;
     }
 
+    alDistanceModel(AL_INVERSE_DISTANCE_CLAMPED);
+
     LOG_F(INFO, "OpenAL: initialized — device: %s",
           alcGetString(device_, ALC_DEVICE_SPECIFIER));
     return true;

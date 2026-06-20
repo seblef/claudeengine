@@ -27,6 +27,15 @@ class ISoundSource {
   // Sets the 3D velocity in world space, used for Doppler pitch shift.
   virtual void SetVelocity(const core::Vec3f& velocity) = 0;
 
+  // Distance at which the source plays at full gain. Attenuation begins
+  // beyond this point. Mirrors AL_REFERENCE_DISTANCE / SoundDesc::min_distance.
+  virtual void SetReferenceDistance(float distance) = 0;
+
+  // Distance at which attenuation is clamped to its minimum. Beyond this
+  // point the source is culled by SoundManager. Mirrors AL_MAX_DISTANCE /
+  // SoundDesc::max_distance.
+  virtual void SetMaxDistance(float distance) = 0;
+
   // ---- Amplitude / pitch ---------------------------------------------------
 
   // Sets the linear gain (volume) multiplier. 0.0 is silent, 1.0 is nominal.

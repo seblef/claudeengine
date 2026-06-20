@@ -24,6 +24,8 @@ class ALSoundSource : public abstract::ISoundSource {
   void SetGain(float gain) override;
   void SetPitch(float pitch) override;
   void SetRelative(bool relative) override;
+  void SetReferenceDistance(float distance) override;
+  void SetMaxDistance(float distance) override;
   void SetLoop(bool loop) override;
   void Play() override;
   void Pause() override;

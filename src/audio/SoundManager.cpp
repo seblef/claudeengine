@@ -121,13 +121,18 @@ void SoundManager::Update(float dt) {
             inst->real_source_->SetGain(
                 inst->gain_ * inst->sound_->GetDesc().volume);
             inst->real_source_->SetPitch(inst->sound_->GetDesc().pitch);
+            inst->real_source_->SetReferenceDistance(
+                inst->sound_->GetDesc().min_distance);
+            inst->real_source_->SetMaxDistance(
+                inst->sound_->GetDesc().max_distance);
+            inst->real_source_->SetRelative(false);
             inst->real_source_->SetLoop(inst->loop_);
             inst->real_source_->Play();
             inst->state_ = VirtualSoundState::kPlaying;
         } else {
             inst->real_source_->SetPosition(inst->position_);
-            inst->real_source_->SetGain(
-                inst->gain_ * inst->sound_->GetDesc().volume);
+            // inst->real_source_->SetGain(
+            //     inst->gain_ * inst->sound_->GetDesc().volume);
         }
     }
 

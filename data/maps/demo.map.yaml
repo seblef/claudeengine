@@ -32,7 +32,7 @@ environment:
   cloud_enabled: true
   cloud_density: 0.310000002
   wind_enabled: true
-  wind_direction: [0.484809637, 0, 0.874619842]
+  wind_direction: [0.484809577, 0, 0.874619722]
   wind_strength: 1.20000005
   start_time_of_day: 13.1300001
   time_scale: 60
@@ -217,6 +217,7 @@ objects:
       center_offset: [0, 0.427801967, -1.63912773e-07]
       motion_type: dynamic
       mass: 10
+      collision_layer: 4
   - name: barrel01_01 (copy) (copy)_005
     type: mesh
     transform: [1.72604513, -0.116575137, -0.00884627923, 599.904175, 0.116823159, 1.72486722, 0.0639161095, 30.6629429, 0.00451308023, -0.0643673465, 1.7287966, 1133.21741, 0, 0, 0, 1]
@@ -230,6 +231,51 @@ objects:
       motion_type: dynamic
       mass: 10
       collision_layer: 4
+  - name: fire01_001
+    type: sound_emitter
+    sound: fire01
+    volume_scale: 0.5
+    transform: [1, 0, 0, 599.774658, 0, 1, 0, 30.4873505, 0, 0, 1, 1128.37976, 0, 0, 0, 1]
+  - name: crickets_001
+    type: sound_emitter
+    sound: crickets
+    volume_scale: 1
+    transform: [0.997822583, -0.0659060627, -0.00254671113, 597.987671, 0.065955244, 0.997078538, 0.0385286398, 32.0292053, 0, -0.0386127159, 0.999254346, 1149.01709, 0, 0, 0, 1]
+  - name: crickets_002
+    type: sound_emitter
+    sound: crickets
+    volume_scale: 1
+    transform: [0.998248816, -0.0589298494, -0.0051545389, 591.562927, 0.0591001175, 0.997279346, 0.0440585949, 31.4302807, 0.00254414859, -0.044286076, 0.999015689, 1149.995, 0, 0, 0, 1]
+  - name: crickets_003
+    type: sound_emitter
+    sound: crickets
+    volume_scale: 1
+    transform: [0.998368382, -0.0568553731, -0.00529707316, 583.167175, 0.0570448823, 0.997209609, 0.0481544435, 30.6433086, 0.00254445337, -0.0483780429, 0.998825848, 1143.53662, 0, 0, 0, 1]
+  - name: crickets_004
+    type: sound_emitter
+    sound: crickets
+    volume_scale: 1
+    transform: [0.9979527, -0.063914001, -0.0023357477, 582.969727, 0.063956663, 0.997287035, 0.0364460163, 29.7097225, -0, -0.0365207903, 0.999332905, 1123.86389, 0, 0, 0, 1]
+  - name: crickets_005
+    type: sound_emitter
+    sound: crickets
+    volume_scale: 1
+    transform: [0.997882068, -0.0650105178, -0.00222085975, 592.011108, 0.0650484413, 0.997300327, 0.034069322, 30.3376617, -0, -0.0341416262, 0.999417067, 1124.86511, 0, 0, 0, 1]
+  - name: crickets_006
+    type: sound_emitter
+    sound: crickets
+    volume_scale: 1
+    transform: [0.998056769, -0.062161833, -0.00431156997, 592.980042, 0.062271703, 0.997496486, 0.0335083269, 29.9338722, 0.00221783691, -0.0337116979, 0.999429166, 1110.14331, 0, 0, 0, 1]
+  - name: crickets_007
+    type: sound_emitter
+    sound: crickets
+    volume_scale: 1
+    transform: [0.997935891, -0.0639326423, -0.00605027936, 583.826477, 0.0640738308, 0.997577965, 0.0270675067, 29.3972931, 0.00430512801, -0.0273992959, 0.999615371, 1111.12964, 0, 0, 0, 1]
+  - name: crickets_008
+    type: sound_emitter
+    sound: crickets
+    volume_scale: 1
+    transform: [0.99822408, -0.0589873455, -0.00831495412, 612.790344, 0.0592633188, 0.997511804, 0.0381845571, 31.29669, 0.00604185835, -0.0386095159, 0.999236166, 1114.66345, 0, 0, 0, 1]
 terrain:
   heightmap: demo.r16
   heightmap_width: 4096
@@ -263,10 +309,10 @@ terrain:
       cull_distance: 80
       billboard_distance: 35
 editor:
-  selected_object: barrel01_01 (copy) (copy)_004
+  selected_object: crickets_008
   camera:
-    focus: [598.637146, 33.4397964, 1135.35474]
-    azimuth: 4.57727528
-    elevation: 0.364203215
+    focus: [590.876526, 30.8596382, 1123.83435]
+    azimuth: -0.40273726
+    elevation: 0.589203238
     distance: 12.933526
   snap_grid: 0

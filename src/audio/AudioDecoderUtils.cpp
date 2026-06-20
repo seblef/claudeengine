@@ -156,22 +156,52 @@ DecodedAudio DecodeOpus(const std::filesystem::path& path) {
 }
 #endif
 
+// Downmixes interleaved multi-channel PCM to mono by averaging all channels.
+// OpenAL only applies 3D distance attenuation to mono sources; stereo buffers
+// are rendered flat regardless of position.
+void DownmixToMono(DecodedAudio& audio) {
+    const size_t frames = audio.pcm.size() / static_cast<size_t>(audio.channels);
+    std::vector<int16_t> mono(frames);
+    for (size_t i = 0; i < frames; ++i) {
+        int32_t sum = 0;
+        for (int c = 0; c < audio.channels; ++c)
+            sum += audio.pcm[i * static_cast<size_t>(audio.channels) + c];
+        mono[i] = static_cast<int16_t>(sum / audio.channels);
+    }
+    audio.pcm      = std::move(mono);
+    audio.channels = 1;
+}
+
 }  // namespace
 
 DecodedAudio DecodeAudioFile(const std::filesystem::path& path) {
     const std::string ext = path.extension().string();
 
-    if (ext == ".wav")               return DecodeWav(path);
-    if (ext == ".mp3")               return DecodeMp3(path);
-    if (ext == ".flac")              return DecodeFlac(path);
-    if (ext == ".ogg")               return DecodeOgg(path);
+    DecodedAudio result;
+    if (ext == ".wav") {
+        result = DecodeWav(path);
+    } else if (ext == ".mp3") {
+        result = DecodeMp3(path);
+    } else if (ext == ".flac") {
+        result = DecodeFlac(path);
+    } else if (ext == ".ogg") {
+        result = DecodeOgg(path);
 #ifdef HAVE_OPUSFILE
-    if (ext == ".opus")              return DecodeOpus(path);
+    } else if (ext == ".opus") {
+        result = DecodeOpus(path);
 #endif
+    } else {
+        LOG_F(ERROR, "AudioDecoder: unsupported format '%s': %s",
+              ext.c_str(), path.c_str());
+        return {};
+    }
 
-    LOG_F(ERROR, "AudioDecoder: unsupported format '%s': %s",
-          ext.c_str(), path.c_str());
-    return {};
+    if (result.channels > 1) {
+        LOG_F(INFO, "AudioDecoder: downmixing %d-ch to mono: %s",
+              result.channels, path.c_str());
+        DownmixToMono(result);
+    }
+    return result;
 }
 
 abstract::AudioFormat AudioFormatFromChannels(int channels) {

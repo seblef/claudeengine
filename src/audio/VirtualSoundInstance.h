@@ -49,6 +49,7 @@ class VirtualSoundInstance {
   [[nodiscard]] float              GetGain()      const { return gain_; }
   [[nodiscard]] int                GetPriority()  const { return priority_; }
   [[nodiscard]] VirtualSoundState  GetState()     const { return state_; }
+  [[nodiscard]] const Sound*       GetSound()     const { return sound_; }
 
   [[nodiscard]] bool IsPlaying()  const {
     return state_ == VirtualSoundState::kPlaying;
