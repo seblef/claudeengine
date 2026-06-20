@@ -27,6 +27,9 @@
 #include "renderer/PostProcessInfos.h"
 #include "renderer/RenderableInfos.h"
 #include "renderer/SceneInfos.h"
+#include "ui/UIRenderer.h"
+#include "ui/UISprite.h"
+#include "ui/UIText.h"
 
 namespace renderer {
 
@@ -419,6 +422,9 @@ void Renderer::Update(float time, const core::Camera* camera,
   // 6. Shadow debug overlay — renders thumbnails on the left side of screen.
   shadow_debug_renderer_->Render(LightRenderer::Instance().GetLights());
 
+  // 7. UI overlay — sprites then text elements over the final composited image.
+  if (ui_renderer_) ui_renderer_->Render(ui_sprites_, ui_texts_);
+
   // Restore default depth state for the next BeginFrame.
   video_->SetDepthTestEnabled(true);
   video_->SetDepthWriteEnabled(true);
@@ -428,6 +434,16 @@ void Renderer::SetRenderableInfos(const core::Mat4f& world_matrix) {
   RenderableInfos ri;
   ri.world = world_matrix;
   renderable_infos_cb_->Fill(&ri);
+}
+
+void Renderer::RemoveUISprite(ui::UISprite* s) {
+  ui_sprites_.erase(std::remove(ui_sprites_.begin(), ui_sprites_.end(), s),
+                    ui_sprites_.end());
+}
+
+void Renderer::RemoveUIText(ui::UIText* t) {
+  ui_texts_.erase(std::remove(ui_texts_.begin(), ui_texts_.end(), t),
+                  ui_texts_.end());
 }
 
 void Renderer::CycleShadowDebug() {
@@ -446,6 +462,7 @@ void Renderer::OnResize(int w, int h) {
   water_depth_copy_rt_  = video_->CreateRenderTarget(
       w, h, abstract::TextureFormat::kDepth24Stencil8);
   if (water_renderer_) water_renderer_->Resize(w, h);
+  if (ui_renderer_)    ui_renderer_->OnResize(w, h);
 }
 
 void Renderer::ResizeTargets(int w, int h) {
