@@ -160,6 +160,11 @@ class GLVideoDevice : public abstract::VideoDevice {
   [[nodiscard]] std::unique_ptr<abstract::RawTexture> CreateNormalMapTexture(
       int width, int height, const uint8_t* data) override;
 
+  // Creates a GL_R8 single-channel texture for font atlases.
+  // Uses GL_CLAMP_TO_EDGE wrapping and GL_LINEAR filtering with no mipmaps.
+  [[nodiscard]] std::unique_ptr<abstract::RawTexture> CreateAtlasTexture(
+      int width, int height, const uint8_t* data) override;
+
   // Loads an RGBA8 PNG from an absolute path into a CPU pixel buffer.
   // Uses stb_image; returns false without logging if the file does not exist.
   [[nodiscard]] bool LoadRGBA8File(

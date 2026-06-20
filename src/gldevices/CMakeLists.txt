@@ -1,4 +1,5 @@
 add_library(gldevices STATIC
+    GLAtlasTexture.cpp
     GLConstantBuffer.cpp
     GLDevices.cpp
     GLGeometryBuffer.cpp

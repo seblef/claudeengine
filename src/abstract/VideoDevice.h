@@ -241,6 +241,13 @@ class VideoDevice {
   [[nodiscard]] virtual std::unique_ptr<RawTexture> CreateNormalMapTexture(
       int width, int height, const uint8_t* data) = 0;
 
+  // Creates a single-channel R8 texture from raw CPU data for use as a font atlas.
+  // data must point to width * height bytes (one byte per texel, [0,255]).
+  // Uses GL_CLAMP_TO_EDGE wrapping and GL_LINEAR filtering with no mipmaps.
+  // The caller owns the returned object via unique_ptr.
+  [[nodiscard]] virtual std::unique_ptr<RawTexture> CreateAtlasTexture(
+      int width, int height, const uint8_t* data) = 0;
+
   // Loads an RGBA8 PNG image from the given absolute path into a CPU pixel buffer.
   // Returns true and fills *out_width, *out_height, and out_pixels on success.
   // Returns false without logging when the file does not exist.

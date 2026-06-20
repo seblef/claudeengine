@@ -17,6 +17,7 @@
 #include "gldevices/GLRenderTargetCube.h"
 #include "gldevices/GLRenderTargetGroup.h"
 #include "gldevices/GLShader.h"
+#include "gldevices/GLAtlasTexture.h"
 #include "gldevices/GLNormalMapTexture.h"
 #include "gldevices/GLRawTexture.h"
 #include "gldevices/GLTileableTexture.h"
@@ -173,6 +174,11 @@ std::unique_ptr<abstract::RawTexture> GLVideoDevice::CreateHeightmapTexture(
 std::unique_ptr<abstract::RawTexture> GLVideoDevice::CreateNormalMapTexture(
     int width, int height, const uint8_t* data) {
   return std::make_unique<GLNormalMapTexture>(width, height, data);
+}
+
+std::unique_ptr<abstract::RawTexture> GLVideoDevice::CreateAtlasTexture(
+    int width, int height, const uint8_t* data) {
+  return std::make_unique<GLAtlasTexture>(width, height, data);
 }
 
 void GLVideoDevice::CopyRenderTarget(abstract::RenderTarget* src,
