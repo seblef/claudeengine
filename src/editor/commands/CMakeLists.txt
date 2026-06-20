@@ -1,15 +1,18 @@
 target_sources(editor PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/AddChildPivotCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/DeleteObjectCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/DeleteSubtreeCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/GroupUnderPivotCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/LightPropertyCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialAssignCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialPropertyCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/MultiTransformCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/PaintBrushCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/PhysicsPropertyCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/PlaceObjectCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/RenameObjectCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ReparentCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/SculptBrushCommand.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/MultiTransformCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/TransformCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/UngroupPivotCommand.cpp
 )

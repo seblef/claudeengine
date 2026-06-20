@@ -29,6 +29,7 @@ add_library(editor STATIC
     SoundPreviewPlayer.cpp
     ObjectNamingUtils.cpp
     ObjectsPanel.cpp
+    OutlinerPanel.cpp
     PickingAccelerator.cpp
     PropertiesPanel.cpp
     RenderingSettingsPanel.cpp

@@ -46,6 +46,7 @@
 #include "editor/SoundEmitterSelectionModal.h"
 #include "editor/ObjectNamingUtils.h"
 #include "editor/ObjectsPanel.h"
+#include "editor/OutlinerPanel.h"
 #include "editor/PropertiesPanel.h"
 #include "editor/ResourcesPanel.h"
 #include "game/GameLight.h"
@@ -118,6 +119,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       properties_panel_(std::make_unique<PropertiesPanel>()),
       resources_panel_(std::make_unique<ResourcesPanel>()),
       objects_panel_(std::make_unique<ObjectsPanel>()),
+      outliner_panel_(std::make_unique<OutlinerPanel>()),
       log_panel_(std::make_unique<LogPanel>()) {
   toolbar_->SetCommandHistory(&history_);
   toolbar_->SetOnSave([this]{ SaveCurrent(); });
@@ -138,6 +140,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   properties_panel_->SetCommandHistory(&history_);
   material_editor_->SetCommandHistory(&history_);
   objects_panel_->SetCommandHistory(&history_);
+  outliner_panel_->SetCommandHistory(&history_);
   history_.SetOnDirty([this]{ scene_dirty_ = true; });
   resources_panel_->SetOnMaterialOpen(
       [this](game::GameMaterial* mat) { material_editor_->Open(mat); });
@@ -451,8 +454,8 @@ void EditorWindow::Render() {
         resources_panel_->Render();
         ImGui::EndTabItem();
       }
-      if (ImGui::BeginTabItem("Objects")) {
-        objects_panel_->Render(*scene_);
+      if (ImGui::BeginTabItem("Outliner")) {
+        outliner_panel_->Render(*scene_);
         ImGui::EndTabItem();
       }
       ImGui::EndTabBar();
