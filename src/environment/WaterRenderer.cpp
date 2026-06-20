@@ -4,7 +4,6 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
-#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -18,7 +17,6 @@
 #include "abstract/RenderTargetGroup.h"
 #include "abstract/TextureFormat.h"
 #include "core/Color.h"
-#include "core/Config.h"
 #include "core/Mat4f.h"
 #include "core/Vec3f.h"
 #include "core/Vertex3D.h"
@@ -161,8 +159,8 @@ void WaterRenderer::Build(abstract::VideoDevice* video,
         abstract::IndexType::kUInt32, max_idx, abstract::BufferUsage::kDynamic);
   }
 
-  normal_map_tex_  = LoadNormalMap("");
-  normal_map_tex2_ = LoadNormalMap("");
+  const uint8_t flat[4] = {128, 128, 255, 255};
+  flat_normal_tex_ = video_->CreateTileableTexture(1, 1, flat);
   BuildFoamTexture();
   BuildCausticTexture();
   BuildSsrTarget();
@@ -277,27 +275,22 @@ void WaterRenderer::BuildRingGeometry(LodRing& ring, core::Vec2f snap_pos) {
     ring.ib->Fill(indices.data(), ring.num_indices);
 }
 
-std::unique_ptr<abstract::RawTexture> WaterRenderer::LoadNormalMap(
-    const std::string& path) {
+abstract::Texture* WaterRenderer::LoadNormalMap(const std::string& path) {
   if (!path.empty()) {
-    const std::filesystem::path full =
-        core::Config::GetDataFolder() / "textures" / path;
-    int w = 0, h = 0;
-    std::vector<uint8_t> pixels;
-    if (video_->LoadRGBA8File(full, &w, &h, pixels)) {
-      return video_->CreateTileableTexture(w, h, pixels.data());
-    }
+    abstract::Texture* tex = video_->CreateTexture(path);
+    if (tex && tex->GetWidth() > 0) return tex;
+    if (tex) tex->Release();
     LOG_F(WARNING, "WaterRenderer: failed to load normal map '%s', using flat fallback",
           path.c_str());
   }
-  // 1×1 flat normal pointing straight up: R=128, G=128, B=255, A=255.
-  const uint8_t flat[4] = {128, 128, 255, 255};
-  return video_->CreateTileableTexture(1, 1, flat);
+  return nullptr;
 }
 
 void WaterRenderer::SetNormalMapTextures(const std::string& path1,
                                          const std::string& path2) {
   if (video_) {
+    if (normal_map_tex_)  normal_map_tex_->Release();
+    if (normal_map_tex2_) normal_map_tex2_->Release();
     normal_map_tex_  = LoadNormalMap(path1);
     normal_map_tex2_ = LoadNormalMap(path2);
   }
@@ -445,12 +438,12 @@ void WaterRenderer::Render(const core::Camera& camera,
   video_->SetBlendEnabled(true, abstract::BlendFactor::kSrcAlpha,
                           abstract::BlendFactor::kOneMinusSrcAlpha);
 
-  normal_map_tex_->Bind(0);
+  (normal_map_tex_  ? normal_map_tex_->Bind(0)            : flat_normal_tex_->Bind(0));
   foam_tex_->Bind(1);
   scene_color->BindAsSampler(2);
   depth->BindAsSampler(3);
   ssr_rt_->BindAsSampler(kSsrSlot);
-  normal_map_tex2_->Bind(kNormalMap2Slot);
+  (normal_map_tex2_ ? normal_map_tex2_->Bind(kNormalMap2Slot) : flat_normal_tex_->Bind(kNormalMap2Slot));
   shader_->Activate();
   DrawRings();
 
@@ -484,8 +477,15 @@ void WaterRenderer::Reset() {
     ring.tiles.clear();
     ring.last_snap = {-1e9f, -1e9f};
   }
-  normal_map_tex_.reset();
-  normal_map_tex2_.reset();
+  if (normal_map_tex_) {
+    normal_map_tex_->Release();
+    normal_map_tex_  = nullptr;
+  }
+  if (normal_map_tex2_) {
+    normal_map_tex2_->Release();
+    normal_map_tex2_ = nullptr;
+  }
+  flat_normal_tex_.reset();
   foam_tex_.reset();
   caustic_tex_.reset();
   video_ = nullptr;

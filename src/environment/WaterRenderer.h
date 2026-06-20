@@ -7,6 +7,7 @@
 
 #include "abstract/IndexBuffer.h"
 #include "abstract/RawTexture.h"
+#include "abstract/Texture.h"
 #include "abstract/RenderTarget.h"
 #include "abstract/RenderTargetGroup.h"
 #include "abstract/Shader.h"
@@ -41,12 +42,12 @@ namespace environment {
 //     depth discontinuities.
 //
 // Constant buffer slot 9 (WaterInfos): bound globally by Renderer.
-// Sampler slot 0: first water normal map  (RGBA8, tileable; file or flat fallback).
+// Sampler slot 0: first water normal map  (file or 1×1 flat fallback).
 // Sampler slot 1: procedural foam texture (RGBA8, tileable).
 // Sampler slot 2: scene_color snapshot (RGBA16F).
 // Sampler slot 3: depth snapshot (DEPTH24STENCIL8).
 // Sampler slot 4: half-res SSR render target (RGBA16F, premultiplied alpha).
-// Sampler slot 5: second water normal map (RGBA8, tileable; file or flat fallback).
+// Sampler slot 5: second water normal map (file or 1×1 flat fallback).
 //
 // The water surface is partitioned into 3 clipmap LOD rings centered on the
 // camera and snapped to a coarse grid.  Only ring geometry within the view
@@ -287,11 +288,11 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   // Indices are emitted in tile-major order for per-tile frustum culling.
   static void BuildRingGeometry(LodRing& ring, core::Vec2f snap_pos);
 
-  // Loads an RGBA8 normal map from a file path relative to data/textures/.
-  // Falls back to a 1×1 flat normal map (pointing straight up) when path is empty
-  // or the file cannot be decoded.
-  [[nodiscard]] std::unique_ptr<abstract::RawTexture> LoadNormalMap(
-      const std::string& path);
+  // Loads a normal map from a file path relative to data/textures/ via the
+  // managed texture cache (supports DDS, PNG, and other formats).
+  // Returns nullptr when path is empty or the file cannot be decoded; callers
+  // then fall back to flat_normal_tex_.
+  [[nodiscard]] abstract::Texture* LoadNormalMap(const std::string& path);
   void BuildFoamTexture();
   // Generates a 256×256 tileable caustic interference texture from overlapping
   // circular wavefronts.  Result is stored in caustic_tex_.
@@ -306,10 +307,13 @@ class WaterRenderer : public core::Singleton<WaterRenderer> {
   abstract::Shader*                       shader_     = nullptr;
   // cppcheck-suppress unusedStructMember
   abstract::Shader*                       ssr_shader_ = nullptr;
-  std::unique_ptr<abstract::RawTexture>   normal_map_tex_;
-  std::unique_ptr<abstract::RawTexture>   normal_map_tex2_;
-  std::unique_ptr<abstract::RawTexture>   foam_tex_;
-  std::unique_ptr<abstract::RawTexture>   caustic_tex_;
+  abstract::Texture*                       normal_map_tex_  = nullptr;
+  abstract::Texture*                       normal_map_tex2_ = nullptr;
+  // Shared 1×1 flat-normal fallback used when a normal-map file fails to load.
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<abstract::RawTexture>    flat_normal_tex_;
+  std::unique_ptr<abstract::RawTexture>    foam_tex_;
+  std::unique_ptr<abstract::RawTexture>    caustic_tex_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<abstract::RenderTarget>      ssr_rt_;
   // cppcheck-suppress unusedStructMember

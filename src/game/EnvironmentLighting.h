@@ -56,7 +56,7 @@ inline void UpdateGlobalLight(renderer::GlobalLight& light,
         light.SetDirection(-time.GetMoonDirection());
         light.SetColor(core::Color(0.5f, 0.55f, 0.7f));
         light.SetIntensity(0.05f);
-        light.SetAmbientColor(core::Vec3f(0.05f, 0.05f, 0.12f));
+        light.SetAmbientColor(core::Vec3f(0.02f, 0.02f, 0.05f));
     }
 }
 

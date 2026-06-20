@@ -34,10 +34,11 @@ class AppConfig {
 
   static void Init(const std::filesystem::path& config_path);
 
-  [[nodiscard]] static const GraphicsConfig&    GetGraphics()    { return graphics_; }
-  [[nodiscard]] static const ShadowConfig&      GetShadows()     { return shadows_; }
-  [[nodiscard]] static const PostProcessConfig& GetPostProcess() { return post_process_; }
-  [[nodiscard]] static const PlayerConfig&      GetPlayer()      { return player_; }
+  [[nodiscard]] static const GraphicsConfig&    GetGraphics()           { return graphics_; }
+  [[nodiscard]] static const ShadowConfig&      GetShadows()            { return shadows_; }
+  [[nodiscard]] static const PostProcessConfig& GetPostProcess()        { return post_process_; }
+  [[nodiscard]] static       PostProcessConfig& GetMutablePostProcess() { return post_process_; }
+  [[nodiscard]] static const PlayerConfig&      GetPlayer()             { return player_; }
 
  private:
   static GraphicsConfig    graphics_;

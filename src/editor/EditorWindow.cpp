@@ -604,7 +604,15 @@ void EditorWindow::Render() {
           ImGui::SliderFloat("Bloom threshold",  &pp.bloom_threshold,  0.f, 3.f, "%.2f");
         }
         if (cfg.IsEyeAdaptationEnabled()) {
-          ImGui::SliderFloat("Adapt speed", &pp.adapt_speed, 0.1f, 5.f, "%.2f");
+          ImGui::SliderFloat("Adapt speed",    &pp.adapt_speed,      0.1f,  5.f,  "%.2f");
+          ImGui::SliderFloat("Eye key",        &pp.eye_key,          0.01f, 1.f,  "%.3f");
+          ImGui::SliderFloat("Min exposure",   &pp.eye_min_exposure, 0.01f, 1.f,  "%.3f");
+          ImGui::SliderFloat("Max exposure",   &pp.eye_max_exposure, 0.1f,  10.f, "%.2f");
+          if (ImGui::Button("Save##eye_adapt")) {
+            const auto config_path = core::Config::GetDataFolder() / "config.yaml";
+            core::AppConfig::GetMutablePostProcess().Save(
+                config_path, pp.eye_key, pp.eye_min_exposure, pp.eye_max_exposure);
+          }
         }
       }
     }

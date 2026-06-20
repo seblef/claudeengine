@@ -44,7 +44,7 @@ constexpr int kWindInfosFloat4s       = sizeof(environment::WindInfos) / 16;  //
 constexpr int kWaterInfosSlot            = 9;
 constexpr int kWaterInfosFloat4s         = sizeof(environment::WaterInfos) / 16;   // 112 / 16 = 7
 constexpr int kPostProcessInfosSlot      = 10;
-constexpr int kPostProcessInfosFloat4s   = sizeof(PostProcessInfos) / 16;           // 16 / 16 = 1
+constexpr int kPostProcessInfosFloat4s   = sizeof(PostProcessInfos) / 16;           // 32 / 16 = 2
 }  // namespace
 
 Renderer::Renderer(abstract::VideoDevice* video)
@@ -84,6 +84,9 @@ Renderer::Renderer(abstract::VideoDevice* video)
   if (pp.IsEyeAdaptationEnabled()) {
     eye_adapt_renderer_ = std::make_unique<EyeAdaptationRenderer>();
     eye_adapt_renderer_->Create(video_, render_w_, render_h_);
+    post_process_infos_.eye_key          = pp.GetEyeKey();
+    post_process_infos_.eye_min_exposure = pp.GetEyeMinExposure();
+    post_process_infos_.eye_max_exposure = pp.GetEyeMaxExposure();
   }
 
   // 1×1 black RT bound at slot 11 when bloom is disabled to keep the composite
@@ -379,7 +382,11 @@ void Renderer::Update(float time, const core::Camera* camera,
   // 5a. Eye adaptation — update exposure before tone mapping.
   if (eye_adapt_renderer_) {
     post_process_infos_.exposure = eye_adapt_renderer_->Update(
-        emissive_fbo_.GetHDRRT(), dt, post_process_infos_.adapt_speed);
+        emissive_fbo_.GetHDRRT(), dt,
+        post_process_infos_.adapt_speed,
+        post_process_infos_.eye_key,
+        post_process_infos_.eye_min_exposure,
+        post_process_infos_.eye_max_exposure);
   }
 
   // 5b. Bloom pass — downsample/upsample bright areas.

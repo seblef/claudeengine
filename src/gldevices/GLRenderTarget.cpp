@@ -18,6 +18,10 @@ GLFormatDesc ToGLFormat(abstract::TextureFormat format) {
   switch (format) {
     case abstract::TextureFormat::kRGBA8:
       return {GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE};
+    case abstract::TextureFormat::kR16F:
+      return {GL_R16F, GL_RED, GL_HALF_FLOAT};
+    case abstract::TextureFormat::kR32F:
+      return {GL_R32F, GL_RED, GL_FLOAT};
     case abstract::TextureFormat::kRGBA16F:
       return {GL_RGBA16F, GL_RGBA, GL_HALF_FLOAT};
     case abstract::TextureFormat::kG11R11B10F:

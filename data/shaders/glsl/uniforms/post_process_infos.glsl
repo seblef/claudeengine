@@ -1,5 +1,7 @@
-// PostProcessInfos — must match renderer::PostProcessInfos exactly (16 bytes, 1 float4).
-// std140 offsets:
+// PostProcessInfos — GPU reads only this first float4 (16 bytes).
+// The CPU-side struct is 32 bytes; bytes [16..31] hold CPU-only eye-adaptation
+// constants uploaded for editor convenience and are not declared or read here.
+// std140 offsets used by shaders:
 //   [  0] u_exposure        float  (HDR pre-scale before tone mapping; 1.0 = neutral)
 //   [  4] u_bloom_intensity float  (additive bloom blend weight; 0 = no bloom)
 //   [  8] u_bloom_threshold float  (luminance threshold for bloom extraction)

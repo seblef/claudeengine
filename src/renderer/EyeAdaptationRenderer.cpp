@@ -56,7 +56,9 @@ void EyeAdaptationRenderer::Destroy() {
 }
 
 float EyeAdaptationRenderer::Update(abstract::RenderTarget* hdr_rt,
-                                     float dt, float adapt_speed) {
+                                     float dt, float adapt_speed,
+                                     float key, float min_exposure,
+                                     float max_exposure) {
   if (first_frame_) {
     first_frame_ = false;
     return current_exposure_;
@@ -95,10 +97,10 @@ float EyeAdaptationRenderer::Update(abstract::RenderTarget* hdr_rt,
   // CPU readback from the 1×1 target; compute and smooth exposure.
   const float avg_log_lum = video_->ReadPixelF(fbos_.back().get(), 0, 0);
   const float avg_lum     = std::exp(avg_log_lum);
-  const float target_exp  = kKey / avg_lum;
+  const float target_exp  = key / avg_lum;
   const float t           = 1.f - std::exp(-dt * adapt_speed);
   current_exposure_ = std::lerp(current_exposure_, target_exp, t);
-  current_exposure_ = std::clamp(current_exposure_, kMinExposure, kMaxExposure);
+  current_exposure_ = std::clamp(current_exposure_, min_exposure, max_exposure);
   return current_exposure_;
 }
 
