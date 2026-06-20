@@ -1217,6 +1217,17 @@ void EditorWindow::PasteObject() {
       child->Reparent(it->second);
   }
 
+  // Select only the root-level pasted objects (those with no parent in the
+  // pasted set) so the pivot is selected rather than one of its children.
+  scene_->ClearSelection();
+  for (std::size_t i = 0; i < clipboard_.size(); ++i) {
+    if (clipboard_parent_names_[i].empty()) {
+      auto it = pasted_by_name.find(clipboard_[i]->GetName());
+      if (it != pasted_by_name.end())
+        scene_->AddToSelection(it->second);
+    }
+  }
+
   scene_dirty_ = true;
 }
 
