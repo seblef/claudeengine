@@ -110,6 +110,7 @@ void EditorScene::RemoveDynamicObject(game::GameObject* obj) {
   if (it == dynamic_objects_.end()) return;
 
   DetachChildren(obj);
+  obj->Reparent(nullptr);  // remove obj from its parent's children list
   RemoveFromSelection(obj);
   if (obj->GetType() == game::GameObjectType::kPivot)
     expanded_pivots_.erase(static_cast<game::GamePivot*>(obj));
@@ -127,6 +128,7 @@ std::unique_ptr<game::GameObject> EditorScene::ReclaimDynamicObject(
   if (it == dynamic_objects_.end()) return nullptr;
 
   DetachChildren(obj);
+  obj->Reparent(nullptr);  // remove obj from its parent's children list
   RemoveFromSelection(obj);
   if (obj->GetType() == game::GameObjectType::kPivot)
     expanded_pivots_.erase(static_cast<game::GamePivot*>(obj));
