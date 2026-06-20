@@ -1,14 +1,15 @@
 add_library(core STATIC
     AppConfig.cpp
     Camera.cpp
-    PlayerConfig.cpp
-    PostProcessConfig.cpp
-    ShadowConfig.cpp
     Config.cpp
     Logger.cpp
     MathUtils.cpp
     Plane.cpp
+    PlayerConfig.cpp
+    PostProcessConfig.cpp
+    Profiler.cpp
     RayUtils.cpp
+    ShadowConfig.cpp
     ViewFrustum.cpp
     YamlUtils.cpp
 )
