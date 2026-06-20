@@ -28,14 +28,19 @@ class UISprite {
   // Sets the RGBA multiplicative tint applied at render time. Default: (1,1,1,1).
   void SetTint(float r, float g, float b, float a);
 
+  // Sets the draw layer. Higher values render on top. Default: 0.
+  void SetLayer(int layer) { layer_ = layer; }
+
   [[nodiscard]] abstract::Texture*   GetTexture() const { return texture_; }
   [[nodiscard]] const core::Rect&    GetRect()    const { return rect_; }
   [[nodiscard]] core::Vec4f          GetTint()    const { return tint_; }
+  [[nodiscard]] int                  GetLayer()   const { return layer_; }
 
  private:
   abstract::Texture* texture_;
   core::Rect         rect_;
   core::Vec4f        tint_;
+  int                layer_ = 0;
 };
 
 }  // namespace ui
