@@ -1,6 +1,7 @@
 #pragma once
 
 #include "abstract/Texture.h"
+#include "core/Rect.h"
 #include "core/Vec4f.h"
 
 namespace ui {
@@ -11,8 +12,11 @@ namespace ui {
 // calls. UIRenderer consumes a list of UISprites each frame to batch geometry.
 class UISprite {
  public:
-  // Constructs a sprite at position (x, y) with dimensions (w x h) pixels.
+  // Constructs a sprite from a rect (position + size in pixels).
   // texture is not owned by UISprite and must outlive it.
+  UISprite(abstract::Texture* texture, const core::Rect& rect);
+
+  // Convenience constructor: position (x, y) and size (w, h) in pixels.
   UISprite(abstract::Texture* texture, float x, float y, float w, float h);
 
   // Sets the top-left corner position in pixels.
@@ -24,17 +28,13 @@ class UISprite {
   // Sets the RGBA multiplicative tint applied at render time. Default: (1,1,1,1).
   void SetTint(float r, float g, float b, float a);
 
-  [[nodiscard]] abstract::Texture* GetTexture() const { return texture_; }
-
-  // Returns (x, y, w, h) — top-left position and size in pixels.
-  [[nodiscard]] core::Vec4f GetRect() const { return rect_; }
-
-  // Returns the RGBA tint as (r, g, b, a).
-  [[nodiscard]] core::Vec4f GetTint() const { return tint_; }
+  [[nodiscard]] abstract::Texture*   GetTexture() const { return texture_; }
+  [[nodiscard]] const core::Rect&    GetRect()    const { return rect_; }
+  [[nodiscard]] core::Vec4f          GetTint()    const { return tint_; }
 
  private:
   abstract::Texture* texture_;
-  core::Vec4f        rect_;
+  core::Rect         rect_;
   core::Vec4f        tint_;
 };
 
