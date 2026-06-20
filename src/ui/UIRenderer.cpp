@@ -158,7 +158,8 @@ void UIRenderer::RenderSprites() {
       core::Vertex2D({x0, y1, 0.f}, tint, {0.f, 1.f}),
     };
     vertex_buf_->Fill(verts, 4);
-    s->GetTexture()->Bind(0);
+    if (s->GetTexture()) s->GetTexture()->Bind(0);
+    else if (s->GetRawTexture()) s->GetRawTexture()->Bind(0);
     video_->RenderIndexed(6);
   }
 }

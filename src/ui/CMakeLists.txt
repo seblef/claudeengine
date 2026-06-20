@@ -1,6 +1,9 @@
 add_library(ui STATIC
     FontAtlas.cpp
+    HUDScreen.cpp
+    LoadingScreen.cpp
     UIRenderer.cpp
+    UIScreen.cpp
     UISprite.cpp
     UIText.cpp
 )
