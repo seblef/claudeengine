@@ -32,6 +32,7 @@ constexpr ToolEntry kCreationTools[] = {
   {EditorTool::kCreateOmniLight,      ICON_FA_LIGHTBULB,      "Create Omni Light",         ImGuiKey_None},
   {EditorTool::kCreateCircleSpot,     ICON_FA_CIRCLE_DOT,     "Create Circle Spot Light",  ImGuiKey_None},
   {EditorTool::kCreateRectSpot,       ICON_FA_SQUARE,         "Create Rect Spot Light",    ImGuiKey_None},
+  {EditorTool::kCreatePivot,          ICON_FA_CROSSHAIRS,     "Create Pivot",              ImGuiKey_None},
   {EditorTool::kCreatePlayerStart,    ICON_FA_FLAG,           "Create Player Start",       ImGuiKey_None},
   {EditorTool::kCreateParticleSystem, ICON_FA_FIRE,           "Create Particle System",    ImGuiKey_None},
   {EditorTool::kCreateSoundEmitter,   ICON_FA_VOLUME_HIGH,    "Create Sound Emitter",      ImGuiKey_None},

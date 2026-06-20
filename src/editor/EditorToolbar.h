@@ -18,6 +18,7 @@ enum class EditorTool {
   kCreateOmniLight,
   kCreateCircleSpot,
   kCreateRectSpot,
+  kCreatePivot,
   kCreatePlayerStart,
   kCreateParticleSystem,
   kCreateSoundEmitter,
@@ -29,6 +30,7 @@ inline bool IsCreationTool(EditorTool tool) {
          tool == EditorTool::kCreateOmniLight      ||
          tool == EditorTool::kCreateCircleSpot     ||
          tool == EditorTool::kCreateRectSpot       ||
+         tool == EditorTool::kCreatePivot          ||
          tool == EditorTool::kCreatePlayerStart    ||
          tool == EditorTool::kCreateParticleSystem ||
          tool == EditorTool::kCreateSoundEmitter;

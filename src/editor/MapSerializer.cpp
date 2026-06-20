@@ -19,6 +19,7 @@
 #include "game/GameMesh.h"
 #include "game/GameObjectType.h"
 #include "game/GameParticleSystem.h"
+#include "game/GamePivot.h"
 #include "game/GamePlayerStart.h"
 #include "game/GameSoundEmitter.h"
 #include "game/GameTerrain.h"
@@ -342,6 +343,15 @@ void MapSerializer::SerializeVisitor::Visit(game::GameCamera& camera) {
   out_ << YAML::Key << "type"      << YAML::Value << "camera";
   out_ << YAML::Key << "transform" << YAML::Value;
   EmitTransform(out_, camera.GetWorldTransform());
+  out_ << YAML::EndMap;
+}
+
+void MapSerializer::SerializeVisitor::Visit(game::GamePivot& pivot) {
+  out_ << YAML::BeginMap;
+  out_ << YAML::Key << "name"      << YAML::Value << pivot.GetName();
+  out_ << YAML::Key << "type"      << YAML::Value << "pivot";
+  out_ << YAML::Key << "transform" << YAML::Value;
+  EmitTransform(out_, pivot.GetWorldTransform());
   out_ << YAML::EndMap;
 }
 

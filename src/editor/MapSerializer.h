@@ -13,6 +13,7 @@
 #include "game/GameMesh.h"
 #include "game/GameObjectVisitor.h"
 #include "game/GameParticleSystem.h"
+#include "game/GamePivot.h"
 #include "game/GamePlayerStart.h"
 #include "game/GameSoundEmitter.h"
 #include "game/GameTerrain.h"
@@ -60,6 +61,7 @@ class MapSerializer {
     void Visit(game::GameLight& light)                  override;
     void Visit(game::GameMesh& mesh)                    override;
     void Visit(game::GameParticleSystem& particle_system) override;
+    void Visit(game::GamePivot& pivot)                  override;
     void Visit(game::GamePlayerStart& player_start)     override;
     void Visit(game::GameSoundEmitter& sound_emitter)   override;
     // Skipped from the objects sequence — terrain is at root level.

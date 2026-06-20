@@ -20,6 +20,7 @@
 #include "game/GameMaterial.h"
 #include "game/GameMesh.h"
 #include "game/GameParticleSystem.h"
+#include "game/GamePivot.h"
 #include "game/GamePlayerStart.h"
 #include "game/GameSoundEmitter.h"
 #include "game/GameTerrain.h"
@@ -346,6 +347,16 @@ std::unique_ptr<GameObject> ParseCamera(const YAML::Node& node) {
   return camera;
 }
 
+std::unique_ptr<GameObject> ParsePivot(const YAML::Node& node) {
+  const std::string name      = node["name"].as<std::string>("Pivot");
+  const core::Mat4f transform = core::ParseMat4(node["transform"]);
+
+  auto pivot = std::make_unique<GamePivot>();
+  pivot->SetName(name);
+  pivot->SetWorldTransform(transform);
+  return pivot;
+}
+
 std::unique_ptr<GameObject> ParsePlayerStart(const YAML::Node& node) {
   const std::string name      = node["name"].as<std::string>("PlayerStart");
   const core::Mat4f transform = core::ParseMat4(node["transform"]);
@@ -540,6 +551,8 @@ MapData MapLoader::Load(const std::filesystem::path& path,
         result.objects.push_back(ParseLight(obj));
       } else if (type == "camera") {
         result.objects.push_back(ParseCamera(obj));
+      } else if (type == "pivot") {
+        result.objects.push_back(ParsePivot(obj));
       } else if (type == "player_start") {
         result.objects.push_back(ParsePlayerStart(obj));
       } else if (type == "particle_system") {
