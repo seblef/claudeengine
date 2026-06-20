@@ -40,6 +40,7 @@ class SoundEmitterSelectionModal;
 class PropertiesPanel;
 class ResourcesPanel;
 class ObjectsPanel;
+class OutlinerPanel;
 class LogPanel;
 
 // Main editor window.
@@ -196,6 +197,8 @@ class EditorWindow {
   std::unique_ptr<ResourcesPanel>        resources_panel_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<ObjectsPanel>          objects_panel_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<OutlinerPanel>         outliner_panel_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<LogPanel>              log_panel_;
 
