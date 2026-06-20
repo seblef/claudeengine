@@ -91,9 +91,18 @@ void UIRenderer::OnResize(int width, int height) {
   UploadOrtho(width, height);
 }
 
-void UIRenderer::Render(const std::vector<UISprite*>& sprites,
-                        const std::vector<UIText*>& texts) {
-  if (sprites.empty() && texts.empty()) return;
+void UIRenderer::RemoveUISprite(UISprite* s) {
+  sprites_.erase(std::remove(sprites_.begin(), sprites_.end(), s),
+                 sprites_.end());
+}
+
+void UIRenderer::RemoveUIText(UIText* t) {
+  texts_.erase(std::remove(texts_.begin(), texts_.end(), t),
+               texts_.end());
+}
+
+void UIRenderer::Render() {
+  if (sprites_.empty() && texts_.empty()) return;
 
   video_->SetDepthTestEnabled(false);
   video_->SetDepthWriteEnabled(false);
@@ -103,8 +112,8 @@ void UIRenderer::Render(const std::vector<UISprite*>& sprites,
   ortho_cb_->Bind();
   video_->SetIndexType(abstract::IndexType::kUInt16);
 
-  RenderSprites(sprites);
-  RenderTexts(texts);
+  RenderSprites();
+  RenderTexts();
 
   video_->SetBlendEnabled(false);
   video_->SetDepthTestEnabled(true);
@@ -118,10 +127,10 @@ void UIRenderer::UploadOrtho(int width, int height) {
   ortho_cb_->Fill(&info);
 }
 
-void UIRenderer::RenderSprites(const std::vector<UISprite*>& sprites) {
-  if (sprites.empty()) return;
+void UIRenderer::RenderSprites() {
+  if (sprites_.empty()) return;
 
-  std::vector<UISprite*> sorted = sprites;
+  std::vector<UISprite*> sorted = sprites_;
   std::sort(sorted.begin(), sorted.end(),
             [](const UISprite* a, const UISprite* b) {
               return a->GetLayer() < b->GetLayer();
@@ -154,10 +163,10 @@ void UIRenderer::RenderSprites(const std::vector<UISprite*>& sprites) {
   }
 }
 
-void UIRenderer::RenderTexts(const std::vector<UIText*>& texts) {
-  if (texts.empty()) return;
+void UIRenderer::RenderTexts() {
+  if (texts_.empty()) return;
 
-  std::vector<UIText*> sorted = texts;
+  std::vector<UIText*> sorted = texts_;
   std::sort(sorted.begin(), sorted.end(),
             [](const UIText* a, const UIText* b) {
               return a->GetLayer() < b->GetLayer();

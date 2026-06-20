@@ -14,11 +14,11 @@
 
 namespace ui {
 
-// Singleton 2D overlay renderer.
+// Singleton 2D overlay renderer — independent of the 3D Renderer.
 //
-// Renders UISprite and UIText elements over the 3D scene at the end of each
-// frame, after the composite pass. Follows the same lifecycle pattern as
-// BloomRenderer and EyeAdaptationRenderer.
+// Owns its registered UISprite and UIText lists. The caller (e.g. the game
+// system) is responsible for calling Render() after 3D rendering completes,
+// rendering to whichever framebuffer is currently bound.
 //
 // Constant buffer slot 4 is reserved for the orthographic projection matrix
 // (pixel (0,0) = top-left → NDC (-1,+1), y-axis flipped).
@@ -38,14 +38,27 @@ class UIRenderer : public core::Singleton<UIRenderer> {
   // Recomputes and uploads the orthographic projection matrix for the new size.
   void OnResize(int width, int height);
 
-  // Renders all sprites sorted by layer, then all texts sorted by layer.
-  void Render(const std::vector<UISprite*>& sprites,
-              const std::vector<UIText*>& texts);
+  // Registers a sprite. The caller retains ownership; the pointer must remain
+  // valid on every subsequent Render() call.
+  void AddUISprite(UISprite* s) { sprites_.push_back(s); }
+
+  // Unregisters a sprite.
+  void RemoveUISprite(UISprite* s);
+
+  // Registers a text element. The caller retains ownership; the pointer must
+  // remain valid on every subsequent Render() call.
+  void AddUIText(UIText* t) { texts_.push_back(t); }
+
+  // Unregisters a text element.
+  void RemoveUIText(UIText* t);
+
+  // Renders all registered sprites sorted by layer, then all texts sorted by layer.
+  void Render();
 
  private:
   void UploadOrtho(int width, int height);
-  void RenderSprites(const std::vector<UISprite*>& sprites);
-  void RenderTexts(const std::vector<UIText*>& texts);
+  void RenderSprites();
+  void RenderTexts();
 
   // Maximum quads that fit in the shared VBO / IBO (4 verts, 6 indices each).
   // cppcheck-suppress unusedStructMember
@@ -61,6 +74,11 @@ class UIRenderer : public core::Singleton<UIRenderer> {
   std::unique_ptr<abstract::ConstantBuffer> ortho_cb_;
   std::unique_ptr<abstract::VertexBuffer>   vertex_buf_;
   std::unique_ptr<abstract::IndexBuffer>    index_buf_;
+
+  // cppcheck-suppress unusedStructMember
+  std::vector<UISprite*> sprites_;
+  // cppcheck-suppress unusedStructMember
+  std::vector<UIText*>   texts_;
 };
 
 }  // namespace ui

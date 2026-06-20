@@ -1,7 +1,6 @@
 #pragma once
 
 #include <memory>
-#include <vector>
 
 #include "abstract/BlendFactor.h"
 #include "abstract/ConstantBuffer.h"
@@ -33,9 +32,6 @@ namespace environment { class SkyRenderer;         }
 namespace environment { class WaterRenderer;       }
 namespace environment { class WindSystem;          }
 namespace particles   { class ParticleRenderer; }
-namespace ui          { class UIRenderer; }
-namespace ui          { class UISprite;   }
-namespace ui          { class UIText;     }
 
 namespace renderer {
 
@@ -219,24 +215,6 @@ class Renderer : public core::Singleton<Renderer> {
     return particle_renderer_;
   }
 
-  // Registers a UIRenderer to be called after the composite pass.
-  // Pass nullptr to detach. The caller retains ownership.
-  void SetUIRenderer(ui::UIRenderer* ui) { ui_renderer_ = ui; }
-
-  // Adds a UISprite to the per-frame overlay list.
-  // The caller retains ownership; the pointer must remain valid each frame.
-  void AddUISprite(ui::UISprite* s) { ui_sprites_.push_back(s); }
-
-  // Removes a UISprite from the per-frame overlay list.
-  void RemoveUISprite(ui::UISprite* s);
-
-  // Adds a UIText to the per-frame overlay list.
-  // The caller retains ownership; the pointer must remain valid each frame.
-  void AddUIText(ui::UIText* t) { ui_texts_.push_back(t); }
-
-  // Removes a UIText from the per-frame overlay list.
-  void RemoveUIText(ui::UIText* t);
-
   // Forwarding wrappers for WireframeRenderer configuration.
   static void SetGizmosEnabled(bool enabled) {
     WireframeRenderer::Instance().SetGizmosEnabled(enabled);
@@ -346,14 +324,6 @@ class Renderer : public core::Singleton<Renderer> {
   // Optional particle renderer for kGBuffer emitters. Not owned by Renderer.
   // cppcheck-suppress unusedStructMember
   particles::ParticleRenderer* particle_renderer_ = nullptr;
-
-  // Optional UI overlay renderer called after the composite pass. Not owned by Renderer.
-  // cppcheck-suppress unusedStructMember
-  ui::UIRenderer* ui_renderer_ = nullptr;
-  // cppcheck-suppress unusedStructMember
-  std::vector<ui::UISprite*> ui_sprites_;
-  // cppcheck-suppress unusedStructMember
-  std::vector<ui::UIText*>   ui_texts_;
 
   // cppcheck-suppress unusedStructMember
   PostProcessInfos post_process_infos_;
