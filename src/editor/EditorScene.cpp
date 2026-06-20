@@ -1,7 +1,6 @@
 #include "editor/EditorScene.h"
 
 #include <algorithm>
-#include <iterator>
 #include <memory>
 
 #include "core/BBox3.h"
@@ -22,6 +21,7 @@
 namespace editor {
 
 namespace {
+
 game::GameLightDesc DefaultLightDesc() {
   game::GameLightDesc desc;
   desc.color     = core::Color(0.9f, 0.85f, 0.7f);
@@ -29,6 +29,16 @@ game::GameLightDesc DefaultLightDesc() {
   desc.direction = core::Vec3f(-0.4f, -0.8f, -0.3f).Normalized();
   return desc;
 }
+
+// Reparents all children of obj to obj's parent (or root) before obj is removed.
+void DetachChildren(game::GameObject* obj) {
+  if (obj->GetChildren().empty()) return;
+  std::vector<game::GameObject*> children = obj->GetChildren();
+  game::GameObject* new_parent = obj->GetParent();
+  for (auto* child : children)
+    child->Reparent(new_parent);
+}
+
 }  // namespace
 
 EditorScene::EditorScene(abstract::VideoDevice* video)
@@ -49,26 +59,24 @@ EditorScene::EditorScene(abstract::VideoDevice* video,
   if (!add_default_objects) return;
 
   // Floor plane — neutral grey diffuse, map_size × map_size world units.
-  // Added as a dynamic (user-deletable) object so it can be selected, moved,
-  // or removed when a terrain is present.
   auto* plane_mat = new game::GameMaterial(
       "__proc_editor_floor",
       renderer::MaterialDesc().SetDiffuseColor(core::Color(0.5f, 0.5f, 0.5f)), video);
   auto* plane_tmpl = new game::MeshTemplate(
       "__proc_editor_floor", renderer::CreatePlaneMesh(video, map_size_ / 2.f), plane_mat);
-  plane_mat->Release();  // plane_tmpl holds the ref
+  plane_mat->Release();
   auto floor = std::make_unique<game::GameMesh>(plane_tmpl);
   floor->SetName("Floor");
   plane_tmpl->Release();
   AddDynamicObject(std::move(floor));
 
-  // Unit cube scaled ×2 and placed at (0,1,0) so its bottom face sits on the floor.
+  // Unit cube scaled ×2 and placed at (0,1,0).
   auto* cube_mat = new game::GameMaterial(
       "__proc_editor_cube",
       renderer::MaterialDesc().SetDiffuseColor(core::Color(0.7f, 0.7f, 0.7f)), video);
   auto* cube_tmpl = new game::MeshTemplate(
       "__proc_editor_cube", renderer::CreateCubeMesh(video), cube_mat);
-  cube_mat->Release();  // cube_tmpl holds the ref
+  cube_mat->Release();
   auto cube = std::make_unique<game::GameMesh>(cube_tmpl);
   cube->SetName("Cube");
   cube_tmpl->Release();
@@ -82,12 +90,8 @@ EditorScene::~EditorScene() {
     game::GameSystem::Instance().RemoveObject(obj.get());
   game::GameSystem::Instance().RemoveObject(light_.get());
 
-  for (auto* mat : game_materials_) {
-    mat->Release();
-  }
-  for (auto* tmpl : mesh_templates_) {
-    tmpl->Release();
-  }
+  for (auto* mat : game_materials_) mat->Release();
+  for (auto* tmpl : mesh_templates_) tmpl->Release();
 }
 
 game::GameObject* EditorScene::AddDynamicObject(std::unique_ptr<game::GameObject> obj) {
@@ -99,19 +103,20 @@ game::GameObject* EditorScene::AddDynamicObject(std::unique_ptr<game::GameObject
   return raw;
 }
 
+
 void EditorScene::RemoveDynamicObject(game::GameObject* obj) {
   auto it = std::find_if(dynamic_objects_.begin(), dynamic_objects_.end(),
                          [obj](const auto& p) { return p.get() == obj; });
-  if (it == dynamic_objects_.end()) {
-    return;  // not a dynamic object — no-op
-  }
+  if (it == dynamic_objects_.end()) return;
 
+  DetachChildren(obj);
+  obj->Reparent(nullptr);  // remove obj from its parent's children list
   RemoveFromSelection(obj);
-  RemoveFromGroup(obj);
+  if (obj->GetType() == game::GameObjectType::kPivot)
+    expanded_pivots_.erase(static_cast<game::GamePivot*>(obj));
 
   if (on_object_removed_) on_object_removed_(obj);
   game::GameSystem::Instance().RemoveObject(obj);
-
   objects_.erase(std::remove(objects_.begin(), objects_.end(), obj), objects_.end());
   dynamic_objects_.erase(it);
 }
@@ -122,13 +127,15 @@ std::unique_ptr<game::GameObject> EditorScene::ReclaimDynamicObject(
                          [obj](const auto& p) { return p.get() == obj; });
   if (it == dynamic_objects_.end()) return nullptr;
 
+  DetachChildren(obj);
+  obj->Reparent(nullptr);  // remove obj from its parent's children list
   RemoveFromSelection(obj);
-  RemoveFromGroup(obj);
+  if (obj->GetType() == game::GameObjectType::kPivot)
+    expanded_pivots_.erase(static_cast<game::GamePivot*>(obj));
 
   if (on_object_removed_) on_object_removed_(obj);
   game::GameSystem::Instance().RemoveObject(obj);
-  objects_.erase(std::remove(objects_.begin(), objects_.end(), obj),
-                 objects_.end());
+  objects_.erase(std::remove(objects_.begin(), objects_.end(), obj), objects_.end());
 
   std::unique_ptr<game::GameObject> reclaimed = std::move(*it);
   dynamic_objects_.erase(it);
@@ -139,6 +146,59 @@ bool EditorScene::IsDynamic(const game::GameObject* obj) const {
   return std::any_of(dynamic_objects_.begin(), dynamic_objects_.end(),
                      [obj](const auto& p) { return p.get() == obj; });
 }
+
+// ---- Pivot grouping ---------------------------------------------------------
+
+game::GamePivot* EditorScene::GroupUnderNewPivot(
+    const std::string& name,
+    const std::vector<game::GameObject*>& objects) {
+  if (objects.empty()) return nullptr;
+
+  core::BBox3 combined = objects[0]->GetWorldBBox();
+  for (std::size_t i = 1; i < objects.size(); ++i)
+    combined << objects[i]->GetWorldBBox();
+  const core::Vec3f center = combined.GetCenter();
+
+  auto pivot = std::make_unique<game::GamePivot>();
+  pivot->SetName(name);
+  pivot->SetWorldTransform(core::Mat4f::Translation(center));
+
+  auto* raw = static_cast<game::GamePivot*>(AddDynamicObject(std::move(pivot)));
+  for (auto* obj : objects)
+    obj->Reparent(raw);
+  return raw;
+}
+
+std::unique_ptr<game::GamePivot> EditorScene::UngroupPivot(game::GamePivot* pivot) {
+  // Reparent children to the pivot's parent (or root).
+  game::GameObject* new_parent = pivot->GetParent();
+  std::vector<game::GameObject*> children = pivot->GetChildren();
+  for (auto* child : children)
+    child->Reparent(new_parent);
+
+  // Detach the pivot from its own parent before reclaiming.
+  pivot->Reparent(nullptr);
+
+  expanded_pivots_.erase(pivot);
+  auto reclaimed = ReclaimDynamicObject(pivot);
+  return std::unique_ptr<game::GamePivot>(
+      static_cast<game::GamePivot*>(reclaimed.release()));
+}
+
+// ---- Pivot expand / collapse ------------------------------------------------
+
+bool EditorScene::IsPivotExpanded(const game::GamePivot* pivot) const {
+  return expanded_pivots_.count(const_cast<game::GamePivot*>(pivot)) > 0;
+}
+
+void EditorScene::SetPivotExpanded(game::GamePivot* pivot, bool expanded) {
+  if (expanded)
+    expanded_pivots_.insert(pivot);
+  else
+    expanded_pivots_.erase(pivot);
+}
+
+// ---- Bounds -----------------------------------------------------------------
 
 core::BBox3 EditorScene::GetBounds() const {
   core::BBox3 result;
@@ -155,7 +215,6 @@ core::BBox3 EditorScene::GetBounds() const {
   if (!has_any)
     return core::BBox3({-5.f, -5.f, -5.f}, {5.f, 5.f, 5.f});
 
-  // Ensure minimum diagonal of 10 world units.
   constexpr float kMinHalf = 5.f;
   const core::Vec3f center = result.GetCenter();
   const core::Vec3f half   = result.GetSize() * 0.5f;
@@ -184,6 +243,8 @@ void EditorScene::SetFilePath(const std::filesystem::path& p) { file_path_ = p; 
 // cppcheck-suppress returnByReference
 game::GameLightDesc EditorScene::GetGlobalLightDesc() const { return global_light_desc_; }
 
+// ---- Selection --------------------------------------------------------------
+
 game::GameObject* EditorScene::GetSelectedObject() const {
   return selection_.size() == 1 ? selection_[0] : nullptr;
 }
@@ -192,14 +253,15 @@ void EditorScene::SetSelectedObject(game::GameObject* obj) {
   selection_.clear();
   if (!obj) return;
 
-  // If obj belongs to a closed group, select the whole group.
-  const ObjectGroup* grp = FindGroup(obj);
-  if (grp && !grp->is_open) {
-    std::copy(grp->objects.begin(), grp->objects.end(),
-              std::back_inserter(selection_));
-  } else {
-    selection_.push_back(obj);
+  // If obj's immediate parent is a collapsed pivot, select the pivot instead.
+  game::GameObject* effective = obj;
+  game::GameObject* parent    = obj->GetParent();
+  if (parent && parent->GetType() == game::GameObjectType::kPivot) {
+    auto* pivot = static_cast<game::GamePivot*>(parent);
+    if (!IsPivotExpanded(pivot))
+      effective = pivot;
   }
+  selection_.push_back(effective);
 }
 
 bool EditorScene::IsSelected(const game::GameObject* obj) const {
@@ -209,16 +271,16 @@ bool EditorScene::IsSelected(const game::GameObject* obj) const {
 void EditorScene::AddToSelection(game::GameObject* obj) {
   if (!obj) return;
 
-  // If obj belongs to a closed group, add all group members.
-  const ObjectGroup* grp = FindGroup(obj);
-  if (grp && !grp->is_open) {
-    std::copy_if(grp->objects.begin(), grp->objects.end(),
-                 std::back_inserter(selection_),
-                 [this](const game::GameObject* m) { return !IsSelected(m); });
-  } else {
-    if (!IsSelected(obj))
-      selection_.push_back(obj);
+  // If obj's immediate parent is a collapsed pivot, add the pivot instead.
+  game::GameObject* effective = obj;
+  game::GameObject* parent    = obj->GetParent();
+  if (parent && parent->GetType() == game::GameObjectType::kPivot) {
+    auto* pivot = static_cast<game::GamePivot*>(parent);
+    if (!IsPivotExpanded(pivot))
+      effective = pivot;
   }
+  if (!IsSelected(effective))
+    selection_.push_back(effective);
 }
 
 void EditorScene::RemoveFromSelection(game::GameObject* obj) {
@@ -230,106 +292,7 @@ void EditorScene::ClearSelection() {
   selection_.clear();
 }
 
-// ---- Group management -------------------------------------------------------
-
-ObjectGroup* EditorScene::CreateGroup(const std::string& name,
-                                      const std::vector<game::GameObject*>& objects) {
-  ObjectGroup grp;
-  grp.name = name;
-  for (game::GameObject* obj : objects) {
-    if (!FindGroup(obj))
-      grp.objects.push_back(obj);
-  }
-  groups_.push_back(std::move(grp));
-  return &groups_.back();
-}
-
-void EditorScene::DeleteGroup(ObjectGroup* group) {
-  auto it = std::find_if(groups_.begin(), groups_.end(),
-                         [group](const ObjectGroup& g) { return &g == group; });
-  if (it != groups_.end())
-    groups_.erase(it);
-}
-
-ObjectGroup* EditorScene::FindGroup(const game::GameObject* obj) {
-  for (ObjectGroup& grp : groups_) {
-    const auto it = std::find(grp.objects.begin(), grp.objects.end(), obj);
-    if (it != grp.objects.end()) return &grp;
-  }
-  return nullptr;
-}
-
-const ObjectGroup* EditorScene::FindGroup(const game::GameObject* obj) const {
-  for (const ObjectGroup& grp : groups_) {
-    const auto it = std::find(grp.objects.begin(), grp.objects.end(), obj);
-    if (it != grp.objects.end()) return &grp;
-  }
-  return nullptr;
-}
-
-ObjectGroup* EditorScene::GetSelectionGroup() {
-  if (selection_.empty()) return nullptr;
-
-  // Find the group of the first selected object.
-  ObjectGroup* grp = FindGroup(selection_[0]);
-  if (!grp || grp->is_open) return nullptr;
-
-  // All selected objects must belong to the same closed group and the selection
-  // must cover exactly the group's members.
-  if (selection_.size() != grp->objects.size()) return nullptr;
-  const bool all_in_group = std::all_of(
-      selection_.begin(), selection_.end(),
-      [this, grp](const game::GameObject* o) { return FindGroup(o) == grp; });
-  return all_in_group ? grp : nullptr;
-}
-
-void EditorScene::RemoveFromGroup(game::GameObject* obj) {
-  for (ObjectGroup& grp : groups_) {
-    auto it = std::find(grp.objects.begin(), grp.objects.end(), obj);
-    if (it != grp.objects.end()) {
-      grp.objects.erase(it);
-      return;
-    }
-  }
-}
-
-void EditorScene::AddToGroup(ObjectGroup* group,
-                             const std::vector<game::GameObject*>& objects) {
-  for (game::GameObject* obj : objects) {
-    if (!FindGroup(obj))
-      group->objects.push_back(obj);
-  }
-}
-
-ObjectGroup* EditorScene::FindAddToGroupTarget(
-    std::vector<game::GameObject*>* out_ungrouped) {
-  if (selection_.empty()) return nullptr;
-
-  ObjectGroup* target = nullptr;
-  std::vector<game::GameObject*> ungrouped;
-
-  for (game::GameObject* obj : selection_) {
-    ObjectGroup* grp = FindGroup(obj);
-    if (!grp) {
-      ungrouped.push_back(obj);
-    } else if (!target) {
-      target = grp;
-    } else if (target != grp) {
-      return nullptr;  // Objects from two different groups — ambiguous.
-    }
-  }
-
-  if (!target || ungrouped.empty() || target->is_open) return nullptr;
-
-  // All group members must be present in the selection.
-  const bool all_in_sel = std::all_of(
-      target->objects.begin(), target->objects.end(),
-      [this](const game::GameObject* m) { return IsSelected(m); });
-  if (!all_in_sel) return nullptr;
-
-  if (out_ungrouped) *out_ungrouped = std::move(ungrouped);
-  return target;
-}
+// ---- Global light -----------------------------------------------------------
 
 void EditorScene::SetGlobalLightDesc(const game::GameLightDesc& desc) {
   global_light_desc_ = desc;

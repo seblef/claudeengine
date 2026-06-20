@@ -11,7 +11,6 @@
 
 #include "abstract/VideoDevice.h"
 #include "core/Config.h"
-#include "editor/ObjectGroup.h"
 #include "environment/EnvironmentDesc.h"
 #include "game/GameCamera.h"
 #include "game/GameLight.h"
@@ -261,6 +260,11 @@ MapSerializer::SerializeVisitor::SerializeVisitor(
     const std::filesystem::path& data_dir)
     : out_(out), map_path_(map_path), data_dir_(data_dir) {}
 
+void MapSerializer::SerializeVisitor::EmitParentField() {
+  if (!current_parent_name_.empty())
+    out_ << YAML::Key << "parent" << YAML::Value << current_parent_name_;
+}
+
 void MapSerializer::SerializeVisitor::Visit(game::GameMesh& mesh) {
   const game::MeshTemplate* tmpl = mesh.GetTemplate();
   if (tmpl->GetId().rfind("__proc_", 0) == 0) return;
@@ -274,6 +278,7 @@ void MapSerializer::SerializeVisitor::Visit(game::GameMesh& mesh) {
   out_ << YAML::BeginMap;
   out_ << YAML::Key << "name"      << YAML::Value << mesh.GetName();
   out_ << YAML::Key << "type"      << YAML::Value << "mesh";
+  EmitParentField();
   out_ << YAML::Key << "transform" << YAML::Value;
   EmitTransform(out_, mesh.GetWorldTransform());
   out_ << YAML::Key << "mesh"      << YAML::Value << mesh_path;
@@ -290,6 +295,7 @@ void MapSerializer::SerializeVisitor::Visit(game::GameLight& light) {
   out_ << YAML::BeginMap;
   out_ << YAML::Key << "name"           << YAML::Value << light.GetName();
   out_ << YAML::Key << "type"           << YAML::Value << "light";
+  EmitParentField();
   out_ << YAML::Key << "light_type"     << YAML::Value << LightTypeToString(type);
   out_ << YAML::Key << "transform"      << YAML::Value;
   EmitTransform(out_, light.GetWorldTransform());
@@ -341,6 +347,7 @@ void MapSerializer::SerializeVisitor::Visit(game::GameCamera& camera) {
   out_ << YAML::BeginMap;
   out_ << YAML::Key << "name"      << YAML::Value << camera.GetName();
   out_ << YAML::Key << "type"      << YAML::Value << "camera";
+  EmitParentField();
   out_ << YAML::Key << "transform" << YAML::Value;
   EmitTransform(out_, camera.GetWorldTransform());
   out_ << YAML::EndMap;
@@ -350,6 +357,7 @@ void MapSerializer::SerializeVisitor::Visit(game::GamePivot& pivot) {
   out_ << YAML::BeginMap;
   out_ << YAML::Key << "name"      << YAML::Value << pivot.GetName();
   out_ << YAML::Key << "type"      << YAML::Value << "pivot";
+  EmitParentField();
   out_ << YAML::Key << "transform" << YAML::Value;
   EmitTransform(out_, pivot.GetWorldTransform());
   out_ << YAML::EndMap;
@@ -360,6 +368,7 @@ void MapSerializer::SerializeVisitor::Visit(
   out_ << YAML::BeginMap;
   out_ << YAML::Key << "name"      << YAML::Value << player_start.GetName();
   out_ << YAML::Key << "type"      << YAML::Value << "player_start";
+  EmitParentField();
   out_ << YAML::Key << "transform" << YAML::Value;
   EmitTransform(out_, player_start.GetWorldTransform());
   out_ << YAML::EndMap;
@@ -372,6 +381,7 @@ void MapSerializer::SerializeVisitor::Visit(
   out_ << YAML::BeginMap;
   out_ << YAML::Key << "name"      << YAML::Value << particle_system.GetName();
   out_ << YAML::Key << "type"      << YAML::Value << "particle_system";
+  EmitParentField();
   out_ << YAML::Key << "template"  << YAML::Value << tmpl->GetId();
   out_ << YAML::Key << "transform" << YAML::Value;
   EmitTransform(out_, particle_system.GetWorldTransform());
@@ -383,6 +393,7 @@ void MapSerializer::SerializeVisitor::Visit(
   out_ << YAML::BeginMap;
   out_ << YAML::Key << "name"         << YAML::Value << sound_emitter.GetName();
   out_ << YAML::Key << "type"         << YAML::Value << "sound_emitter";
+  EmitParentField();
   out_ << YAML::Key << "sound"        << YAML::Value << sound_emitter.GetSoundName();
   out_ << YAML::Key << "volume_scale" << YAML::Value << sound_emitter.GetVolumeScale();
   out_ << YAML::Key << "transform"    << YAML::Value;
@@ -563,6 +574,8 @@ bool MapSerializer::Save(const EditorScene& scene,
       terrain_obj = static_cast<const game::GameTerrain*>(obj);
       continue;
     }
+    const game::GameObject* parent = obj->GetParent();
+    visitor.SetCurrentParentName(parent ? parent->GetName() : "");
     obj->Accept(visitor);
   }
   out << YAML::EndSeq;
@@ -588,23 +601,6 @@ bool MapSerializer::Save(const EditorScene& scene,
   out << YAML::Key << "distance"  << YAML::Value << cam.distance;
   out << YAML::EndMap;
   out << YAML::Key << "snap_grid"        << YAML::Value << 0.0f;
-
-  // Editor groups.
-  const auto& groups = scene.GetGroups();
-  if (!groups.empty()) {
-    out << YAML::Key << "groups" << YAML::Value << YAML::BeginSeq;
-    for (const editor::ObjectGroup& grp : groups) {
-      out << YAML::BeginMap;
-      out << YAML::Key << "name" << YAML::Value << grp.name;
-      out << YAML::Key << "open" << YAML::Value << grp.is_open;
-      out << YAML::Key << "objects" << YAML::Value << YAML::Flow << YAML::BeginSeq;
-      for (const game::GameObject* obj : grp.objects)
-        out << obj->GetName();
-      out << YAML::EndSeq;
-      out << YAML::EndMap;
-    }
-    out << YAML::EndSeq;
-  }
 
   out << YAML::EndMap;
 
@@ -696,33 +692,6 @@ std::optional<MapLoadResult> MapSerializer::Load(
                 return o->GetName() == sel_name;
               });
           if (it != objs.end()) result.scene->SetSelectedObject(*it);
-        }
-      }
-
-      // Load editor groups.
-      const YAML::Node& groups_node = editor["groups"];
-      if (groups_node && groups_node.IsSequence()) {
-        const auto& objs = result.scene->GetObjects();
-        for (const YAML::Node& grp_node : groups_node) {
-          const std::string grp_name = grp_node["name"].as<std::string>("");
-          if (grp_name.empty()) continue;
-          const bool grp_open = grp_node["open"].as<bool>(false);
-          std::vector<game::GameObject*> members;
-          if (grp_node["objects"] && grp_node["objects"].IsSequence()) {
-            for (const YAML::Node& n : grp_node["objects"]) {
-              const std::string obj_name = n.as<std::string>("");
-              auto oit = std::find_if(objs.begin(), objs.end(),
-                  [&obj_name](const game::GameObject* o) {
-                    return o->GetName() == obj_name;
-                  });
-              if (oit != objs.end()) members.push_back(*oit);
-            }
-          }
-          if (!members.empty()) {
-            editor::ObjectGroup* grp =
-                result.scene->CreateGroup(grp_name, members);
-            grp->is_open = grp_open;
-          }
         }
       }
     }

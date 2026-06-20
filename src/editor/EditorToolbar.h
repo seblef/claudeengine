@@ -93,16 +93,6 @@ class EditorToolbar {
     on_ungroup_objects_ = std::move(cb);
   }
 
-  // Registers a callback fired when the "Open Group" button is clicked.
-  void SetOnOpenGroup(std::function<void()> cb) {
-    on_open_group_ = std::move(cb);
-  }
-
-  // Registers a callback fired when the "Close Group" button is clicked.
-  void SetOnCloseGroup(std::function<void()> cb) {
-    on_close_group_ = std::move(cb);
-  }
-
   // Enables or greys out the Copy button.
   void SetCanCopy(bool b) { can_copy_ = b; }
 
@@ -120,8 +110,6 @@ class EditorToolbar {
   // Enables or greys out the group action buttons.
   void SetCanGroup(bool b)       { can_group_ = b; }
   void SetCanUngroup(bool b)     { can_ungroup_ = b; }
-  void SetCanOpenGroup(bool b)   { can_open_group_ = b; }
-  void SetCanCloseGroup(bool b)  { can_close_group_ = b; }
 
   // Registers a callback fired when the sound-enable toggle is clicked.
   // The bool argument is the new enabled state.
@@ -164,10 +152,6 @@ class EditorToolbar {
   // cppcheck-suppress unusedStructMember
   std::function<void()> on_ungroup_objects_;
   // cppcheck-suppress unusedStructMember
-  std::function<void()> on_open_group_;
-  // cppcheck-suppress unusedStructMember
-  std::function<void()> on_close_group_;
-  // cppcheck-suppress unusedStructMember
   bool                  dirty_              = false;
   // cppcheck-suppress unusedStructMember
   bool                  can_copy_           = false;
@@ -181,10 +165,6 @@ class EditorToolbar {
   bool                  can_group_          = false;
   // cppcheck-suppress unusedStructMember
   bool                  can_ungroup_        = false;
-  // cppcheck-suppress unusedStructMember
-  bool                  can_open_group_     = false;
-  // cppcheck-suppress unusedStructMember
-  bool                  can_close_group_    = false;
   // cppcheck-suppress unusedStructMember
   std::function<void(bool)> on_sound_toggle_;
   // cppcheck-suppress unusedStructMember

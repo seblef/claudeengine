@@ -206,26 +206,6 @@ void EditorToolbar::Render() {
   ImGui::EndDisabled();
 
   ImGui::SameLine();
-
-  ImGui::BeginDisabled(!can_open_group_);
-  if (ImGui::Button(ICON_FA_FOLDER_OPEN) && on_open_group_)
-    on_open_group_();
-  ImGui::SetItemTooltip("Open group (edit members independently)");
-  if (!can_open_group_)
-    ImGui::SetItemTooltip("Select a closed group first");
-  ImGui::EndDisabled();
-
-  ImGui::SameLine();
-
-  ImGui::BeginDisabled(!can_close_group_);
-  if (ImGui::Button(ICON_FA_FOLDER) && on_close_group_)
-    on_close_group_();
-  ImGui::SetItemTooltip("Close group");
-  if (!can_close_group_)
-    ImGui::SetItemTooltip("Select an open group first");
-  ImGui::EndDisabled();
-
-  ImGui::SameLine();
   ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
   ImGui::SameLine();
 

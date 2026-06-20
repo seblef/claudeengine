@@ -4,17 +4,18 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "abstract/VideoDevice.h"
 #include "core/BBox3.h"
-#include "editor/ObjectGroup.h"
 #include "environment/EnvironmentDesc.h"
 #include "game/GameLight.h"
 #include "game/GameLightDesc.h"
 #include "game/GameMaterial.h"
 #include "game/GameMesh.h"
 #include "game/GameObject.h"
+#include "game/GamePivot.h"
 #include "game/MeshTemplate.h"
 
 namespace editor {
@@ -69,12 +70,14 @@ class EditorScene {
   game::GameObject* AddDynamicObject(std::unique_ptr<game::GameObject> obj);
 
   // Removes obj from the dynamic pool and unregisters it from GameSystem.
+  // Children of obj are reparented to obj's parent (or root) before removal.
   // Clears the selection if obj was selected.
   // No-op if obj is not a dynamic object (e.g. floor or global light).
   void RemoveDynamicObject(game::GameObject* obj);
 
   // Removes obj from the dynamic pool, unregisters it from GameSystem, and
   // returns ownership to the caller. Returns nullptr if obj is not dynamic.
+  // Children of obj are reparented to obj's parent (or root) before removal.
   // Clears the selection if obj was selected.
   [[nodiscard]] std::unique_ptr<game::GameObject> ReclaimDynamicObject(
       game::GameObject* obj);
@@ -82,43 +85,28 @@ class EditorScene {
   // Returns true if obj was added via AddDynamicObject (i.e. user-deletable).
   [[nodiscard]] bool IsDynamic(const game::GameObject* obj) const;
 
-  // ---- Group management -----------------------------------------------------
+  // ---- Pivot grouping -------------------------------------------------------
 
-  // Returns all groups in creation order.
-  [[nodiscard]] const std::vector<ObjectGroup>& GetGroups() const {
-    return groups_;
-  }
-  [[nodiscard]] std::vector<ObjectGroup>& GetGroups() { return groups_; }
+  // Creates a new GamePivot at the combined AABB centre of objects, adds it
+  // to the dynamic pool, and reparents each object under it. Returns the pivot.
+  game::GamePivot* GroupUnderNewPivot(const std::string& name,
+                                      const std::vector<game::GameObject*>& objects);
 
-  // Creates a new group from the given objects and returns a pointer to it.
-  // Objects already in another group are silently skipped.
-  ObjectGroup* CreateGroup(const std::string& name,
-                           const std::vector<game::GameObject*>& objects);
+  // Reparents all children of pivot to the pivot's current parent (or root),
+  // removes the pivot from the scene, and returns ownership to the caller.
+  [[nodiscard]] std::unique_ptr<game::GamePivot> UngroupPivot(game::GamePivot* pivot);
 
-  // Removes the group. Its objects remain in the scene but are no longer grouped.
-  void DeleteGroup(ObjectGroup* group);
+  // ---- Pivot expand / collapse state ---------------------------------------
 
-  // Returns the group that contains obj, or nullptr if obj is not grouped.
-  [[nodiscard]] ObjectGroup* FindGroup(const game::GameObject* obj);
-  [[nodiscard]] const ObjectGroup* FindGroup(const game::GameObject* obj) const;
+  // Returns true when pivot is "expanded" in the outliner (its children are
+  // selectable individually). Collapsed pivots (the default) redirect child
+  // clicks to the pivot itself.
+  [[nodiscard]] bool IsPivotExpanded(const game::GamePivot* pivot) const;
 
-  // Returns the group whose closed members form exactly the current selection,
-  // or nullptr if the selection does not correspond to a single closed group.
-  [[nodiscard]] ObjectGroup* GetSelectionGroup();
+  // Sets the expanded state of pivot in the outliner.
+  void SetPivotExpanded(game::GamePivot* pivot, bool expanded);
 
-  // Removes obj from whichever group it belongs to (no-op if not grouped).
-  void RemoveFromGroup(game::GameObject* obj);
-
-  // Adds objects to an existing group. Objects already in any group are skipped.
-  void AddToGroup(ObjectGroup* group,
-                  const std::vector<game::GameObject*>& objects);
-
-  // Returns the single closed group whose members are all in the current
-  // selection, provided at least one other ungrouped object is also selected.
-  // Populates out_ungrouped (when non-null) with those ungrouped objects.
-  // Returns nullptr when the selection does not match this "add to group" pattern.
-  [[nodiscard]] ObjectGroup* FindAddToGroupTarget(
-      std::vector<game::GameObject*>* out_ungrouped = nullptr);
+  // ---- Material / mesh template management ---------------------------------
 
   // Registers an imported game material. Stores it for lifetime management;
   // the material is released on EditorScene destruction.
@@ -132,10 +120,14 @@ class EditorScene {
     mesh_templates_.push_back(tmpl);
   }
 
+  // ---- Selection -----------------------------------------------------------
+
   // Returns the single selected object, or nullptr when nothing or multiple
   // objects are selected. Use GetSelection() for multi-selection queries.
   [[nodiscard]] game::GameObject* GetSelectedObject() const;
+
   // Clears the selection and selects obj (or nothing if obj is nullptr).
+  // If obj has a collapsed parent pivot, the pivot is selected instead.
   void SetSelectedObject(game::GameObject* obj);
 
   // Returns all currently selected objects (zero, one, or many).
@@ -144,16 +136,21 @@ class EditorScene {
   }
   // Returns true if obj is currently selected.
   [[nodiscard]] bool IsSelected(const game::GameObject* obj) const;
-  // Adds obj to the selection. No-op if obj is nullptr or already selected.
+  // Adds obj to the selection. If obj has a collapsed parent pivot, the pivot
+  // is added instead. No-op if obj is nullptr or already selected.
   void AddToSelection(game::GameObject* obj);
   // Removes obj from the selection. No-op if obj is not selected.
   void RemoveFromSelection(game::GameObject* obj);
   // Clears the full selection.
   void ClearSelection();
 
+  // ---- Scene bounds --------------------------------------------------------
+
   // Returns the union of all object world bboxes.
   // Guarantees a minimum diagonal of 10 world units for empty scenes.
   [[nodiscard]] core::BBox3                   GetBounds()   const;
+
+  // ---- Metadata ------------------------------------------------------------
 
   [[nodiscard]] const std::string&           GetMapName()  const;
   void                                        SetMapName(const std::string& name);
@@ -199,8 +196,12 @@ class EditorScene {
   std::vector<game::MeshTemplate*>  mesh_templates_;
   // cppcheck-suppress unusedStructMember
   std::vector<game::GameObject*>   selection_;
+
+  // Set of pivots whose children are individually selectable ("expanded").
+  // Pivots absent from this set are "collapsed" — child clicks select the pivot.
   // cppcheck-suppress unusedStructMember
-  std::vector<ObjectGroup>         groups_;
+  std::unordered_set<game::GamePivot*> expanded_pivots_;
+
   // cppcheck-suppress unusedStructMember
   std::function<void(game::GameObject*)> on_object_added_;
   // cppcheck-suppress unusedStructMember

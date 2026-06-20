@@ -12,10 +12,10 @@
 
 #include "editor/EditorCommandHistory.h"
 #include "editor/EditorScene.h"
-#include "editor/ObjectGroup.h"
 #include "editor/commands/RenameObjectCommand.h"
-#include "game/GameObject.h"
 #include "game/GameObjectType.h"
+#include "game/GamePivot.h"
+#include "game/GameObject.h"
 
 namespace editor {
 
@@ -25,7 +25,7 @@ constexpr ImGuiTreeNodeFlags kRootFlags = ImGuiTreeNodeFlags_DefaultOpen;
 constexpr ImGuiTreeNodeFlags kLeafFlags =
     ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 
-constexpr ImVec4 kSelectedColor{0.184f, 0.769f, 0.698f, 0.35f};  // teal accent #2FC4B2
+constexpr ImVec4 kSelectedColor{0.184f, 0.769f, 0.698f, 0.35f};
 
 }  // namespace
 
@@ -101,64 +101,42 @@ void ObjectsPanel::RenderObjectLeaf(const char* icon,
     ImGui::PopStyleColor();
 }
 
-void ObjectsPanel::RenderEditorGroup(ObjectGroup& grp, EditorScene& scene) {
-  // Determine if the whole group is selected.
-  const bool group_fully_selected = !grp.objects.empty() &&
-      std::all_of(grp.objects.begin(), grp.objects.end(),
-                  [&scene](const game::GameObject* o) {
-                    return scene.IsSelected(o);
-                  });
-
-  if (group_fully_selected)
+void ObjectsPanel::RenderPivotNode(game::GamePivot* pivot, EditorScene& scene) {
+  const bool is_selected = scene.IsSelected(pivot);
+  if (is_selected)
     ImGui::PushStyleColor(ImGuiCol_Header, kSelectedColor);
 
-  ImGui::PushID(&grp);
+  ImGui::PushID(pivot);
 
-  // Folder icon: open or closed depending on group state.
-  const char* folder_icon = grp.is_open ? ICON_FA_FOLDER_OPEN : ICON_FA_FOLDER;
-  const std::string header = std::string(folder_icon) + " " + grp.name;
+  const bool is_expanded = scene.IsPivotExpanded(pivot);
+  const char* folder_icon = is_expanded ? ICON_FA_FOLDER_OPEN : ICON_FA_FOLDER;
+  const std::string header = std::string(folder_icon) + " " + pivot->GetName();
 
-  const ImGuiTreeNodeFlags node_flags =
-      ImGuiTreeNodeFlags_DefaultOpen |
-      (group_fully_selected ? ImGuiTreeNodeFlags_Selected : 0);
+  ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow |
+                                  ImGuiTreeNodeFlags_OpenOnDoubleClick;
+  if (is_selected) node_flags |= ImGuiTreeNodeFlags_Selected;
 
+  // Force ImGui to reflect our stored expand state.
+  ImGui::SetNextItemOpen(is_expanded, ImGuiCond_Always);
   const bool open = ImGui::TreeNodeEx(header.c_str(), node_flags);
 
-  // Clicking the folder header selects the group (all members).
-  if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
-    scene.ClearSelection();
-    for (game::GameObject* obj : grp.objects)
-      scene.AddToSelection(obj);
-  }
+  // Sync expand state when the user clicks the arrow.
+  if (ImGui::IsItemToggledOpen())
+    scene.SetPivotExpanded(pivot, open);
 
-  if (group_fully_selected)
+  // Clicking the header (not the arrow) selects the pivot.
+  if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+    scene.SetSelectedObject(pivot);
+
+  if (is_selected)
     ImGui::PopStyleColor();
 
   if (open) {
-    for (game::GameObject* obj : grp.objects) {
-      if (!obj) continue;
-      const char* icon = IconForType(obj->GetType());
-      if (grp.is_open) {
-        // Open group: individual selection.
-        RenderObjectLeaf(icon, obj, scene);
+    for (game::GameObject* child : pivot->GetChildren()) {
+      if (child->GetType() == game::GameObjectType::kPivot) {
+        RenderPivotNode(static_cast<game::GamePivot*>(child), scene);
       } else {
-        // Closed group: clicking a member selects the whole group.
-        const bool is_selected = scene.IsSelected(obj);
-        if (is_selected)
-          ImGui::PushStyleColor(ImGuiCol_Header, kSelectedColor);
-
-        ImGui::PushID(obj);
-        ImGuiTreeNodeFlags flags = kLeafFlags;
-        if (is_selected) flags |= ImGuiTreeNodeFlags_Selected;
-        const std::string label = std::string(icon) + " " + obj->GetName();
-        ImGui::TreeNodeEx(label.c_str(), flags);
-        if (ImGui::IsItemClicked()) {
-          scene.SetSelectedObject(obj);  // expands to whole group
-        }
-        ImGui::PopID();
-
-        if (is_selected)
-          ImGui::PopStyleColor();
+        RenderObjectLeaf(IconForType(child->GetType()), child, scene);
       }
     }
     ImGui::TreePop();
@@ -176,19 +154,19 @@ void ObjectsPanel::RenderTypeGroup(const char* icon, const char* group_name,
                                    char* rename_buf, std::size_t rename_buf_size,
                                    bool& rename_focus_needed,
                                    EditorCommandHistory* history) {
-  // Skip the category if there are no ungrouped objects of this type.
+  // Skip the category if there are no root-level objects of this type.
   const bool has_any = std::any_of(objects.begin(), objects.end(),
-      [type, &scene](const game::GameObject* obj) {
-        return obj->GetType() == type && !scene.FindGroup(obj);
+      [type](const game::GameObject* obj) {
+        return obj->GetType() == type && obj->GetParent() == nullptr;
       });
   if (!has_any) return;
 
-  const std::string header = std::string(icon) + " " + group_name;
-  if (!ImGui::TreeNodeEx(header.c_str(), kRootFlags)) return;
+  const std::string header_str = std::string(icon) + " " + group_name;
+  if (!ImGui::TreeNodeEx(header_str.c_str(), kRootFlags)) return;
 
   for (game::GameObject* obj : objects) {
     if (obj->GetType() != type) continue;
-    if (scene.FindGroup(obj)) continue;  // grouped objects are shown under their group
+    if (obj->GetParent() != nullptr) continue;  // shown under its pivot parent
 
     const bool is_selected = scene.IsSelected(obj);
     if (is_selected)
@@ -245,13 +223,16 @@ void ObjectsPanel::RenderTypeGroup(const char* icon, const char* group_name,
 }
 
 void ObjectsPanel::Render(EditorScene& scene) {
-  // Render editor groups first (as folders).
-  for (ObjectGroup& grp : scene.GetGroups())
-    RenderEditorGroup(grp, scene);
-
   const std::vector<game::GameObject*>& objects = scene.GetObjects();
 
-  // Render ungrouped objects in their type categories.
+  // Render root-level pivot subtrees first.
+  for (game::GameObject* obj : objects) {
+    if (obj->GetParent() != nullptr) continue;
+    if (obj->GetType() != game::GameObjectType::kPivot) continue;
+    RenderPivotNode(static_cast<game::GamePivot*>(obj), scene);
+  }
+
+  // Render non-pivot root-level objects in their type categories.
   RenderTypeGroup(ICON_FA_CUBE,      "Meshes",           game::GameObjectType::kMesh,
                   objects, scene, renaming_obj_, rename_buf_, sizeof(rename_buf_),
                   rename_focus_needed_, history_);
@@ -259,9 +240,6 @@ void ObjectsPanel::Render(EditorScene& scene) {
                   objects, scene, renaming_obj_, rename_buf_, sizeof(rename_buf_),
                   rename_focus_needed_, history_);
   RenderTypeGroup(ICON_FA_CAMERA,    "Cameras",          game::GameObjectType::kCamera,
-                  objects, scene, renaming_obj_, rename_buf_, sizeof(rename_buf_),
-                  rename_focus_needed_, history_);
-  RenderTypeGroup(ICON_FA_LOCATION_CROSSHAIRS, "Pivots",  game::GameObjectType::kPivot,
                   objects, scene, renaming_obj_, rename_buf_, sizeof(rename_buf_),
                   rename_focus_needed_, history_);
   RenderTypeGroup(ICON_FA_FLAG,      "Player Starts",    game::GameObjectType::kPlayerStart,

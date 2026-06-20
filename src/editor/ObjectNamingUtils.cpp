@@ -6,7 +6,6 @@
 #include <string>
 
 #include "editor/EditorScene.h"
-#include "editor/ObjectGroup.h"
 #include "game/GameObject.h"
 
 namespace editor {
@@ -35,19 +34,12 @@ std::string BaseNameOf(const std::string& name) {
 }
 
 std::string GenerateObjectName(const EditorScene& scene,
-                               const std::string& base_name,
-                               bool use_groups) {
+                               const std::string& base_name) {
   const std::string prefix = base_name + "_";
   int highest = 0;
   for (const game::GameObject* obj : scene.GetObjects()) {
     const int idx = HighestIndexForPrefix(obj->GetName(), prefix);
     if (idx > highest) highest = idx;
-  }
-  if (use_groups) {
-    for (const ObjectGroup& grp : scene.GetGroups()) {
-      const int idx = HighestIndexForPrefix(grp.name, prefix);
-      if (idx > highest) highest = idx;
-    }
   }
   char buf[12];
   std::snprintf(buf, sizeof(buf), "%03d", highest + 1);

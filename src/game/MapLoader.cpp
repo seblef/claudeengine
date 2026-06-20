@@ -3,6 +3,7 @@
 #include <fstream>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <loguru.hpp>
@@ -541,33 +542,56 @@ MapData MapLoader::Load(const std::filesystem::path& path,
   if (!objects || !objects.IsSequence())
     return result;
 
+  // Parallel vector of parent names; resolved in a second pass after all
+  // objects are instantiated so ordering in the file does not matter.
+  std::vector<std::string> parent_names;
+
   for (const YAML::Node& obj : objects) {
     const std::string type = obj["type"].as<std::string>("");
 
     try {
+      std::unique_ptr<GameObject> go;
       if (type == "mesh") {
-        result.objects.push_back(ParseMesh(obj, video));
+        go = ParseMesh(obj, video);
       } else if (type == "light") {
-        result.objects.push_back(ParseLight(obj));
+        go = ParseLight(obj);
       } else if (type == "camera") {
-        result.objects.push_back(ParseCamera(obj));
+        go = ParseCamera(obj);
       } else if (type == "pivot") {
-        result.objects.push_back(ParsePivot(obj));
+        go = ParsePivot(obj);
       } else if (type == "player_start") {
-        result.objects.push_back(ParsePlayerStart(obj));
+        go = ParsePlayerStart(obj);
       } else if (type == "particle_system") {
-        auto go = ParseParticleSystem(obj, video);
-        if (go) result.objects.push_back(std::move(go));
+        go = ParseParticleSystem(obj, video);
       } else if (type == "sound_emitter") {
-        auto go = ParseSoundEmitter(obj, sound_manager, resource_manager);
-        if (go) result.objects.push_back(std::move(go));
+        go = ParseSoundEmitter(obj, sound_manager, resource_manager);
       } else {
         LOG_F(WARNING, "MapLoader: unknown object type '%s', skipping",
               type.c_str());
       }
+      if (go) {
+        parent_names.push_back(obj["parent"].as<std::string>(""));
+        result.objects.push_back(std::move(go));
+      }
     } catch (const std::exception& e) {
       LOG_F(WARNING, "MapLoader: error parsing object '%s': %s",
             obj["name"].as<std::string>("?").c_str(), e.what());
+    }
+  }
+
+  // Second pass: link parent-child relationships by name.
+  std::unordered_map<std::string, GameObject*> by_name;
+  for (const auto& go : result.objects)
+    by_name[go->GetName()] = go.get();
+
+  for (size_t i = 0; i < result.objects.size(); ++i) {
+    if (parent_names[i].empty()) continue;
+    auto it = by_name.find(parent_names[i]);
+    if (it != by_name.end()) {
+      result.objects[i]->Reparent(it->second);
+    } else {
+      LOG_F(WARNING, "MapLoader: object '%s' references unknown parent '%s'",
+            result.objects[i]->GetName().c_str(), parent_names[i].c_str());
     }
   }
 

@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <unordered_map>
 #include <unordered_set>
 
 #include <imgui.h>
@@ -28,15 +29,16 @@
 #include "editor/tools/SelectionTool.h"
 #include "editor/tools/TerrainSculptTool.h"
 #include "editor/EditorToolbar.h"
+#include "editor/commands/GroupUnderPivotCommand.h"
 #include "editor/commands/PlaceObjectCommand.h"
 #include "editor/commands/TransformCommand.h"
+#include "editor/commands/UngroupPivotCommand.h"
 #include "editor/EditorViewport.h"
 #include "editor/LogPanel.h"
 #include "editor/MapPropertiesWindow.h"
 #include "editor/MapSerializer.h"
 #include "editor/MaterialEditorWindow.h"
 #include "editor/MeshEditorWindow.h"
-#include "editor/ObjectGroup.h"
 #include "editor/ParticleEditorWindow.h"
 #include "editor/SoundEditorWindow.h"
 #include "editor/MeshSelectionModal.h"
@@ -127,10 +129,8 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   toolbar_->SetOnPaste([this]{ PasteObject(); });
   toolbar_->SetOnFallToTerrain([this]{ FallToTerrain(); });
   toolbar_->SetOnCenterOnObject([this]{ CenterCameraOnObject(); });
-  toolbar_->SetOnGroupObjects([this]{ GroupObjects(); });
-  toolbar_->SetOnUngroupObjects([this]{ UngroupObjects(); });
-  toolbar_->SetOnOpenGroup([this]{ OpenGroup(); });
-  toolbar_->SetOnCloseGroup([this]{ CloseGroup(); });
+  toolbar_->SetOnGroupObjects([this]{ GroupUnderPivot(); });
+  toolbar_->SetOnUngroupObjects([this]{ UngroupSelectedPivot(); });
   viewport_->SetScene(scene_.get());
   viewport_->SetCommandHistory(&history_);
   viewport_->SetActiveTool(selection_tool_.get());
@@ -295,8 +295,9 @@ void EditorWindow::Render() {
     const auto& sel = scene_->GetSelection();
     const bool can_copy = std::any_of(sel.begin(), sel.end(),
         [](const game::GameObject* o) {
-          return o->GetType() == game::GameObjectType::kMesh ||
+          return o->GetType() == game::GameObjectType::kMesh  ||
                  o->GetType() == game::GameObjectType::kLight ||
+                 o->GetType() == game::GameObjectType::kPivot ||
                  o->GetType() == game::GameObjectType::kSoundEmitter;
         });
     toolbar_->SetCanCopy(can_copy);
@@ -313,23 +314,15 @@ void EditorWindow::Render() {
         });
     toolbar_->SetCanCenterOnObject(can_center);
 
-    // Group actions availability.
-    const ObjectGroup* sel_group = scene_->GetSelectionGroup();
-    // Can group: >=2 ungrouped objects (create new group), or exactly one
-    // closed group + at least one ungrouped object (add to existing group).
-    const bool all_ungrouped = std::none_of(sel.begin(), sel.end(),
-        [this](const game::GameObject* o) {
-          return scene_->FindGroup(o) != nullptr;
-        });
-    const bool can_group = (sel.size() >= 2 && all_ungrouped) ||
-                           (scene_->FindAddToGroupTarget() != nullptr);
+    // Group: >=2 root-level objects (no parent pivot) in the selection.
+    const bool can_group = sel.size() >= 2 && std::all_of(sel.begin(), sel.end(),
+        [](const game::GameObject* o) { return o->GetParent() == nullptr; });
     toolbar_->SetCanGroup(can_group);
-    toolbar_->SetCanUngroup(sel_group != nullptr);
-    toolbar_->SetCanOpenGroup(sel_group != nullptr && !sel_group->is_open);
-    // Close group: the selection may be a single member of an open group, so
-    // check via FindGroup rather than GetSelectionGroup (which rejects open groups).
-    const ObjectGroup* close_grp = sel.empty() ? nullptr : scene_->FindGroup(sel[0]);
-    toolbar_->SetCanCloseGroup(close_grp != nullptr && close_grp->is_open);
+    // Ungroup: exactly one pivot with children selected.
+    const bool can_ungroup = sel.size() == 1 &&
+        sel[0]->GetType() == game::GameObjectType::kPivot &&
+        !static_cast<const game::GamePivot*>(sel[0])->GetChildren().empty();
+    toolbar_->SetCanUngroup(can_ungroup);
   }
   toolbar_->Render();
   const EditorTool active_tool = toolbar_->GetActiveTool();
@@ -469,12 +462,7 @@ void EditorWindow::Render() {
 
   // 6. Right panel — Properties.
   if (ImGui::Begin("Properties")) {
-    // cppcheck-suppress constVariablePointer
-    ObjectGroup* sel_group = scene_->GetSelectionGroup();
-    if (sel_group)
-      properties_panel_->RenderGroupProperties(sel_group);
-    else
-      properties_panel_->Render(scene_->GetSelectedObject());
+    properties_panel_->Render(scene_->GetSelectedObject());
   }
   ImGui::End();
 
@@ -1164,48 +1152,82 @@ void EditorWindow::RemoveTerrain() {
 
 void EditorWindow::CopySelectedObject() {
   clipboard_.clear();
-  clipboard_group_name_.clear();
-
-  // Record the group name if the selection is a closed group.
-  const ObjectGroup* sel_group = scene_->GetSelectionGroup();
-  if (sel_group) clipboard_group_name_ = sel_group->name;
+  clipboard_parent_names_.clear();
 
   for (const game::GameObject* obj : scene_->GetSelection()) {
     const core::Mat4f& t = obj->GetWorldTransform();
     const core::Vec3f  pos(t(0, 3), t(1, 3), t(2, 3));
-    auto clone = obj->Copy(pos);
-    if (clone) {
-      LOG_F(INFO, "Copied '%s'", clone->GetName().c_str());
-      clipboard_.push_back(std::move(clone));
+    if (obj->GetType() == game::GameObjectType::kPivot) {
+      CopySubtree(obj, "");
+    } else {
+      auto clone = obj->Copy(pos);
+      if (clone) {
+        LOG_F(INFO, "Copied '%s'", clone->GetName().c_str());
+        clipboard_parent_names_.push_back("");
+        clipboard_.push_back(std::move(clone));
+      }
     }
   }
+}
+
+void EditorWindow::CopySubtree(const game::GameObject* obj,
+                               const std::string& parent_name) {
+  const core::Mat4f& t = obj->GetWorldTransform();
+  const core::Vec3f  pos(t(0, 3), t(1, 3), t(2, 3));
+  auto clone = obj->Copy(pos);
+  if (!clone) {
+    LOG_F(WARNING, "CopySubtree: '%s' is not copyable, subtree branch skipped",
+          obj->GetName().c_str());
+    return;
+  }
+  const std::string clone_name = clone->GetName();
+  clipboard_parent_names_.push_back(parent_name);
+  clipboard_.push_back(std::move(clone));
+  for (const game::GameObject* child : obj->GetChildren())
+    CopySubtree(child, clone_name);
 }
 
 void EditorWindow::PasteObject() {
   if (clipboard_.empty()) return;
   scene_->ClearSelection();
-  std::vector<game::GameObject*> pasted;
-  for (const auto& src : clipboard_) {
+
+  // First pass: place all objects and record name→raw pointer for parent linking.
+  std::unordered_map<std::string, game::GameObject*> pasted_by_name;
+  std::vector<std::pair<game::GameObject*, std::string>> pending_parent;
+
+  for (std::size_t i = 0; i < clipboard_.size(); ++i) {
+    const auto& src = clipboard_[i];
     const core::Mat4f& ct = src->GetWorldTransform();
     const core::Vec3f  paste_pos(ct(0, 3) + 1.f, ct(1, 3), ct(2, 3) + 1.f);
     auto clone = src->Copy(paste_pos);
     if (!clone) continue;
-    clone->SetName(GenerateObjectName(*scene_, BaseNameOf(src->GetName())));
-    auto* raw = clone.get();
+    const std::string src_name = src->GetName();
+    clone->SetName(GenerateObjectName(*scene_, BaseNameOf(src_name)));
+    game::GameObject* raw = clone.get();
+    pasted_by_name[src_name] = raw;
+    if (!clipboard_parent_names_[i].empty())
+      pending_parent.emplace_back(raw, clipboard_parent_names_[i]);
     history_.Push(std::make_unique<PlaceObjectCommand>(scene_.get(), std::move(clone)));
-    pasted.push_back(raw);
   }
-  // Recreate the group for pasted objects when the source was a group.
-  if (!clipboard_group_name_.empty() && pasted.size() >= 2) {
-    const std::string new_group_name =
-        GenerateObjectName(*scene_, BaseNameOf(clipboard_group_name_),
-                           /*use_groups=*/true);
-    const ObjectGroup* grp = scene_->CreateGroup(new_group_name, pasted);
-    // Select the new group.
-    scene_->ClearSelection();
-    for (game::GameObject* obj : grp->objects)
-      scene_->AddToSelection(obj);
+
+  // Second pass: link parents by the source name they referenced.
+  for (auto& [child, src_parent_name] : pending_parent) {
+    auto it = pasted_by_name.find(src_parent_name);
+    if (it != pasted_by_name.end())
+      child->Reparent(it->second);
   }
+
+  // Select only the root-level pasted objects (those with no parent in the
+  // pasted set) so the pivot is selected rather than one of its children.
+  scene_->ClearSelection();
+  for (std::size_t i = 0; i < clipboard_.size(); ++i) {
+    if (clipboard_parent_names_[i].empty()) {
+      auto it = pasted_by_name.find(clipboard_[i]->GetName());
+      if (it != pasted_by_name.end())
+        scene_->AddToSelection(it->second);
+    }
+  }
+
   scene_dirty_ = true;
 }
 
@@ -1279,66 +1301,24 @@ void EditorWindow::CenterCameraOnObject() {
   LOG_F(INFO, "Camera centered on selection (%zu object(s))", sel.size());
 }
 
-void EditorWindow::GroupObjects() {
-  // "Add to group" path: one closed group + extra ungrouped objects selected.
-  std::vector<game::GameObject*> ungrouped;
-  ObjectGroup* target = scene_->FindAddToGroupTarget(&ungrouped);
-  if (target) {
-    scene_->AddToGroup(target, ungrouped);
-    scene_dirty_ = true;
-    LOG_F(INFO, "Added %zu object(s) to group '%s'",
-          ungrouped.size(), target->name.c_str());
-    return;
-  }
-
-  // Original path: all selected objects are ungrouped — create a new group.
+void EditorWindow::GroupUnderPivot() {
   const auto& sel = scene_->GetSelection();
   if (sel.size() < 2) return;
-  const bool any_grouped = std::any_of(sel.begin(), sel.end(),
-      [this](const game::GameObject* o) {
-        return scene_->FindGroup(o) != nullptr;
-      });
-  if (any_grouped) return;
-
-  const std::string name =
-      GenerateObjectName(*scene_, "group", /*use_groups=*/true);
   const std::vector<game::GameObject*> members(sel.begin(), sel.end());
-  scene_->CreateGroup(name, members);
+  const std::string name = GenerateObjectName(*scene_, "pivot");
+  history_.Push(
+      std::make_unique<GroupUnderPivotCommand>(scene_.get(), name, members));
   scene_dirty_ = true;
-  LOG_F(INFO, "Grouped %zu objects into '%s'", members.size(), name.c_str());
 }
 
-void EditorWindow::UngroupObjects() {
-  ObjectGroup* grp = scene_->GetSelectionGroup();
-  if (!grp) return;
-  const std::string name = grp->name;
-  const std::size_t count = grp->objects.size();
-  scene_->DeleteGroup(grp);
-  scene_dirty_ = true;
-  LOG_F(INFO, "Ungrouped '%s' (%zu objects)", name.c_str(), count);
-}
-
-void EditorWindow::OpenGroup() {
-  ObjectGroup* grp = scene_->GetSelectionGroup();
-  if (!grp || grp->is_open) return;
-  grp->is_open = true;
-  scene_dirty_ = true;
-  LOG_F(INFO, "Opened group '%s'", grp->name.c_str());
-}
-
-void EditorWindow::CloseGroup() {
-  // When the group is open the selection may be a single member; find its group.
+void EditorWindow::UngroupSelectedPivot() {
   const auto& sel = scene_->GetSelection();
-  if (sel.empty()) return;
-  ObjectGroup* grp = scene_->FindGroup(sel[0]);
-  if (!grp || !grp->is_open) return;
-  grp->is_open = false;
-  // Re-select whole group now that it is closed.
-  scene_->ClearSelection();
-  for (game::GameObject* obj : grp->objects)
-    scene_->AddToSelection(obj);
+  if (sel.size() != 1) return;
+  if (sel[0]->GetType() != game::GameObjectType::kPivot) return;
+  auto* pivot = static_cast<game::GamePivot*>(sel[0]);
+  if (pivot->GetChildren().empty()) return;
+  history_.Push(std::make_unique<UngroupPivotCommand>(scene_.get(), pivot));
   scene_dirty_ = true;
-  LOG_F(INFO, "Closed group '%s'", grp->name.c_str());
 }
 
 void EditorWindow::WireTerrainPanel() {

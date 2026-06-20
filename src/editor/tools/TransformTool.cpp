@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstring>
 #include <memory>
+#include <unordered_set>
 #include <vector>
 
 #include "core/BBox3.h"
@@ -127,16 +128,20 @@ void TransformTool::OnRender(const EditorToolContext& ctx,
 
     if (!gizmo_was_using_ && gizmo_using) {
       // Drag start: snapshot objects, pivot centre, and current model_im.
+      // Filter out objects whose parent is already in the selection; their
+      // transform propagates automatically via the parent-child hierarchy.
       pivot_center_ = center;
       std::memcpy(pivot_im_, model_im, sizeof(pivot_im_));
-      drag_objects_ = selection;
+      std::unordered_set<const game::GameObject*> sel_set(
+          selection.begin(), selection.end());
+      drag_objects_.clear();
       drag_before_.clear();
-      drag_before_.reserve(selection.size());
-      std::transform(selection.begin(), selection.end(),
-                     std::back_inserter(drag_before_),
-                     [](const game::GameObject* o) {
-                       return o->GetWorldTransform();
-                     });
+      for (game::GameObject* o : selection) {
+        if (sel_set.count(o->GetParent()) == 0) {
+          drag_objects_.push_back(o);
+          drag_before_.push_back(o->GetWorldTransform());
+        }
+      }
     }
 
     if (gizmo_using && !drag_objects_.empty()) {
