@@ -57,6 +57,12 @@ class MapSerializer {
                      const std::filesystem::path& map_path,
                      const std::filesystem::path& data_dir);
 
+    // Must be called before each Accept() to record the object's parent name.
+    // An empty string means the object is a root-level object.
+    void SetCurrentParentName(const std::string& parent_name) {
+      current_parent_name_ = parent_name;
+    }
+
     void Visit(game::GameCamera& camera)                override;
     void Visit(game::GameLight& light)                  override;
     void Visit(game::GameMesh& mesh)                    override;
@@ -72,9 +78,13 @@ class MapSerializer {
     void EmitTerrain(const game::GameTerrain* terrain);
 
    private:
+    // Emits "parent: <name>" when current_parent_name_ is non-empty.
+    void EmitParentField();
+
     YAML::Emitter&        out_;
     std::filesystem::path map_path_;
     std::filesystem::path data_dir_;
+    std::string           current_parent_name_;
   };
 };
 

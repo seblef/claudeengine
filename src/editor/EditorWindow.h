@@ -81,17 +81,19 @@ class EditorWindow {
   // No-op when no terrain is present or nothing is selected.
   void FallToTerrain();
 
-  // Groups the current selection into a new named group.
-  void GroupObjects();
+  // Groups the current multi-object selection under a new GamePivot.
+  // Pushes a GroupUnderPivotCommand so the operation is undoable.
+  // No-op if fewer than two objects are selected.
+  void GroupUnderPivot();
 
-  // Removes the group that contains the current selection.
-  void UngroupObjects();
+  // Ungroups the selected GamePivot: reparents its children to its parent and
+  // removes the pivot. Pushes an UngroupPivotCommand so it is undoable.
+  // No-op if the selected object is not a GamePivot.
+  void UngroupSelectedPivot();
 
-  // Opens the selected group so its members can be edited independently.
-  void OpenGroup();
-
-  // Closes the selected group so its members are transformed together.
-  void CloseGroup();
+  // Recursively copies obj and all its descendants into clipboard_/
+  // clipboard_parent_names_. Non-copyable children are skipped with a warning.
+  void CopySubtree(const game::GameObject* obj, const std::string& parent_name);
 
   // Moves the camera so the selected object's world bounding box fills the view.
   // No-op when nothing is selected or the selection is a terrain.
@@ -309,9 +311,10 @@ class EditorWindow {
   // Never added to the scene; empty when nothing has been copied.
   // cppcheck-suppress unusedStructMember
   std::vector<std::unique_ptr<game::GameObject>> clipboard_;
-  // When copying a group, the group name is stored here so paste can recreate it.
+  // Parallel to clipboard_: the name of each entry's parent ("" = root).
+  // Used by PasteObject() to recreate the hierarchy after pasting a subtree.
   // cppcheck-suppress unusedStructMember
-  std::string                                    clipboard_group_name_;
+  std::vector<std::string>                       clipboard_parent_names_;
 
   // Debug state.
   // cppcheck-suppress unusedStructMember

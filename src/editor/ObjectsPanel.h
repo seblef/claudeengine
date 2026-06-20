@@ -6,19 +6,27 @@
 
 #include "game/GameObjectType.h"
 
-namespace game { class GameObject; }
+namespace game {
+class GameObject;
+class GamePivot;
+}  // namespace game
 
 namespace editor {
 
 class EditorCommandHistory;
 class EditorScene;
-struct ObjectGroup;
 
-// Left panel "Objects" tab: tree view of scene objects.
+// Left panel "Objects" tab: hierarchy view of scene objects.
 //
-// Objects that belong to a group are shown inside a collapsible folder for that
-// group. Ungrouped objects appear in their type categories (Meshes, Lights, …).
-// Clicking a leaf selects the object (or the whole group for closed groups).
+// Root-level GamePivot nodes appear as collapsible tree folders with their
+// children nested underneath. Non-pivot root objects are listed under their
+// type category (Meshes, Lights, …). Objects parented to a pivot are shown
+// only under that pivot's folder — not repeated in the type categories.
+//
+// A collapsed pivot acts as a group: clicking any child in the viewport
+// selects the pivot. An expanded pivot allows individual child selection.
+// Expand/collapse is toggled by clicking the arrow on the pivot's folder.
+//
 // Double-clicking a leaf starts an inline rename committed on Enter / focus loss.
 class ObjectsPanel {
  public:
@@ -30,8 +38,12 @@ class ObjectsPanel {
   void Render(EditorScene& scene);
 
  private:
-  // Renders a collapsible type-category node (Meshes, Lights, …) containing
-  // all ungrouped objects of the given type.
+  // Renders a GamePivot as a collapsible folder with all its children inside.
+  // Recursively handles nested pivot subtrees.
+  void RenderPivotNode(game::GamePivot* pivot, EditorScene& scene);
+
+  // Renders a collapsible type-category node containing all root-level
+  // (un-parented) objects of the given type.
   static void RenderTypeGroup(const char* icon, const char* group_name,
                               game::GameObjectType type,
                               const std::vector<game::GameObject*>& objects,
@@ -40,9 +52,6 @@ class ObjectsPanel {
                               char* rename_buf, std::size_t rename_buf_size,
                               bool& rename_focus_needed,
                               EditorCommandHistory* history);
-
-  // Renders one ObjectGroup as a folder node with its members as children.
-  void RenderEditorGroup(ObjectGroup& grp, EditorScene& scene);
 
   // Renders a single object leaf; handles selection, rename, double-click.
   void RenderObjectLeaf(const char* icon, game::GameObject* obj,

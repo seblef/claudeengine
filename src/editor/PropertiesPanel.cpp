@@ -15,7 +15,6 @@
 #include "core/Vec3f.h"
 #include "editor/EditorCommandHistory.h"
 #include "editor/EditorUtils.h"
-#include "editor/ObjectGroup.h"
 #include "editor/commands/LightPropertyCommand.h"
 #include "editor/commands/PhysicsPropertyCommand.h"
 #include "editor/commands/RenameObjectCommand.h"
@@ -650,24 +649,6 @@ void PropertiesPanel::RenderSoundEmitterProperties(
   if (ImGui::Button("Play Once") && on_play_sound_once_)
     on_play_sound_once_(snd, vol);
   if (!can_preview) ImGui::EndDisabled();
-}
-
-// static
-void PropertiesPanel::RenderGroupProperties(ObjectGroup* grp) {
-  ImGui::SeparatorText("Group");
-  char name_buf[256];
-  std::strncpy(name_buf, grp->name.c_str(), sizeof(name_buf) - 1);
-  name_buf[sizeof(name_buf) - 1] = '\0';
-
-  if (ImGui::InputText("Name##grpname", name_buf, sizeof(name_buf),
-                       ImGuiInputTextFlags_EnterReturnsTrue)) {
-    const std::string new_name(name_buf);
-    if (!new_name.empty())
-      grp->name = new_name;
-  }
-
-  ImGui::LabelText("Objects", "%zu", grp->objects.size());
-  ImGui::LabelText("State", grp->is_open ? "Open" : "Closed");
 }
 
 }  // namespace editor
