@@ -27,6 +27,7 @@
 #include "renderer/PostProcessInfos.h"
 #include "renderer/RenderableInfos.h"
 #include "renderer/SceneInfos.h"
+#include "abstract/GpuProfileScope.h"
 #include "core/Profiler.h"
 
 namespace renderer {
@@ -221,6 +222,7 @@ void Renderer::Update(float time, const core::Camera* camera,
   {
     // cppcheck-suppress shadowVariable
     PROFILE_SCOPE("Renderer::Shadow");
+    GPU_PROFILE_SCOPE(video_, "Renderer::Shadow");
     ShadowRenderer::Instance().RenderShadowMaps(
         LightRenderer::Instance().GetLights(),
         no_culling_system_.get(),
@@ -235,6 +237,7 @@ void Renderer::Update(float time, const core::Camera* camera,
   {
     // cppcheck-suppress shadowVariable
     PROFILE_SCOPE("Renderer::Geometry");
+    GPU_PROFILE_SCOPE(video_, "Renderer::Geometry");
     video_->SetViewport(0, 0, render_w_, render_h_);
     gbuffer_.BindForWriting();
     video_->SetDepthTestEnabled(true);
@@ -285,6 +288,7 @@ void Renderer::Update(float time, const core::Camera* camera,
   if (cloud_shadow_renderer_ && cloud_shadow_renderer_->IsReady()) {
     // cppcheck-suppress shadowVariable
     PROFILE_SCOPE("Renderer::CloudShadow");
+    GPU_PROFILE_SCOPE(video_, "Renderer::CloudShadow");
     video_->SetViewport(0, 0, render_w_, render_h_);
     cloud_shadow_renderer_->Render(cloud_density_);
     LightRenderer::Instance().SetCloudShadow(
@@ -301,6 +305,7 @@ void Renderer::Update(float time, const core::Camera* camera,
   {
     // cppcheck-suppress shadowVariable
     PROFILE_SCOPE("Renderer::Lighting");
+    GPU_PROFILE_SCOPE(video_, "Renderer::Lighting");
     video_->SetViewport(0, 0, render_w_, render_h_);
     emissive_fbo_.BindForWriting();
     video_->SetDepthWriteEnabled(false);
@@ -322,6 +327,7 @@ void Renderer::Update(float time, const core::Camera* camera,
   if (sky_renderer_ && sky_renderer_->IsReady()) {
     // cppcheck-suppress shadowVariable
     PROFILE_SCOPE("Renderer::Sky");
+    GPU_PROFILE_SCOPE(video_, "Renderer::Sky");
     emissive_fbo_.BindForWriting();
     sky_renderer_->Render(*camera_, sky_world_time_);
     emissive_fbo_.UnbindForWriting();
@@ -336,6 +342,7 @@ void Renderer::Update(float time, const core::Camera* camera,
   if (cloud_renderer_ && cloud_renderer_->IsReady()) {
     // cppcheck-suppress shadowVariable
     PROFILE_SCOPE("Renderer::Clouds");
+    GPU_PROFILE_SCOPE(video_, "Renderer::Clouds");
     emissive_fbo_.BindForWriting();
     cloud_renderer_->Render(sky_world_time_, cloud_density_);
     emissive_fbo_.UnbindForWriting();
@@ -351,6 +358,7 @@ void Renderer::Update(float time, const core::Camera* camera,
   {
     // cppcheck-suppress shadowVariable
     PROFILE_SCOPE("Renderer::Emissive");
+    GPU_PROFILE_SCOPE(video_, "Renderer::Emissive");
     emissive_fbo_.BindForWriting();
     video_->SetDepthTestEnabled(true);
     video_->SetDepthFunc(abstract::CompareFunc::kLessEqual);
@@ -385,6 +393,7 @@ void Renderer::Update(float time, const core::Camera* camera,
   if (water_renderer_ && water_renderer_->IsReady()) {
     // cppcheck-suppress shadowVariable
     PROFILE_SCOPE("Renderer::Water");
+    GPU_PROFILE_SCOPE(video_, "Renderer::Water");
     video_->CopyRenderTarget(emissive_fbo_.GetHDRRT(),
                              water_scene_color_rt_.get());
     video_->CopyRenderTarget(gbuffer_.GetDepthRT(),
@@ -407,6 +416,7 @@ void Renderer::Update(float time, const core::Camera* camera,
   if (particle_renderer_) {
     // cppcheck-suppress shadowVariable
     PROFILE_SCOPE("Renderer::Particles");
+    GPU_PROFILE_SCOPE(video_, "Renderer::Particles");
     emissive_fbo_.BindForWriting();
     particle_renderer_->RenderForwardPass(*camera_, renderable_infos_cb_.get());
     emissive_fbo_.UnbindForWriting();
@@ -416,6 +426,7 @@ void Renderer::Update(float time, const core::Camera* camera,
   if (eye_adapt_renderer_) {
     // cppcheck-suppress shadowVariable
     PROFILE_SCOPE("Renderer::EyeAdaptation");
+    GPU_PROFILE_SCOPE(video_, "Renderer::EyeAdaptation");
     post_process_infos_.exposure = eye_adapt_renderer_->Update(
         emissive_fbo_.GetHDRRT(), dt,
         post_process_infos_.adapt_speed,
@@ -428,6 +439,7 @@ void Renderer::Update(float time, const core::Camera* camera,
   if (bloom_renderer_) {
     // cppcheck-suppress shadowVariable
     PROFILE_SCOPE("Renderer::Bloom");
+    GPU_PROFILE_SCOPE(video_, "Renderer::Bloom");
     bloom_renderer_->Render(emissive_fbo_.GetHDRRT(),
                             post_process_infos_.bloom_threshold,
                             post_process_infos_.bloom_intensity);
@@ -444,6 +456,7 @@ void Renderer::Update(float time, const core::Camera* camera,
   {
     // cppcheck-suppress shadowVariable
     PROFILE_SCOPE("Renderer::Composite");
+    GPU_PROFILE_SCOPE(video_, "Renderer::Composite");
     emissive_fbo_.GetHDRRT()->BindAsSampler(0);
     // Bind bloom texture at slot 11 (1×1 black fallback when bloom is disabled).
     if (bloom_renderer_)

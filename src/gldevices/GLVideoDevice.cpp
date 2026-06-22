@@ -29,7 +29,15 @@
 namespace gldevices {
 
 GLVideoDevice::GLVideoDevice(int width, int height, bool windowed, GLFWwindow* window)
-    : abstract::VideoDevice(width, height, windowed), window_(window) {}
+    : abstract::VideoDevice(width, height, windowed), window_(window) {
+  for (int s = 0; s < kTimerSlots; ++s)
+    glGenQueries(kMaxTimerScopes, timer_slots_[s].query_ids);
+}
+
+GLVideoDevice::~GLVideoDevice() {
+  for (int s = 0; s < kTimerSlots; ++s)
+    glDeleteQueries(kMaxTimerScopes, timer_slots_[s].query_ids);
+}
 
 void GLVideoDevice::BeginFrame() {
   glfwSwapBuffers(window_);
@@ -359,6 +367,46 @@ bool GLVideoDevice::LoadRGBA8File(const std::filesystem::path& path,
   out_pixels.assign(data, data + static_cast<std::size_t>(w) * h * 4);
   stbi_image_free(data);
   return true;
+}
+
+void GLVideoDevice::BeginGpuTimer(std::string_view name) {
+  TimerSlot& slot = timer_slots_[write_slot_];
+  if (slot.count >= kMaxTimerScopes) return;
+  const int idx    = slot.count++;
+  slot.names[idx]  = name;
+  glBeginQuery(GL_TIME_ELAPSED, slot.query_ids[idx]);
+}
+
+void GLVideoDevice::EndGpuTimer() {
+  glEndQuery(GL_TIME_ELAPSED);
+}
+
+std::vector<core::GpuTimeSample> GLVideoDevice::CollectGpuTimings() {
+  const TimerSlot& read_slot = timer_slots_[write_slot_];
+  std::vector<core::GpuTimeSample> results;
+
+  if (read_slot.count > 0) {
+    // GL queries complete in submission order: if the last one is available
+    // all preceding ones are too.  Bail out without blocking if not ready.
+    GLint available = 0;
+    glGetQueryObjectiv(read_slot.query_ids[read_slot.count - 1],
+                       GL_QUERY_RESULT_AVAILABLE, &available);
+    if (available) {
+      results.reserve(static_cast<std::size_t>(read_slot.count));
+      for (int i = 0; i < read_slot.count; ++i) {
+        GLuint64 ns = 0;
+        glGetQueryObjectui64v(read_slot.query_ids[i], GL_QUERY_RESULT, &ns);
+        results.push_back({read_slot.names[i],
+                           static_cast<double>(ns) / 1.0e6});
+      }
+    }
+  }
+
+  // Flip to the other slot for this frame's writes and clear it.
+  write_slot_                     = 1 - write_slot_;
+  timer_slots_[write_slot_].count = 0;
+
+  return results;
 }
 
 }  // namespace gldevices

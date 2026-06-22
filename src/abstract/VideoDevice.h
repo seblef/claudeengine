@@ -5,7 +5,10 @@
 #include <memory>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
+
+#include "core/GpuTimeSample.h"
 
 #include "abstract/BlendFactor.h"
 #include "abstract/BufferUsage.h"
@@ -209,6 +212,24 @@ class VideoDevice {
   // Intended for reading the 1×1 eye-adaptation luminance target.
   [[nodiscard]] virtual float ReadPixelF(RenderTargetGroup* fbo,
                                          int x, int y) = 0;
+
+  // ---- GPU timer queries ---------------------------------------------------
+
+  // Begins a named GPU timing region. Calls must not nest: end the previous
+  // region with EndGpuTimer() before starting a new one. No-op by default;
+  // override in concrete backends that support timer queries.
+  virtual void BeginGpuTimer(std::string_view name) {}
+
+  // Ends the current GPU timing region opened by BeginGpuTimer(). No-op by
+  // default; override in concrete backends that support timer queries.
+  virtual void EndGpuTimer() {}
+
+  // Returns GPU timing results from the previous frame's timer regions and
+  // prepares the internal ring buffer for this frame's writes. Call once per
+  // frame before any BeginGpuTimer() calls. Returns an empty vector by default.
+  [[nodiscard]] virtual std::vector<core::GpuTimeSample> CollectGpuTimings() {
+    return {};
+  }
 
   // Creates an RGBA8 tileable texture from raw CPU data.
   // Uses GL_REPEAT wrapping and GL_LINEAR_MIPMAP_LINEAR filtering with

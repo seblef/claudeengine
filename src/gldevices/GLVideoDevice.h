@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <filesystem>
 #include <memory>
 #include <span>
@@ -9,6 +10,7 @@
 #include <GL/gl.h>
 
 #include "abstract/VideoDevice.h"
+#include "core/GpuTimeSample.h"
 
 struct GLFWwindow;
 
@@ -21,7 +23,8 @@ namespace gldevices {
 class GLVideoDevice : public abstract::VideoDevice {
  public:
   GLVideoDevice(int width, int height, bool windowed, GLFWwindow* window);
-  ~GLVideoDevice() override = default;
+  // Releases pre-allocated GL timer query objects.
+  ~GLVideoDevice() override;
 
   // Presents the previous frame and resets the viewport for the new one.
   void BeginFrame() override;
@@ -177,10 +180,42 @@ class GLVideoDevice : public abstract::VideoDevice {
   [[nodiscard]] float ReadPixelF(abstract::RenderTargetGroup* fbo,
                                   int x, int y) override;
 
+  // Begins a named GL_TIME_ELAPSED timer query for the current frame's slot.
+  // Must not be called while another timer region is active (GL constraint).
+  void BeginGpuTimer(std::string_view name) override;
+
+  // Ends the current GL_TIME_ELAPSED timer query.
+  void EndGpuTimer() override;
+
+  // Reads results from the previous frame's timer slot (blocking if needed),
+  // flips the ring buffer, and returns the elapsed times in milliseconds.
+  [[nodiscard]] std::vector<core::GpuTimeSample> CollectGpuTimings() override;
+
  private:
+  // Two-slot ring buffer for GL_TIME_ELAPSED timer queries.
+  // One slot is written this frame; the other holds the previous frame's
+  // results for deferred readback.
+  static constexpr int kTimerSlots     = 2;
+  static constexpr int kMaxTimerScopes = 32;
+
+  struct TimerSlot {
+    GLuint query_ids[kMaxTimerScopes] = {};
+    // cppcheck-suppress unusedStructMember
+    std::string names[kMaxTimerScopes];
+    // cppcheck-suppress unusedStructMember
+    int count = 0;
+  };
+
+  // cppcheck-suppress unusedStructMember
+  std::array<TimerSlot, kTimerSlots> timer_slots_;
+  // Index into timer_slots_ for the frame currently being rendered.
+  // CollectGpuTimings() reads this slot then flips it for the next frame.
+  // cppcheck-suppress unusedStructMember
+  int write_slot_ = 0;
+
   // cppcheck-suppress unusedStructMember
   GLFWwindow* window_;
-  GLenum primitive_type_    = GL_TRIANGLES;
+  GLenum primitive_type_     = GL_TRIANGLES;
   GLenum current_index_type_ = GL_UNSIGNED_INT;
 };
 
