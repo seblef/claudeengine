@@ -149,11 +149,29 @@ template reuse the same Jolt shape.
 `HUDScreen::Show()` would crash. The `panels_hidden_` flag already provides
 a full-viewport game feel; HUD integration is deferred to a follow-up issue.
 
-### Scene reload in Exit() fires the on_scene_reloaded_ callback
-The callback design (vs returning a value from Exit()) matches the existing
-`EditorScene` callback pattern and allows `EditorWindow` to remain the sole
-owner of the `scene_` pointer. Panels are restored even when the reload fails
-to avoid a frozen editor state.
+### Scene reload in Exit() delegated to EditorWindow via on_exit_ callback
+
+**Bug fixed after initial PR**: `Exit()` originally called `MapSerializer::Load()`
+directly and passed the new `EditorScene` to `EditorWindow` via
+`SetOnSceneReloaded`. This caused a crash:
+
+```
+Assertion '!instance_ && "Singleton already instanced"' failed in FoliageRenderer
+```
+
+Root cause: `MapSerializer::Load()` creates a new `EditorScene`, which adds a
+`GameTerrain` to it, which calls `new renderer::FoliageRenderer()`. But the old
+scene (still alive) already had an instance — `core::Singleton<T>` asserts on
+double-instantiation.
+
+Fix: renamed to `SetOnExit(path, cam_state)`. The lambda in `EditorWindow`:
+1. Calls `scene_.reset()` — destroys the old `EditorScene` → `GameTerrain::OnRemovedFromScene()` → `delete FoliageRenderer`.
+2. Calls `MapSerializer::Load(path, video_)` — safe, no existing `FoliageRenderer`.
+3. Rewires viewport, panels, terrain, environment.
+
+`PlayModeManager` now saves `saved_file_path_` on `Enter()` and fires
+`on_exit_(saved_file_path_, saved_camera_state_)` on `Exit()` without touching
+the scene itself.
 
 ---
 
@@ -165,10 +183,10 @@ to avoid a frozen editor state.
 - The `SetInPlayMode(bool)` flag on `EditorViewport` is a clean extension
   point — any future in-editor runtime feature that needs to suppress editor
   overlays can reuse it.
-- `PlayModeManager::SetOnSceneReloaded` receives both the new scene and the
-  saved camera state; the camera state is currently ignored by the callback
-  (it's passed to `viewport_->SetCameraState()` by `Exit()` directly). A
-  future refactor could move all restoration into the callback.
+- **Singleton lifecycle rule**: any `core::Singleton<T>` must be fully destroyed
+  (via `OnRemovedFromScene` or explicit delete) before a new scene is loaded if
+  that new scene would re-instantiate the same singleton. Always reset/destroy
+  the old scene pointer before calling `MapSerializer::Load()`.
 
 ---
 
