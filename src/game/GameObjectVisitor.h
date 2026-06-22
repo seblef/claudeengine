@@ -8,6 +8,7 @@ class GameMesh;
 class GameParticleSystem;
 class GamePivot;
 class GamePlayerStart;
+class GameRoad;
 class GameSoundEmitter;
 class GameTerrain;
 class GameVehicle;
@@ -26,6 +27,7 @@ class GameObjectVisitor {
   virtual void Visit(GameParticleSystem& particle_system) = 0;
   virtual void Visit(GamePivot& pivot)                    = 0;
   virtual void Visit(GamePlayerStart& player_start)       = 0;
+  virtual void Visit(GameRoad& road)                      = 0;
   virtual void Visit(GameSoundEmitter& sound_emitter)     = 0;
   virtual void Visit(GameTerrain& terrain)                = 0;
   virtual void Visit(GameVehicle& vehicle)                = 0;

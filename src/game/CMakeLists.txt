@@ -10,6 +10,7 @@ add_library(game STATIC
     GameParticleSystem.cpp
     GamePivot.cpp
     GamePlayerStart.cpp
+    GameRoad.cpp
     GameSoundEmitter.cpp
     GameVehicle.cpp
     SoundEffectComponent.cpp
@@ -22,4 +23,4 @@ add_library(game STATIC
 
 target_include_directories(game PUBLIC "${CMAKE_SOURCE_DIR}/src")
 
-target_link_libraries(game PUBLIC core abstract renderer terrain environment particles physics audio ui)
+target_link_libraries(game PUBLIC core abstract renderer terrain environment particles physics audio ui track)
