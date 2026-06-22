@@ -13,7 +13,6 @@
 #include "core/CoordinateSystem.h"
 #include "core/ProjectionType.h"
 #include "core/Vec3f.h"
-#include "editor/IResourcePanel.h"
 #include "physics/VehicleDesc.h"
 
 namespace game  { class MeshTemplate; }
@@ -27,32 +26,36 @@ namespace editor {
 
 class MeshPreview;
 
-// Resource editor panel for .vehicle.yaml descriptor files.
+// Floating window for inspecting and editing a .vehicle.yaml descriptor file.
 //
-// Exposes three UI sections:
-//   Body     — mesh file picker + 320×240 interactive orbit preview.
-//   Wheels   — per-axle mesh pickers, wheel-position inputs, and a 320×240
-//              combined body+wheels preview with an ImGuizmo translate gizmo
-//              for the currently focused wheel.
-//   Physics  — sliders/drag-floats for all VehicleDesc physics parameters.
+// Layout mirrors VehiclePanel: Body section (mesh picker + orbit preview),
+// Wheels section (per-axle pickers, combined preview with ImGuizmo gizmo,
+// per-wheel position inputs), Physics section (sliders for all VehicleDesc
+// parameters), and an actions bar (Save / Revert / Place in Scene).
 //
-// An actions bar at the bottom provides Save, Revert, and Place in Scene.
-// "Place in Scene" fires the on_place_in_scene_ callback (set by the owner)
-// and is disabled when no callback is registered.
-class VehiclePanel : public IResourcePanel {
+// Usage:
+//   Call Open(path) when the user double-clicks a .vehicle.yaml in the
+//   ResourceBrowser or creates a new one. Call Render() every ImGui frame.
+//   Closing the window with unsaved changes triggers a Save/Discard/Cancel
+//   modal before the window is hidden.
+class VehicleEditorWindow {
  public:
-  VehiclePanel(std::filesystem::path path, abstract::VideoDevice* video);
-  ~VehiclePanel() override;
+  explicit VehicleEditorWindow(abstract::VideoDevice* video);
+  ~VehicleEditorWindow();
 
-  VehiclePanel(const VehiclePanel&)            = delete;
-  VehiclePanel& operator=(const VehiclePanel&) = delete;
+  VehicleEditorWindow(const VehicleEditorWindow&)            = delete;
+  VehicleEditorWindow& operator=(const VehicleEditorWindow&) = delete;
 
-  void Draw()          override;
-  bool IsDirty() const override { return dirty_; }
-  void Save()          override;
+  // Opens (or re-focuses) the editor for the given .vehicle.yaml path.
+  void Open(const std::filesystem::path& path);
+
+  // Renders the ImGui window. No-op when the window is not shown.
+  void Render();
+
+  // Returns true when the window has unsaved changes.
+  bool IsDirty() const { return dirty_; }
 
   // Registers the callback invoked when the user clicks "Place in Scene".
-  // The callback receives the absolute path to the .vehicle.yaml file.
   void SetOnPlaceInScene(std::function<void(const std::filesystem::path&)> cb) {
     on_place_in_scene_ = std::move(cb);
   }
@@ -60,42 +63,51 @@ class VehiclePanel : public IResourcePanel {
  private:
   void LoadFromYaml();
   void SaveToYaml();
+  void Save();
 
   void DrawBodySection();
   void DrawWheelsSection();
   void DrawPhysicsSection();
   void DrawActionsBar();
 
-  // Opens an NFD mesh file dialog; on selection updates rel_path, releases the
-  // old template, loads a new one, and refreshes preview.
+  // Opens an NFD mesh file dialog and updates the body mesh.
   void PickBodyMesh();
+  // Opens an NFD mesh file dialog and updates the front wheel mesh.
   void PickFrontWheelMesh();
+  // Opens an NFD mesh file dialog and updates the rear wheel mesh.
   void PickRearWheelMesh();
 
-  // Loads the template at the given data-relative path into out_tmpl and
-  // refreshes the associated preview.  Releases the previous template first.
   void UpdateBodyMesh(const std::string& rel_path);
   void UpdateFrontWheelMesh(const std::string& rel_path);
   void UpdateRearWheelMesh(const std::string& rel_path);
 
-  // Recreates the combined-preview MeshInstances for all meshes that are loaded.
+  // Recreates combined-preview MeshInstances for all loaded meshes.
   void RebuildCombinedInstances();
 
-  // Renders all loaded meshes (body + 4 wheels) into combined_rt_.
+  // Renders body + 4 wheels into combined_rt_.
   void RenderCombined(float time);
 
-  // Draws combined preview image and optional ImGuizmo gizmo for focused_wheel_.
+  // Draws the combined preview image and optional ImGuizmo gizmo for
+  // focused_wheel_.
   void DrawCombinedPreview(float time);
 
   // Updates combined_camera_ from the current orbit state.
   void UpdateCombinedCamera();
 
-  // cppcheck-suppress unusedStructMember
-  std::filesystem::path  path_;
+  // Renders the dirty-close confirmation modal.
+  void RenderDirtyCloseModal();
+
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice* video_;
   // cppcheck-suppress unusedStructMember
+  std::filesystem::path  path_;
+  // cppcheck-suppress unusedStructMember
+  bool                   show_  = false;
+  // cppcheck-suppress unusedStructMember
   bool                   dirty_ = false;
+  // Set to true on the frame the window's close button is clicked while dirty.
+  // cppcheck-suppress unusedStructMember
+  bool                   open_dirty_modal_ = false;
 
   // Paths relative to core::Config::GetDataFolder().
   // cppcheck-suppress unusedStructMember

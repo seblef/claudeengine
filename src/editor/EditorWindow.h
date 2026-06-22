@@ -36,6 +36,7 @@ class MaterialEditorWindow;
 class MeshEditorWindow;
 class ParticleEditorWindow;
 class SoundEditorWindow;
+class VehicleEditorWindow;
 class MeshSelectionModal;
 class ParticleSystemSelectionModal;
 class SoundEmitterSelectionModal;
@@ -189,6 +190,8 @@ class EditorWindow {
   std::unique_ptr<ParticleEditorWindow>  particle_editor_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<SoundEditorWindow>     sound_editor_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<VehicleEditorWindow>   vehicle_editor_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<MeshSelectionModal>              mesh_modal_;
   // cppcheck-suppress unusedStructMember

@@ -41,7 +41,7 @@ add_library(editor STATIC
     TerrainCreationDialog.cpp
     TerrainEditorPanel.cpp
     TerrainPainterWindow.cpp
-    VehiclePanel.cpp
+    VehicleEditorWindow.cpp
 )
 
 add_subdirectory(commands)

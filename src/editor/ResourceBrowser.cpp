@@ -84,6 +84,12 @@ int ResourceBrowser::FindOpenPanel(
 }
 
 void ResourceBrowser::OpenOrFocus(const std::filesystem::path& path) {
+  // Extensions with an external-window callback bypass the panel tab flow.
+  if (registry_->HasOpenCallback(path)) {
+    registry_->InvokeOpenCallback(path);
+    return;
+  }
+
   std::error_code ec;
   const std::filesystem::path canonical = std::filesystem::canonical(path, ec);
   if (ec) {

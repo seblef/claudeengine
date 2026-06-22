@@ -21,38 +21,63 @@ using PanelFactory =
 using NewFileFactory =
     std::function<std::filesystem::path(std::string_view name)>;
 
-// Maps a compound extension suffix (e.g. ".vehicle.yaml") to a factory that
-// produces an IResourcePanel for a given file path, and optionally to a
-// factory that creates a new skeleton file on disk.
+// Called when the user opens a resource file in the browser for an extension
+// that has an external editor (e.g. VehicleEditorWindow). The callback is
+// responsible for showing the editor window.
+using OpenCallback = std::function<void(const std::filesystem::path&)>;
+
+// Maps a compound extension suffix (e.g. ".vehicle.yaml") to either a factory
+// that produces an IResourcePanel tab or an external OpenCallback, and
+// optionally to a factory that creates a new skeleton file on disk.
 //
-// Usage:
-//   registry.Register(".vehicle.yaml", [](auto path) {
-//     return std::make_unique<VehiclePanel>(std::move(path));
+// Extensions registered via RegisterOpenCallback open in an external window
+// instead of a panel tab; they still appear in the ResourceBrowser tree and
+// support the "New" button via RegisterNew.
+//
+// Usage (panel tab):
+//   registry.Register(".material.yaml", [](auto path) {
+//     return std::make_unique<MaterialPanel>(std::move(path));
 //   });
-//   registry.RegisterNew(".vehicle.yaml", [](std::string_view name) {
-//     // write skeleton file, return its path
+//
+// Usage (external window):
+//   registry.RegisterOpenCallback(".vehicle.yaml", [](auto path) {
+//     vehicle_editor_.Open(path);
 //   });
+//   registry.RegisterNew(".vehicle.yaml", [](std::string_view name) { ... });
 //   auto panel = registry.Open("data/vehicles/truck.vehicle.yaml");
 class ResourcePanelRegistry {
  public:
   ResourcePanelRegistry() = default;
 
-  // Registers a factory for files whose filename ends with extension.
-  // extension must start with '.', e.g. ".vehicle.yaml".
+  // Registers a panel-tab factory for files whose filename ends with
+  // extension. extension must start with '.', e.g. ".material.yaml".
   void Register(std::string_view extension, PanelFactory factory);
+
+  // Registers an external-window callback for extension. Files matching this
+  // extension appear in the browser tree but open via callback instead of a
+  // panel tab. A second call overwrites the first.
+  void RegisterOpenCallback(std::string_view extension, OpenCallback callback);
 
   // Registers a new-file factory for extension.
   // Only one new-file factory per extension is supported; a second call
   // overwrites the first.
   void RegisterNew(std::string_view extension, NewFileFactory factory);
 
-  // Returns a new panel for path if a factory is registered for its extension
-  // suffix, or nullptr otherwise.
+  // Returns a new panel for path if a panel-tab factory is registered for its
+  // extension suffix, or nullptr otherwise.
   [[nodiscard]] std::unique_ptr<IResourcePanel> Open(
       const std::filesystem::path& path) const;
 
-  // Returns true if a factory is registered for path's extension suffix.
+  // Returns true if path's extension suffix has a panel-tab factory or an
+  // open callback registered (i.e. the file should appear in the browser tree).
   [[nodiscard]] bool CanOpen(const std::filesystem::path& path) const;
+
+  // Returns true if an external open callback is registered for path's
+  // extension suffix.
+  [[nodiscard]] bool HasOpenCallback(const std::filesystem::path& path) const;
+
+  // Invokes the external open callback for path. No-op if none is registered.
+  void InvokeOpenCallback(const std::filesystem::path& path) const;
 
   // Returns true if a new-file factory is registered for extension.
   [[nodiscard]] bool CanCreate(std::string_view extension) const;
@@ -78,6 +103,8 @@ class ResourcePanelRegistry {
   std::unordered_map<std::string, PanelFactory>    factories_;
   // cppcheck-suppress unusedStructMember
   std::unordered_map<std::string, NewFileFactory>  new_factories_;
+  // cppcheck-suppress unusedStructMember
+  std::unordered_map<std::string, OpenCallback>    open_callbacks_;
   // Kept in insertion order so the browser can display sections consistently.
   std::vector<std::string> extensions_;
 };
