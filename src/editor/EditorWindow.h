@@ -155,6 +155,10 @@ class EditorWindow {
   // and adds a GameTerrain to the scene.
   void CreateTerrain();
 
+  // Creates a GameRoad with four default control points, adds it to the scene,
+  // selects it (which auto-activates the RoadTool), and returns to kSelection.
+  void CreateRoad();
+
   // Removes the terrain from the scene and resets all terrain-related state.
   void RemoveTerrain();
 

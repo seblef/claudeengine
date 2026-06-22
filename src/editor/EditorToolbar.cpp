@@ -37,6 +37,7 @@ constexpr ToolEntry kCreationTools[] = {
   {EditorTool::kCreateParticleSystem, ICON_FA_FIRE,           "Create Particle System",    ImGuiKey_None},
   {EditorTool::kCreateSoundEmitter,   ICON_FA_VOLUME_HIGH,    "Create Sound Emitter",      ImGuiKey_None},
   {EditorTool::kCreateVehicle,        ICON_FA_CAR,            "Create Vehicle",            ImGuiKey_None},
+  {EditorTool::kCreateRoad,           ICON_FA_ROAD,           "Create Road",               ImGuiKey_None},
 };
 constexpr int kCreationToolCount =
     static_cast<int>(sizeof(kCreationTools) / sizeof(kCreationTools[0]));
