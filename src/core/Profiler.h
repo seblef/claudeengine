@@ -50,6 +50,9 @@ class Profiler : public Singleton<Profiler> {
   // Returns FPS measured in the last report window. 0 until first report.
   [[nodiscard]] double GetLastFps() const;
 
+  // Returns the report aggregation interval in seconds (set at construction).
+  [[nodiscard]] double GetReportInterval() const { return report_interval_s_; }
+
   // Called by ProfileScope only; thread-safe.
   void RecordSample(std::string_view name, double elapsed_ms);
 

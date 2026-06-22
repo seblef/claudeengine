@@ -3,6 +3,7 @@
 #include <loguru.hpp>
 
 #include "core/Event.h"
+#include "core/Profiler.h"
 #include "editor/EditorScene.h"
 #include "editor/EditorToolbar.h"
 #include "editor/EditorViewport.h"
@@ -149,6 +150,9 @@ void PlayModeManager::Enter() {
   // 10.
   playing_ = true;
 
+  // 11. Activate profiler for play-time performance measurement.
+  new core::Profiler(kProfilerInterval);
+
   LOG_F(INFO, "Play mode entered");
 }
 
@@ -191,14 +195,26 @@ void PlayModeManager::Exit() {
   // 8.
   playing_ = false;
 
+  // 9. Shut down profiler before the next Logger flush.
+  if (core::Profiler::IsInstanced()) core::Profiler::Shutdown();
+
   LOG_F(INFO, "Play mode exited");
 }
 
 void PlayModeManager::Tick(float dt) {
   if (!playing_) return;
 
-  if (physics::PhysicsSystem::IsInstanced())
-    physics::PhysicsSystem::Instance().Step(dt);
+  PROFILE_SCOPE("PlayModeManager::Tick");
+
+  if (core::Profiler::IsInstanced())
+    core::Profiler::Instance().MarkFrame();
+
+  {
+    // cppcheck-suppress shadowVariable
+    PROFILE_SCOPE("Physics::Step");
+    if (physics::PhysicsSystem::IsInstanced())
+      physics::PhysicsSystem::Instance().Step(dt);
+  }
 
   if (fps_controller_)
     fps_controller_->Update(dt);

@@ -19,6 +19,7 @@ add_library(editor STATIC
     EditorViewport.cpp
     EditorWindow.cpp
     LogPanel.cpp
+    ProfilerPanel.cpp
     MaterialEditorWindow.cpp
     MeshEditorWindow.cpp
     ParticleEditorWindow.cpp

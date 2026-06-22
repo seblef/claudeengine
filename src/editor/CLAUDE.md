@@ -49,6 +49,14 @@ Follow all rules in `src/CLAUDE.md`. Additionally:
 - All ImGui calls must be bracketed by `ImGui::NewFrame()` / `ImGui::Render()`.
 - Editor subsystems (panels, viewport, scene) are owned by `EditorSystem` and
   created in its constructor; they must not be singletons.
+- **Value members in `EditorWindow.h` require a full `#include`**, not a
+  forward declaration. A forward declaration is only sufficient for pointer and
+  reference members. If you add a by-value member of type `Foo`, include
+  `editor/Foo.h` in the header; a `class Foo;` forward-declare will cause an
+  "incomplete type" error.
+- **Prefer `std::find_if` over raw index loops.** The pre-commit cppcheck hook
+  flags raw loops with a `useStlAlgorithm` warning. Use `std::find_if` (plus
+  `std::distance` when the index is needed) even for simple linear searches.
 
 ## GUI vs. edition logic separation (CRITICAL)
 

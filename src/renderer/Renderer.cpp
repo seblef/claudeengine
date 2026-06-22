@@ -27,6 +27,7 @@
 #include "renderer/PostProcessInfos.h"
 #include "renderer/RenderableInfos.h"
 #include "renderer/SceneInfos.h"
+#include "core/Profiler.h"
 
 namespace renderer {
 
@@ -179,6 +180,8 @@ void Renderer::SetCamera(const core::Camera* camera) {
 
 void Renderer::Update(float time, const core::Camera* camera,
                       abstract::RenderTargetGroup* output_fbo) {
+  PROFILE_SCOPE("Renderer::Draw");
+
   // Clear per-frame renderer lists before re-enqueuing so that the previous
   // frame's snapshots remain available during event callbacks (e.g. Tab →
   // CycleShadowDebug) that fire before this Update() is entered.
@@ -206,40 +209,52 @@ void Renderer::Update(float time, const core::Camera* camera,
   FillWindInfos();
   if (water_renderer_) UpdateWaterRenderer();
 
-  const core::ViewFrustum frustum(camera_->GetViewProjectionMatrix());
-  no_culling_system_->CullAndEnqueue(frustum);
-  octree_system_->CullAndEnqueue(frustum);
+  {
+    // cppcheck-suppress shadowVariable
+    PROFILE_SCOPE("Renderer::Culling");
+    const core::ViewFrustum frustum(camera_->GetViewProjectionMatrix());
+    no_culling_system_->CullAndEnqueue(frustum);
+    octree_system_->CullAndEnqueue(frustum);
+  }
 
   // 0. Shadow pass — render depth maps for spot lights and CSM cascades.
-  ShadowRenderer::Instance().RenderShadowMaps(
-      LightRenderer::Instance().GetLights(),
-      no_culling_system_.get(),
-      octree_system_.get(),
-      *camera_);
-  if (ShadowRenderer::Instance().HasCSM())
-    csm_infos_cb_->Fill(&ShadowRenderer::Instance().GetCSMInfos());
+  {
+    // cppcheck-suppress shadowVariable
+    PROFILE_SCOPE("Renderer::Shadow");
+    ShadowRenderer::Instance().RenderShadowMaps(
+        LightRenderer::Instance().GetLights(),
+        no_culling_system_.get(),
+        octree_system_.get(),
+        *camera_);
+    if (ShadowRenderer::Instance().HasCSM())
+      csm_infos_cb_->Fill(&ShadowRenderer::Instance().GetCSMInfos());
+  }
 
   // 1. Geometry pass — fill albedo, normal, specular MRTs and depth+stencil.
   // Shadow passes set their own viewport; restore to the current render target size.
-  video_->SetViewport(0, 0, render_w_, render_h_);
-  gbuffer_.BindForWriting();
-  video_->SetDepthTestEnabled(true);
-  video_->SetDepthWriteEnabled(true);
-  video_->ClearRenderTargets(core::Color::kBlack);
-  MeshRenderer::Instance().PrepareRender();
-  MeshRenderer::Instance().Render();
-  if (terrain_renderer_ && terrain_renderer_->IsReady())
-    terrain_renderer_->Render(*camera_);
-  if (particle_renderer_)
-    particle_renderer_->RenderGeometryPass(*camera_,
-                                           renderable_infos_cb_.get());
-  if (foliage_enabled_ && FoliageRenderer::IsInstanced() &&
-      FoliageRenderer::Instance().IsReady())
-    FoliageRenderer::Instance().Render(*camera_);
-  if (tree_enabled_ && TreeRenderer::IsInstanced() &&
-      TreeRenderer::Instance().IsReady())
-    TreeRenderer::Instance().Render(*camera_);
-  gbuffer_.UnbindForWriting();
+  {
+    // cppcheck-suppress shadowVariable
+    PROFILE_SCOPE("Renderer::Geometry");
+    video_->SetViewport(0, 0, render_w_, render_h_);
+    gbuffer_.BindForWriting();
+    video_->SetDepthTestEnabled(true);
+    video_->SetDepthWriteEnabled(true);
+    video_->ClearRenderTargets(core::Color::kBlack);
+    MeshRenderer::Instance().PrepareRender();
+    MeshRenderer::Instance().Render();
+    if (terrain_renderer_ && terrain_renderer_->IsReady())
+      terrain_renderer_->Render(*camera_);
+    if (particle_renderer_)
+      particle_renderer_->RenderGeometryPass(*camera_,
+                                             renderable_infos_cb_.get());
+    if (foliage_enabled_ && FoliageRenderer::IsInstanced() &&
+        FoliageRenderer::Instance().IsReady())
+      FoliageRenderer::Instance().Render(*camera_);
+    if (tree_enabled_ && TreeRenderer::IsInstanced() &&
+        TreeRenderer::Instance().IsReady())
+      TreeRenderer::Instance().Render(*camera_);
+    gbuffer_.UnbindForWriting();
+  }
 
   // Debug bypass — blit a chosen G-buffer RT to the default framebuffer and skip
   // the lighting, emissive, and composite passes entirely.
@@ -268,6 +283,8 @@ void Renderer::Update(float time, const core::Camera* camera,
   //     texture centred on the camera.  Runs before the lighting pass so the
   //     texture is ready when GlobalLight samples it at sampler slot 13.
   if (cloud_shadow_renderer_ && cloud_shadow_renderer_->IsReady()) {
+    // cppcheck-suppress shadowVariable
+    PROFILE_SCOPE("Renderer::CloudShadow");
     video_->SetViewport(0, 0, render_w_, render_h_);
     cloud_shadow_renderer_->Render(cloud_density_);
     LightRenderer::Instance().SetCloudShadow(
@@ -281,24 +298,30 @@ void Renderer::Update(float time, const core::Camera* camera,
   // 2. Lighting pass — shade into the HDR RT; G-buffer RTs as samplers.
   //    Depth write is disabled so glClear only clears the HDR color attachment,
   //    preserving G-buffer depth for stencil sub-passes and position reconstruction.
-  video_->SetViewport(0, 0, render_w_, render_h_);
-  emissive_fbo_.BindForWriting();
-  video_->SetDepthWriteEnabled(false);
-  video_->ClearRenderTargets(core::Color::kBlack);
-  gbuffer_.BindForReading(5);                    // albedo=5, normal=6
-  gbuffer_.GetDepthRT()->BindAsSampler(8);       // depth=8 (position reconstruction)
-  video_->SetBlendEnabled(true, abstract::BlendFactor::kOne, abstract::BlendFactor::kOne);
-  LightRenderer::Instance().Render();
-  video_->UnbindSampler(5);
-  video_->UnbindSampler(6);
-  video_->UnbindSampler(8);
-  video_->SetBlendEnabled(false);
-  emissive_fbo_.UnbindForWriting();
+  {
+    // cppcheck-suppress shadowVariable
+    PROFILE_SCOPE("Renderer::Lighting");
+    video_->SetViewport(0, 0, render_w_, render_h_);
+    emissive_fbo_.BindForWriting();
+    video_->SetDepthWriteEnabled(false);
+    video_->ClearRenderTargets(core::Color::kBlack);
+    gbuffer_.BindForReading(5);                    // albedo=5, normal=6
+    gbuffer_.GetDepthRT()->BindAsSampler(8);       // depth=8 (position reconstruction)
+    video_->SetBlendEnabled(true, abstract::BlendFactor::kOne, abstract::BlendFactor::kOne);
+    LightRenderer::Instance().Render();
+    video_->UnbindSampler(5);
+    video_->UnbindSampler(6);
+    video_->UnbindSampler(8);
+    video_->SetBlendEnabled(false);
+    emissive_fbo_.UnbindForWriting();
+  }
 
   // 3. Sky pass — render procedural sky into the HDR RT before emissive geometry.
   //    Depth is read-only (LEQUAL) so the sky fills only background pixels
   //    (those whose G-buffer depth equals the far-plane value 1.0).
   if (sky_renderer_ && sky_renderer_->IsReady()) {
+    // cppcheck-suppress shadowVariable
+    PROFILE_SCOPE("Renderer::Sky");
     emissive_fbo_.BindForWriting();
     sky_renderer_->Render(*camera_, sky_world_time_);
     emissive_fbo_.UnbindForWriting();
@@ -311,6 +334,8 @@ void Renderer::Update(float time, const core::Camera* camera,
   //     Depth state is left in the same LEQUAL/write-off configuration as the
   //     sky pass — only background pixels are painted.
   if (cloud_renderer_ && cloud_renderer_->IsReady()) {
+    // cppcheck-suppress shadowVariable
+    PROFILE_SCOPE("Renderer::Clouds");
     emissive_fbo_.BindForWriting();
     cloud_renderer_->Render(sky_world_time_, cloud_density_);
     emissive_fbo_.UnbindForWriting();
@@ -323,27 +348,31 @@ void Renderer::Update(float time, const core::Camera* camera,
   //    correctly by opaque geometry without corrupting G-buffer depth.
   //    GL_LEQUAL is required: emissive geometry was already drawn at the same depth
   //    during the geometry pass, so GL_LESS would reject every fragment.
-  emissive_fbo_.BindForWriting();
-  video_->SetDepthTestEnabled(true);
-  video_->SetDepthFunc(abstract::CompareFunc::kLessEqual);
-  video_->SetBlendEnabled(true, abstract::BlendFactor::kOne, abstract::BlendFactor::kOne);
-  MeshRenderer::Instance().RenderEmissive();
-  MeshRenderer::Instance().EndRender();
-  // Restore global light data in the shared LightInfosBlock (binding 4) so
-  // forward-pass billboard shaders can sample the correct directional light.
-  // Local-light draws during the lighting pass overwrite the buffer last.
-  LightRenderer::Instance().BindGlobalLight();
-  if (foliage_enabled_ && FoliageRenderer::IsInstanced() &&
-      FoliageRenderer::Instance().IsReady() && camera_)
-    FoliageRenderer::Instance().RenderBillboards(*camera_);
-  if (tree_enabled_ && TreeRenderer::IsInstanced() &&
-      TreeRenderer::Instance().IsReady() && camera_)
-    TreeRenderer::Instance().RenderBillboards(*camera_);
-  video_->SetBlendEnabled(false);
-  video_->SetDepthFunc(abstract::CompareFunc::kLess);
-  video_->SetDepthWriteEnabled(true);
-  video_->SetDepthTestEnabled(false);
-  emissive_fbo_.UnbindForWriting();
+  {
+    // cppcheck-suppress shadowVariable
+    PROFILE_SCOPE("Renderer::Emissive");
+    emissive_fbo_.BindForWriting();
+    video_->SetDepthTestEnabled(true);
+    video_->SetDepthFunc(abstract::CompareFunc::kLessEqual);
+    video_->SetBlendEnabled(true, abstract::BlendFactor::kOne, abstract::BlendFactor::kOne);
+    MeshRenderer::Instance().RenderEmissive();
+    MeshRenderer::Instance().EndRender();
+    // Restore global light data in the shared LightInfosBlock (binding 4) so
+    // forward-pass billboard shaders can sample the correct directional light.
+    // Local-light draws during the lighting pass overwrite the buffer last.
+    LightRenderer::Instance().BindGlobalLight();
+    if (foliage_enabled_ && FoliageRenderer::IsInstanced() &&
+        FoliageRenderer::Instance().IsReady() && camera_)
+      FoliageRenderer::Instance().RenderBillboards(*camera_);
+    if (tree_enabled_ && TreeRenderer::IsInstanced() &&
+        TreeRenderer::Instance().IsReady() && camera_)
+      TreeRenderer::Instance().RenderBillboards(*camera_);
+    video_->SetBlendEnabled(false);
+    video_->SetDepthFunc(abstract::CompareFunc::kLess);
+    video_->SetDepthWriteEnabled(true);
+    video_->SetDepthTestEnabled(false);
+    emissive_fbo_.UnbindForWriting();
+  }
 
   // 4b. Forward water pass — two-pass: half-res SSR pre-pass then full-res
   //     alpha-blend into the HDR RT.  Runs after emissive so the scene snapshot
@@ -354,6 +383,8 @@ void Renderer::Update(float time, const core::Camera* camera,
   //     WaterRenderer::Render() manages FBO switching internally; output_fbo is
   //     the emissive FBO that must be rebound after the SSR pre-pass.
   if (water_renderer_ && water_renderer_->IsReady()) {
+    // cppcheck-suppress shadowVariable
+    PROFILE_SCOPE("Renderer::Water");
     video_->CopyRenderTarget(emissive_fbo_.GetHDRRT(),
                              water_scene_color_rt_.get());
     video_->CopyRenderTarget(gbuffer_.GetDepthRT(),
@@ -374,6 +405,8 @@ void Renderer::Update(float time, const core::Camera* camera,
   //     water surface. Alpha-blend emitters are sorted back-to-front.
   //     RenderForwardPass manages its own blend/depth state and restores defaults.
   if (particle_renderer_) {
+    // cppcheck-suppress shadowVariable
+    PROFILE_SCOPE("Renderer::Particles");
     emissive_fbo_.BindForWriting();
     particle_renderer_->RenderForwardPass(*camera_, renderable_infos_cb_.get());
     emissive_fbo_.UnbindForWriting();
@@ -381,6 +414,8 @@ void Renderer::Update(float time, const core::Camera* camera,
 
   // 5a. Eye adaptation — update exposure before tone mapping.
   if (eye_adapt_renderer_) {
+    // cppcheck-suppress shadowVariable
+    PROFILE_SCOPE("Renderer::EyeAdaptation");
     post_process_infos_.exposure = eye_adapt_renderer_->Update(
         emissive_fbo_.GetHDRRT(), dt,
         post_process_infos_.adapt_speed,
@@ -391,6 +426,8 @@ void Renderer::Update(float time, const core::Camera* camera,
 
   // 5b. Bloom pass — downsample/upsample bright areas.
   if (bloom_renderer_) {
+    // cppcheck-suppress shadowVariable
+    PROFILE_SCOPE("Renderer::Bloom");
     bloom_renderer_->Render(emissive_fbo_.GetHDRRT(),
                             post_process_infos_.bloom_threshold,
                             post_process_infos_.bloom_intensity);
@@ -404,17 +441,21 @@ void Renderer::Update(float time, const core::Camera* camera,
   video_->SetViewport(0, 0, render_w_, render_h_);
 
   // 5. Composite pass — tone-map and gamma-correct the HDR RT to the default framebuffer.
-  emissive_fbo_.GetHDRRT()->BindAsSampler(0);
-  // Bind bloom texture at slot 11 (1×1 black fallback when bloom is disabled).
-  if (bloom_renderer_)
-    bloom_renderer_->GetBloomTexture()->BindAsSampler(11);
-  else
-    null_bloom_rt_->BindAsSampler(11);
-  composite_shader_->Activate();
-  composite_quad_->Set();
-  if (output_fbo) output_fbo->BindForWriting();
-  video_->RenderIndexed(composite_quad_->GetNumIndices());
-  if (output_fbo) output_fbo->UnbindForWriting();
+  {
+    // cppcheck-suppress shadowVariable
+    PROFILE_SCOPE("Renderer::Composite");
+    emissive_fbo_.GetHDRRT()->BindAsSampler(0);
+    // Bind bloom texture at slot 11 (1×1 black fallback when bloom is disabled).
+    if (bloom_renderer_)
+      bloom_renderer_->GetBloomTexture()->BindAsSampler(11);
+    else
+      null_bloom_rt_->BindAsSampler(11);
+    composite_shader_->Activate();
+    composite_quad_->Set();
+    if (output_fbo) output_fbo->BindForWriting();
+    video_->RenderIndexed(composite_quad_->GetNumIndices());
+    if (output_fbo) output_fbo->UnbindForWriting();
+  }
 
   // 6. Shadow debug overlay — renders thumbnails on the left side of screen.
   shadow_debug_renderer_->Render(LightRenderer::Instance().GetLights());

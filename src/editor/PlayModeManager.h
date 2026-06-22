@@ -121,6 +121,9 @@ class PlayModeManager {
   void SetStatusMessage(const std::string& msg);
 
   // cppcheck-suppress unusedStructMember
+  static constexpr double kProfilerInterval = 2.0;
+
+  // cppcheck-suppress unusedStructMember
   EditorScene*           scene_;
   // cppcheck-suppress unusedStructMember
   EditorToolbar*         toolbar_;
