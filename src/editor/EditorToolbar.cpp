@@ -91,6 +91,17 @@ void EditorToolbar::Render() {
         ImGui::IsKeyPressed(ImGuiKey_V, /*repeat=*/false)) {
       if (on_paste_) on_paste_();
     }
+
+    if (ImGui::IsKeyPressed(ImGuiKey_F5, /*repeat=*/false)) {
+      if (in_play_mode_) {
+        if (on_stop_) on_stop_();
+      } else if (play_enabled_) {
+        if (on_play_) on_play_();
+      }
+    }
+    if (in_play_mode_ && ImGui::IsKeyPressed(ImGuiKey_Escape, /*repeat=*/false)) {
+      if (on_stop_) on_stop_();
+    }
   }
 
   constexpr ImGuiWindowFlags kFlags =
@@ -128,6 +139,29 @@ void EditorToolbar::Render() {
   if (ImGui::Button(ICON_FA_FLOPPY_DISK) && on_save_)
     on_save_();
   ImGui::SetItemTooltip("Save (Ctrl+S)");
+  ImGui::EndDisabled();
+
+  ImGui::SameLine();
+  ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+  ImGui::SameLine();
+
+  // Play / Stop button.
+  ImGui::BeginDisabled(!play_enabled_ && !in_play_mode_);
+  if (in_play_mode_) {
+    ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.7f, 0.1f, 0.1f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.2f, 0.2f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(0.5f, 0.05f, 0.05f, 1.0f));
+    if (ImGui::Button(ICON_FA_STOP " Stop") && on_stop_) on_stop_();
+    ImGui::SetItemTooltip("Stop (F5 / Escape)");
+    ImGui::PopStyleColor(3);
+  } else {
+    ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.1f, 0.55f, 0.1f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.2f, 0.75f, 0.2f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(0.05f, 0.4f, 0.05f, 1.0f));
+    if (ImGui::Button(ICON_FA_PLAY " Play") && on_play_) on_play_();
+    ImGui::SetItemTooltip("Play (F5)");
+    ImGui::PopStyleColor(3);
+  }
   ImGui::EndDisabled();
 
   ImGui::SameLine();
