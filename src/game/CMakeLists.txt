@@ -16,6 +16,7 @@ add_library(game STATIC
     GameTerrain.cpp
     MapLoader.cpp
     MeshTemplate.cpp
+    VehicleTemplate.cpp
 )
 
 target_include_directories(game PUBLIC "${CMAKE_SOURCE_DIR}/src")
