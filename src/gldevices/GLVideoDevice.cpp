@@ -382,22 +382,28 @@ void GLVideoDevice::EndGpuTimer() {
 }
 
 std::vector<core::GpuTimeSample> GLVideoDevice::CollectGpuTimings() {
-  // Read elapsed times from the slot written during the previous frame.
-  // The GPU has had a full frame to complete that work, so glGetQueryObjectui64v
-  // with GL_QUERY_RESULT should not stall in practice.
   const TimerSlot& read_slot = timer_slots_[write_slot_];
   std::vector<core::GpuTimeSample> results;
-  results.reserve(static_cast<std::size_t>(read_slot.count));
 
-  for (int i = 0; i < read_slot.count; ++i) {
-    GLuint64 ns = 0;
-    glGetQueryObjectui64v(read_slot.query_ids[i], GL_QUERY_RESULT, &ns);
-    results.push_back({read_slot.names[i],
-                       static_cast<double>(ns) / 1.0e6});
+  if (read_slot.count > 0) {
+    // GL queries complete in submission order: if the last one is available
+    // all preceding ones are too.  Bail out without blocking if not ready.
+    GLint available = 0;
+    glGetQueryObjectiv(read_slot.query_ids[read_slot.count - 1],
+                       GL_QUERY_RESULT_AVAILABLE, &available);
+    if (available) {
+      results.reserve(static_cast<std::size_t>(read_slot.count));
+      for (int i = 0; i < read_slot.count; ++i) {
+        GLuint64 ns = 0;
+        glGetQueryObjectui64v(read_slot.query_ids[i], GL_QUERY_RESULT, &ns);
+        results.push_back({read_slot.names[i],
+                           static_cast<double>(ns) / 1.0e6});
+      }
+    }
   }
 
   // Flip to the other slot for this frame's writes and clear it.
-  write_slot_                    = 1 - write_slot_;
+  write_slot_                     = 1 - write_slot_;
   timer_slots_[write_slot_].count = 0;
 
   return results;
