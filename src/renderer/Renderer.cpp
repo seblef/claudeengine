@@ -27,6 +27,7 @@
 #include "renderer/PostProcessInfos.h"
 #include "renderer/RenderableInfos.h"
 #include "renderer/SceneInfos.h"
+#include "core/Profiler.h"
 
 namespace renderer {
 
@@ -179,6 +180,8 @@ void Renderer::SetCamera(const core::Camera* camera) {
 
 void Renderer::Update(float time, const core::Camera* camera,
                       abstract::RenderTargetGroup* output_fbo) {
+  PROFILE_SCOPE("Renderer::Draw");
+
   // Clear per-frame renderer lists before re-enqueuing so that the previous
   // frame's snapshots remain available during event callbacks (e.g. Tab →
   // CycleShadowDebug) that fire before this Update() is entered.

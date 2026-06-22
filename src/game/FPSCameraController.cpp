@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "core/AppConfig.h"
+#include "core/Profiler.h"
 #include "core/EventType.h"
 #include "core/Key.h"
 #include "core/Mat4f.h"
@@ -80,6 +81,7 @@ void FPSCameraController::OnEvent(const core::Event& event) {
 }
 
 void FPSCameraController::Update(float dt) {
+  PROFILE_SCOPE("FPSCamera::Update");
   if (!camera_) return;
 
   // Lazy-init: create the capsule on the first tick, after SetPosition() has

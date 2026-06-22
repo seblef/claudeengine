@@ -35,6 +35,7 @@
 #include "editor/commands/UngroupPivotCommand.h"
 #include "editor/EditorViewport.h"
 #include "editor/LogPanel.h"
+#include "editor/ProfilerPanel.h"
 #include "editor/MapPropertiesWindow.h"
 #include "editor/MapSerializer.h"
 #include "editor/MaterialEditorWindow.h"
@@ -122,7 +123,8 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       resources_panel_(std::make_unique<ResourcesPanel>()),
       objects_panel_(std::make_unique<ObjectsPanel>()),
       outliner_panel_(std::make_unique<OutlinerPanel>()),
-      log_panel_(std::make_unique<LogPanel>()) {
+      log_panel_(std::make_unique<LogPanel>()),
+      profiler_panel_(std::make_unique<ProfilerPanel>()) {
   play_mode_ = std::make_unique<PlayModeManager>(
       scene_.get(), toolbar_.get(), viewport_.get(), video_);
   play_mode_->SetOnStatusMessage([this](std::string msg) {
@@ -156,8 +158,12 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   toolbar_->SetOnPlay([this]{
     play_mode_->Enter();
     toolbar_->SetInPlayMode(play_mode_->IsPlaying());
+    if (play_mode_->IsPlaying()) show_profiler_panel_ = true;
   });
-  toolbar_->SetOnStop([this]{ play_mode_->Exit(); });
+  toolbar_->SetOnStop([this]{
+    play_mode_->Exit();
+    show_profiler_panel_ = false;
+  });
   toolbar_->SetOnSave([this]{ SaveCurrent(); });
   toolbar_->SetOnSoundToggle([this](bool enabled) {
     if (enabled) EnableSceneSound();
@@ -654,7 +660,14 @@ void EditorWindow::Render() {
     ImGui::End();
   }
 
-  // 11g. Post-process panel — dockable, shown via View > Post-process.
+  // 11g. Profiler panel — dockable, auto-shown on Play and via View > Profiler.
+  if (show_profiler_panel_ && play_mode_->IsPlaying()) {
+    if (ImGui::Begin("Profiler##panel", &show_profiler_panel_))
+      profiler_panel_->Render();
+    ImGui::End();
+  }
+
+  // 11h. Post-process panel — dockable, shown via View > Post-process.
   if (show_post_process_panel_) {
     if (ImGui::Begin("Post-process##panel", &show_post_process_panel_)) {
       renderer::PostProcessInfos& pp =
@@ -859,6 +872,14 @@ void EditorWindow::RenderMenuBar() {
       show_rendering_settings_panel_ = !show_rendering_settings_panel_;
     if (ImGui::MenuItem("Post-process", nullptr, show_post_process_panel_))
       show_post_process_panel_ = !show_post_process_panel_;
+    ImGui::Separator();
+    const bool playing = play_mode_->IsPlaying();
+    ImGui::BeginDisabled(!playing);
+    if (ImGui::MenuItem("Profiler", nullptr, show_profiler_panel_ && playing))
+      show_profiler_panel_ = !show_profiler_panel_;
+    ImGui::EndDisabled();
+    if (!playing)
+      ImGui::SetItemTooltip("Available during play mode only");
     ImGui::EndMenu();
   }
 

@@ -40,6 +40,7 @@ class MeshSelectionModal;
 class ParticleSystemSelectionModal;
 class SoundEmitterSelectionModal;
 class PropertiesPanel;
+class ProfilerPanel;
 class ResourceBrowser;
 class ResourcesPanel;
 class ObjectsPanel;
@@ -209,6 +210,10 @@ class EditorWindow {
   std::unique_ptr<OutlinerPanel>         outliner_panel_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<LogPanel>              log_panel_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<ProfilerPanel>         profiler_panel_;
+  // cppcheck-suppress unusedStructMember
+  bool                                   show_profiler_panel_ = false;
 
   // Play-in-Editor manager — owns the FPS camera and physics lifecycle.
   // Constructed after all other members; must be destroyed before the scene.
