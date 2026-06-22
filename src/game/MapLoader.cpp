@@ -27,6 +27,7 @@
 #include "game/GameTerrain.h"
 #include "game/GameVehicle.h"
 #include "game/MeshTemplate.h"
+#include "game/VehicleTemplate.h"
 #include "physics/CollisionLayer.h"
 #include "physics/PhysicsBodyDesc.h"
 #include "particles/ParticleSystemTemplate.h"
@@ -408,22 +409,25 @@ std::unique_ptr<GameObject> ParseSoundEmitter(
 
 std::unique_ptr<GameObject> ParseVehicle(const YAML::Node& node,
                                          abstract::VideoDevice* video) {
+  const std::string desc_path = node["desc"].as<std::string>("");
   const std::string name      = node["name"].as<std::string>("Vehicle");
-  const std::string desc      = node["desc"].as<std::string>("");
   const core::Mat4f transform = core::ParseMat4(node["transform"]);
 
-  if (desc.empty()) {
+  if (desc_path.empty()) {
     LOG_F(WARNING, "MapLoader: vehicle '%s' has no desc field, skipping",
           name.c_str());
     return nullptr;
   }
 
-  auto vehicle = GameVehicle::Create(std::filesystem::path(desc), video);
-  if (!vehicle) {
-    LOG_F(WARNING, "MapLoader: failed to create vehicle '%s' from desc '%s'",
-          name.c_str(), desc.c_str());
+  VehicleTemplate* tmpl = VehicleTemplate::GetOrLoad(desc_path, video);
+  if (!tmpl) {
+    LOG_F(WARNING, "MapLoader: failed to load vehicle template '%s' for '%s'",
+          desc_path.c_str(), name.c_str());
     return nullptr;
   }
+
+  auto vehicle = std::make_unique<GameVehicle>(tmpl);
+  tmpl->Release();
 
   vehicle->SetName(name);
   vehicle->SetWorldTransform(transform);

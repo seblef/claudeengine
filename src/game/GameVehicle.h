@@ -17,6 +17,7 @@ namespace game {
 
 class GameMesh;
 class IVehicleController;
+class VehicleTemplate;
 
 // A wheeled vehicle scene object driven by a PhysicsVehicle simulation.
 //
@@ -24,11 +25,7 @@ class IVehicleController;
 // no physics simulation runs.  PlayModeManager calls Activate() — after assigning
 // a controller via SetVehicleController() — to start the simulation.
 //
-// The vehicle descriptor YAML file (pointed to by desc_path) encodes the physics
-// VehicleDesc plus the mesh paths for the body, front wheels, and rear wheels.
-// All mesh paths in that file are relative to core::Config::GetDataFolder().
-//
-// Scene hierarchy created by Create():
+// Scene hierarchy created by the constructor:
 //   GameVehicle          ← world transform driven by PhysicsVehicle body
 //     ├── body_mesh_     ← local transform = identity
 //     ├── wheel_fl_      ← local transform updated from physics each frame
@@ -37,14 +34,11 @@ class IVehicleController;
 //     └── wheel_rr_      ← local transform updated from physics (mirrored X)
 class GameVehicle : public GameObject, public physics::IPhysicsBodyListener {
  public:
-  // Loads VehicleDesc from desc_path (relative to core::Config::GetDataFolder()),
-  // instantiates body and wheel GameMesh children.
-  // Returns nullptr if desc_path cannot be parsed or required fields are absent.
-  static std::unique_ptr<GameVehicle> Create(
-      const std::filesystem::path& desc_path,
-      abstract::VideoDevice* video);
+  // Constructs the vehicle from a pre-loaded VehicleTemplate (AddRef'd on entry).
+  // Instantiates body and wheel GameMesh children from the template's mesh templates.
+  explicit GameVehicle(VehicleTemplate* tmpl);
 
-  ~GameVehicle() override = default;
+  ~GameVehicle() override;
 
   GameVehicle(const GameVehicle&)            = delete;
   GameVehicle& operator=(const GameVehicle&) = delete;
@@ -89,21 +83,12 @@ class GameVehicle : public GameObject, public physics::IPhysicsBodyListener {
   // Activate(). May be nullptr — the vehicle will be simulated without inputs.
   void SetVehicleController(IVehicleController* ctrl) { controller_ = ctrl; }
 
-  [[nodiscard]] const std::filesystem::path& GetDescPath()    const;
-  [[nodiscard]] const physics::VehicleDesc&  GetVehicleDesc() const;
+  [[nodiscard]] std::filesystem::path       GetDescPath()    const;
+  [[nodiscard]] const physics::VehicleDesc& GetVehicleDesc() const;
 
  private:
-  explicit GameVehicle(const core::BBox3& bbox);
-
   // cppcheck-suppress unusedStructMember
-  std::filesystem::path     desc_path_;
-  // cppcheck-suppress unusedStructMember
-  physics::VehicleDesc      vehicle_desc_;
-
-  // cppcheck-suppress unusedStructMember
-  std::filesystem::path     front_wheel_mesh_path_;
-  // cppcheck-suppress unusedStructMember
-  std::filesystem::path     rear_wheel_mesh_path_;
+  VehicleTemplate*          template_;
 
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<GameMesh> body_mesh_;
