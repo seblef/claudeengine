@@ -13,6 +13,7 @@
 #include "core/Event.h"
 #include "editor/EditorCommand.h"
 #include "editor/EditorCommandHistory.h"
+#include "editor/ResourcePanelRegistry.h"
 #include "editor/EditorToolbar.h"
 #include "editor/EnvironmentEditorPanel.h"
 #include "editor/PlayModeManager.h"
@@ -39,6 +40,7 @@ class MeshSelectionModal;
 class ParticleSystemSelectionModal;
 class SoundEmitterSelectionModal;
 class PropertiesPanel;
+class ResourceBrowser;
 class ResourcesPanel;
 class ObjectsPanel;
 class OutlinerPanel;
@@ -196,6 +198,11 @@ class EditorWindow {
   std::unique_ptr<PropertiesPanel>       properties_panel_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<ResourcesPanel>        resources_panel_;
+  // Registry must outlive resource_browser_ (browser holds a raw pointer).
+  // cppcheck-suppress unusedStructMember
+  ResourcePanelRegistry                  resource_panel_registry_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<ResourceBrowser>       resource_browser_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<ObjectsPanel>          objects_panel_;
   // cppcheck-suppress unusedStructMember
