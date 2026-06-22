@@ -4,6 +4,8 @@ import argparse
 import sys
 
 from osm_importer.fetcher import load_osm
+from osm_importer.projection import Projector
+from osm_importer.roads import extract_roads
 
 
 def parse_args(argv=None):
@@ -35,6 +37,16 @@ def parse_args(argv=None):
     return parser.parse_args(argv)
 
 
+def _bbox_from_args_or_nodes(bbox_str, nodes):
+    """Return (lat_min, lon_min, lat_max, lon_max) from CLI string or node coords."""
+    if bbox_str is not None:
+        min_lon, min_lat, max_lon, max_lat = (float(v) for v in bbox_str.split(","))
+        return min_lat, min_lon, max_lat, max_lon
+    lats = [lat for lat, _ in nodes.values()]
+    lons = [lon for _, lon in nodes.values()]
+    return min(lats), min(lons), max(lats), max(lons)
+
+
 def main(argv=None):
     args = parse_args(argv)
 
@@ -49,9 +61,13 @@ def main(argv=None):
     nodes, ways = load_osm(bbox=args.bbox, osm_file=args.osm_file)
     print(f"Loaded {len(nodes)} nodes, {len(ways)} ways")
 
-    # TODO(#746): project lon/lat to local XZ plane
-    # TODO(#747): generate road meshes
-    # TODO(#748): generate building meshes
+    bbox_tuple = _bbox_from_args_or_nodes(args.bbox, nodes)
+    projector = Projector(bbox_tuple)
+
+    roads = extract_roads(ways, nodes, projector)
+    print(f"Extracted {len(roads)} roads")
+
+    # TODO: generate building meshes
     # TODO(#749): write .map.yaml
 
 
