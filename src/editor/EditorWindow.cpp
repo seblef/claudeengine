@@ -121,9 +121,41 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       objects_panel_(std::make_unique<ObjectsPanel>()),
       outliner_panel_(std::make_unique<OutlinerPanel>()),
       log_panel_(std::make_unique<LogPanel>()) {
+  play_mode_ = std::make_unique<PlayModeManager>(
+      scene_.get(), toolbar_.get(), viewport_.get(), video_);
+  play_mode_->SetOnStatusMessage([this](std::string msg) {
+    play_status_msg_   = std::move(msg);
+    play_status_timer_ = 5.f;
+  });
+  play_mode_->SetOnExit(
+      [this](std::filesystem::path path,
+             const EditorCameraController::CameraState& cam) {
+        // Destroy the old scene FIRST so GameTerrain::OnRemovedFromScene()
+        // shuts down FoliageRenderer before the new EditorScene is created.
+        scene_.reset();
+        auto result = MapSerializer::Load(path, video_);
+        if (!result) {
+          LOG_F(ERROR, "Play mode exit: failed to reload map '%s'",
+                path.c_str());
+          return;
+        }
+        scene_ = std::move(result->scene);
+        viewport_->SetScene(scene_.get());
+        viewport_->SetCameraState(cam);
+        map_properties_ = std::make_unique<MapPropertiesWindow>(scene_.get());
+        history_.Clear();
+        WireTerrainPanel();
+        environment_panel_.SetContext(scene_.get(), video_);
+        scene_dirty_ = false;
+        LOG_F(INFO, "Scene reloaded after play mode exit");
+      });
+
   toolbar_->SetCommandHistory(&history_);
-  toolbar_->SetOnPlay([this]{ LOG_F(INFO, "Play requested (play mode not yet implemented)"); });
-  toolbar_->SetOnStop([this]{ LOG_F(INFO, "Stop requested (play mode not yet implemented)"); });
+  toolbar_->SetOnPlay([this]{
+    play_mode_->Enter();
+    toolbar_->SetInPlayMode(play_mode_->IsPlaying());
+  });
+  toolbar_->SetOnStop([this]{ play_mode_->Exit(); });
   toolbar_->SetOnSave([this]{ SaveCurrent(); });
   toolbar_->SetOnSoundToggle([this](bool enabled) {
     if (enabled) EnableSceneSound();
@@ -272,21 +304,35 @@ EditorWindow::~EditorWindow() {
 }
 
 void EditorWindow::OnEvent(const core::Event& event) {
-  viewport_->OnEvent(event);
+  if (play_mode_ && play_mode_->IsPlaying()) {
+    play_mode_->OnEvent(event);
+  } else {
+    viewport_->OnEvent(event);
+  }
 }
 
 void EditorWindow::Render() {
   TickAutosave();
   sound_preview_.Update();
 
+  const float dt = ImGui::GetIO().DeltaTime;
+
   if (toolbar_->IsSoundEnabled() && editor_sound_manager_) {
     editor_sound_manager_->SetListenerTransform(
         viewport_->GetCameraWorldTransform());
-    editor_sound_manager_->Update(ImGui::GetIO().DeltaTime);
+    editor_sound_manager_->Update(dt);
   }
 
-  environment_panel_.Tick(ImGui::GetIO().DeltaTime);
-  scene_->Update(static_cast<float>(ImGui::GetTime()), ImGui::GetIO().DeltaTime);
+  environment_panel_.Tick(dt);
+  scene_->Update(static_cast<float>(ImGui::GetTime()), dt);
+
+  // Advance play mode physics and FPS camera before the viewport renders so the
+  // renderer sees the up-to-date camera transform for this frame.
+  if (play_mode_->IsPlaying())
+    play_mode_->Tick(dt);
+
+  // Decay play mode status bar message timer.
+  if (play_status_timer_ > 0.f) play_status_timer_ -= dt;
 
   // 1. Full-screen DockSpace — all panels dock into it.
   ImGui::DockSpaceOverViewport();
@@ -296,8 +342,8 @@ void EditorWindow::Render() {
 
   // 3. Toolbar — update dirty state and copy/paste availability before rendering.
   toolbar_->SetDirty(scene_dirty_);
-  toolbar_->SetPlayEnabled(!scene_->GetMapName().empty() &&
-                           !scene_->GetFilePath().empty());
+  toolbar_->SetPlayEnabled(!scene_->GetFilePath().empty() &&
+                           !play_mode_->IsPlaying());
   {
     const auto& sel = scene_->GetSelection();
     const bool can_copy = std::any_of(sel.begin(), sel.end(),
@@ -335,8 +381,9 @@ void EditorWindow::Render() {
   const EditorTool active_tool = toolbar_->GetActiveTool();
 
   // When the active tool changes, deactivate any running placement tool and
-  // activate the appropriate base tool.
-  if (active_tool != prev_tool_) {
+  // activate the appropriate base tool. Skipped while tools are frozen (play
+  // mode) to prevent tool transitions triggered by toolbar keyboard shortcuts.
+  if (!play_mode_->AreToolsFrozen() && active_tool != prev_tool_) {
     if (placement_tool_) {
       // Deactivate placement tool before resetting it.
       viewport_->SetActiveTool(selection_tool_.get());
@@ -443,33 +490,37 @@ void EditorWindow::Render() {
   }
   ImGui::End();
 
-  // 5. Left panel — Resources/Objects tabs (wired in issues #175/#176).
-  if (ImGui::Begin("Scene")) {
-    if (ImGui::BeginTabBar("##scene_tabs")) {
-      if (ImGui::BeginTabItem("Resources")) {
-        resources_panel_->Render();
-        ImGui::EndTabItem();
+  // 5–7. Editor side panels — hidden while in play mode so the viewport fills
+  //       the screen and the user experiences the game without UI distractions.
+  if (!play_mode_->ArePanelsHidden()) {
+    // 5. Left panel — Resources/Objects tabs (wired in issues #175/#176).
+    if (ImGui::Begin("Scene")) {
+      if (ImGui::BeginTabBar("##scene_tabs")) {
+        if (ImGui::BeginTabItem("Resources")) {
+          resources_panel_->Render();
+          ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Outliner")) {
+          outliner_panel_->Render(*scene_);
+          ImGui::EndTabItem();
+        }
+        ImGui::EndTabBar();
       }
-      if (ImGui::BeginTabItem("Outliner")) {
-        outliner_panel_->Render(*scene_);
-        ImGui::EndTabItem();
-      }
-      ImGui::EndTabBar();
     }
-  }
-  ImGui::End();
+    ImGui::End();
 
-  // 6. Right panel — Properties.
-  if (ImGui::Begin("Properties")) {
-    properties_panel_->Render(scene_->GetSelectedObject());
-  }
-  ImGui::End();
+    // 6. Right panel — Properties.
+    if (ImGui::Begin("Properties")) {
+      properties_panel_->Render(scene_->GetSelectedObject());
+    }
+    ImGui::End();
 
-  // 7. Bottom panel — Logs (wired in issue #178).
-  if (ImGui::Begin("Logs")) {
-    log_panel_->Render();
+    // 7. Bottom panel — Logs (wired in issue #178).
+    if (ImGui::Begin("Logs")) {
+      log_panel_->Render();
+    }
+    ImGui::End();
   }
-  ImGui::End();
 
   // 8. Material editor — floating window, shown when a material is open.
   material_editor_->Render(*scene_);
@@ -643,6 +694,10 @@ void EditorWindow::Render() {
   if (autosave_msg_timer_ > 0.f) {
     ImGui::SameLine();
     ImGui::TextUnformatted(last_autosave_msg_.c_str());
+  }
+  if (play_status_timer_ > 0.f) {
+    ImGui::SameLine();
+    ImGui::TextUnformatted(play_status_msg_.c_str());
   }
   ImGui::End();
 }

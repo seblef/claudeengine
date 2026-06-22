@@ -94,6 +94,15 @@ class EditorViewport {
     rendering_settings_panel_ = panel;
   }
 
+  // Returns the viewport's GameCamera (non-owning).
+  // Used by PlayModeManager to bind the FPS camera controller.
+  [[nodiscard]] game::GameCamera* GetCamera() const { return camera_.get(); }
+
+  // Toggles play mode: when true, the editor orbit camera controller is
+  // suspended so the FPS camera can drive the camera unobstructed. Tools,
+  // gizmos, and the orbit widget are also hidden.
+  void SetInPlayMode(bool playing) { in_play_mode_ = playing; }
+
  private:
   void ResizeIfNeeded(int w, int h);
 
@@ -140,6 +149,11 @@ class EditorViewport {
   // Non-owned; set by EditorWindow so the viewport can read render toggles.
   // cppcheck-suppress unusedStructMember
   RenderingSettingsPanel* rendering_settings_panel_ = nullptr;
+
+  // True while the editor is in Play mode. Suspends the orbit camera controller
+  // and hides editor-only overlays (gizmos, tools, orbit widget).
+  // cppcheck-suppress unusedStructMember
+  bool in_play_mode_ = false;
 };
 
 }  // namespace editor
