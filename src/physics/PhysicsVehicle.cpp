@@ -1,0 +1,79 @@
+#include "physics/PhysicsVehicle.h"
+
+#include <Jolt/Jolt.h>
+#include <Jolt/Math/Mat44.h>
+#include <Jolt/Physics/Body/Body.h>
+#include <Jolt/Physics/Body/BodyInterface.h>
+#include <Jolt/Physics/PhysicsSystem.h>
+#include <Jolt/Physics/Vehicle/VehicleConstraint.h>
+#include <Jolt/Physics/Vehicle/WheeledVehicleController.h>
+
+#include "physics/IPhysicsBodyListener.h"
+
+namespace physics {
+
+namespace {
+
+core::Mat4f JoltMatToMat4f(const JPH::RMat44& m) {
+    core::Mat4f result;
+    for (int row = 0; row < 4; ++row)
+        for (int col = 0; col < 4; ++col)
+            result(row, col) = m(static_cast<JPH::uint>(row),
+                                 static_cast<JPH::uint>(col));
+    return result;
+}
+
+}  // namespace
+
+PhysicsVehicle::PhysicsVehicle(JPH::Body* body,
+                                JPH::VehicleConstraint* constraint,
+                                JPH::PhysicsSystem* jolt,
+                                IPhysicsBodyListener* listener)
+    : body_(body),
+      constraint_(constraint),
+      jolt_system_(jolt),
+      listener_(listener) {
+    constraint_->AddRef();
+
+    // Push driver input into the controller at the start of each physics sub-step.
+    constraint_->SetPreStepCallback(
+        [this](JPH::VehicleConstraint& vc,
+               const JPH::PhysicsStepListenerContext&) {
+            auto* ctrl =
+                static_cast<JPH::WheeledVehicleController*>(vc.GetController());
+            ctrl->SetDriverInput(throttle_, steer_, brake_,
+                                 handbrake_ ? 1.f : 0.f);
+        });
+}
+
+PhysicsVehicle::~PhysicsVehicle() {
+    const JPH::BodyID body_id = body_->GetID();
+
+    // Remove the constraint before the body so the constraint destructor can
+    // still access a valid body pointer.
+    jolt_system_->RemoveStepListener(constraint_);
+    jolt_system_->RemoveConstraint(constraint_);
+    constraint_->Release();
+
+    JPH::BodyInterface& iface = jolt_system_->GetBodyInterface();
+    iface.RemoveBody(body_id);
+    iface.DestroyBody(body_id);
+}
+
+void PhysicsVehicle::SetThrottle(float v)  { throttle_  = v; }
+void PhysicsVehicle::SetSteer(float v)     { steer_     = v; }
+void PhysicsVehicle::SetBrake(float v)     { brake_     = v; }
+void PhysicsVehicle::SetHandbrake(bool on) { handbrake_ = on; }
+
+core::Mat4f PhysicsVehicle::GetBodyWorldTransform() const {
+    return JoltMatToMat4f(body_->GetWorldTransform());
+}
+
+core::Mat4f PhysicsVehicle::GetWheelWorldTransform(int wheel_index) const {
+    return JoltMatToMat4f(constraint_->GetWheelWorldTransform(
+        static_cast<JPH::uint>(wheel_index),
+        JPH::Vec3::sAxisX(),
+        JPH::Vec3::sAxisY()));
+}
+
+}  // namespace physics
