@@ -46,6 +46,8 @@
 #include "editor/SoundEmitterSelectionModal.h"
 #include "editor/ObjectNamingUtils.h"
 #include "editor/ObjectsPanel.h"
+#include "editor/ResourceBrowser.h"
+#include "editor/ResourcePanelRegistry.h"
 #include "editor/OutlinerPanel.h"
 #include "editor/PropertiesPanel.h"
 #include "editor/ResourcesPanel.h"
@@ -252,6 +254,10 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   } else {
     LOG_F(WARNING, "Editor 3D audio unavailable — sound toggle will be a no-op");
   }
+
+  // ResourceBrowser is constructed after the registry is populated with all
+  // known resource types (none yet at this milestone).
+  resource_browser_ = std::make_unique<ResourceBrowser>(&resource_panel_registry_);
 
   loguru::add_callback("editor_log", &LogPanel::LogCallback,
                        log_panel_.get(), loguru::Verbosity_INFO);
@@ -502,6 +508,10 @@ void EditorWindow::Render() {
         }
         if (ImGui::BeginTabItem("Outliner")) {
           outliner_panel_->Render(*scene_);
+          ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Browser")) {
+          resource_browser_->Render();
           ImGui::EndTabItem();
         }
         ImGui::EndTabBar();
