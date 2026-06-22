@@ -104,6 +104,11 @@ const std::string& GameObject::GetName() const {
   return name_;
 }
 
+void GameObject::Update(float dt) {
+  for (GameObject* child : children_)
+    child->Update(dt);
+}
+
 std::unique_ptr<GameObject> GameObject::Copy(const core::Vec3f&) const {
   return nullptr;
 }
