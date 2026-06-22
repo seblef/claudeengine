@@ -1,4 +1,5 @@
 add_library(game STATIC
+    ChaseCameraController.cpp
     FPSCameraController.cpp
     PlayerVehicleController.cpp
     GameCamera.cpp
