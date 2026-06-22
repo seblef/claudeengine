@@ -3,6 +3,8 @@
 import argparse
 import sys
 
+from osm_importer.fetcher import load_osm
+
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(
@@ -44,13 +46,13 @@ def main(argv=None):
         print("error: --bbox and --osm-file are mutually exclusive", file=sys.stderr)
         sys.exit(1)
 
-    # TODO(#745): fetch OSM data via Overpass API when --bbox is given
+    nodes, ways = load_osm(bbox=args.bbox, osm_file=args.osm_file)
+    print(f"Loaded {len(nodes)} nodes, {len(ways)} ways")
+
     # TODO(#746): project lon/lat to local XZ plane
     # TODO(#747): generate road meshes
     # TODO(#748): generate building meshes
     # TODO(#749): write .map.yaml
-
-    print("OSM importer scaffold — no-op stub")
 
 
 if __name__ == "__main__":
