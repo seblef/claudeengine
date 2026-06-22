@@ -22,6 +22,7 @@
 #include "editor/TerrainEditorPanel.h"
 #include "editor/SoundPreviewPlayer.h"
 #include "editor/tools/PlacementTool.h"
+#include "editor/tools/RoadTool.h"
 #include "editor/tools/SelectionTool.h"
 #include "editor/tools/TerrainSculptTool.h"
 #include "editor/tools/TransformTool.h"
@@ -241,6 +242,9 @@ class EditorWindow {
   std::unique_ptr<PlacementTool>         placement_tool_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<TerrainSculptTool>     sculpt_tool_;
+  // Road spline-editing tool: created once, activated on road selection.
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<RoadTool>              road_tool_;
 
   // Tracks the previous frame's active tool to detect transitions.
   // cppcheck-suppress unusedStructMember

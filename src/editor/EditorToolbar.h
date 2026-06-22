@@ -23,6 +23,9 @@ enum class EditorTool {
   kCreateParticleSystem,
   kCreateSoundEmitter,
   kCreateVehicle,
+  // Spline-editing tool for GameRoad objects. Not a toolbar button — activates
+  // automatically when a GameRoad is selected.
+  kRoad,
 };
 
 // Returns true for any object-creation tool.

@@ -61,6 +61,7 @@
 #include "game/GameParticleSystem.h"
 #include "game/GamePivot.h"
 #include "game/GamePlayerStart.h"
+#include "game/GameRoad.h"
 #include "game/GameSoundEmitter.h"
 #include "game/GameTerrain.h"
 #include "game/GameVehicle.h"
@@ -128,7 +129,8 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       objects_panel_(std::make_unique<ObjectsPanel>()),
       outliner_panel_(std::make_unique<OutlinerPanel>()),
       log_panel_(std::make_unique<LogPanel>()),
-      profiler_panel_(std::make_unique<ProfilerPanel>()) {
+      profiler_panel_(std::make_unique<ProfilerPanel>()),
+      road_tool_(std::make_unique<RoadTool>()) {
   play_mode_ = std::make_unique<PlayModeManager>(
       scene_.get(), toolbar_.get(), viewport_.get(), video_);
   play_mode_->SetOnStatusMessage([this](std::string msg) {
@@ -473,6 +475,8 @@ void EditorWindow::Render() {
       viewport_->SetActiveTool(rotate_tool_.get());
     else if (active_tool == EditorTool::kScale)
       viewport_->SetActiveTool(scale_tool_.get());
+    else if (active_tool == EditorTool::kRoad)
+      viewport_->SetActiveTool(road_tool_.get());
     else if (!IsTransformTool(active_tool))
       viewport_->SetActiveTool(selection_tool_.get());
 
@@ -741,7 +745,21 @@ void EditorWindow::Render() {
     viewport_->SetActiveTool(selection_tool_.get());
   }
 
-  // 11e. Environment editor panel — dockable, shown via Map > Environment.
+  // 11e. Auto-activate road tool when a GameRoad is selected.
+  if (!play_mode_->AreToolsFrozen()) {
+    const game::GameObject* sel = scene_->GetSelectedObject();
+    const bool road_selected =
+        sel && sel->GetType() == game::GameObjectType::kRoad;
+    if (road_selected && active_tool != EditorTool::kRoad) {
+      toolbar_->SetActiveTool(EditorTool::kRoad);
+      viewport_->SetActiveTool(road_tool_.get());
+    } else if (!road_selected && active_tool == EditorTool::kRoad) {
+      toolbar_->SetActiveTool(EditorTool::kSelection);
+      viewport_->SetActiveTool(selection_tool_.get());
+    }
+  }
+
+  // 11g. Environment editor panel — dockable, shown via Map > Environment.
   if (show_environment_panel_) {
     if (ImGui::Begin("Environment##panel", &show_environment_panel_)) {
       if (environment_panel_.Render()) scene_dirty_ = true;
@@ -749,21 +767,21 @@ void EditorWindow::Render() {
     ImGui::End();
   }
 
-  // 11f. Rendering settings panel — dockable, shown via View > Rendering settings.
+  // 11h. Rendering settings panel — dockable, shown via View > Rendering settings.
   if (show_rendering_settings_panel_) {
     if (ImGui::Begin("Rendering settings##panel", &show_rendering_settings_panel_))
       rendering_settings_panel_.Render();
     ImGui::End();
   }
 
-  // 11g. Profiler panel — dockable, auto-shown on Play and via View > Profiler.
+  // 11i. Profiler panel — dockable, auto-shown on Play and via View > Profiler.
   if (show_profiler_panel_ && play_mode_->IsPlaying()) {
     if (ImGui::Begin("Profiler##panel", &show_profiler_panel_))
       profiler_panel_->Render();
     ImGui::End();
   }
 
-  // 11h. Post-process panel — dockable, shown via View > Post-process.
+  // 11j. Post-process panel — dockable, shown via View > Post-process.
   if (show_post_process_panel_) {
     if (ImGui::Begin("Post-process##panel", &show_post_process_panel_)) {
       renderer::PostProcessInfos& pp =
