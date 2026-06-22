@@ -15,7 +15,7 @@
 #include "core/CoordinateSystem.h"
 #include "core/Mat4f.h"
 #include "core/ProjectionType.h"
-#include "core/YamlUtils.h"
+#include "core/YamlSerialiser.h"
 #include "game/GameCamera.h"
 #include "game/GameLight.h"
 #include "game/GameMaterial.h"

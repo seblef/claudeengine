@@ -1,7 +1,7 @@
 #include "renderer/Material.h"
 
 #include "core/Config.h"
-#include "core/YamlUtils.h"
+#include "core/YamlSerialiser.h"
 #include "renderer/MaterialInfos.h"
 
 #include <loguru.hpp>
