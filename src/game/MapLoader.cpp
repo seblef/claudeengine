@@ -1,5 +1,6 @@
 #include "game/MapLoader.h"
 
+#include <algorithm>
 #include <fstream>
 #include <optional>
 #include <string>
@@ -23,11 +24,13 @@
 #include "game/GameParticleSystem.h"
 #include "game/GamePivot.h"
 #include "game/GamePlayerStart.h"
+#include "game/GameRoad.h"
 #include "game/GameSoundEmitter.h"
 #include "game/GameTerrain.h"
 #include "game/GameVehicle.h"
 #include "game/MeshTemplate.h"
 #include "game/VehicleTemplate.h"
+#include "track/RoadSpline.h"
 #include "physics/CollisionLayer.h"
 #include "physics/PhysicsBodyDesc.h"
 #include "particles/ParticleSystemTemplate.h"
@@ -434,6 +437,44 @@ std::unique_ptr<GameObject> ParseVehicle(const YAML::Node& node,
   return vehicle;
 }
 
+std::unique_ptr<GameObject> ParseRoad(const YAML::Node& node,
+                                      abstract::VideoDevice* video) {
+  const std::string name            = node["name"].as<std::string>("Road");
+  const float       width           = node["width"].as<float>(8.f);
+  const float       samples_per_m   = node["samples_per_metre"].as<float>(1.f);
+  const std::string mat_raw         = node["material"].as<std::string>("");
+
+  if (!node["control_points"] || !node["control_points"].IsSequence() ||
+      node["control_points"].size() < 2) {
+    LOG_F(WARNING,
+          "MapLoader: road '%s' has fewer than 2 control_points, skipping",
+          name.c_str());
+    return nullptr;
+  }
+
+  auto road = std::make_unique<GameRoad>(video);
+  road->SetName(name);
+  road->SetWidth(width);
+  road->SetSamplesPerMetre(samples_per_m);
+
+  for (const YAML::Node& cp : node["control_points"]) {
+    if (cp.IsSequence() && cp.size() >= 3) {
+      road->GetSpline().AddControlPoint({
+          cp[0].as<float>(0.f),
+          cp[1].as<float>(0.f),
+          cp[2].as<float>(0.f)});
+    }
+  }
+
+  if (!mat_raw.empty()) {
+    GameMaterial* mat = LoadMaterialWithFallback(mat_raw, video);
+    road->SetMaterial(mat);
+    mat->Release();
+  }
+
+  return road;
+}
+
 std::unique_ptr<GameObject> ParseTerrain(const YAML::Node& node,
                                          const std::filesystem::path& map_path,
                                          abstract::VideoDevice* video) {
@@ -600,6 +641,8 @@ MapData MapLoader::Load(const std::filesystem::path& path,
         go = ParseSoundEmitter(obj, sound_manager, resource_manager);
       } else if (type == "vehicle") {
         go = ParseVehicle(obj, video);
+      } else if (type == "road") {
+        go = ParseRoad(obj, video);
       } else {
         LOG_F(WARNING, "MapLoader: unknown object type '%s', skipping",
               type.c_str());
@@ -629,6 +672,26 @@ MapData MapLoader::Load(const std::filesystem::path& path,
             result.objects[i]->GetName().c_str(), parent_names[i].c_str());
     }
   }
+
+  // Third pass: generate road meshes, optionally draping onto the terrain.
+  const auto terrain_it = std::find_if(
+      result.objects.begin(), result.objects.end(),
+      [](const std::unique_ptr<GameObject>& go) {
+        return go->GetType() == GameObjectType::kTerrain;
+      });
+
+  std::function<float(float, float)> height_fn;
+  if (terrain_it != result.objects.end()) {
+    const terrain::TerrainData* td =
+        &(static_cast<GameTerrain*>(terrain_it->get())->GetData());
+    height_fn = [td](float x, float z) { return td->GetHeight(x, z); };
+  }
+
+  std::for_each(result.objects.begin(), result.objects.end(),
+      [&height_fn](const std::unique_ptr<GameObject>& go) {
+        if (go->GetType() == GameObjectType::kRoad)
+          static_cast<GameRoad*>(go.get())->RegenerateMesh(height_fn);
+      });
 
   return result;
 }

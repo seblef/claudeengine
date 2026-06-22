@@ -16,6 +16,7 @@ namespace game {
 class ChaseCameraController;
 class GameMesh;
 class GamePlayerStart;
+class GameRoad;
 class GameTerrain;
 class GameVehicle;
 class PlayerVehicleController;
@@ -112,6 +113,7 @@ class PlayModeManager {
     void Visit(game::GameParticleSystem&)    override {}
     void Visit(game::GamePivot&)             override {}
     void Visit(game::GamePlayerStart& ps)    override;
+    void Visit(game::GameRoad&)              override {}
     void Visit(game::GameSoundEmitter&)      override {}
     void Visit(game::GameTerrain& t)         override;
     void Visit(game::GameVehicle& v)         override;

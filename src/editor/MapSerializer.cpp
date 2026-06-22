@@ -20,7 +20,9 @@
 #include "game/GameParticleSystem.h"
 #include "game/GamePivot.h"
 #include "game/GamePlayerStart.h"
+#include "game/GameRoad.h"
 #include "game/GameSoundEmitter.h"
+#include "track/RoadSpline.h"
 #include "game/GameTerrain.h"
 #include "particles/ParticleSystemTemplate.h"
 #include "game/MapLoader.h"
@@ -398,6 +400,31 @@ void MapSerializer::SerializeVisitor::Visit(
   out_ << YAML::Key << "volume_scale" << YAML::Value << sound_emitter.GetVolumeScale();
   out_ << YAML::Key << "transform"    << YAML::Value;
   EmitTransform(out_, sound_emitter.GetWorldTransform());
+  out_ << YAML::EndMap;
+}
+
+void MapSerializer::SerializeVisitor::Visit(game::GameRoad& road) {
+  const track::RoadSpline& spline = road.GetSpline();
+
+  out_ << YAML::BeginMap;
+  out_ << YAML::Key << "name"             << YAML::Value << road.GetName();
+  out_ << YAML::Key << "type"             << YAML::Value << "road";
+  EmitParentField();
+  out_ << YAML::Key << "width"            << YAML::Value << road.GetWidth();
+  out_ << YAML::Key << "samples_per_metre" << YAML::Value
+       << road.GetSamplesPerMetre();
+
+  if (const game::GameMaterial* mat = road.GetMaterialPtr()) {
+    out_ << YAML::Key << "material" << YAML::Value
+         << "materials/" + mat->GetId() + ".yaml";
+  }
+
+  out_ << YAML::Key << "control_points" << YAML::Value << YAML::BeginSeq;
+  for (int i = 0; i < spline.GetPointCount(); ++i) {
+    const core::Vec3f& p = spline.GetControlPoint(i);
+    out_ << YAML::Flow << YAML::BeginSeq << p.x << p.y << p.z << YAML::EndSeq;
+  }
+  out_ << YAML::EndSeq;
   out_ << YAML::EndMap;
 }
 
