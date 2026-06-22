@@ -49,6 +49,7 @@
 #include "editor/ObjectsPanel.h"
 #include "editor/ResourceBrowser.h"
 #include "editor/ResourcePanelRegistry.h"
+#include "editor/VehiclePanel.h"
 #include "editor/OutlinerPanel.h"
 #include "editor/PropertiesPanel.h"
 #include "editor/ResourcesPanel.h"
@@ -263,8 +264,35 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
     LOG_F(WARNING, "Editor 3D audio unavailable — sound toggle will be a no-op");
   }
 
+  // Register .vehicle.yaml panels.
+  resource_panel_registry_.Register(
+      ".vehicle.yaml",
+      [this](std::filesystem::path p) -> std::unique_ptr<IResourcePanel> {
+        auto panel = std::make_unique<VehiclePanel>(std::move(p), video_);
+        panel->SetOnPlaceInScene([this](const std::filesystem::path& vpath) {
+          const std::filesystem::path data_dir = core::Config::GetDataFolder();
+          const std::string desc_rel =
+              std::filesystem::relative(vpath, data_dir).string();
+          game::VehicleTemplate* tmpl =
+              game::VehicleTemplate::GetOrLoad(desc_rel, video_);
+          if (!tmpl) {
+            LOG_F(WARNING, "VehiclePanel: failed to load template '%s'",
+                  desc_rel.c_str());
+            return;
+          }
+          auto vehicle = std::make_unique<game::GameVehicle>(tmpl);
+          tmpl->Release();
+          vehicle->SetName(GenerateObjectName(*scene_, "vehicle"));
+          const EditorCameraController::CameraState cam = viewport_->GetCameraState();
+          vehicle->SetWorldTransform(core::Mat4f::Translation(cam.focus));
+          history_.Push(
+              std::make_unique<PlaceObjectCommand>(scene_.get(), std::move(vehicle)));
+        });
+        return panel;
+      });
+
   // ResourceBrowser is constructed after the registry is populated with all
-  // known resource types (none yet at this milestone).
+  // known resource types.
   resource_browser_ = std::make_unique<ResourceBrowser>(&resource_panel_registry_);
 
   loguru::add_callback("editor_log", &LogPanel::LogCallback,
