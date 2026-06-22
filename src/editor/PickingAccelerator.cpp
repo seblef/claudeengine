@@ -23,8 +23,9 @@ bool IsPickable(const game::GameObject* obj) {
     const renderer::Light* light = gl->GetLight();
     return light && light->GetType() != renderer::LightType::kGlobal;
   }
-  return obj->GetType() == game::GameObjectType::kMesh ||
-         obj->GetType() == game::GameObjectType::kPivot;
+  return obj->GetType() == game::GameObjectType::kMesh    ||
+         obj->GetType() == game::GameObjectType::kPivot   ||
+         obj->GetType() == game::GameObjectType::kVehicle;
 }
 
 }  // namespace

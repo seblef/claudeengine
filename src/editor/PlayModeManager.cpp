@@ -242,9 +242,6 @@ void PlayModeManager::Tick(float dt) {
   if (core::Profiler::IsInstanced())
     core::Profiler::Instance().MarkFrame();
 
-  if (vehicle_controller_)
-    vehicle_controller_->Update(dt);
-
   {
     // cppcheck-suppress shadowVariable
     PROFILE_SCOPE("Physics::Step");
@@ -252,6 +249,8 @@ void PlayModeManager::Tick(float dt) {
       physics::PhysicsSystem::Instance().Step(dt);
   }
 
+  // vehicle_->Update() internally calls controller_->Update(dt) before feeding
+  // inputs to the physics vehicle, so no separate controller update is needed.
   if (vehicle_)
     vehicle_->Update(dt);
 
