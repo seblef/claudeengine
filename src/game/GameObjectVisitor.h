@@ -10,6 +10,7 @@ class GamePivot;
 class GamePlayerStart;
 class GameSoundEmitter;
 class GameTerrain;
+class GameVehicle;
 
 // Abstract visitor for all concrete GameObject subclasses.
 //
@@ -27,6 +28,7 @@ class GameObjectVisitor {
   virtual void Visit(GamePlayerStart& player_start)       = 0;
   virtual void Visit(GameSoundEmitter& sound_emitter)     = 0;
   virtual void Visit(GameTerrain& terrain)                = 0;
+  virtual void Visit(GameVehicle& vehicle)                = 0;
 };
 
 }  // namespace game

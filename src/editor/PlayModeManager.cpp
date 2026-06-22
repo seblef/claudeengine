@@ -13,6 +13,8 @@
 #include "game/GameMesh.h"
 #include "game/GamePlayerStart.h"
 #include "game/GameTerrain.h"
+#include "game/GameVehicle.h"
+#include "game/PlayerVehicleController.h"
 #include "physics/PhysicsBody.h"
 #include "physics/PhysicsBodyDesc.h"
 #include "physics/PhysicsSystem.h"
@@ -62,6 +64,10 @@ void PlayModeManager::EnterVisitor::Visit(game::GamePlayerStart& ps) {
 
 void PlayModeManager::EnterVisitor::Visit(game::GameTerrain& t) {
   terrain = &t;
+}
+
+void PlayModeManager::EnterVisitor::Visit(game::GameVehicle& v) {
+  if (!vehicle) vehicle = &v;
 }
 
 // ---- PlayModeManager --------------------------------------------------------
@@ -148,7 +154,14 @@ void PlayModeManager::Enter() {
   // 9. The terrain body is already managed by GameTerrain::OnAddedToScene();
   //    we do not create a second body and do not store a handle here.
 
-  // 10.
+  // 10. Activate the first vehicle found in the scene.
+  if (visitor.vehicle) {
+    vehicle_ = visitor.vehicle;
+    vehicle_controller_ = std::make_unique<game::PlayerVehicleController>();
+    vehicle_->SetVehicleController(vehicle_controller_.get());
+    vehicle_->Activate();
+  }
+
   playing_ = true;
 
   // 11. Activate profilers for play-time performance measurement.
@@ -168,7 +181,12 @@ void PlayModeManager::Exit() {
   }
   play_bodies_.clear();
 
-  // 2. Fire the on_exit_ callback so the caller can reset the old scene and
+  // 2. Release the vehicle controller; the vehicle itself is deactivated when
+  //    the scene is destroyed via OnRemovedFromScene() → Deactivate().
+  vehicle_controller_.reset();
+  vehicle_ = nullptr;
+
+  // 3. Fire the on_exit_ callback so the caller can reset the old scene and
   // load a fresh one. The caller must destroy the old scene BEFORE calling
   // MapSerializer::Load() to prevent FoliageRenderer double-instantiation
   // (GameTerrain::OnRemovedFromScene() destroys the singleton only when the
@@ -178,7 +196,7 @@ void PlayModeManager::Exit() {
     on_exit_(saved_file_path_, saved_camera_state_);
   }
 
-  // 3. Restore editor camera controller.
+  // 4. Restore editor camera controller.
   viewport_->SetInPlayMode(false);
 
   // Destroy the FPS controller after restoring the viewport so no dangling
@@ -231,11 +249,16 @@ void PlayModeManager::Tick(float dt) {
 
   if (fps_controller_)
     fps_controller_->Update(dt);
+
+  if (vehicle_)
+    vehicle_->Update(dt);
 }
 
 void PlayModeManager::OnEvent(const core::Event& event) {
   if (fps_controller_)
     fps_controller_->OnEvent(event);
+  if (vehicle_controller_)
+    vehicle_controller_->OnEvent(event);
 }
 
 }  // namespace editor
