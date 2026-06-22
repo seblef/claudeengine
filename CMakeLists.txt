@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(ClaudeEngine LANGUAGES C CXX)
+project(Wreckoning LANGUAGES C CXX)
 
 # ---------------------------------------------------------------------------
 # Build profile: "dev" (default) or "stable"
@@ -9,10 +9,10 @@ set_property(CACHE BUILD_PROFILE PROPERTY STRINGS "dev" "stable")
 
 if(BUILD_PROFILE STREQUAL "stable")
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
-    message(STATUS "[ClaudeEngine] Profile: stable (Release, O3, LTO)")
+    message(STATUS "[Wreckoning] Profile: stable (Release, O3, LTO)")
 else()
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "" FORCE)
-    message(STATUS "[ClaudeEngine] Profile: dev (Debug, O0, verbose logging)")
+    message(STATUS "[Wreckoning] Profile: dev (Debug, O0, verbose logging)")
 endif()
 
 # ---------------------------------------------------------------------------
@@ -33,9 +33,9 @@ if(BUILD_PROFILE STREQUAL "stable")
     check_ipo_supported(RESULT ipo_supported OUTPUT ipo_error)
     if(ipo_supported)
         set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
-        message(STATUS "[ClaudeEngine] LTO enabled")
+        message(STATUS "[Wreckoning] LTO enabled")
     else()
-        message(WARNING "[ClaudeEngine] LTO not supported: ${ipo_error}")
+        message(WARNING "[Wreckoning] LTO not supported: ${ipo_error}")
     endif()
 endif()
 
@@ -206,9 +206,9 @@ find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)
     pkg_check_modules(OPUSFILE QUIET opusfile)
     if(OPUSFILE_FOUND)
-        message(STATUS "[ClaudeEngine] opusfile found — OPUS audio support enabled")
+        message(STATUS "[Wreckoning] opusfile found — OPUS audio support enabled")
     else()
-        message(STATUS "[ClaudeEngine] opusfile not found — OPUS audio support disabled")
+        message(STATUS "[Wreckoning] opusfile not found — OPUS audio support disabled")
     endif()
 endif()
 
@@ -225,13 +225,13 @@ if(TIFF_FOUND AND TARGET TIFF::TIFF)
         endif()
         set_target_properties(TIFF::TIFF PROPERTIES IMPORTED_LOCATION_DEBUG "${_tiff_rel}")
     endif()
-    message(STATUS "[ClaudeEngine] libtiff found — TIFF texture support enabled")
+    message(STATUS "[Wreckoning] libtiff found — TIFF texture support enabled")
     add_compile_definitions(HAVE_LIBTIFF)
 endif()
 
 # ---------------------------------------------------------------------------
 # Editor-only dependencies: ImGui, ImGuizmo, nfd
-# Guarded by BUILD_EDITOR so claude_engine builds without these on machines
+# Guarded by BUILD_EDITOR so wreckoning builds without these on machines
 # that lack the editor system requirements (e.g. libgtk-3-dev on Linux).
 # ---------------------------------------------------------------------------
 option(BUILD_EDITOR "Build the editor executable (requires libgtk-3-dev on Linux)" ON)
@@ -247,7 +247,7 @@ if(BUILD_EDITOR)
         GIT_SHALLOW    TRUE
     )
     FetchContent_MakeAvailable(imgui)
-    message(STATUS "[ClaudeEngine] ImGui (docking) fetched")
+    message(STATUS "[Wreckoning] ImGui (docking) fetched")
 
     add_library(imgui STATIC
         ${imgui_SOURCE_DIR}/imgui.cpp
@@ -279,7 +279,7 @@ if(BUILD_EDITOR)
         GIT_SHALLOW    TRUE
     )
     FetchContent_MakeAvailable(imguizmo)
-    message(STATUS "[ClaudeEngine] ImGuizmo fetched")
+    message(STATUS "[Wreckoning] ImGuizmo fetched")
     target_link_libraries(imguizmo PUBLIC imgui)
     if(MSVC)
         target_compile_options(imguizmo PRIVATE /W0)
@@ -297,7 +297,7 @@ if(BUILD_EDITOR)
     set(NFD_BUILD_TESTS  OFF CACHE BOOL "" FORCE)
     set(NFD_WAYLAND      OFF CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(nfd)
-    message(STATUS "[ClaudeEngine] nfd (native file dialog) fetched")
+    message(STATUS "[Wreckoning] nfd (native file dialog) fetched")
 
     # ---- TinyEXR (single-header OpenEXR loader) -----------------------------
     # EXCLUDE_FROM_ALL: we only need the headers; skip TinyEXR's own targets.
@@ -309,7 +309,7 @@ if(BUILD_EDITOR)
         EXCLUDE_FROM_ALL
     )
     FetchContent_MakeAvailable(tinyexr)
-    message(STATUS "[ClaudeEngine] TinyEXR fetched")
+    message(STATUS "[Wreckoning] TinyEXR fetched")
 endif()
 
 # ---------------------------------------------------------------------------
@@ -328,7 +328,7 @@ set(JPH_BUILD_UNIT_TESTS     OFF CACHE BOOL "" FORCE)
 set(JPH_BUILD_DOCS           OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(JoltPhysics)
 target_compile_definitions(Jolt PUBLIC JPH_DEBUG_RENDERER)
-message(STATUS "[ClaudeEngine] Jolt Physics v5.5.0 fetched")
+message(STATUS "[Wreckoning] Jolt Physics v5.5.0 fetched")
 
 add_subdirectory(src)
 add_subdirectory(tools)

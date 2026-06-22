@@ -1,6 +1,6 @@
-# ClaudeEngine
+# Wreckoning
 
-A multi-platform 3D shoot'em up game engine written in modern C++.
+A multi-platform 3D vehicular combat game written in modern C++.
 
 ## Prerequisites
 
@@ -86,7 +86,7 @@ The hook runs automatically on every `git commit`. It only checks files that are
 
 ```bash
 git clone <repo-url>
-cd claudeengine
+cd wreckoning
 
 # Dev profile — debug symbols, verbose logging
 cmake -S . -B _build -DBUILD_PROFILE=dev
@@ -97,7 +97,7 @@ cmake -S . -B _build -DBUILD_PROFILE=stable
 cmake --build _build
 ```
 
-The binary is produced at `build/claude_engine`.
+The binary is produced at `build/wreckoning`.
 
 ### Editor
 
@@ -108,29 +108,29 @@ cmake -S . -B _build -DBUILD_PROFILE=dev -DBUILD_EDITOR=ON
 cmake --build _build
 ```
 
-This produces a second binary at `build/claude_editor` alongside the game executable. Both binaries share the same `data/` directory.
+This produces a second binary at `build/wreckoning_editor` alongside the game executable. Both binaries share the same `data/` directory.
 
 ## Run
 
 ### Game engine
 
 ```bash
-./build/claude_engine
+./build/wreckoning
 
 # Set the data folder (defaults to the current working directory)
-./build/claude_engine --data-path /path/to/data
+./build/wreckoning --data-path /path/to/data
 
 # Override log verbosity at runtime (0 = INFO, 9 = max)
-./build/claude_engine -v 9
+./build/wreckoning -v 9
 ```
 
 ### Editor
 
 ```bash
-./build/claude_editor
+./build/wreckoning_editor
 
 # Same flags as the game engine
-./build/claude_editor --data-path /path/to/data
+./build/wreckoning_editor --data-path /path/to/data
 ```
 
 Logs are written to both stderr and a `.log` file in the working directory.
@@ -154,4 +154,4 @@ Logs are written to both stderr and a `.log` file in the working directory.
 | Option | Default | Description |
 |---|---|---|
 | `BUILD_PROFILE` | `dev` | Build profile: `dev` or `stable` |
-| `BUILD_EDITOR` | `OFF` | Build the editor executable (`claude_editor`) |
+| `BUILD_EDITOR` | `OFF` | Build the editor executable (`wreckoning_editor`) |

@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-Claude Engine is a repository for a **multi-platform 3D shoot'em up game engine**. It is written in modern C++ and support both Windows and Linux.
+Wreckoning is a repository for a **multi-platform 3D vehicular combat game**. It is written in modern C++ and supports both Windows and Linux.
 
 ## Repository Structure
 
@@ -50,8 +50,8 @@ Whenever possible, try to keep compilation time low.
 The CMake binary dir is `_build/` (not `build/`) — `build/` holds only the final executable
 
 CMake build targets:
-* `claude_editor` — builds the editor (requires `-DBUILD_EDITOR=ON`)
-* `claude_engine` — builds the game app
+* `wreckoning_editor` — builds the editor (requires `-DBUILD_EDITOR=ON`)
+* `wreckoning` — builds the game app
 
 ## Guidelines (CRITICAL)
 

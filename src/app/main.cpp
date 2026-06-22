@@ -1,4 +1,4 @@
-// ClaudeEngine application entrypoint.
+// Wreckoning application entrypoint.
 // Responsibilities (src/CLAUDE.md): load configuration, run the engine.
 
 #include "abstract/PrimitiveType.h"
@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
   core::Config::Init(argc, argv);
   if (core::Config::IsProfilingEnabled())
     new core::Profiler(core::Config::GetProfileInterval());
-  LOG_F(INFO, "ClaudeEngine starting up");
+  LOG_F(INFO, "Wreckoning starting up");
   LOG_F(INFO, "Data folder: %s", core::Config::GetDataFolder().c_str());
   core::AppConfig::Init(core::Config::GetDataFolder() / "config.yaml");
   new core::EventManager();
@@ -338,7 +338,7 @@ int main(int argc, char* argv[]) {
   if (core::Profiler::IsInstanced())
     core::Profiler::Shutdown();
 
-  LOG_F(INFO, "ClaudeEngine shutting down");
+  LOG_F(INFO, "Wreckoning shutting down");
   core::Logger::Shutdown();
   return 0;
 }
