@@ -401,6 +401,18 @@ void MapSerializer::SerializeVisitor::Visit(
   out_ << YAML::EndMap;
 }
 
+void MapSerializer::SerializeVisitor::Visit(game::GameVehicle& vehicle) {
+  out_ << YAML::BeginMap;
+  out_ << YAML::Key << "name"      << YAML::Value << vehicle.GetName();
+  out_ << YAML::Key << "type"      << YAML::Value << "vehicle";
+  EmitParentField();
+  out_ << YAML::Key << "desc"      << YAML::Value
+       << vehicle.GetDescPath().string();
+  out_ << YAML::Key << "transform" << YAML::Value;
+  EmitTransform(out_, vehicle.GetWorldTransform());
+  out_ << YAML::EndMap;
+}
+
 void MapSerializer::SerializeVisitor::EmitTerrain(
     const game::GameTerrain* terrain) {
   if (!terrain) return;

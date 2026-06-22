@@ -12,6 +12,7 @@ enum class GameObjectType {
   kParticleSystem,
   kSoundEmitter,
   kPivot,
+  kVehicle,
 };
 
 }  // namespace game

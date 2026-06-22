@@ -10,6 +10,7 @@ add_library(game STATIC
     GamePivot.cpp
     GamePlayerStart.cpp
     GameSoundEmitter.cpp
+    GameVehicle.cpp
     SoundEffectComponent.cpp
     GameSystem.cpp
     GameTerrain.cpp

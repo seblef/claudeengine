@@ -17,6 +17,8 @@ class FPSCameraController;
 class GameMesh;
 class GamePlayerStart;
 class GameTerrain;
+class GameVehicle;
+class PlayerVehicleController;
 }  // namespace game
 
 namespace editor {
@@ -102,6 +104,7 @@ class PlayModeManager {
    public:
     game::GamePlayerStart* player_start = nullptr;
     game::GameTerrain*     terrain      = nullptr;
+    game::GameVehicle*     vehicle      = nullptr;
 
     void Visit(game::GameCamera&)            override {}
     void Visit(game::GameLight&)             override {}
@@ -111,6 +114,7 @@ class PlayModeManager {
     void Visit(game::GamePlayerStart& ps)    override;
     void Visit(game::GameSoundEmitter&)      override {}
     void Visit(game::GameTerrain& t)         override;
+    void Visit(game::GameVehicle& v)         override;
 
     // Physics bodies created for meshes without an existing physics descriptor.
     // Filled during the visit and transferred to play_bodies_ after traversal.
@@ -132,7 +136,12 @@ class PlayModeManager {
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice* video_;
 
-  std::unique_ptr<game::FPSCameraController> fps_controller_;
+  std::unique_ptr<game::FPSCameraController>     fps_controller_;
+  std::unique_ptr<game::PlayerVehicleController> vehicle_controller_;
+
+  // Non-owning; valid between Enter() and Exit().
+  // cppcheck-suppress unusedStructMember
+  game::GameVehicle* vehicle_ = nullptr;
 
   // Editor camera state saved on Enter() and restored on Exit().
   // cppcheck-suppress unusedStructMember

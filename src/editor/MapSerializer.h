@@ -17,6 +17,7 @@
 #include "game/GamePlayerStart.h"
 #include "game/GameSoundEmitter.h"
 #include "game/GameTerrain.h"
+#include "game/GameVehicle.h"
 
 namespace abstract { class VideoDevice; }
 
@@ -72,6 +73,7 @@ class MapSerializer {
     void Visit(game::GameSoundEmitter& sound_emitter)   override;
     // Skipped from the objects sequence — terrain is at root level.
     void Visit(game::GameTerrain& terrain)              override {}
+    void Visit(game::GameVehicle& vehicle)              override;
 
     // Emits the "terrain:" root-level block and writes binary side-car files.
     // Must be called after the YAML objects sequence is closed.

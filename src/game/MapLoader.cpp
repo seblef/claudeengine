@@ -25,6 +25,7 @@
 #include "game/GamePlayerStart.h"
 #include "game/GameSoundEmitter.h"
 #include "game/GameTerrain.h"
+#include "game/GameVehicle.h"
 #include "game/MeshTemplate.h"
 #include "physics/CollisionLayer.h"
 #include "physics/PhysicsBodyDesc.h"
@@ -405,6 +406,30 @@ std::unique_ptr<GameObject> ParseSoundEmitter(
   return emitter;
 }
 
+std::unique_ptr<GameObject> ParseVehicle(const YAML::Node& node,
+                                         abstract::VideoDevice* video) {
+  const std::string name      = node["name"].as<std::string>("Vehicle");
+  const std::string desc      = node["desc"].as<std::string>("");
+  const core::Mat4f transform = core::ParseMat4(node["transform"]);
+
+  if (desc.empty()) {
+    LOG_F(WARNING, "MapLoader: vehicle '%s' has no desc field, skipping",
+          name.c_str());
+    return nullptr;
+  }
+
+  auto vehicle = GameVehicle::Create(std::filesystem::path(desc), video);
+  if (!vehicle) {
+    LOG_F(WARNING, "MapLoader: failed to create vehicle '%s' from desc '%s'",
+          name.c_str(), desc.c_str());
+    return nullptr;
+  }
+
+  vehicle->SetName(name);
+  vehicle->SetWorldTransform(transform);
+  return vehicle;
+}
+
 std::unique_ptr<GameObject> ParseTerrain(const YAML::Node& node,
                                          const std::filesystem::path& map_path,
                                          abstract::VideoDevice* video) {
@@ -569,6 +594,8 @@ MapData MapLoader::Load(const std::filesystem::path& path,
         go = ParseParticleSystem(obj, video);
       } else if (type == "sound_emitter") {
         go = ParseSoundEmitter(obj, sound_manager, resource_manager);
+      } else if (type == "vehicle") {
+        go = ParseVehicle(obj, video);
       } else {
         LOG_F(WARNING, "MapLoader: unknown object type '%s', skipping",
               type.c_str());
