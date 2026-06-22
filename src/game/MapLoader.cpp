@@ -1,5 +1,6 @@
 #include "game/MapLoader.h"
 
+#include <algorithm>
 #include <fstream>
 #include <optional>
 #include <string>
@@ -673,24 +674,24 @@ MapData MapLoader::Load(const std::filesystem::path& path,
   }
 
   // Third pass: generate road meshes, optionally draping onto the terrain.
-  const terrain::TerrainData* terrain_data = nullptr;
-  for (const auto& go : result.objects) {
-    if (go->GetType() == GameObjectType::kTerrain)
-      terrain_data = &(static_cast<GameTerrain*>(go.get())->GetData());
-  }
+  const auto terrain_it = std::find_if(
+      result.objects.begin(), result.objects.end(),
+      [](const std::unique_ptr<GameObject>& go) {
+        return go->GetType() == GameObjectType::kTerrain;
+      });
 
   std::function<float(float, float)> height_fn;
-  if (terrain_data) {
-    height_fn = [terrain_data](float x, float z) {
-      return terrain_data->GetHeight(x, z);
-    };
+  if (terrain_it != result.objects.end()) {
+    const terrain::TerrainData* td =
+        &(static_cast<GameTerrain*>(terrain_it->get())->GetData());
+    height_fn = [td](float x, float z) { return td->GetHeight(x, z); };
   }
 
-  for (const auto& go : result.objects) {
-    if (go->GetType() == GameObjectType::kRoad) {
-      static_cast<GameRoad*>(go.get())->RegenerateMesh(height_fn);
-    }
-  }
+  std::for_each(result.objects.begin(), result.objects.end(),
+      [&height_fn](const std::unique_ptr<GameObject>& go) {
+        if (go->GetType() == GameObjectType::kRoad)
+          static_cast<GameRoad*>(go.get())->RegenerateMesh(height_fn);
+      });
 
   return result;
 }
