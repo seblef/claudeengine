@@ -44,7 +44,7 @@ external/joltphysics-subbuild/
 external/dr_libs-build/
 external/dr_libs-src/
 external/dr_libs-subbuild/
-claude_engine.log
+wreckoning.log
 .claude/settings.local.json
 imgui.ini
 config.yaml
