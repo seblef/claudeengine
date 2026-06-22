@@ -2,6 +2,7 @@ add_library(core STATIC
     AppConfig.cpp
     Camera.cpp
     Config.cpp
+    GpuProfiler.cpp
     Logger.cpp
     MathUtils.cpp
     Plane.cpp

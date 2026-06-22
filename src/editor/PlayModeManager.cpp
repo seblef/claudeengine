@@ -3,6 +3,7 @@
 #include <loguru.hpp>
 
 #include "core/Event.h"
+#include "core/GpuProfiler.h"
 #include "core/Profiler.h"
 #include "editor/EditorScene.h"
 #include "editor/EditorToolbar.h"
@@ -150,8 +151,9 @@ void PlayModeManager::Enter() {
   // 10.
   playing_ = true;
 
-  // 11. Activate profiler for play-time performance measurement.
+  // 11. Activate profilers for play-time performance measurement.
   new core::Profiler(kProfilerInterval);
+  new core::GpuProfiler(kProfilerInterval);
 
   LOG_F(INFO, "Play mode entered");
 }
@@ -195,8 +197,9 @@ void PlayModeManager::Exit() {
   // 8.
   playing_ = false;
 
-  // 9. Shut down profiler before the next Logger flush.
-  if (core::Profiler::IsInstanced()) core::Profiler::Shutdown();
+  // 9. Shut down profilers before the next Logger flush.
+  if (core::GpuProfiler::IsInstanced()) core::GpuProfiler::Shutdown();
+  if (core::Profiler::IsInstanced())    core::Profiler::Shutdown();
 
   LOG_F(INFO, "Play mode exited");
 }
@@ -205,6 +208,16 @@ void PlayModeManager::Tick(float dt) {
   if (!playing_) return;
 
   PROFILE_SCOPE("PlayModeManager::Tick");
+
+  // Collect GPU timings submitted during the previous frame's Renderer::Update.
+  // Called at the top of Tick (before the current frame's render) so the GPU
+  // has had a full frame to complete the previous submissions.
+  if (core::GpuProfiler::IsInstanced()) {
+    const auto gpu_samples = video_->CollectGpuTimings();
+    if (!gpu_samples.empty())
+      core::GpuProfiler::Instance().RecordSamples(gpu_samples);
+    core::GpuProfiler::Instance().MarkFrame();
+  }
 
   if (core::Profiler::IsInstanced())
     core::Profiler::Instance().MarkFrame();
