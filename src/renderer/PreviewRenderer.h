@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <span>
 
 #include "abstract/ConstantBuffer.h"
 #include "abstract/RenderTarget.h"
@@ -48,6 +49,13 @@ class PreviewRenderer {
   // Renderer::Update() call.
   void Render(float time, const core::Camera& camera,
               MeshInstance* mesh_instance,
+              GlobalLight* light,
+              abstract::RenderTargetGroup* output_rtg);
+
+  // Multi-mesh variant: enqueues every instance in instances before the
+  // geometry pass. nullptr entries are silently skipped.
+  void Render(float time, const core::Camera& camera,
+              std::span<MeshInstance* const> instances,
               GlobalLight* light,
               abstract::RenderTargetGroup* output_rtg);
 

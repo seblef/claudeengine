@@ -56,6 +56,9 @@ class ResourceBrowser {
   // Renders the dirty-close confirmation modal.
   void RenderDirtyCloseModal();
 
+  // Renders the "New <type>" name-input modal and handles creation.
+  void RenderNewFileModal();
+
   // cppcheck-suppress unusedStructMember
   ResourcePanelRegistry* registry_;
 
@@ -72,6 +75,17 @@ class ResourceBrowser {
   int                    pending_close_idx_ = -1;
 
   bool                   open_dirty_modal_ = false;
+
+  // State for the "New Resource" name-input modal.
+  // cppcheck-suppress unusedStructMember
+  std::string            pending_new_ext_;
+  // cppcheck-suppress unusedStructMember
+  char                   new_name_buf_[128] = {};
+  // cppcheck-suppress unusedStructMember
+  bool                   open_new_modal_    = false;
+  // Non-empty when the last Create() call failed; shown as red text in modal.
+  // cppcheck-suppress unusedStructMember
+  std::string            new_error_msg_;
 };
 
 }  // namespace editor

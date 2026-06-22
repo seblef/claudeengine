@@ -53,25 +53,71 @@ VehicleTemplate::VehicleTemplate(const std::string& desc_path,
     return;
   }
 
-  vehicle_desc_.mass              = root["mass"].as<float>(vehicle_desc_.mass);
+  // Support both the new nested format (physics: / wheels: sections) and the
+  // legacy flat format for backward compatibility.
+  const YAML::Node phys = root["physics"];
+  const YAML::Node& pd  = phys ? phys : root;
+
+  vehicle_desc_.mass              = pd["mass"].as<float>(vehicle_desc_.mass);
   vehicle_desc_.max_engine_torque =
-      root["max_engine_torque"].as<float>(vehicle_desc_.max_engine_torque);
+      pd["max_engine_torque"].as<float>(vehicle_desc_.max_engine_torque);
   vehicle_desc_.max_steer_angle   =
-      root["max_steer_angle"].as<float>(vehicle_desc_.max_steer_angle);
+      pd["max_steer_angle"].as<float>(vehicle_desc_.max_steer_angle);
   vehicle_desc_.brake_torque      =
-      root["brake_torque"].as<float>(vehicle_desc_.brake_torque);
+      pd["brake_torque"].as<float>(vehicle_desc_.brake_torque);
   vehicle_desc_.handbrake_torque  =
-      root["handbrake_torque"].as<float>(vehicle_desc_.handbrake_torque);
-  if (root["half_extents"])
+      pd["handbrake_torque"].as<float>(vehicle_desc_.handbrake_torque);
+  if (pd["half_extents"])
     vehicle_desc_.half_extents =
-        core::ParseVec3(root["half_extents"], vehicle_desc_.half_extents);
-  if (root["com_offset"])
+        core::ParseVec3(pd["half_extents"], vehicle_desc_.half_extents);
+  if (pd["com_offset"])
     vehicle_desc_.com_offset =
-        core::ParseVec3(root["com_offset"], vehicle_desc_.com_offset);
-  vehicle_desc_.front_left  = ParseWheelDesc(root["front_left"]);
-  vehicle_desc_.front_right = ParseWheelDesc(root["front_right"]);
-  vehicle_desc_.rear_left   = ParseWheelDesc(root["rear_left"]);
-  vehicle_desc_.rear_right  = ParseWheelDesc(root["rear_right"]);
+        core::ParseVec3(pd["com_offset"], vehicle_desc_.com_offset);
+
+  if (phys) {
+    // New format: per-axle suspension under physics.suspension.front / .rear.
+    if (const YAML::Node susp = phys["suspension"]) {
+      auto apply_axle = [](physics::WheelDesc& w, const YAML::Node& n) {
+        w.suspension_min_length = n["min_length"].as<float>(w.suspension_min_length);
+        w.suspension_max_length = n["max_length"].as<float>(w.suspension_max_length);
+        w.suspension_stiffness  = n["stiffness"].as<float>(w.suspension_stiffness);
+        w.suspension_damping    = n["damping"].as<float>(w.suspension_damping);
+      };
+      if (const YAML::Node front = susp["front"]) {
+        apply_axle(vehicle_desc_.front_left,  front);
+        apply_axle(vehicle_desc_.front_right, front);
+      }
+      if (const YAML::Node rear = susp["rear"]) {
+        apply_axle(vehicle_desc_.rear_left,  rear);
+        apply_axle(vehicle_desc_.rear_right, rear);
+      }
+    }
+
+    // New format: wheel positions under wheels.front_left / etc.
+    const YAML::Node wheels = root["wheels"];
+    auto read_pos = [](physics::WheelDesc& w, const YAML::Node& n) {
+      if (n && n["position"])
+        w.position = core::ParseVec3(n["position"], w.position);
+    };
+    if (wheels) {
+      read_pos(vehicle_desc_.front_left,  wheels["front_left"]);
+      read_pos(vehicle_desc_.front_right, wheels["front_right"]);
+      read_pos(vehicle_desc_.rear_left,   wheels["rear_left"]);
+      read_pos(vehicle_desc_.rear_right,  wheels["rear_right"]);
+    }
+
+    // Set conventional driven/steered flags (front steer, rear drive).
+    vehicle_desc_.front_left.is_steered  = true;
+    vehicle_desc_.front_right.is_steered = true;
+    vehicle_desc_.rear_left.is_driven    = true;
+    vehicle_desc_.rear_right.is_driven   = true;
+  } else {
+    // Legacy flat format: per-wheel nodes at root level.
+    vehicle_desc_.front_left  = ParseWheelDesc(root["front_left"]);
+    vehicle_desc_.front_right = ParseWheelDesc(root["front_right"]);
+    vehicle_desc_.rear_left   = ParseWheelDesc(root["rear_left"]);
+    vehicle_desc_.rear_right  = ParseWheelDesc(root["rear_right"]);
+  }
 
   const std::filesystem::path data_root = core::Config::GetDataFolder();
   body_tmpl_        = MeshTemplate::GetOrLoad((data_root / body_mesh_str).string(), video);

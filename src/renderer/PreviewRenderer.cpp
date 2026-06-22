@@ -1,5 +1,7 @@
 #include "renderer/PreviewRenderer.h"
 
+#include <span>
+
 #include "abstract/BlendFactor.h"
 #include "abstract/BufferUsage.h"
 #include "abstract/CompareFunc.h"
@@ -128,6 +130,69 @@ void PreviewRenderer::Render(float time, const core::Camera& camera,
   if (output_rtg) output_rtg->UnbindForWriting();
 
   // 5. Axes gizmo — overlaid on top of the composited output.
+  DrawAxes(output_rtg);
+
+  video_->SetDepthTestEnabled(true);
+  video_->SetDepthWriteEnabled(true);
+}
+
+void PreviewRenderer::Render(float time, const core::Camera& camera,
+                              std::span<MeshInstance* const> instances,
+                              GlobalLight* light,
+                              abstract::RenderTargetGroup* output_rtg) {
+  MeshRenderer::Instance().EndRender();
+  LightRenderer::Instance().EndRender();
+
+  FillSceneInfos(camera, time);
+  scene_infos_cb_->Bind();
+
+  video_->SetViewport(0, 0, w_, h_);
+
+  gbuffer_.BindForWriting();
+  video_->SetDepthTestEnabled(true);
+  video_->SetDepthWriteEnabled(true);
+  video_->ClearRenderTargets(core::Color::kBlack);
+  for (MeshInstance* inst : instances) {
+    if (inst) inst->Enqueue();
+  }
+  MeshRenderer::Instance().PrepareRender();
+  MeshRenderer::Instance().Render();
+  gbuffer_.UnbindForWriting();
+
+  emissive_fbo_.BindForWriting();
+  video_->SetDepthWriteEnabled(false);
+  video_->ClearRenderTargets(core::Color::kBlack);
+  gbuffer_.BindForReading(5);
+  gbuffer_.GetDepthRT()->BindAsSampler(8);
+  video_->SetBlendEnabled(true, abstract::BlendFactor::kOne,
+                          abstract::BlendFactor::kOne);
+  light->Enqueue();
+  LightRenderer::Instance().Render(/*disable_shadows=*/true);
+  video_->SetBlendEnabled(false);
+  emissive_fbo_.UnbindForWriting();
+
+  emissive_fbo_.BindForWriting();
+  video_->SetDepthTestEnabled(true);
+  video_->SetDepthFunc(abstract::CompareFunc::kLessEqual);
+  video_->SetBlendEnabled(true, abstract::BlendFactor::kOne,
+                          abstract::BlendFactor::kOne);
+  MeshRenderer::Instance().RenderEmissive();
+  MeshRenderer::Instance().EndRender();
+  video_->SetBlendEnabled(false);
+  video_->SetDepthFunc(abstract::CompareFunc::kLess);
+  video_->SetDepthWriteEnabled(true);
+  video_->SetDepthTestEnabled(false);
+  emissive_fbo_.UnbindForWriting();
+  LightRenderer::Instance().EndRender();
+
+  emissive_fbo_.GetHDRRT()->BindAsSampler(0);
+  null_bloom_rt_->BindAsSampler(11);
+  composite_shader_->Activate();
+  composite_quad_->Set();
+  if (output_rtg) output_rtg->BindForWriting();
+  video_->RenderIndexed(composite_quad_->GetNumIndices());
+  if (output_rtg) output_rtg->UnbindForWriting();
+
   DrawAxes(output_rtg);
 
   video_->SetDepthTestEnabled(true);

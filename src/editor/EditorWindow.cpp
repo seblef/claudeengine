@@ -49,6 +49,7 @@
 #include "editor/ObjectsPanel.h"
 #include "editor/ResourceBrowser.h"
 #include "editor/ResourcePanelRegistry.h"
+#include "editor/VehiclePanel.h"
 #include "editor/OutlinerPanel.h"
 #include "editor/PropertiesPanel.h"
 #include "editor/ResourcesPanel.h"
@@ -263,8 +264,68 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
     LOG_F(WARNING, "Editor 3D audio unavailable — sound toggle will be a no-op");
   }
 
+  // Register .vehicle.yaml panels.
+  resource_panel_registry_.Register(
+      ".vehicle.yaml",
+      [this](std::filesystem::path p) -> std::unique_ptr<IResourcePanel> {
+        auto panel = std::make_unique<VehiclePanel>(std::move(p), video_);
+        panel->SetOnPlaceInScene([this](const std::filesystem::path& vpath) {
+          const std::filesystem::path data_dir = core::Config::GetDataFolder();
+          const std::string desc_rel =
+              std::filesystem::relative(vpath, data_dir).string();
+          game::VehicleTemplate* tmpl =
+              game::VehicleTemplate::GetOrLoad(desc_rel, video_);
+          if (!tmpl) {
+            LOG_F(WARNING, "VehiclePanel: failed to load template '%s'",
+                  desc_rel.c_str());
+            return;
+          }
+          auto vehicle = std::make_unique<game::GameVehicle>(tmpl);
+          tmpl->Release();
+          vehicle->SetName(GenerateObjectName(*scene_, "vehicle"));
+          const EditorCameraController::CameraState cam = viewport_->GetCameraState();
+          vehicle->SetWorldTransform(core::Mat4f::Translation(cam.focus));
+          history_.Push(
+              std::make_unique<PlaceObjectCommand>(scene_.get(), std::move(vehicle)));
+        });
+        return panel;
+      });
+  resource_panel_registry_.RegisterNew(
+      ".vehicle.yaml",
+      [](std::string_view name) -> std::filesystem::path {
+        const std::filesystem::path dir =
+            core::Config::GetDataFolder() / "vehicles";
+        std::error_code ec;
+        std::filesystem::create_directories(dir, ec);
+        const std::filesystem::path path =
+            dir / (std::string(name) + ".vehicle.yaml");
+        if (std::filesystem::exists(path)) return path;
+        std::ofstream out(path);
+        if (!out) return {};
+        out << "body_mesh: \"\"\n"
+               "front_wheel_mesh: \"\"\n"
+               "rear_wheel_mesh: \"\"\n"
+               "physics:\n"
+               "  mass: 1200\n"
+               "  max_engine_torque: 300\n"
+               "  max_steer_angle: 0.5\n"
+               "  brake_torque: 1500\n"
+               "  handbrake_torque: 3000\n"
+               "  com_offset: [0, -0.3, 0]\n"
+               "  suspension:\n"
+               "    front: {min_length: 0.1, max_length: 0.5, stiffness: 1500, damping: 200}\n"
+               "    rear: {min_length: 0.1, max_length: 0.5, stiffness: 1500, damping: 200}\n"
+               "wheels:\n"
+               "  front_left: {position: [-0.85, 0, 1.4]}\n"
+               "  front_right: {position: [0.85, 0, 1.4]}\n"
+               "  rear_left: {position: [-0.85, 0, -1.4]}\n"
+               "  rear_right: {position: [0.85, 0, -1.4]}\n";
+        LOG_F(INFO, "EditorWindow: created vehicle '%s'", path.string().c_str());
+        return path;
+      });
+
   // ResourceBrowser is constructed after the registry is populated with all
-  // known resource types (none yet at this milestone).
+  // known resource types.
   resource_browser_ = std::make_unique<ResourceBrowser>(&resource_panel_registry_);
 
   loguru::add_callback("editor_log", &LogPanel::LogCallback,
