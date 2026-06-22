@@ -24,14 +24,13 @@ class PreviewRenderer;
 
 namespace editor {
 
-class MeshPreview;
-
 // Floating window for inspecting and editing a .vehicle.yaml descriptor file.
 //
-// Layout mirrors VehiclePanel: Body section (mesh picker + orbit preview),
-// Wheels section (per-axle pickers, combined preview with ImGuizmo gizmo,
-// per-wheel position inputs), Physics section (sliders for all VehicleDesc
-// parameters), and an actions bar (Save / Revert / Place in Scene).
+// Layout: Body section (mesh picker), Wheels section (per-axle mesh pickers,
+// wheel selector radio buttons, 320×240 combined preview with always-active
+// ImGuizmo gizmo, per-wheel position DragFloat3 inputs), Physics section
+// (sliders for all VehicleDesc parameters), and an actions bar
+// (Save / Revert / Place in Scene).
 //
 // Usage:
 //   Call Open(path) when the user double-clicks a .vehicle.yaml in the
@@ -120,10 +119,11 @@ class VehicleEditorWindow {
   // cppcheck-suppress unusedStructMember
   physics::VehicleDesc vehicle_desc_;
 
-  // Index of the wheel row that has keyboard focus (-1 = none).
-  // 0=FL, 1=FR, 2=RL, 3=RR
+  // Index of the active wheel in the selector. 0=FL, 1=FR, 2=RL, 3=RR.
+  // Always in [0, 3]: set by the radio-button bar, click-to-select, or
+  // interacting with a DragFloat3 row.
   // cppcheck-suppress unusedStructMember
-  int focused_wheel_ = -1;
+  int focused_wheel_ = 0;
 
   // cppcheck-suppress unusedStructMember
   std::function<void(const std::filesystem::path&)> on_place_in_scene_;
@@ -135,13 +135,6 @@ class VehicleEditorWindow {
   game::MeshTemplate* front_wheel_tmpl_ = nullptr;
   // cppcheck-suppress unusedStructMember
   game::MeshTemplate* rear_wheel_tmpl_  = nullptr;
-
-  // 320×240 interactive body mesh preview.
-  std::unique_ptr<MeshPreview> body_preview_;
-  // 64×64 static wheel thumbnails.
-  std::unique_ptr<MeshPreview> front_wheel_thumb_;
-  // cppcheck-suppress unusedStructMember
-  std::unique_ptr<MeshPreview> rear_wheel_thumb_;
 
   // ---- Combined vehicle preview (body + 4 wheels) --------------------------
 

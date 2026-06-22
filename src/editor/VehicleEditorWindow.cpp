@@ -19,8 +19,8 @@
 #include "core/Config.h"
 #include "core/Mat4f.h"
 #include "core/Vec3f.h"
+#include "core/Vec4f.h"
 #include "core/YamlSerialiser.h"
-#include "editor/MeshPreview.h"
 #include "game/MeshTemplate.h"
 #include "renderer/GlobalLight.h"
 #include "renderer/MeshInstance.h"
@@ -30,15 +30,15 @@ namespace editor {
 
 namespace {
 
-constexpr int   kBodyPreviewW        = 320;
-constexpr int   kBodyPreviewH        = 240;
-constexpr int   kWheelThumbW         = 64;
-constexpr int   kWheelThumbH         = 64;
 constexpr int   kCombinedPreviewW    = 320;
 constexpr int   kCombinedPreviewH    = 240;
 constexpr float kOrbitSensitivity    = 0.4f;
 constexpr float kZoomStep            = 0.3f;
 constexpr float kDegToRad            = 3.14159265f / 180.f;
+// Max squared drag distance (px²) that still counts as a click (4 px radius).
+constexpr float kClickThreshSqr      = 16.f;
+// Max squared screen distance (px²) for click-to-select wheel (20 px radius).
+constexpr float kWheelPickThreshSqr  = 400.f;
 
 core::Mat4f PositionMat(const core::Vec3f& p) {
   return core::Mat4f::Translation(p);
@@ -49,10 +49,7 @@ core::Mat4f PositionMat(const core::Vec3f& p) {
 VehicleEditorWindow::VehicleEditorWindow(abstract::VideoDevice* video)
     : video_(video),
       combined_camera_(core::ProjectionType::kPerspective,
-                       core::CoordinateSystem::kRightHanded),
-      body_preview_(std::make_unique<MeshPreview>(video, kBodyPreviewW, kBodyPreviewH)),
-      front_wheel_thumb_(std::make_unique<MeshPreview>(video, kWheelThumbW, kWheelThumbH)),
-      rear_wheel_thumb_(std::make_unique<MeshPreview>(video, kWheelThumbW, kWheelThumbH)) {
+                       core::CoordinateSystem::kRightHanded) {
   combined_camera_.SetFOV(0.785398f);
   combined_camera_.SetMinDepth(0.1f);
   combined_camera_.SetMaxDepth(1000.f);
@@ -85,7 +82,7 @@ void VehicleEditorWindow::Open(const std::filesystem::path& path) {
   path_  = path;
   show_  = true;
   dirty_ = false;
-  focused_wheel_ = -1;
+  focused_wheel_ = 0;
   vehicle_desc_  = {};
 
   // Release any previously loaded templates.
@@ -106,10 +103,6 @@ void VehicleEditorWindow::Open(const std::filesystem::path& path) {
   front_wheel_mesh_path_.clear();
   rear_wheel_mesh_path_.clear();
   for (auto& inst : combined_instances_) inst.reset();
-
-  body_preview_->SetTemplate(nullptr);
-  front_wheel_thumb_->SetTemplate(nullptr);
-  rear_wheel_thumb_->SetTemplate(nullptr);
 
   LoadFromYaml();
 }
@@ -245,14 +238,12 @@ void VehicleEditorWindow::UpdateBodyMesh(const std::string& rel_path) {
     body_tmpl_ = nullptr;
   }
   if (rel_path.empty()) {
-    body_preview_->SetTemplate(nullptr);
     combined_instances_[0].reset();
     return;
   }
   const std::string abs_path =
       (core::Config::GetDataFolder() / rel_path).string();
   body_tmpl_ = game::MeshTemplate::GetOrLoad(abs_path, video_);
-  body_preview_->SetTemplate(body_tmpl_);
   RebuildCombinedInstances();
 }
 
@@ -262,7 +253,6 @@ void VehicleEditorWindow::UpdateFrontWheelMesh(const std::string& rel_path) {
     front_wheel_tmpl_ = nullptr;
   }
   if (rel_path.empty()) {
-    front_wheel_thumb_->SetTemplate(nullptr);
     combined_instances_[1].reset();
     combined_instances_[2].reset();
     return;
@@ -270,7 +260,6 @@ void VehicleEditorWindow::UpdateFrontWheelMesh(const std::string& rel_path) {
   const std::string abs_path =
       (core::Config::GetDataFolder() / rel_path).string();
   front_wheel_tmpl_ = game::MeshTemplate::GetOrLoad(abs_path, video_);
-  front_wheel_thumb_->SetTemplate(front_wheel_tmpl_);
   RebuildCombinedInstances();
 }
 
@@ -280,7 +269,6 @@ void VehicleEditorWindow::UpdateRearWheelMesh(const std::string& rel_path) {
     rear_wheel_tmpl_ = nullptr;
   }
   if (rel_path.empty()) {
-    rear_wheel_thumb_->SetTemplate(nullptr);
     combined_instances_[3].reset();
     combined_instances_[4].reset();
     return;
@@ -288,7 +276,6 @@ void VehicleEditorWindow::UpdateRearWheelMesh(const std::string& rel_path) {
   const std::string abs_path =
       (core::Config::GetDataFolder() / rel_path).string();
   rear_wheel_tmpl_ = game::MeshTemplate::GetOrLoad(abs_path, video_);
-  rear_wheel_thumb_->SetTemplate(rear_wheel_tmpl_);
   RebuildCombinedInstances();
 }
 
@@ -435,7 +422,7 @@ void VehicleEditorWindow::DrawCombinedPreview(float time) {
 
   if (ImGui::IsItemHovered() || ImGui::IsItemActive()) {
     const ImGuiIO& io = ImGui::GetIO();
-    if (io.MouseDown[ImGuiMouseButton_Left]) {
+    if (io.MouseDown[ImGuiMouseButton_Left] && !ImGuizmo::IsUsing()) {
       combined_azimuth_deg_   -= io.MouseDelta.x * kOrbitSensitivity;
       combined_elevation_deg_ += io.MouseDelta.y * kOrbitSensitivity;
       combined_elevation_deg_  = std::clamp(combined_elevation_deg_, -89.f, 89.f);
@@ -447,7 +434,41 @@ void VehicleEditorWindow::DrawCombinedPreview(float time) {
     }
   }
 
-  if (focused_wheel_ >= 0 && focused_wheel_ < 4) {
+  // Click-to-select: small drag without gizmo usage → pick nearest wheel.
+  if (ImGui::IsItemDeactivated()) {
+    const ImGuiIO& io = ImGui::GetIO();
+    if (!ImGuizmo::IsUsing() &&
+        io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Left] < kClickThreshSqr) {
+      const ImVec2 click_pos = io.MouseClickedPos[ImGuiMouseButton_Left];
+      const core::Mat4f& vp = combined_camera_.GetViewProjectionMatrix();
+      const physics::WheelDesc* const wheels[4] = {
+          &vehicle_desc_.front_left, &vehicle_desc_.front_right,
+          &vehicle_desc_.rear_left,  &vehicle_desc_.rear_right,
+      };
+      float best_dist_sq = kWheelPickThreshSqr;
+      int   best         = -1;
+      for (int i = 0; i < 4; ++i) {
+        const core::Vec3f& wp = wheels[i]->position;
+        const core::Vec4f  clip =
+            core::Vec4f(wp.x, wp.y, wp.z, 1.f) * vp;
+        if (clip.w <= 0.f) continue;
+        const float inv_w = 1.f / clip.w;
+        const float sx = pos.x + (clip.x * inv_w * 0.5f + 0.5f) * size.x;
+        const float sy = pos.y + (1.f - (clip.y * inv_w * 0.5f + 0.5f)) * size.y;
+        const float dx  = click_pos.x - sx;
+        const float dy  = click_pos.y - sy;
+        const float d2  = dx * dx + dy * dy;
+        if (d2 < best_dist_sq) {
+          best_dist_sq = d2;
+          best         = i;
+        }
+      }
+      if (best >= 0) focused_wheel_ = best;
+    }
+  }
+
+  // Always-active gizmo for the selected wheel.
+  {
     const std::array<physics::WheelDesc*, 4> wheels = {
         &vehicle_desc_.front_left, &vehicle_desc_.front_right,
         &vehicle_desc_.rear_left,  &vehicle_desc_.rear_right,
@@ -492,8 +513,6 @@ void VehicleEditorWindow::DrawBodySection() {
               body_mesh_path_.empty() ? "(none)" : body_mesh_path_.c_str());
   ImGui::SameLine();
   if (ImGui::Button("Browse##body")) PickBodyMesh();
-
-  body_preview_->Render(ImGui::GetTime());
 }
 
 void VehicleEditorWindow::DrawWheelsSection() {
@@ -504,16 +523,26 @@ void VehicleEditorWindow::DrawWheelsSection() {
                                              : front_wheel_mesh_path_.c_str());
   ImGui::SameLine();
   if (ImGui::Button("Browse##front_wheel")) PickFrontWheelMesh();
-  front_wheel_thumb_->Render(ImGui::GetTime());
-
-  ImGui::Spacing();
 
   ImGui::Text("Rear wheel: %s",
               rear_wheel_mesh_path_.empty() ? "(none)"
                                             : rear_wheel_mesh_path_.c_str());
   ImGui::SameLine();
   if (ImGui::Button("Browse##rear_wheel")) PickRearWheelMesh();
-  rear_wheel_thumb_->Render(ImGui::GetTime());
+
+  ImGui::Spacing();
+
+  // Wheel selector: radio buttons to switch the active wheel.
+  ImGui::TextUnformatted("Active wheel:");
+  ImGui::SameLine();
+  const char* const kWheelLabels[4] = {"FL", "FR", "RL", "RR"};
+  for (int i = 0; i < 4; ++i) {
+    ImGui::PushID(i);
+    if (ImGui::RadioButton(kWheelLabels[i], focused_wheel_ == i))
+      focused_wheel_ = i;
+    ImGui::PopID();
+    if (i < 3) ImGui::SameLine();
+  }
 
   ImGui::Spacing();
 
@@ -521,7 +550,6 @@ void VehicleEditorWindow::DrawWheelsSection() {
 
   ImGui::Spacing();
 
-  const char* const kWheelLabels[4] = {"FL", "FR", "RL", "RR"};
   physics::WheelDesc* wheels[4] = {
       &vehicle_desc_.front_left, &vehicle_desc_.front_right,
       &vehicle_desc_.rear_left,  &vehicle_desc_.rear_right,
@@ -529,8 +557,8 @@ void VehicleEditorWindow::DrawWheelsSection() {
 
   for (int i = 0; i < 4; ++i) {
     ImGui::PushID(i);
-    const bool focused = (focused_wheel_ == i);
-    if (focused) ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.3f, 0.3f, 0.6f, 1.f));
+    const bool active = (focused_wheel_ == i);
+    if (active) ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.3f, 0.3f, 0.6f, 1.f));
 
     ImGui::Text("%s", kWheelLabels[i]);
     ImGui::SameLine();
@@ -544,13 +572,8 @@ void VehicleEditorWindow::DrawWheelsSection() {
     }
     if (ImGui::IsItemFocused() || ImGui::IsItemActive()) focused_wheel_ = i;
 
-    if (focused) ImGui::PopStyleColor();
+    if (active) ImGui::PopStyleColor();
     ImGui::PopID();
-  }
-
-  if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
-      !ImGui::IsAnyItemActive()) {
-    focused_wheel_ = -1;
   }
 }
 
