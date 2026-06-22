@@ -1,4 +1,4 @@
-#include "editor/VehiclePanel.h"
+#include "editor/VehicleEditorWindow.h"
 
 #include <algorithm>
 #include <array>
@@ -40,16 +40,14 @@ constexpr float kOrbitSensitivity    = 0.4f;
 constexpr float kZoomStep            = 0.3f;
 constexpr float kDegToRad            = 3.14159265f / 180.f;
 
-// Builds a translation-only Mat4f positioned at p.
 core::Mat4f PositionMat(const core::Vec3f& p) {
   return core::Mat4f::Translation(p);
 }
 
 }  // namespace
 
-VehiclePanel::VehiclePanel(std::filesystem::path path, abstract::VideoDevice* video)
-    : path_(std::move(path)),
-      video_(video),
+VehicleEditorWindow::VehicleEditorWindow(abstract::VideoDevice* video)
+    : video_(video),
       combined_camera_(core::ProjectionType::kPerspective,
                        core::CoordinateSystem::kRightHanded),
       body_preview_(std::make_unique<MeshPreview>(video, kBodyPreviewW, kBodyPreviewH)),
@@ -75,22 +73,53 @@ VehiclePanel::VehiclePanel(std::filesystem::path path, abstract::VideoDevice* vi
       core::Color(0.9f, 0.85f, 0.7f), 1.0f,
       core::Vec3f(0.05f, 0.05f, 0.05f),
       core::Vec3f(-1.f, -2.f, -1.f).Normalized());
-
-  LoadFromYaml();
 }
 
-VehiclePanel::~VehiclePanel() {
+VehicleEditorWindow::~VehicleEditorWindow() {
   if (body_tmpl_)        body_tmpl_->Release();
   if (front_wheel_tmpl_) front_wheel_tmpl_->Release();
   if (rear_wheel_tmpl_)  rear_wheel_tmpl_->Release();
 }
 
-void VehiclePanel::LoadFromYaml() {
+void VehicleEditorWindow::Open(const std::filesystem::path& path) {
+  path_  = path;
+  show_  = true;
+  dirty_ = false;
+  focused_wheel_ = -1;
+  vehicle_desc_  = {};
+
+  // Release any previously loaded templates.
+  if (body_tmpl_) {
+    body_tmpl_->Release();
+    body_tmpl_ = nullptr;
+  }
+  if (front_wheel_tmpl_) {
+    front_wheel_tmpl_->Release();
+    front_wheel_tmpl_ = nullptr;
+  }
+  if (rear_wheel_tmpl_) {
+    rear_wheel_tmpl_->Release();
+    rear_wheel_tmpl_ = nullptr;
+  }
+
+  body_mesh_path_.clear();
+  front_wheel_mesh_path_.clear();
+  rear_wheel_mesh_path_.clear();
+  for (auto& inst : combined_instances_) inst.reset();
+
+  body_preview_->SetTemplate(nullptr);
+  front_wheel_thumb_->SetTemplate(nullptr);
+  rear_wheel_thumb_->SetTemplate(nullptr);
+
+  LoadFromYaml();
+}
+
+void VehicleEditorWindow::LoadFromYaml() {
   YAML::Node root;
   try {
     root = core::LoadYamlFile(path_);
   } catch (const std::exception& e) {
-    LOG_F(WARNING, "VehiclePanel: failed to load '%s': %s",
+    LOG_F(WARNING, "VehicleEditorWindow: failed to load '%s': %s",
           path_.string().c_str(), e.what());
     return;
   }
@@ -141,7 +170,6 @@ void VehiclePanel::LoadFromYaml() {
     read_pos(vehicle_desc_.rear_right,  wh["rear_right"]);
   }
 
-  // Load mesh templates and refresh previews.
   if (!body_mesh_path_.empty())        UpdateBodyMesh(body_mesh_path_);
   if (!front_wheel_mesh_path_.empty()) UpdateFrontWheelMesh(front_wheel_mesh_path_);
   if (!rear_wheel_mesh_path_.empty())  UpdateRearWheelMesh(rear_wheel_mesh_path_);
@@ -149,7 +177,7 @@ void VehiclePanel::LoadFromYaml() {
   dirty_ = false;
 }
 
-void VehiclePanel::SaveToYaml() {
+void VehicleEditorWindow::SaveToYaml() {
   YAML::Emitter out;
   out << YAML::BeginMap;
 
@@ -157,7 +185,6 @@ void VehiclePanel::SaveToYaml() {
   out << YAML::Key << "front_wheel_mesh" << YAML::Value << front_wheel_mesh_path_;
   out << YAML::Key << "rear_wheel_mesh"  << YAML::Value << rear_wheel_mesh_path_;
 
-  // physics section
   out << YAML::Key << "physics" << YAML::Value << YAML::BeginMap;
   out << YAML::Key << "mass"               << YAML::Value << vehicle_desc_.mass;
   out << YAML::Key << "max_engine_torque"  << YAML::Value << vehicle_desc_.max_engine_torque;
@@ -167,7 +194,6 @@ void VehiclePanel::SaveToYaml() {
   core::yaml::WriteVec3f(out, "com_offset", vehicle_desc_.com_offset);
 
   out << YAML::Key << "suspension" << YAML::Value << YAML::BeginMap;
-  // Front and rear axles share their left-wheel params as the canonical value.
   auto write_axle = [&out](const char* key, const physics::WheelDesc& w) {
     out << YAML::Key << key << YAML::Value << YAML::Flow << YAML::BeginMap;
     out << YAML::Key << "min_length" << YAML::Value << w.suspension_min_length;
@@ -182,7 +208,6 @@ void VehiclePanel::SaveToYaml() {
 
   out << YAML::EndMap;  // physics
 
-  // wheels section
   out << YAML::Key << "wheels" << YAML::Value << YAML::BeginMap;
   auto write_wheel = [&out](const char* key, const core::Vec3f& pos) {
     out << YAML::Key << key << YAML::Value << YAML::Flow << YAML::BeginMap;
@@ -200,21 +225,21 @@ void VehiclePanel::SaveToYaml() {
 
   std::ofstream file(path_);
   if (!file) {
-    LOG_F(ERROR, "VehiclePanel: cannot write '%s'", path_.string().c_str());
+    LOG_F(ERROR, "VehicleEditorWindow: cannot write '%s'", path_.string().c_str());
     return;
   }
   file << out.c_str();
-  LOG_F(INFO, "VehiclePanel: saved '%s'", path_.string().c_str());
+  LOG_F(INFO, "VehicleEditorWindow: saved '%s'", path_.string().c_str());
 }
 
-void VehiclePanel::Save() {
+void VehicleEditorWindow::Save() {
   SaveToYaml();
   dirty_ = false;
 }
 
 // ---- Mesh loading -----------------------------------------------------------
 
-void VehiclePanel::UpdateBodyMesh(const std::string& rel_path) {
+void VehicleEditorWindow::UpdateBodyMesh(const std::string& rel_path) {
   if (body_tmpl_) {
     body_tmpl_->Release();
     body_tmpl_ = nullptr;
@@ -231,7 +256,7 @@ void VehiclePanel::UpdateBodyMesh(const std::string& rel_path) {
   RebuildCombinedInstances();
 }
 
-void VehiclePanel::UpdateFrontWheelMesh(const std::string& rel_path) {
+void VehicleEditorWindow::UpdateFrontWheelMesh(const std::string& rel_path) {
   if (front_wheel_tmpl_) {
     front_wheel_tmpl_->Release();
     front_wheel_tmpl_ = nullptr;
@@ -249,7 +274,7 @@ void VehiclePanel::UpdateFrontWheelMesh(const std::string& rel_path) {
   RebuildCombinedInstances();
 }
 
-void VehiclePanel::UpdateRearWheelMesh(const std::string& rel_path) {
+void VehicleEditorWindow::UpdateRearWheelMesh(const std::string& rel_path) {
   if (rear_wheel_tmpl_) {
     rear_wheel_tmpl_->Release();
     rear_wheel_tmpl_ = nullptr;
@@ -267,7 +292,7 @@ void VehiclePanel::UpdateRearWheelMesh(const std::string& rel_path) {
   RebuildCombinedInstances();
 }
 
-void VehiclePanel::RebuildCombinedInstances() {
+void VehicleEditorWindow::RebuildCombinedInstances() {
   if (body_tmpl_ && body_tmpl_->GetMesh()) {
     combined_instances_[0] = std::make_unique<renderer::MeshInstance>(
         body_tmpl_->GetMesh(), core::Mat4f::kIdentity, /*always_visible=*/true);
@@ -314,9 +339,9 @@ void VehiclePanel::RebuildCombinedInstances() {
 
 // ---- Mesh file pickers ------------------------------------------------------
 
-void VehiclePanel::PickBodyMesh() {
+void VehicleEditorWindow::PickBodyMesh() {
   nfdu8char_t* out_path = nullptr;
-  const nfdu8filteritem_t filter = {"Mesh", "obj,fbx"};
+  const nfdu8filteritem_t filter = {"Mesh", "obj,fbx,emesh"};
   if (NFD_OpenDialogU8(&out_path, &filter, 1, nullptr) != NFD_OKAY) return;
 
   const std::filesystem::path abs(out_path);
@@ -327,9 +352,9 @@ void VehiclePanel::PickBodyMesh() {
   dirty_ = true;
 }
 
-void VehiclePanel::PickFrontWheelMesh() {
+void VehicleEditorWindow::PickFrontWheelMesh() {
   nfdu8char_t* out_path = nullptr;
-  const nfdu8filteritem_t filter = {"Mesh", "obj,fbx"};
+  const nfdu8filteritem_t filter = {"Mesh", "obj,fbx,emesh"};
   if (NFD_OpenDialogU8(&out_path, &filter, 1, nullptr) != NFD_OKAY) return;
 
   const std::filesystem::path abs(out_path);
@@ -340,9 +365,9 @@ void VehiclePanel::PickFrontWheelMesh() {
   dirty_ = true;
 }
 
-void VehiclePanel::PickRearWheelMesh() {
+void VehicleEditorWindow::PickRearWheelMesh() {
   nfdu8char_t* out_path = nullptr;
-  const nfdu8filteritem_t filter = {"Mesh", "obj,fbx"};
+  const nfdu8filteritem_t filter = {"Mesh", "obj,fbx,emesh"};
   if (NFD_OpenDialogU8(&out_path, &filter, 1, nullptr) != NFD_OKAY) return;
 
   const std::filesystem::path abs(out_path);
@@ -355,7 +380,7 @@ void VehiclePanel::PickRearWheelMesh() {
 
 // ---- Combined preview rendering ---------------------------------------------
 
-void VehiclePanel::UpdateCombinedCamera() {
+void VehicleEditorWindow::UpdateCombinedCamera() {
   const float azi = combined_azimuth_deg_   * kDegToRad;
   const float ele = combined_elevation_deg_ * kDegToRad;
   const float ce  = std::cos(ele);
@@ -370,10 +395,9 @@ void VehiclePanel::UpdateCombinedCamera() {
   combined_camera_.UpdateMatrices();
 }
 
-void VehiclePanel::RenderCombined(float time) {
+void VehicleEditorWindow::RenderCombined(float time) {
   UpdateCombinedCamera();
 
-  // Update wheel instance world matrices in case positions changed.
   const std::array<const physics::WheelDesc*, 4> wheels = {
       &vehicle_desc_.front_left, &vehicle_desc_.front_right,
       &vehicle_desc_.rear_left,  &vehicle_desc_.rear_right,
@@ -383,7 +407,6 @@ void VehiclePanel::RenderCombined(float time) {
       combined_instances_[i + 1]->SetWorldMatrix(PositionMat(wheels[i]->position));
   }
 
-  // Collect non-null instances.
   renderer::MeshInstance* ptrs[5];
   int count = 0;
   for (const auto& inst : combined_instances_) {
@@ -397,7 +420,7 @@ void VehiclePanel::RenderCombined(float time) {
   }
 }
 
-void VehiclePanel::DrawCombinedPreview(float time) {
+void VehicleEditorWindow::DrawCombinedPreview(float time) {
   RenderCombined(time);
 
   const ImVec2 size(static_cast<float>(kCombinedPreviewW),
@@ -410,7 +433,6 @@ void VehiclePanel::DrawCombinedPreview(float time) {
       pos, ImVec2(pos.x + size.x, pos.y + size.y),
       ImVec2(0.f, 1.f), ImVec2(1.f, 0.f));
 
-  // Orbit camera input.
   if (ImGui::IsItemHovered() || ImGui::IsItemActive()) {
     const ImGuiIO& io = ImGui::GetIO();
     if (io.MouseDown[ImGuiMouseButton_Left]) {
@@ -425,7 +447,6 @@ void VehiclePanel::DrawCombinedPreview(float time) {
     }
   }
 
-  // ImGuizmo translate gizmo for the focused wheel.
   if (focused_wheel_ >= 0 && focused_wheel_ < 4) {
     const std::array<physics::WheelDesc*, 4> wheels = {
         &vehicle_desc_.front_left, &vehicle_desc_.front_right,
@@ -455,7 +476,6 @@ void VehiclePanel::DrawCombinedPreview(float time) {
       new_model = new_model.Transpose();
       const core::Vec3f new_pos = {new_model(0, 3), new_model(1, 3), new_model(2, 3)};
       wd.position = new_pos;
-      // Mirror X for right-side wheels (FR mirrors FL, RR mirrors RL).
       if (focused_wheel_ == 0) vehicle_desc_.front_right.position.x = -new_pos.x;
       if (focused_wheel_ == 2) vehicle_desc_.rear_right.position.x  = -new_pos.x;
       dirty_ = true;
@@ -465,7 +485,7 @@ void VehiclePanel::DrawCombinedPreview(float time) {
 
 // ---- Draw sections ----------------------------------------------------------
 
-void VehiclePanel::DrawBodySection() {
+void VehicleEditorWindow::DrawBodySection() {
   ImGui::SeparatorText("Body");
 
   ImGui::Text("Body mesh: %s",
@@ -476,10 +496,9 @@ void VehiclePanel::DrawBodySection() {
   body_preview_->Render(ImGui::GetTime());
 }
 
-void VehiclePanel::DrawWheelsSection() {
+void VehicleEditorWindow::DrawWheelsSection() {
   ImGui::SeparatorText("Wheels");
 
-  // Front wheel row.
   ImGui::Text("Front wheel: %s",
               front_wheel_mesh_path_.empty() ? "(none)"
                                              : front_wheel_mesh_path_.c_str());
@@ -489,7 +508,6 @@ void VehiclePanel::DrawWheelsSection() {
 
   ImGui::Spacing();
 
-  // Rear wheel row.
   ImGui::Text("Rear wheel: %s",
               rear_wheel_mesh_path_.empty() ? "(none)"
                                             : rear_wheel_mesh_path_.c_str());
@@ -499,12 +517,10 @@ void VehiclePanel::DrawWheelsSection() {
 
   ImGui::Spacing();
 
-  // Combined preview.
   DrawCombinedPreview(static_cast<float>(ImGui::GetTime()));
 
   ImGui::Spacing();
 
-  // Per-wheel position editing (4 rows: FL, FR, RL, RR).
   const char* const kWheelLabels[4] = {"FL", "FR", "RL", "RR"};
   physics::WheelDesc* wheels[4] = {
       &vehicle_desc_.front_left, &vehicle_desc_.front_right,
@@ -522,7 +538,6 @@ void VehiclePanel::DrawWheelsSection() {
     float pos[3] = {wheels[i]->position.x, wheels[i]->position.y, wheels[i]->position.z};
     if (ImGui::DragFloat3("##pos", pos, 0.01f)) {
       wheels[i]->position = {pos[0], pos[1], pos[2]};
-      // Mirror X for right-side wheels.
       if (i == 0) vehicle_desc_.front_right.position.x = -pos[0];
       if (i == 2) vehicle_desc_.rear_right.position.x  = -pos[0];
       dirty_ = true;
@@ -533,20 +548,18 @@ void VehiclePanel::DrawWheelsSection() {
     ImGui::PopID();
   }
 
-  // Clear focus when user clicks outside.
   if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
       !ImGui::IsAnyItemActive()) {
     focused_wheel_ = -1;
   }
 }
 
-void VehiclePanel::DrawPhysicsSection() {
+void VehicleEditorWindow::DrawPhysicsSection() {
   ImGui::SeparatorText("Physics");
 
-  dirty_ |= ImGui::DragFloat("Mass (kg)",           &vehicle_desc_.mass,            10.f, 100.f,  5000.f,  "%.0f");
+  dirty_ |= ImGui::DragFloat("Mass (kg)",              &vehicle_desc_.mass,            10.f, 100.f,  5000.f,  "%.0f");
   dirty_ |= ImGui::DragFloat("Max engine torque (Nm)", &vehicle_desc_.max_engine_torque, 5.f, 50.f, 2000.f, "%.0f");
 
-  // Expose steer angle in degrees; store in radians.
   float steer_deg = vehicle_desc_.max_steer_angle / kDegToRad;
   if (ImGui::SliderFloat("Max steer angle (deg)", &steer_deg, 5.f, 60.f, "%.1f")) {
     vehicle_desc_.max_steer_angle = steer_deg * kDegToRad;
@@ -589,7 +602,7 @@ void VehiclePanel::DrawPhysicsSection() {
   draw_susp(vehicle_desc_.rear_left, vehicle_desc_.rear_right, "rear_susp");
 }
 
-void VehiclePanel::DrawActionsBar() {
+void VehicleEditorWindow::DrawActionsBar() {
   ImGui::Separator();
 
   if (ImGui::Button("Save")) Save();
@@ -608,15 +621,68 @@ void VehiclePanel::DrawActionsBar() {
   if (!can_place) ImGui::EndDisabled();
 }
 
-// ---- IResourcePanel ---------------------------------------------------------
+// ---- Window rendering -------------------------------------------------------
 
-void VehiclePanel::Draw() {
-  DrawBodySection();
+void VehicleEditorWindow::RenderDirtyCloseModal() {
+  if (!ImGui::BeginPopupModal("Unsaved Changes##vehicle_editor", nullptr,
+                              ImGuiWindowFlags_AlwaysAutoResize)) {
+    return;
+  }
+
+  ImGui::TextUnformatted("You have unsaved changes. What would you like to do?");
   ImGui::Spacing();
-  DrawWheelsSection();
-  ImGui::Spacing();
-  DrawPhysicsSection();
-  DrawActionsBar();
+
+  if (ImGui::Button("Save")) {
+    Save();
+    show_ = false;
+    ImGui::CloseCurrentPopup();
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Discard")) {
+    dirty_ = false;
+    show_  = false;
+    ImGui::CloseCurrentPopup();
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Cancel")) {
+    ImGui::CloseCurrentPopup();
+  }
+
+  ImGui::EndPopup();
+}
+
+void VehicleEditorWindow::Render() {
+  if (!show_) return;
+
+  if (open_dirty_modal_) {
+    ImGui::OpenPopup("Unsaved Changes##vehicle_editor");
+    open_dirty_modal_ = false;
+  }
+  RenderDirtyCloseModal();
+
+  const std::string title =
+      "Vehicle Editor \xe2\x80\x94 " + path_.filename().string() +
+      (dirty_ ? " *" : "") + "##vehicle_editor";
+
+  bool window_open = true;
+  if (ImGui::Begin(title.c_str(), &window_open,
+                   ImGuiWindowFlags_HorizontalScrollbar)) {
+    DrawBodySection();
+    ImGui::Spacing();
+    DrawWheelsSection();
+    ImGui::Spacing();
+    DrawPhysicsSection();
+    DrawActionsBar();
+  }
+  ImGui::End();
+
+  if (!window_open) {
+    if (dirty_) {
+      open_dirty_modal_ = true;
+    } else {
+      show_ = false;
+    }
+  }
 }
 
 }  // namespace editor

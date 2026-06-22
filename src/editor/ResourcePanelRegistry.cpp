@@ -8,9 +8,17 @@ namespace editor {
 void ResourcePanelRegistry::Register(std::string_view extension,
                                      PanelFactory factory) {
   const std::string key(extension);
-  if (factories_.count(key) == 0)
+  if (factories_.count(key) == 0 && open_callbacks_.count(key) == 0)
     extensions_.push_back(key);
   factories_[key] = std::move(factory);
+}
+
+void ResourcePanelRegistry::RegisterOpenCallback(std::string_view extension,
+                                                 OpenCallback callback) {
+  const std::string key(extension);
+  if (open_callbacks_.count(key) == 0 && factories_.count(key) == 0)
+    extensions_.push_back(key);
+  open_callbacks_[key] = std::move(callback);
 }
 
 void ResourcePanelRegistry::RegisterNew(std::string_view extension,
@@ -33,12 +41,28 @@ std::unique_ptr<IResourcePanel> ResourcePanelRegistry::Open(
     const std::filesystem::path& path) const {
   const std::string ext = MatchExtension(path);
   if (ext.empty()) return nullptr;
-  return factories_.at(ext)(path);
+  const auto it = factories_.find(ext);
+  if (it == factories_.end()) return nullptr;
+  return it->second(path);
 }
 
 bool ResourcePanelRegistry::CanOpen(
     const std::filesystem::path& path) const {
   return !MatchExtension(path).empty();
+}
+
+bool ResourcePanelRegistry::HasOpenCallback(
+    const std::filesystem::path& path) const {
+  const std::string ext = MatchExtension(path);
+  return !ext.empty() && open_callbacks_.count(ext) > 0;
+}
+
+void ResourcePanelRegistry::InvokeOpenCallback(
+    const std::filesystem::path& path) const {
+  const std::string ext = MatchExtension(path);
+  const auto it = open_callbacks_.find(ext);
+  if (it != open_callbacks_.end())
+    it->second(path);
 }
 
 std::string ResourcePanelRegistry::MatchExtension(

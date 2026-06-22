@@ -49,7 +49,7 @@
 #include "editor/ObjectsPanel.h"
 #include "editor/ResourceBrowser.h"
 #include "editor/ResourcePanelRegistry.h"
-#include "editor/VehiclePanel.h"
+#include "editor/VehicleEditorWindow.h"
 #include "editor/OutlinerPanel.h"
 #include "editor/PropertiesPanel.h"
 #include "editor/ResourcesPanel.h"
@@ -119,6 +119,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
                                                        material_editor_.get())),
       particle_editor_(std::make_unique<ParticleEditorWindow>(video)),
       sound_editor_(std::make_unique<SoundEditorWindow>()),
+      vehicle_editor_(std::make_unique<VehicleEditorWindow>(video)),
       mesh_modal_(std::make_unique<MeshSelectionModal>()),
       particle_modal_(std::make_unique<ParticleSystemSelectionModal>()),
       sound_modal_(std::make_unique<SoundEmitterSelectionModal>()),
@@ -264,31 +265,30 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
     LOG_F(WARNING, "Editor 3D audio unavailable — sound toggle will be a no-op");
   }
 
-  // Register .vehicle.yaml panels.
-  resource_panel_registry_.Register(
+  // Wire vehicle editor: open in dedicated window, "New" button creates skeleton.
+  vehicle_editor_->SetOnPlaceInScene([this](const std::filesystem::path& vpath) {
+    const std::filesystem::path data_dir = core::Config::GetDataFolder();
+    const std::string desc_rel =
+        std::filesystem::relative(vpath, data_dir).string();
+    game::VehicleTemplate* tmpl =
+        game::VehicleTemplate::GetOrLoad(desc_rel, video_);
+    if (!tmpl) {
+      LOG_F(WARNING, "VehicleEditorWindow: failed to load template '%s'",
+            desc_rel.c_str());
+      return;
+    }
+    auto vehicle = std::make_unique<game::GameVehicle>(tmpl);
+    tmpl->Release();
+    vehicle->SetName(GenerateObjectName(*scene_, "vehicle"));
+    const EditorCameraController::CameraState cam = viewport_->GetCameraState();
+    vehicle->SetWorldTransform(core::Mat4f::Translation(cam.focus));
+    history_.Push(
+        std::make_unique<PlaceObjectCommand>(scene_.get(), std::move(vehicle)));
+  });
+  resource_panel_registry_.RegisterOpenCallback(
       ".vehicle.yaml",
-      [this](std::filesystem::path p) -> std::unique_ptr<IResourcePanel> {
-        auto panel = std::make_unique<VehiclePanel>(std::move(p), video_);
-        panel->SetOnPlaceInScene([this](const std::filesystem::path& vpath) {
-          const std::filesystem::path data_dir = core::Config::GetDataFolder();
-          const std::string desc_rel =
-              std::filesystem::relative(vpath, data_dir).string();
-          game::VehicleTemplate* tmpl =
-              game::VehicleTemplate::GetOrLoad(desc_rel, video_);
-          if (!tmpl) {
-            LOG_F(WARNING, "VehiclePanel: failed to load template '%s'",
-                  desc_rel.c_str());
-            return;
-          }
-          auto vehicle = std::make_unique<game::GameVehicle>(tmpl);
-          tmpl->Release();
-          vehicle->SetName(GenerateObjectName(*scene_, "vehicle"));
-          const EditorCameraController::CameraState cam = viewport_->GetCameraState();
-          vehicle->SetWorldTransform(core::Mat4f::Translation(cam.focus));
-          history_.Push(
-              std::make_unique<PlaceObjectCommand>(scene_.get(), std::move(vehicle)));
-        });
-        return panel;
+      [this](const std::filesystem::path& path) {
+        vehicle_editor_->Open(path);
       });
   resource_panel_registry_.RegisterNew(
       ".vehicle.yaml",
@@ -650,6 +650,9 @@ void EditorWindow::Render() {
     sound_editor_->Render();
     show_sound_editor_ = sound_editor_->IsOpen();
   }
+
+  // 8d. Vehicle editor — dedicated floating window, opened from ResourceBrowser.
+  vehicle_editor_->Render();
 
   // 9. Map properties panel — toggled via the Map menu.
   if (show_map_props_) {
