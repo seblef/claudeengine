@@ -15,6 +15,7 @@
 #include "editor/EditorCommandHistory.h"
 #include "editor/EditorToolbar.h"
 #include "editor/EnvironmentEditorPanel.h"
+#include "editor/PlayModeManager.h"
 #include "editor/RenderingSettingsPanel.h"
 #include "editor/TerrainCreationDialog.h"
 #include "editor/TerrainEditorPanel.h"
@@ -202,6 +203,11 @@ class EditorWindow {
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<LogPanel>              log_panel_;
 
+  // Play-in-Editor manager — owns the FPS camera and physics lifecycle.
+  // Constructed after all other members; must be destroyed before the scene.
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<PlayModeManager>       play_mode_;
+
   // Command history for undo/redo. Panels receive a raw pointer to this.
   // cppcheck-suppress unusedStructMember
   EditorCommandHistory                   history_;
@@ -318,6 +324,12 @@ class EditorWindow {
   // Used by PasteObject() to recreate the hierarchy after pasting a subtree.
   // cppcheck-suppress unusedStructMember
   std::vector<std::string>                       clipboard_parent_names_;
+
+  // Transient status bar message from PlayModeManager (warnings, errors).
+  // cppcheck-suppress unusedStructMember
+  std::string play_status_msg_;
+  // cppcheck-suppress unusedStructMember
+  float       play_status_timer_ = 0.f;
 
   // Debug state.
   // cppcheck-suppress unusedStructMember

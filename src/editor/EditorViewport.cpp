@@ -71,6 +71,11 @@ void EditorViewport::SetScene(EditorScene* scene) {
 }
 
 void EditorViewport::OnEvent(const core::Event& event) {
+  // In play mode, events are routed to the FPS camera controller by
+  // PlayModeManager::OnEvent() — do not also dispatch to editor tools or the
+  // orbit camera controller.
+  if (in_play_mode_) return;
+
   const bool keyboard_captured = ImGui::GetIO().WantCaptureKeyboard;
 
   // Dispatch to the active base tool (e.g. SelectionTool handles Delete key).
@@ -107,10 +112,14 @@ void EditorViewport::Render() {
   const int w = std::max(1, static_cast<int>(avail.x));
   const int h = std::max(1, static_cast<int>(avail.y));
 
-  // Gate orbit/pan/zoom input: block when the ViewManipulate widget is hovered.
-  const bool widget_hovered = ImGuizmo::IsViewManipulateHovered();
-  camera_ctrl_->SetViewportHovered(ImGui::IsWindowHovered() && !widget_hovered);
-  camera_ctrl_->Update(ImGui::GetIO().DeltaTime);
+  // In play mode the FPS camera controller drives the camera; suspend the orbit
+  // camera controller to prevent it from overwriting the FPS camera transform.
+  if (!in_play_mode_) {
+    // Gate orbit/pan/zoom input: block when the ViewManipulate widget is hovered.
+    const bool widget_hovered = ImGuizmo::IsViewManipulateHovered();
+    camera_ctrl_->SetViewportHovered(ImGui::IsWindowHovered() && !widget_hovered);
+    camera_ctrl_->Update(ImGui::GetIO().DeltaTime);
+  }
 
   ResizeIfNeeded(w, h);
 
@@ -143,14 +152,15 @@ void EditorViewport::Render() {
   }
 
   // Delegate picking, gizmo drawing, and bounding-box drawing to the active tool.
-  if (scene_ && active_tool_base_) {
+  // Skipped in play mode: editor overlays are not relevant during gameplay.
+  if (!in_play_mode_ && scene_ && active_tool_base_) {
     EditorToolContext ctx{scene_, camera_.get(), &picking_acc_,
                           history_, video_};
     ctx.terrain_data = terrain_data_;
     active_tool_base_->OnRender(ctx, image_pos, avail);
   }
 
-  if (rendering_settings_panel_ && scene_
+  if (!in_play_mode_ && rendering_settings_panel_ && scene_
       && physics::PhysicsSystem::IsInstanced()) {
     physics::PhysicsDebugDrawSettings debug_settings;
     debug_settings.drawShapes        =
@@ -178,57 +188,62 @@ void EditorViewport::Render() {
     physics::PhysicsSystem::Instance().DrawDebug(debug_settings);
   }
 
-  renderer::WireframeRenderer::Instance().SetHighlightedObject(
-      scene_ ? scene_->GetSelectedObject() : nullptr);
-  if (scene_) {
-    const float cam_dist = camera_ctrl_->GetDistance();
-    editor::EnqueuePivotGizmos(scene_->GetObjects(), scene_->GetSelectedObject());
-    if (!rendering_settings_panel_ ||
-        rendering_settings_panel_->IsOverlayPlayerStartsEnabled()) {
-      editor::EnqueuePlayerStartGizmos(scene_->GetObjects(), scene_->GetSelectedObject());
+  // Editor-only overlays: gizmos, highlights, and the orbit widget.
+  // Skipped in play mode — the player sees the world without editor decorations.
+  if (!in_play_mode_) {
+    renderer::WireframeRenderer::Instance().SetHighlightedObject(
+        scene_ ? scene_->GetSelectedObject() : nullptr);
+    if (scene_) {
+      const float cam_dist = camera_ctrl_->GetDistance();
+      editor::EnqueuePivotGizmos(scene_->GetObjects(), scene_->GetSelectedObject());
+      if (!rendering_settings_panel_ ||
+          rendering_settings_panel_->IsOverlayPlayerStartsEnabled()) {
+        editor::EnqueuePlayerStartGizmos(scene_->GetObjects(),
+                                         scene_->GetSelectedObject());
+      }
+      if (!rendering_settings_panel_ ||
+          rendering_settings_panel_->IsOverlaySoundsEnabled()) {
+        editor::EnqueueSoundEmitterGizmos(scene_->GetObjects(),
+                                          scene_->GetSelectedObject(), cam_dist);
+      }
     }
-    if (!rendering_settings_panel_ ||
-        rendering_settings_panel_->IsOverlaySoundsEnabled()) {
-      editor::EnqueueSoundEmitterGizmos(scene_->GetObjects(), scene_->GetSelectedObject(),
-                                        cam_dist);
+    if (wireframe_fbo_ && render_fbo_)
+      renderer::WireframeRenderer::Instance().Render(
+          *camera_->GetCamera(), wireframe_fbo_.get(), render_fbo_.get());
+
+    // XYZ axis overlay — bottom-right corner of the viewport panel.
+    // ImGuizmo uses row-major storage with row-vector convention (translation in
+    // last row), which is the transpose of our column-vector Mat4f convention.
+    const ImVec2 vp_pos  = ImGui::GetWindowPos();
+    const ImVec2 vp_size = {static_cast<float>(w), static_cast<float>(h)};
+    ImGuizmo::SetRect(vp_pos.x, vp_pos.y, vp_size.x, vp_size.y);
+    ImGuizmo::SetDrawlist();
+
+    const core::Mat4f view_t = camera_->GetCamera()->GetViewMatrix().Transpose();
+    const core::Mat4f proj_t = camera_->GetCamera()->GetProjectionMatrix().Transpose();
+    float view_im[16], proj_im[16];
+    std::memcpy(view_im, view_t.Data(), sizeof(view_im));
+    std::memcpy(proj_im, proj_t.Data(), sizeof(proj_im));
+
+    // Use the 9-parameter overload so ComputeContext runs first and sets
+    // gContext.mProjectionMat. Without it the 5-parameter form reads a zero
+    // projection matrix, concludes left-handed, and negates all angles.
+    float dummy_model[16] = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
+    constexpr float kWidgetSize = 88.f;
+    const ImVec2 widget_pos = {
+        vp_pos.x + vp_size.x - kWidgetSize,
+        vp_pos.y + vp_size.y - kWidgetSize,
+    };
+    ImGuizmo::ViewManipulate(view_im, proj_im, ImGuizmo::TRANSLATE, ImGuizmo::WORLD,
+                             dummy_model, camera_ctrl_->GetDistance(),
+                             widget_pos, ImVec2(kWidgetSize, kWidgetSize), 0x10101080);
+
+    // ImGuizmo wrote back its row-vector view matrix; transpose to our
+    // column-vector convention before updating the camera controller.
+    const core::Mat4f view_t_after(view_im);
+    if (view_t_after != view_t) {
+      camera_ctrl_->SetViewMatrix(view_t_after.Transpose());
     }
-  }
-  if (wireframe_fbo_ && render_fbo_)
-    renderer::WireframeRenderer::Instance().Render(
-        *camera_->GetCamera(), wireframe_fbo_.get(), render_fbo_.get());
-
-  // XYZ axis overlay — bottom-right corner of the viewport panel.
-  // ImGuizmo uses row-major storage with row-vector convention (translation in
-  // last row), which is the transpose of our column-vector Mat4f convention.
-  const ImVec2 vp_pos  = ImGui::GetWindowPos();
-  const ImVec2 vp_size = {static_cast<float>(w), static_cast<float>(h)};
-  ImGuizmo::SetRect(vp_pos.x, vp_pos.y, vp_size.x, vp_size.y);
-  ImGuizmo::SetDrawlist();
-
-  const core::Mat4f view_t = camera_->GetCamera()->GetViewMatrix().Transpose();
-  const core::Mat4f proj_t = camera_->GetCamera()->GetProjectionMatrix().Transpose();
-  float view_im[16], proj_im[16];
-  std::memcpy(view_im, view_t.Data(), sizeof(view_im));
-  std::memcpy(proj_im, proj_t.Data(), sizeof(proj_im));
-
-  // Use the 9-parameter overload so ComputeContext runs first and sets
-  // gContext.mProjectionMat. Without it the 5-parameter form reads a zero
-  // projection matrix, concludes left-handed, and negates all angles.
-  float dummy_model[16] = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
-  constexpr float kWidgetSize = 88.f;
-  const ImVec2 widget_pos = {
-      vp_pos.x + vp_size.x - kWidgetSize,
-      vp_pos.y + vp_size.y - kWidgetSize,
-  };
-  ImGuizmo::ViewManipulate(view_im, proj_im, ImGuizmo::TRANSLATE, ImGuizmo::WORLD,
-                           dummy_model, camera_ctrl_->GetDistance(),
-                           widget_pos, ImVec2(kWidgetSize, kWidgetSize), 0x10101080);
-
-  // ImGuizmo wrote back its row-vector view matrix; transpose to our
-  // column-vector convention before updating the camera controller.
-  const core::Mat4f view_t_after(view_im);
-  if (view_t_after != view_t) {
-    camera_ctrl_->SetViewMatrix(view_t_after.Transpose());
   }
 }
 

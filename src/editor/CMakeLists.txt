@@ -13,6 +13,7 @@ add_library(editor STATIC
     SoundEmitterGizmos.cpp
     MapPropertiesWindow.cpp
     MapSerializer.cpp
+    PlayModeManager.cpp
     EditorTheme.cpp
     EditorToolbar.cpp
     EditorViewport.cpp
