@@ -22,6 +22,7 @@ enum class EditorTool {
   kCreatePlayerStart,
   kCreateParticleSystem,
   kCreateSoundEmitter,
+  kCreateVehicle,
 };
 
 // Returns true for any object-creation tool.
@@ -33,7 +34,8 @@ inline bool IsCreationTool(EditorTool tool) {
          tool == EditorTool::kCreatePivot          ||
          tool == EditorTool::kCreatePlayerStart    ||
          tool == EditorTool::kCreateParticleSystem ||
-         tool == EditorTool::kCreateSoundEmitter;
+         tool == EditorTool::kCreateSoundEmitter   ||
+         tool == EditorTool::kCreateVehicle;
 }
 
 // Returns true for the three transform gizmo tools.
