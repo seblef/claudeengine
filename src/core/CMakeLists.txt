@@ -11,6 +11,7 @@ add_library(core STATIC
     RayUtils.cpp
     ShadowConfig.cpp
     ViewFrustum.cpp
+    YamlSerialiser.cpp
     YamlUtils.cpp
 )
 

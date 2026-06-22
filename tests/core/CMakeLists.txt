@@ -1,13 +1,14 @@
 add_executable(core_tests
+    ColorTest.cpp
     Mat2fTest.cpp
     Mat3fTest.cpp
     Mat4fTest.cpp
     PlaneTest.cpp
     Vec2fTest.cpp
-    ViewFrustumTest.cpp
     Vec3fTest.cpp
     Vec4fTest.cpp
-    ColorTest.cpp
+    ViewFrustumTest.cpp
+    YamlSerialiserTest.cpp
 )
 
 target_link_libraries(core_tests PRIVATE
