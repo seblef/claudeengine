@@ -10,7 +10,7 @@
 #include "core/Color.h"
 #include "core/Config.h"
 #include "core/Vec3f.h"
-#include "core/YamlUtils.h"
+#include "core/YamlSerialiser.h"
 #include "particles/ColorStop.h"
 
 namespace particles {

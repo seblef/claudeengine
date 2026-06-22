@@ -23,7 +23,7 @@
 #include "core/MathUtils.h"
 #include "core/ProjectionType.h"
 #include "core/Vec2f.h"
-#include "core/YamlUtils.h"
+#include "core/YamlSerialiser.h"
 #include "particles/ColorStop.h"
 #include "particles/EmitterShape.h"
 #include "particles/ParticleAnimationMode.h"

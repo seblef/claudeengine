@@ -6,7 +6,7 @@
 #include "audio/AudioDecoderUtils.h"
 #include "audio/RolloffType.h"
 #include "core/Config.h"
-#include "core/YamlUtils.h"
+#include "core/YamlSerialiser.h"
 
 namespace audio {
 

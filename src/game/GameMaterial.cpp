@@ -3,7 +3,7 @@
 #include <loguru.hpp>
 
 #include "core/Config.h"
-#include "core/YamlUtils.h"
+#include "core/YamlSerialiser.h"
 
 namespace game {
 

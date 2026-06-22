@@ -11,7 +11,7 @@ add_library(core STATIC
     RayUtils.cpp
     ShadowConfig.cpp
     ViewFrustum.cpp
-    YamlUtils.cpp
+    YamlSerialiser.cpp
 )
 
 if(BUILD_PROFILE STREQUAL "stable")

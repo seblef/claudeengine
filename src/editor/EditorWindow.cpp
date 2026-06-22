@@ -23,7 +23,7 @@
 #include "core/Config.h"
 #include "core/Event.h"
 #include "core/Vec3f.h"
-#include "core/YamlUtils.h"
+#include "core/YamlSerialiser.h"
 #include "editor/EditorScene.h"
 #include "editor/EditorSystem.h"
 #include "editor/tools/SelectionTool.h"
