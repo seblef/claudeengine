@@ -6,7 +6,7 @@ namespace core {
 
 void Logger::Init(int argc, char* argv[]) {
   loguru::init(argc, argv);
-  loguru::add_file("claude_engine.log", loguru::Truncate, loguru::Verbosity_MAX);
+  loguru::add_file("wreckoning.log", loguru::Truncate, loguru::Verbosity_MAX);
   LOG_F(INFO, "Logger initialised (profile: %s)",
 #ifdef NDEBUG
         "stable"

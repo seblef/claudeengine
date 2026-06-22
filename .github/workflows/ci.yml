@@ -194,10 +194,10 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: claude-engine-dev-${{ github.ref_name }}
+          name: wreckoning-dev-${{ github.ref_name }}
           path: |
-            build/claude_engine
-            build/claude_editor
+            build/wreckoning
+            build/wreckoning_editor
           retention-days: 14
 
   build-stable:
@@ -235,10 +235,10 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: claude-engine-stable-${{ github.ref_name }}
+          name: wreckoning-stable-${{ github.ref_name }}
           path: |
-            build/claude_engine
-            build/claude_editor
+            build/wreckoning
+            build/wreckoning_editor
           retention-days: 90
 
   package:
@@ -252,21 +252,21 @@ jobs:
       - name: Download stable binary
         uses: actions/download-artifact@v4
         with:
-          name: claude-engine-stable-${{ github.ref_name }}
+          name: wreckoning-stable-${{ github.ref_name }}
           path: dist/
 
       - name: Assemble package
         run: |
-          chmod +x dist/claude_engine dist/claude_editor
+          chmod +x dist/wreckoning dist/wreckoning_editor
           cp -r data dist/data
           find dist -name "CLAUDE.md" -delete
-          cd dist && zip -r "../claude-engine-${{ github.ref_name }}-linux.zip" .
+          cd dist && zip -r "../wreckoning-${{ github.ref_name }}-linux.zip" .
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
         with:
-          name: claude-engine-package-${{ github.ref_name }}
-          path: claude-engine-${{ github.ref_name }}-linux.zip
+          name: wreckoning-package-${{ github.ref_name }}
+          path: wreckoning-${{ github.ref_name }}-linux.zip
           retention-days: 90
 
   release:
@@ -280,11 +280,11 @@ jobs:
       - name: Download package
         uses: actions/download-artifact@v4
         with:
-          name: claude-engine-package-${{ github.ref_name }}
+          name: wreckoning-package-${{ github.ref_name }}
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          name: ClaudeEngine ${{ github.ref_name }}
-          files: claude-engine-${{ github.ref_name }}-linux.zip
+          name: Wreckoning ${{ github.ref_name }}
+          files: wreckoning-${{ github.ref_name }}-linux.zip
           generate_release_notes: true

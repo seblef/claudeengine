@@ -17,7 +17,7 @@ GLDevices::GLDevices(int width, int height, bool fullscreen) {
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
   GLFWmonitor* monitor = fullscreen ? glfwGetPrimaryMonitor() : nullptr;
-  window_ = glfwCreateWindow(width, height, "ClaudeEngine", monitor, nullptr);
+  window_ = glfwCreateWindow(width, height, "Wreckoning", monitor, nullptr);
   glfwMakeContextCurrent(window_);
 
   gl_video_device_ = std::make_unique<GLVideoDevice>(width, height, !fullscreen, window_);

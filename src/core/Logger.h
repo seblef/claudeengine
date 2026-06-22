@@ -1,6 +1,6 @@
 #pragma once
 
-// Logging subsystem facade for ClaudeEngine.
+// Logging subsystem facade for Wreckoning.
 //
 // After Logger::Init(), use LOG_F / DLOG_F / LOG_SCOPE_F (from loguru.hpp)
 // directly in any translation unit — no wrapper macros are needed.
@@ -11,7 +11,7 @@ namespace core {
 class Logger {
  public:
   // Initialises loguru, parses -v <level> from argv, and opens
-  // "claude_engine.log" (Truncate — fresh file on each launch).
+  // "wreckoning.log" (Truncate — fresh file on each launch).
   // Must be called from the main thread before any LOG_F usage.
   static void Init(int argc, char* argv[]);
 
