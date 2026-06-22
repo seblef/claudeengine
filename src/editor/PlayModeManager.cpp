@@ -9,7 +9,7 @@
 #include "editor/EditorToolbar.h"
 #include "editor/EditorViewport.h"
 #include "editor/MapSerializer.h"
-#include "game/FPSCameraController.h"
+#include "game/ChaseCameraController.h"
 #include "game/GameMesh.h"
 #include "game/GamePlayerStart.h"
 #include "game/GameTerrain.h"
@@ -119,6 +119,11 @@ void PlayModeManager::Enter() {
     return;
   }
 
+  if (!visitor.vehicle) {
+    SetStatusMessage("Place a Vehicle in the scene before entering Play mode");
+    return;
+  }
+
   // 3. Auto-save.
   const EditorCameraController::CameraState cam_state = viewport_->GetCameraState();
   if (!MapSerializer::Save(*scene_, cam_state, scene_->GetFilePath())) {
@@ -138,14 +143,18 @@ void PlayModeManager::Enter() {
   // 6. Show HUD — UIRenderer is not instanced in the editor app so we rely
   //    on the panels_hidden_ flag checked by EditorWindow instead.
 
-  // 7. Instantiate FPS camera at the player start world position.
-  fps_controller_ = std::make_unique<game::FPSCameraController>();
-  fps_controller_->SetCamera(viewport_->GetCamera());
-  const core::Mat4f& t = visitor.player_start->GetWorldTransform();
-  fps_controller_->SetPosition({t(0, 3), t(1, 3), t(2, 3)});
+  // 7. Activate the vehicle and wire player input + chase camera.
+  vehicle_ = visitor.vehicle;
+  vehicle_controller_ = std::make_unique<game::PlayerVehicleController>();
+  vehicle_->SetVehicleController(vehicle_controller_.get());
+  vehicle_->Activate();
+
+  chase_controller_ = std::make_unique<game::ChaseCameraController>();
+  chase_controller_->SetCamera(viewport_->GetCamera());
+  chase_controller_->SetTarget(vehicle_);
 
   // Freeze the editor orbit camera controller so it does not override the
-  // FPS camera transform inside EditorViewport::Render().
+  // chase camera transform inside EditorViewport::Render().
   viewport_->SetInPlayMode(true);
 
   // 8. Register static physics bodies for meshes.
@@ -153,14 +162,6 @@ void PlayModeManager::Enter() {
 
   // 9. The terrain body is already managed by GameTerrain::OnAddedToScene();
   //    we do not create a second body and do not store a handle here.
-
-  // 10. Activate the first vehicle found in the scene.
-  if (visitor.vehicle) {
-    vehicle_ = visitor.vehicle;
-    vehicle_controller_ = std::make_unique<game::PlayerVehicleController>();
-    vehicle_->SetVehicleController(vehicle_controller_.get());
-    vehicle_->Activate();
-  }
 
   playing_ = true;
 
@@ -181,8 +182,9 @@ void PlayModeManager::Exit() {
   }
   play_bodies_.clear();
 
-  // 2. Release the vehicle controller; the vehicle itself is deactivated when
-  //    the scene is destroyed via OnRemovedFromScene() → Deactivate().
+  // 2. Release the vehicle controller and clear its reference on the vehicle so
+  //    no dangling callback fires between here and scene destruction.
+  if (vehicle_) vehicle_->SetVehicleController(nullptr);
   vehicle_controller_.reset();
   vehicle_ = nullptr;
 
@@ -199,9 +201,9 @@ void PlayModeManager::Exit() {
   // 4. Restore editor camera controller.
   viewport_->SetInPlayMode(false);
 
-  // Destroy the FPS controller after restoring the viewport so no dangling
+  // Destroy the chase controller after restoring the viewport so no dangling
   // pointer is held in EditorViewport during the transition.
-  fps_controller_.reset();
+  chase_controller_.reset();
 
   // 4 & 5. Restore panels and tools.
   panels_hidden_ = false;
@@ -240,6 +242,9 @@ void PlayModeManager::Tick(float dt) {
   if (core::Profiler::IsInstanced())
     core::Profiler::Instance().MarkFrame();
 
+  if (vehicle_controller_)
+    vehicle_controller_->Update(dt);
+
   {
     // cppcheck-suppress shadowVariable
     PROFILE_SCOPE("Physics::Step");
@@ -247,16 +252,14 @@ void PlayModeManager::Tick(float dt) {
       physics::PhysicsSystem::Instance().Step(dt);
   }
 
-  if (fps_controller_)
-    fps_controller_->Update(dt);
-
   if (vehicle_)
     vehicle_->Update(dt);
+
+  if (chase_controller_)
+    chase_controller_->Update(dt);
 }
 
 void PlayModeManager::OnEvent(const core::Event& event) {
-  if (fps_controller_)
-    fps_controller_->OnEvent(event);
   if (vehicle_controller_)
     vehicle_controller_->OnEvent(event);
 }

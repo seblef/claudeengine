@@ -13,7 +13,7 @@
 namespace physics { class PhysicsBody; }
 
 namespace game {
-class FPSCameraController;
+class ChaseCameraController;
 class GameMesh;
 class GamePlayerStart;
 class GameTerrain;
@@ -29,16 +29,16 @@ class EditorViewport;
 
 // Orchestrates the full Play/Stop lifecycle for Play-in-Editor mode.
 //
-// Enter() validates the scene (saved path, player start presence), auto-saves,
-// installs an FPS camera at the GamePlayerStart world position, registers static
+// Enter() validates the scene (saved path, player start and vehicle presence),
+// auto-saves, activates the vehicle, installs a chase camera, registers static
 // physics bodies for all scene meshes, and hides editor panels/tools.
 //
-// Exit() tears down play-time physics bodies, reloads the scene from disk,
-// restores the editor camera and panels.
+// Exit() tears down play-time physics, deactivates the vehicle, reloads the
+// scene from disk, and restores the editor camera and panels.
 //
 // Tick(dt) must be called every frame while IsPlaying() to step physics and
-// update the FPS camera. It must be called before EditorViewport::Render() so
-// the camera position is current when the renderer draws the frame.
+// update the chase camera. It must be called before EditorViewport::Render()
+// so the camera position is current when the renderer draws the frame.
 //
 // Owned by EditorWindow as std::unique_ptr<PlayModeManager>.
 class PlayModeManager {
@@ -136,7 +136,7 @@ class PlayModeManager {
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice* video_;
 
-  std::unique_ptr<game::FPSCameraController>     fps_controller_;
+  std::unique_ptr<game::ChaseCameraController>   chase_controller_;
   std::unique_ptr<game::PlayerVehicleController> vehicle_controller_;
 
   // Non-owning; valid between Enter() and Exit().

@@ -62,7 +62,9 @@
 #include "game/GamePlayerStart.h"
 #include "game/GameSoundEmitter.h"
 #include "game/GameTerrain.h"
+#include "game/GameVehicle.h"
 #include "game/MeshTemplate.h"
+#include "game/VehicleTemplate.h"
 #include "particles/ParticleSystemTemplate.h"
 #include "renderer/Light.h"
 #include "renderer/MaterialDesc.h"
@@ -445,6 +447,36 @@ void EditorWindow::Render() {
         particle_modal_->Open();
       } else if (active_tool == EditorTool::kCreateSoundEmitter) {
         sound_modal_->Open();
+      } else if (active_tool == EditorTool::kCreateVehicle) {
+        nfdu8char_t* out_path = nullptr;
+        const nfdu8filteritem_t v_filter = {"Vehicle", "vehicle.yaml"};
+        const nfdresult_t nfd_res =
+            NFD_OpenDialogU8(&out_path, &v_filter, 1, nullptr);
+        if (nfd_res == NFD_OKAY) {
+          const std::filesystem::path full_path(out_path);
+          NFD_FreePathU8(out_path);
+          const std::filesystem::path data_dir = core::Config::GetDataFolder();
+          const std::string desc_rel =
+              std::filesystem::relative(full_path, data_dir).string();
+          game::VehicleTemplate* tmpl =
+              game::VehicleTemplate::GetOrLoad(desc_rel, video_);
+          if (tmpl) {
+            auto vehicle = std::make_unique<game::GameVehicle>(tmpl);
+            tmpl->Release();
+            vehicle->SetName(GenerateObjectName(*scene_, "vehicle"));
+            placement_tool_ = std::make_unique<PlacementTool>(
+                std::move(vehicle), 0.f,
+                ImGuiMouseCursor_ResizeAll,
+                [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
+            viewport_->SetActiveTool(placement_tool_.get());
+          } else {
+            LOG_F(WARNING, "EditorWindow: failed to load vehicle template '%s'",
+                  desc_rel.c_str());
+            toolbar_->SetActiveTool(EditorTool::kSelection);
+          }
+        } else {
+          toolbar_->SetActiveTool(EditorTool::kSelection);
+        }
       }
     }
   }
