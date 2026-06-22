@@ -122,6 +122,8 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       outliner_panel_(std::make_unique<OutlinerPanel>()),
       log_panel_(std::make_unique<LogPanel>()) {
   toolbar_->SetCommandHistory(&history_);
+  toolbar_->SetOnPlay([this]{ LOG_F(INFO, "Play requested (play mode not yet implemented)"); });
+  toolbar_->SetOnStop([this]{ LOG_F(INFO, "Stop requested (play mode not yet implemented)"); });
   toolbar_->SetOnSave([this]{ SaveCurrent(); });
   toolbar_->SetOnSoundToggle([this](bool enabled) {
     if (enabled) EnableSceneSound();
@@ -294,6 +296,8 @@ void EditorWindow::Render() {
 
   // 3. Toolbar — update dirty state and copy/paste availability before rendering.
   toolbar_->SetDirty(scene_dirty_);
+  toolbar_->SetPlayEnabled(!scene_->GetMapName().empty() &&
+                           !scene_->GetFilePath().empty());
   {
     const auto& sel = scene_->GetSelection();
     const bool can_copy = std::any_of(sel.begin(), sel.end(),

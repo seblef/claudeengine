@@ -111,6 +111,18 @@ class EditorToolbar {
   void SetCanGroup(bool b)       { can_group_ = b; }
   void SetCanUngroup(bool b)     { can_ungroup_ = b; }
 
+  // Registers the callback fired when Play is clicked or F5 is pressed (not in play mode).
+  void SetOnPlay(std::function<void()> cb) { on_play_ = std::move(cb); }
+
+  // Registers the callback fired when Stop is clicked, F5 or Escape is pressed (in play mode).
+  void SetOnStop(std::function<void()> cb) { on_stop_ = std::move(cb); }
+
+  // Switches button appearance: true → ■ Stop, false → ▶ Play.
+  void SetInPlayMode(bool playing) { in_play_mode_ = playing; }
+
+  // Greys out the Play button. Should be false when no map is loaded or map has no file path.
+  void SetPlayEnabled(bool enabled) { play_enabled_ = enabled; }
+
   // Registers a callback fired when the sound-enable toggle is clicked.
   // The bool argument is the new enabled state.
   void SetOnSoundToggle(std::function<void(bool)> cb) {
@@ -165,6 +177,14 @@ class EditorToolbar {
   bool                  can_group_          = false;
   // cppcheck-suppress unusedStructMember
   bool                  can_ungroup_        = false;
+  // cppcheck-suppress unusedStructMember
+  std::function<void()> on_play_;
+  // cppcheck-suppress unusedStructMember
+  std::function<void()> on_stop_;
+  // cppcheck-suppress unusedStructMember
+  bool                  in_play_mode_       = false;
+  // cppcheck-suppress unusedStructMember
+  bool                  play_enabled_       = false;
   // cppcheck-suppress unusedStructMember
   std::function<void(bool)> on_sound_toggle_;
   // cppcheck-suppress unusedStructMember
