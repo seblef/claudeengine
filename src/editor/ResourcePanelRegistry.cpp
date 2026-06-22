@@ -13,6 +13,22 @@ void ResourcePanelRegistry::Register(std::string_view extension,
   factories_[key] = std::move(factory);
 }
 
+void ResourcePanelRegistry::RegisterNew(std::string_view extension,
+                                        NewFileFactory factory) {
+  new_factories_[std::string(extension)] = std::move(factory);
+}
+
+bool ResourcePanelRegistry::CanCreate(std::string_view extension) const {
+  return new_factories_.count(std::string(extension)) > 0;
+}
+
+std::filesystem::path ResourcePanelRegistry::Create(
+    std::string_view extension, std::string_view name) const {
+  const auto it = new_factories_.find(std::string(extension));
+  if (it == new_factories_.end()) return {};
+  return it->second(name);
+}
+
 std::unique_ptr<IResourcePanel> ResourcePanelRegistry::Open(
     const std::filesystem::path& path) const {
   const std::string ext = MatchExtension(path);

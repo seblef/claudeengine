@@ -23,7 +23,12 @@ void ResourceBrowser::Render() {
     ImGui::OpenPopup("Unsaved Changes##res_browser");
     open_dirty_modal_ = false;
   }
+  if (open_new_modal_) {
+    ImGui::OpenPopup("New Resource##res_browser");
+    open_new_modal_ = false;
+  }
   RenderDirtyCloseModal();
+  RenderNewFileModal();
 
   if (ImGui::Button("Refresh"))
     Scan();
@@ -114,26 +119,42 @@ void ResourceBrowser::OpenOrFocus(const std::filesystem::path& path) {
 
 void ResourceBrowser::RenderTree() {
   for (const std::string& ext : registry_->GetExtensions()) {
-    auto it = file_map_.find(ext);
-    if (it == file_map_.end() || it->second.empty()) continue;
-
     // Section label: strip leading dot from the extension suffix.
-    const std::string label =
-        ext.size() > 1 ? ext.substr(1) : ext;
+    const std::string label = ext.size() > 1 ? ext.substr(1) : ext;
 
-    if (ImGui::CollapsingHeader(label.c_str(),
-                                ImGuiTreeNodeFlags_DefaultOpen)) {
-      for (const std::filesystem::path& path : it->second) {
-        std::string stem = path.filename().string();
-        // Strip the extension suffix to get a clean display name.
-        if (stem.size() >= ext.size())
-          stem.resize(stem.size() - ext.size());
+    const bool open = ImGui::CollapsingHeader(label.c_str(),
+                                              ImGuiTreeNodeFlags_DefaultOpen);
 
-        ImGui::Selectable(stem.c_str(), false);
-        if (ImGui::IsItemHovered() &&
-            ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-          OpenOrFocus(path);
-        }
+    // "New" button appears on the same line as the section header.
+    if (registry_->CanCreate(ext)) {
+      ImGui::SameLine();
+      const std::string btn_label = "New##new_" + ext;
+      if (ImGui::SmallButton(btn_label.c_str())) {
+        pending_new_ext_ = ext;
+        new_name_buf_[0] = '\0';
+        new_error_msg_.clear();
+        open_new_modal_  = true;
+      }
+    }
+
+    if (!open) continue;
+
+    auto it = file_map_.find(ext);
+    if (it == file_map_.end() || it->second.empty()) {
+      ImGui::TextDisabled("(none)");
+      continue;
+    }
+
+    for (const std::filesystem::path& path : it->second) {
+      std::string stem = path.filename().string();
+      // Strip the extension suffix to get a clean display name.
+      if (stem.size() >= ext.size())
+        stem.resize(stem.size() - ext.size());
+
+      ImGui::Selectable(stem.c_str(), false);
+      if (ImGui::IsItemHovered() &&
+          ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+        OpenOrFocus(path);
       }
     }
   }
@@ -233,6 +254,58 @@ void ResourceBrowser::RenderDirtyCloseModal() {
     pending_close_idx_ = -1;
     ImGui::CloseCurrentPopup();
   }
+
+  ImGui::EndPopup();
+}
+
+void ResourceBrowser::RenderNewFileModal() {
+  if (!ImGui::BeginPopupModal("New Resource##res_browser", nullptr,
+                              ImGuiWindowFlags_AlwaysAutoResize)) {
+    return;
+  }
+
+  ImGui::Text("Create new %s",
+              pending_new_ext_.size() > 1
+                  ? pending_new_ext_.substr(1).c_str()
+                  : pending_new_ext_.c_str());
+  ImGui::Spacing();
+  ImGui::TextUnformatted("Name:");
+  ImGui::SameLine();
+
+  // Pressing Enter confirms creation.
+  const bool enter_pressed =
+      ImGui::InputText("##new_name", new_name_buf_, sizeof(new_name_buf_),
+                       ImGuiInputTextFlags_EnterReturnsTrue);
+  ImGui::SetItemDefaultFocus();
+
+  if (!new_error_msg_.empty()) {
+    ImGui::Spacing();
+    ImGui::TextColored(ImVec4(1.f, 0.3f, 0.3f, 1.f), "%s",
+                       new_error_msg_.c_str());
+  }
+
+  ImGui::Spacing();
+
+  const bool name_valid = new_name_buf_[0] != '\0';
+  if (!name_valid) ImGui::BeginDisabled();
+  const bool confirmed = ImGui::Button("Create") || (enter_pressed && name_valid);
+  if (!name_valid) ImGui::EndDisabled();
+
+  if (confirmed) {
+    const std::filesystem::path created =
+        registry_->Create(pending_new_ext_, new_name_buf_);
+    if (created.empty()) {
+      new_error_msg_ = "Failed to create file. Check the name and try again.";
+    } else {
+      Scan();
+      ImGui::CloseCurrentPopup();
+      OpenOrFocus(created);
+    }
+  }
+
+  ImGui::SameLine();
+  if (ImGui::Button("Cancel"))
+    ImGui::CloseCurrentPopup();
 
   ImGui::EndPopup();
 }

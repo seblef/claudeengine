@@ -290,6 +290,39 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
         });
         return panel;
       });
+  resource_panel_registry_.RegisterNew(
+      ".vehicle.yaml",
+      [](std::string_view name) -> std::filesystem::path {
+        const std::filesystem::path dir =
+            core::Config::GetDataFolder() / "vehicles";
+        std::error_code ec;
+        std::filesystem::create_directories(dir, ec);
+        const std::filesystem::path path =
+            dir / (std::string(name) + ".vehicle.yaml");
+        if (std::filesystem::exists(path)) return path;
+        std::ofstream out(path);
+        if (!out) return {};
+        out << "body_mesh: \"\"\n"
+               "front_wheel_mesh: \"\"\n"
+               "rear_wheel_mesh: \"\"\n"
+               "physics:\n"
+               "  mass: 1200\n"
+               "  max_engine_torque: 300\n"
+               "  max_steer_angle: 0.5\n"
+               "  brake_torque: 1500\n"
+               "  handbrake_torque: 3000\n"
+               "  com_offset: [0, -0.3, 0]\n"
+               "  suspension:\n"
+               "    front: {min_length: 0.1, max_length: 0.5, stiffness: 1500, damping: 200}\n"
+               "    rear: {min_length: 0.1, max_length: 0.5, stiffness: 1500, damping: 200}\n"
+               "wheels:\n"
+               "  front_left: {position: [-0.85, 0, 1.4]}\n"
+               "  front_right: {position: [0.85, 0, 1.4]}\n"
+               "  rear_left: {position: [-0.85, 0, -1.4]}\n"
+               "  rear_right: {position: [0.85, 0, -1.4]}\n";
+        LOG_F(INFO, "EditorWindow: created vehicle '%s'", path.string().c_str());
+        return path;
+      });
 
   // ResourceBrowser is constructed after the registry is populated with all
   // known resource types.
