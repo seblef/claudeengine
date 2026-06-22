@@ -122,13 +122,21 @@ void ResourceBrowser::RenderTree() {
     // Section label: strip leading dot from the extension suffix.
     const std::string label = ext.size() > 1 ? ext.substr(1) : ext;
 
-    const bool open = ImGui::CollapsingHeader(label.c_str(),
-                                              ImGuiTreeNodeFlags_DefaultOpen);
+    // AllowOverlap lets the "New" SmallButton overlaid on the right side of the
+    // header still receive clicks even though the header is full-width.
+    const ImGuiTreeNodeFlags header_flags =
+        ImGuiTreeNodeFlags_DefaultOpen |
+        (registry_->CanCreate(ext) ? ImGuiTreeNodeFlags_AllowOverlap : 0);
+    const bool open = ImGui::CollapsingHeader(label.c_str(), header_flags);
 
-    // "New" button appears on the same line as the section header.
+    // "New" button overlaid on the right edge of the section header.
+    // SameLine() alone would place it beyond the content region (CollapsingHeader
+    // fills the full width), so we pass an explicit X offset instead.
     if (registry_->CanCreate(ext)) {
-      ImGui::SameLine();
       const std::string btn_label = "New##new_" + ext;
+      const float btn_w = ImGui::CalcTextSize("New").x +
+                          ImGui::GetStyle().FramePadding.x * 2.f;
+      ImGui::SameLine(ImGui::GetContentRegionMax().x - btn_w);
       if (ImGui::SmallButton(btn_label.c_str())) {
         pending_new_ext_ = ext;
         new_name_buf_[0] = '\0';
