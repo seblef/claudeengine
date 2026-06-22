@@ -42,6 +42,10 @@
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/RegisterTypes.h>
+#include <Jolt/Physics/Collision/Shape/OffsetCenterOfMassShape.h>
+#include <Jolt/Physics/Vehicle/VehicleCollisionTester.h>
+#include <Jolt/Physics/Vehicle/VehicleConstraint.h>
+#include <Jolt/Physics/Vehicle/WheeledVehicleController.h>
 
 #include "core/Mat4f.h"
 #include "physics/CharacterController.h"
@@ -51,7 +55,9 @@
 #include "physics/MotionType.h"
 #include "physics/PhysicsBodyDesc.h"
 #include "physics/PhysicsShapeType.h"
+#include "physics/PhysicsVehicle.h"
 #include "physics/RaycastResult.h"
+#include "physics/VehicleDesc.h"
 #include "terrain/TerrainData.h"
 
 namespace physics {
@@ -274,6 +280,8 @@ PhysicsSystem::~PhysicsSystem() {
         delete static_cast<JPH::ShapeRefC*>(ptr);
     mesh_shape_cache_.clear();
 
+    // Destroy vehicles (constraints + bodies) before regular bodies and the world.
+    vehicles_.clear();
     // Destroy all bodies before tearing down the Jolt world.
     bodies_.clear();
     jolt_system_.reset();
@@ -327,6 +335,12 @@ void PhysicsSystem::Step(float dt) {
         if (id.IsInvalid()) continue;
         if (body->listener_)
             body->listener_->OnBodyTransformUpdated(body->GetWorldTransform());
+    }
+
+    for (const auto& vehicle : vehicles_) {
+        if (vehicle->listener_)
+            vehicle->listener_->OnBodyTransformUpdated(
+                vehicle->GetBodyWorldTransform());
     }
 }
 
@@ -547,6 +561,146 @@ void PhysicsSystem::DestroyBody(PhysicsBody* body) {
                            return p.get() == body;
                        }),
         bodies_.end());
+}
+
+namespace {
+
+JPH::Ref<JPH::WheelSettings> BuildWheelSettings(const WheelDesc& wd,
+                                                  float brake_torque,
+                                                  float handbrake_torque,
+                                                  float max_steer_angle,
+                                                  bool apply_handbrake) {
+    auto* ws = new JPH::WheelSettingsWV();
+    ws->mPosition          = JPH::Vec3(wd.position.x, wd.position.y, wd.position.z);
+    ws->mRadius            = wd.radius;
+    ws->mWidth             = wd.width;
+    ws->mSuspensionMinLength = wd.suspension_min_length;
+    ws->mSuspensionMaxLength = wd.suspension_max_length;
+    ws->mSuspensionSpring  = JPH::SpringSettings(
+        JPH::ESpringMode::StiffnessAndDamping,
+        wd.suspension_stiffness,
+        wd.suspension_damping);
+    ws->mMaxSteerAngle     = wd.is_steered ? max_steer_angle : 0.f;
+    ws->mMaxBrakeTorque    = brake_torque;
+    ws->mMaxHandBrakeTorque = apply_handbrake ? handbrake_torque : 0.f;
+    return ws;
+}
+
+}  // namespace
+
+PhysicsVehicle* PhysicsSystem::CreateVehicle(const VehicleDesc& desc,
+                                              IPhysicsBodyListener* listener,
+                                              const core::Mat4f& initial_transform) {
+    // ---- Body shape (box + optional COM offset) ------------------------------
+    JPH::ShapeRefC box = new JPH::BoxShape(JPH::Vec3(desc.half_extents.x,
+                                                      desc.half_extents.y,
+                                                      desc.half_extents.z));
+    JPH::ShapeRefC shape;
+    constexpr float kZero = 0.f;
+    const bool has_com_offset =
+        std::abs(desc.com_offset.x - kZero) > 1e-5f ||
+        std::abs(desc.com_offset.y - kZero) > 1e-5f ||
+        std::abs(desc.com_offset.z - kZero) > 1e-5f;
+    if (has_com_offset) {
+        JPH::OffsetCenterOfMassShapeSettings ocm(
+            JPH::Vec3(desc.com_offset.x, desc.com_offset.y, desc.com_offset.z),
+            box);
+        auto result = ocm.Create();
+        if (result.HasError()) {
+            LOG_F(ERROR, "CreateVehicle: OffsetCOM shape failed: %s",
+                  result.GetError().c_str());
+            return nullptr;
+        }
+        shape = result.Get();
+    } else {
+        shape = box;
+    }
+
+    // ---- Body ----------------------------------------------------------------
+    JPH::BodyCreationSettings body_settings(shape,
+                                             ExtractPosition(initial_transform),
+                                             ExtractRotation(initial_transform),
+                                             JPH::EMotionType::Dynamic,
+                                             kLayerDynamic);
+    body_settings.mOverrideMassProperties =
+        JPH::EOverrideMassProperties::CalculateInertia;
+    body_settings.mMassPropertiesOverride.mMass = desc.mass;
+
+    JPH::BodyInterface& iface = jolt_system_->GetBodyInterface();
+    JPH::Body* body = iface.CreateBody(body_settings);
+    if (!body) {
+        LOG_F(ERROR, "CreateVehicle: failed to create vehicle body");
+        return nullptr;
+    }
+    iface.AddBody(body->GetID(), JPH::EActivation::Activate);
+
+    // ---- Wheel settings (indices: 0=FL, 1=FR, 2=RL, 3=RR) ------------------
+    JPH::VehicleConstraintSettings vc_settings;
+    vc_settings.mWheels.push_back(BuildWheelSettings(
+        desc.front_left,  desc.brake_torque, desc.handbrake_torque,
+        desc.max_steer_angle, false));
+    vc_settings.mWheels.push_back(BuildWheelSettings(
+        desc.front_right, desc.brake_torque, desc.handbrake_torque,
+        desc.max_steer_angle, false));
+    vc_settings.mWheels.push_back(BuildWheelSettings(
+        desc.rear_left,   desc.brake_torque, desc.handbrake_torque,
+        desc.max_steer_angle, true));
+    vc_settings.mWheels.push_back(BuildWheelSettings(
+        desc.rear_right,  desc.brake_torque, desc.handbrake_torque,
+        desc.max_steer_angle, true));
+
+    // ---- Controller + differentials -----------------------------------------
+    auto* ctrl = new JPH::WheeledVehicleControllerSettings();
+    ctrl->mEngine.mMaxTorque = desc.max_engine_torque;
+
+    const bool front_driven =
+        desc.front_left.is_driven || desc.front_right.is_driven;
+    const bool rear_driven =
+        desc.rear_left.is_driven || desc.rear_right.is_driven;
+    const int num_diffs = (front_driven ? 1 : 0) + (rear_driven ? 1 : 0);
+    const float torque_per_diff =
+        num_diffs > 0 ? 1.f / static_cast<float>(num_diffs) : 1.f;
+
+    if (front_driven) {
+        JPH::VehicleDifferentialSettings diff;
+        diff.mLeftWheel         = 0;
+        diff.mRightWheel        = 1;
+        diff.mEngineTorqueRatio = torque_per_diff;
+        ctrl->mDifferentials.push_back(diff);
+    }
+    if (rear_driven) {
+        JPH::VehicleDifferentialSettings diff;
+        diff.mLeftWheel         = 2;
+        diff.mRightWheel        = 3;
+        diff.mEngineTorqueRatio = torque_per_diff;
+        ctrl->mDifferentials.push_back(diff);
+    }
+    vc_settings.mController = ctrl;
+
+    // ---- Constraint ----------------------------------------------------------
+    JPH::VehicleConstraint* constraint =
+        new JPH::VehicleConstraint(*body, vc_settings);
+    constraint->SetVehicleCollisionTester(
+        new JPH::VehicleCollisionTesterRay(kLayerWorld));
+
+    jolt_system_->AddConstraint(constraint);
+    jolt_system_->AddStepListener(constraint);
+
+    auto vehicle = std::unique_ptr<PhysicsVehicle>(
+        new PhysicsVehicle(body, constraint, jolt_system_.get(), listener));
+    PhysicsVehicle* result = vehicle.get();
+    vehicles_.push_back(std::move(vehicle));
+    return result;
+}
+
+void PhysicsSystem::DestroyVehicle(PhysicsVehicle* vehicle) {
+    if (!vehicle) return;
+    vehicles_.erase(
+        std::remove_if(vehicles_.begin(), vehicles_.end(),
+                       [vehicle](const std::unique_ptr<PhysicsVehicle>& p) {
+                           return p.get() == vehicle;
+                       }),
+        vehicles_.end());
 }
 
 std::unique_ptr<CharacterController> PhysicsSystem::CreateCharacter(

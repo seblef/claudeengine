@@ -12,7 +12,9 @@
 #include "core/Vec3f.h"
 #include "physics/PhysicsBody.h"
 #include "physics/PhysicsBodyDesc.h"
+#include "physics/PhysicsVehicle.h"
 #include "physics/RaycastResult.h"
+#include "physics/VehicleDesc.h"
 
 // Forward-declare Jolt internals so Jolt headers never leak into consumers.
 namespace JPH {
@@ -107,6 +109,22 @@ class PhysicsSystem : public core::Singleton<PhysicsSystem> {
 
     // ---- Character factory ---------------------------------------------------
 
+    // ---- Vehicle factory ----------------------------------------------------
+
+    /// Create a wheeled vehicle from a descriptor.
+    /// @param listener  Optional observer receiving body transform updates each Step().
+    ///                  May be nullptr.
+    /// @returns         Non-owning pointer; lifetime is managed by this system.
+    PhysicsVehicle* CreateVehicle(const VehicleDesc& desc,
+                                   IPhysicsBodyListener* listener,
+                                   const core::Mat4f& initial_transform);
+
+    /// Remove a vehicle from the simulation and release its memory.
+    /// Safe to call with nullptr.
+    void DestroyVehicle(PhysicsVehicle* vehicle);
+
+    // ---- Character factory ---------------------------------------------------
+
     /// Create a kinematic character capsule using Jolt CharacterVirtual.
     /// The caller owns the returned pointer; destroying it removes the character.
     /// @param capsule_radius      Radius of the capsule hemisphere (metres).
@@ -146,7 +164,9 @@ class PhysicsSystem : public core::Singleton<PhysicsSystem> {
     // cppcheck-suppress unusedStructMember
     std::unique_ptr<JPH::PhysicsSystem>       jolt_system_;
     // cppcheck-suppress unusedStructMember
-    std::vector<std::unique_ptr<PhysicsBody>> bodies_;  // owns all bodies
+    std::vector<std::unique_ptr<PhysicsBody>>    bodies_;    // owns all bodies
+    // cppcheck-suppress unusedStructMember
+    std::vector<std::unique_ptr<PhysicsVehicle>> vehicles_;  // owns all vehicles
     // cppcheck-suppress unusedStructMember
     std::unordered_set<uint32_t>              terrain_body_ids_;
     // cppcheck-suppress unusedStructMember

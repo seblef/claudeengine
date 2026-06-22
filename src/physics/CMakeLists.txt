@@ -4,6 +4,7 @@ add_library(physics STATIC
     Physics.cpp
     PhysicsBody.cpp
     PhysicsSystem.cpp
+    PhysicsVehicle.cpp
 )
 
 # JoltDebugRenderer subclasses JPH::DebugRenderer which was compiled with
