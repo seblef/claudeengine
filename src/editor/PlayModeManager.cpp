@@ -78,10 +78,10 @@ PlayModeManager::~PlayModeManager() {
   if (playing_) Exit();
 }
 
-void PlayModeManager::SetOnSceneReloaded(
-    std::function<void(std::unique_ptr<EditorScene>,
+void PlayModeManager::SetOnExit(
+    std::function<void(std::filesystem::path,
                        EditorCameraController::CameraState)> cb) {
-  on_scene_reloaded_ = std::move(cb);
+  on_exit_ = std::move(cb);
 }
 
 void PlayModeManager::SetOnStatusMessage(std::function<void(std::string)> cb) {
@@ -118,6 +118,7 @@ void PlayModeManager::Enter() {
     return;
   }
   saved_camera_state_ = cam_state;
+  saved_file_path_    = scene_->GetFilePath();
 
   // 4. Deactivate editor tools.
   toolbar_->SetActiveTool(EditorTool::kSelection);
@@ -161,18 +162,18 @@ void PlayModeManager::Exit() {
   }
   play_bodies_.clear();
 
-  // 2. Restore scene from disk.
-  auto result = MapSerializer::Load(scene_->GetFilePath(), video_);
-  if (result && on_scene_reloaded_) {
-    on_scene_reloaded_(std::move(result->scene), saved_camera_state_);
-  } else if (!result) {
-    LOG_F(ERROR, "Play mode exit: failed to reload map '%s'",
-          scene_->GetFilePath().c_str());
+  // 2. Fire the on_exit_ callback so the caller can reset the old scene and
+  // load a fresh one. The caller must destroy the old scene BEFORE calling
+  // MapSerializer::Load() to prevent FoliageRenderer double-instantiation
+  // (GameTerrain::OnRemovedFromScene() destroys the singleton only when the
+  // old scene is destroyed; if Load() runs while it still exists, the new
+  // GameTerrain triggers the singleton assert).
+  if (on_exit_) {
+    on_exit_(saved_file_path_, saved_camera_state_);
   }
 
   // 3. Restore editor camera controller.
   viewport_->SetInPlayMode(false);
-  viewport_->SetCameraState(saved_camera_state_);
 
   // Destroy the FPS controller after restoring the viewport so no dangling
   // pointer is held in EditorViewport during the transition.

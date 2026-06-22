@@ -49,11 +49,21 @@ class PlayModeManager {
   // If still playing, calls Exit() to clean up physics bodies.
   ~PlayModeManager();
 
-  // Registers a callback invoked when Exit() successfully reloads the scene.
-  // The new EditorScene and saved camera state are passed with ownership so the
-  // caller can replace its scene pointer and re-wire subsystems.
-  void SetOnSceneReloaded(
-      std::function<void(std::unique_ptr<EditorScene>,
+  // Registers a callback invoked by Exit() to reload the scene.
+  //
+  // The callback receives the map file path and the saved camera state. The
+  // caller is responsible for:
+  //   1. Destroying the current scene FIRST (so GameTerrain::OnRemovedFromScene
+  //      shuts down FoliageRenderer before the new scene is loaded).
+  //   2. Loading the new scene via MapSerializer::Load().
+  //   3. Replacing the scene pointer and re-wiring subsystems.
+  //
+  // Splitting the "reset old scene" and "set new scene" steps inside the caller
+  // avoids a FoliageRenderer double-instantiation that would occur if the new
+  // EditorScene were constructed while the old one (and its FoliageRenderer)
+  // was still alive.
+  void SetOnExit(
+      std::function<void(std::filesystem::path,
                          EditorCameraController::CameraState)> cb);
 
   // Registers a callback invoked when a transient status-bar message should be
@@ -66,9 +76,10 @@ class PlayModeManager {
   // No-op if already playing.
   void Enter();
 
-  // Exits play mode: tears down play-time physics bodies, reloads the scene from
-  // disk, restores the editor camera state and panels. Fires on_scene_reloaded_
-  // on success. Restores panels even if the reload fails. No-op if not playing.
+  // Exits play mode: tears down play-time physics bodies, restores viewport and
+  // toolbar state, and fires the on_exit_ callback so the caller can reset the
+  // old scene and load a fresh one. Panels and tools are restored even if the
+  // reload in the callback fails. No-op if not playing.
   void Exit();
 
   // Steps physics and updates the FPS camera. Must be called every frame while
@@ -136,9 +147,14 @@ class PlayModeManager {
   // cppcheck-suppress unusedStructMember
   bool panels_hidden_ = false;
 
+  // File path saved during Enter() so Exit() can pass it to on_exit_ after the
+  // old scene pointer has been invalidated by the callback.
   // cppcheck-suppress unusedStructMember
-  std::function<void(std::unique_ptr<EditorScene>,
-                     EditorCameraController::CameraState)> on_scene_reloaded_;
+  std::filesystem::path saved_file_path_;
+
+  // cppcheck-suppress unusedStructMember
+  std::function<void(std::filesystem::path,
+                     EditorCameraController::CameraState)> on_exit_;
   // cppcheck-suppress unusedStructMember
   std::function<void(std::string)> on_status_message_;
 };

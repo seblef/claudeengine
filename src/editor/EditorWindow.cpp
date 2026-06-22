@@ -127,12 +127,21 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
     play_status_msg_   = std::move(msg);
     play_status_timer_ = 5.f;
   });
-  play_mode_->SetOnSceneReloaded(
-      [this](std::unique_ptr<EditorScene> new_scene,
-             EditorCameraController::CameraState /*cam*/) {
+  play_mode_->SetOnExit(
+      [this](std::filesystem::path path,
+             const EditorCameraController::CameraState& cam) {
+        // Destroy the old scene FIRST so GameTerrain::OnRemovedFromScene()
+        // shuts down FoliageRenderer before the new EditorScene is created.
         scene_.reset();
-        scene_ = std::move(new_scene);
+        auto result = MapSerializer::Load(path, video_);
+        if (!result) {
+          LOG_F(ERROR, "Play mode exit: failed to reload map '%s'",
+                path.c_str());
+          return;
+        }
+        scene_ = std::move(result->scene);
         viewport_->SetScene(scene_.get());
+        viewport_->SetCameraState(cam);
         map_properties_ = std::make_unique<MapPropertiesWindow>(scene_.get());
         history_.Clear();
         WireTerrainPanel();
