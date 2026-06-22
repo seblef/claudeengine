@@ -23,6 +23,10 @@ enum class EditorTool {
   kCreateParticleSystem,
   kCreateSoundEmitter,
   kCreateVehicle,
+  kCreateRoad,
+  // Spline-editing tool for GameRoad objects. Not a toolbar button — activates
+  // automatically when a GameRoad is selected.
+  kRoad,
 };
 
 // Returns true for any object-creation tool.
@@ -35,7 +39,8 @@ inline bool IsCreationTool(EditorTool tool) {
          tool == EditorTool::kCreatePlayerStart    ||
          tool == EditorTool::kCreateParticleSystem ||
          tool == EditorTool::kCreateSoundEmitter   ||
-         tool == EditorTool::kCreateVehicle;
+         tool == EditorTool::kCreateVehicle        ||
+         tool == EditorTool::kCreateRoad;
 }
 
 // Returns true for the three transform gizmo tools.

@@ -22,6 +22,7 @@
 #include "editor/TerrainEditorPanel.h"
 #include "editor/SoundPreviewPlayer.h"
 #include "editor/tools/PlacementTool.h"
+#include "editor/tools/RoadTool.h"
 #include "editor/tools/SelectionTool.h"
 #include "editor/tools/TerrainSculptTool.h"
 #include "editor/tools/TransformTool.h"
@@ -154,6 +155,10 @@ class EditorWindow {
   // and adds a GameTerrain to the scene.
   void CreateTerrain();
 
+  // Creates a GameRoad with four default control points, adds it to the scene,
+  // selects it (which auto-activates the RoadTool), and returns to kSelection.
+  void CreateRoad();
+
   // Removes the terrain from the scene and resets all terrain-related state.
   void RemoveTerrain();
 
@@ -241,6 +246,9 @@ class EditorWindow {
   std::unique_ptr<PlacementTool>         placement_tool_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<TerrainSculptTool>     sculpt_tool_;
+  // Road spline-editing tool: created once, activated on road selection.
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<RoadTool>              road_tool_;
 
   // Tracks the previous frame's active tool to detect transitions.
   // cppcheck-suppress unusedStructMember
