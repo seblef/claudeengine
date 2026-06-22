@@ -49,6 +49,11 @@ void GameSystem::Update() {
     camera_controller_->Update(dt);
   }
 
+  for (GameObject* obj : objects_) {
+    if (obj->GetParent() == nullptr)
+      obj->Update(dt);
+  }
+
   if (physics::PhysicsSystem::IsInstanced()) {
     physics::PhysicsSystem::Instance().Step(dt);
   }

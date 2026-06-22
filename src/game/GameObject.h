@@ -68,6 +68,12 @@ class GameObject {
   [[nodiscard]] GameObject*                 GetParent()          const;
   [[nodiscard]] const std::vector<GameObject*>& GetChildren()   const;
 
+  // Called once per frame by GameSystem for root objects; propagates to children.
+  // Default implementation propagates to children only — subclasses override to
+  // add per-frame logic before the child propagation.
+  // Subclasses must call GameObject::Update(dt) at the end to propagate.
+  virtual void Update(float dt);
+
   // Dispatches to the matching visitor overload for this object's concrete type.
   virtual void Accept(GameObjectVisitor& visitor) = 0;
 
