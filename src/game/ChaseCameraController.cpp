@@ -33,12 +33,20 @@ void ChaseCameraController::Update(float dt) {
   const core::Mat4f& world = target_->GetWorldTransform();
 
   const core::Vec3f target_pos     = {world(0, 3), world(1, 3), world(2, 3)};
-  const core::Vec3f target_forward = {-world(0, 2), -world(1, 2), -world(2, 2)};
+  // Column 2 of a game-object world matrix is the true +Z forward direction.
+  // (Unlike the camera matrix, which stores -forward in column 2.)
+  const core::Vec3f target_forward = {world(0, 2), world(1, 2), world(2, 2)};
+
+  // Scale arm by object size so the camera always clears the target's extent.
+  const core::Vec3f bbox_size   = target_->GetLocalBBox().GetSize();
+  const float       half_diag   = bbox_size.Length() * 0.5f;
+  const float       eff_length  = arm_length_ + half_diag;
+  const float       eff_height  = arm_height_ + bbox_size.y * 0.5f;
 
   // Desired position: behind and above the target.
   core::Vec3f desired = target_pos
-      - target_forward * arm_length_
-      + core::Vec3f::kAxisY * arm_height_;
+      - target_forward * eff_length
+      + core::Vec3f::kAxisY * eff_height;
 
   // Wall-clip: cast a ray from the target toward the desired position and pull
   // back slightly from any hit to prevent clipping through walls.
