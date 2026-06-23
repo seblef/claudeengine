@@ -30,8 +30,8 @@ namespace editor {
 
 namespace {
 
-constexpr int   kCombinedPreviewW    = 320;
-constexpr int   kCombinedPreviewH    = 240;
+constexpr int   kCombinedPreviewW    = 640;
+constexpr int   kCombinedPreviewH    = 480;
 constexpr float kOrbitSensitivity    = 0.4f;
 constexpr float kZoomStep            = 0.3f;
 constexpr float kDegToRad            = 3.14159265f / 180.f;
