@@ -244,6 +244,9 @@ int main(int argc, char* argv[]) {
       LOG_F(ERROR, "Failed to load vehicle '%s', falling back to FPS camera",
             vehicle_path.c_str());
     } else {
+      core::Mat4f world(map_player_start->GetWorldTransform());
+      world(1, 3) = world(1, 3) + 1.f;
+      map_player_start->SetWorldTransform(world);
       auto vehicle_owned = std::make_unique<game::GameVehicle>(vehicle_tmpl);
       vehicle_ptr = vehicle_owned.get();
       vehicle_ptr->SetWorldTransform(map_player_start->GetWorldTransform());

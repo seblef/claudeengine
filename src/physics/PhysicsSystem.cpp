@@ -678,8 +678,11 @@ PhysicsVehicle* PhysicsSystem::CreateVehicle(const VehicleDesc& desc,
     // ---- Constraint ----------------------------------------------------------
     JPH::VehicleConstraint* constraint =
         new JPH::VehicleConstraint(*body, vc_settings);
+    // Use kLayerDynamic so GetDefaultLayerFilter includes kLayerWorld (terrain).
+    // kLayerWorld as tester layer would query "what collides with kLayerWorld",
+    // which excludes kLayerWorld itself — making wheel raycasts miss the terrain.
     constraint->SetVehicleCollisionTester(
-        new JPH::VehicleCollisionTesterRay(kLayerWorld));
+        new JPH::VehicleCollisionTesterRay(kLayerDynamic));
 
     jolt_system_->AddConstraint(constraint);
     jolt_system_->AddStepListener(constraint);

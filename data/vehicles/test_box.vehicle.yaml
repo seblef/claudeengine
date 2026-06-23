@@ -1,0 +1,49 @@
+# Simple debug vehicle: box body with cylinder wheels.
+# Physics shapes exactly match the OBJ meshes.
+#
+# Body box: half_extents [1.0, 0.5, 2.0] = 2m wide, 1m tall, 4m long
+# Wheel: radius 0.4m, width 0.3m, axis along X
+#
+# Wheel attachment Y = -0.3 (below body centre):
+#   - Body rests at ~1.0m above terrain (centre), 0.5m ground clearance
+#   - Suspension reach: 0.5 + 0.4 = 0.9m > attachment-to-terrain at rest
+
+body_mesh: meshes/vehicles/test_box_body.obj
+front_wheel_mesh: meshes/vehicles/test_box_wheel.obj
+rear_wheel_mesh: meshes/vehicles/test_box_wheel.obj
+physics:
+  mass: 1200
+  max_engine_torque: 400
+  max_steer_angle: 0.5
+  brake_torque: 1500
+  handbrake_torque: 3000
+  half_extents: [1.0, 0.5, 2.0]
+  com_offset: [0, -0.2, 0]
+  suspension:
+    front: {min_length: 0.1, max_length: 0.5, stiffness: 1500, damping: 200}
+    rear: {min_length: 0.1, max_length: 0.5, stiffness: 1500, damping: 200}
+wheels:
+  front_left:
+    position: [1.1, -0.3, 1.5]
+    is_steered: true
+    is_driven: false
+    radius: 0.4
+    width: 0.3
+  front_right:
+    position: [-1.1, -0.3, 1.5]
+    is_steered: true
+    is_driven: false
+    radius: 0.4
+    width: 0.3
+  rear_left:
+    position: [1.1, -0.3, -1.5]
+    is_steered: false
+    is_driven: true
+    radius: 0.4
+    width: 0.3
+  rear_right:
+    position: [-1.1, -0.3, -1.5]
+    is_steered: false
+    is_driven: true
+    radius: 0.4
+    width: 0.3
