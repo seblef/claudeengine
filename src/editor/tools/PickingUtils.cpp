@@ -18,7 +18,9 @@
 #include "game/GameObject.h"
 #include "game/GameObjectType.h"
 #include "game/GameSoundEmitter.h"
+#include "game/GameVehicle.h"
 #include "game/MeshTemplate.h"
+#include "game/VehicleTemplate.h"
 #include "renderer/CircleSpotLight.h"
 #include "renderer/Light.h"
 #include "renderer/OmniLight.h"
@@ -304,14 +306,38 @@ game::GameObject* PickHitAt(const EditorToolContext& ctx, ImVec2 mouse_pos,
     }
   }
 
-  // Vehicle pass: chassis bbox ray intersection.
+  // Vehicle pass: bbox early-out then ray-triangle against body mesh.
   for (game::GameObject* obj : candidates) {
     if (obj->GetType() != game::GameObjectType::kVehicle) continue;
+
     float t;
     if (!obj->GetWorldBBox().IntersectsRay(ray_origin, ray_dir, t)) continue;
-    if (t < t_best) {
-      t_best = t;
-      hit = obj;
+
+    const auto* vehicle   = static_cast<const game::GameVehicle*>(obj);
+    const auto* body_tmpl = vehicle->GetBodyTemplate();
+    const auto& positions = body_tmpl->GetCPUPositions();
+
+    if (positions.empty()) {
+      if (t < t_best) {
+        t_best = t;
+        hit = obj;
+      }
+      continue;
+    }
+
+    const core::Mat4f inv_world  = obj->GetWorldTransform().Inverse();
+    const core::Vec3f local_orig = core::TransformPoint(inv_world, ray_origin);
+    const core::Vec3f local_dir  = core::TransformDir(inv_world, ray_dir);
+
+    const auto& indices = body_tmpl->GetCPUIndices();
+    for (size_t i = 0; i < indices.size(); i += 3) {
+      const float tri_t = core::RayTriangleIntersect(
+          local_orig, local_dir,
+          positions[indices[i]], positions[indices[i + 1]], positions[indices[i + 2]]);
+      if (tri_t >= 0.f && tri_t < t_best) {
+        t_best = tri_t;
+        hit    = obj;
+      }
     }
   }
 

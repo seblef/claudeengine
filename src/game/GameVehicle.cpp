@@ -2,7 +2,6 @@
 
 #include <loguru.hpp>
 
-#include "core/BBox3.h"
 #include "game/GameMesh.h"
 #include "game/GameObjectVisitor.h"
 #include "game/IVehicleController.h"
@@ -32,11 +31,7 @@ core::Mat4f PositionMatrix(const core::Vec3f& p) {
 
 GameVehicle::GameVehicle(VehicleTemplate* tmpl)
     : GameObject(GameObjectType::kVehicle,
-                 [&]() {
-                   const core::Vec3f& he = tmpl->GetVehicleDesc().half_extents;
-                   return core::BBox3(core::Vec3f(-he.x, -he.y, -he.z),
-                                      core::Vec3f( he.x,  he.y,  he.z));
-                 }()),
+                 tmpl->GetBodyTemplate()->GetLocalBBox()),
       template_(tmpl) {
   template_->AddRef();
 
@@ -141,6 +136,10 @@ std::filesystem::path GameVehicle::GetDescPath() const {
 
 const physics::VehicleDesc& GameVehicle::GetVehicleDesc() const {
   return template_->GetVehicleDesc();
+}
+
+MeshTemplate* GameVehicle::GetBodyTemplate() const {
+  return template_->GetBodyTemplate();
 }
 
 }  // namespace game
