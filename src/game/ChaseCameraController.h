@@ -31,11 +31,13 @@ class ChaseCameraController : public ICameraController {
   // Sets the scene object the camera will follow.
   void SetTarget(const GameObject* target);
 
-  // Distance (metres) from target to camera along the backward axis.
+  // Extra clearance (metres) added behind the target beyond its bounding-box
+  // half-diagonal. The effective arm length is arm_length + bbox_half_diag.
   // Default: 10.0.
   void SetArmLength(float m);
 
-  // Height offset (metres) added above the target position.
+  // Extra clearance (metres) added above the target beyond its bounding-box
+  // half-height. The effective height offset is arm_height + bbox_height/2.
   // Default: 3.0.
   void SetArmHeight(float m);
 
