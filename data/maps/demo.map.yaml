@@ -309,10 +309,10 @@ terrain:
       cull_distance: 80
       billboard_distance: 35
 editor:
-  selected_object: crickets_008
+  selected_object: Object
   camera:
-    focus: [590.876526, 30.8596382, 1123.83435]
-    azimuth: -0.40273726
-    elevation: 0.589203238
-    distance: 12.933526
+    focus: [572.770996, 37.8306122, 1121.172]
+    azimuth: -0.0577374026
+    elevation: 0.414203405
+    distance: 77.5522995
   snap_grid: 0
