@@ -63,6 +63,18 @@ void GameVehicle::Accept(GameObjectVisitor& visitor) {
   visitor.Visit(*this);
 }
 
+std::unique_ptr<GameObject> GameVehicle::Copy(
+    const core::Vec3f& position) const {
+  auto clone = std::make_unique<GameVehicle>(template_);
+  clone->SetName(GetName());
+  core::Mat4f t = GetWorldTransform();
+  t(0, 3) = position.x;
+  t(1, 3) = position.y;
+  t(2, 3) = position.z;
+  clone->SetWorldTransform(t);
+  return clone;
+}
+
 void GameVehicle::OnAddedToScene() {
   body_mesh_->OnAddedToScene();
   wheel_fl_->OnAddedToScene();

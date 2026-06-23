@@ -48,6 +48,10 @@ class GameVehicle : public GameObject, public physics::IPhysicsBodyListener {
 
   void Accept(GameObjectVisitor& visitor) override;
 
+  // Returns a new GameVehicle from the same template, placed at position.
+  [[nodiscard]] std::unique_ptr<GameObject> Copy(
+      const core::Vec3f& position) const override;
+
   // --- Scene lifecycle -------------------------------------------------------
 
   // Registers body and wheel meshes with the renderer. Does NOT create physics.
