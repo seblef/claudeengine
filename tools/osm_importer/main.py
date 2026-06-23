@@ -3,6 +3,7 @@
 import argparse
 import sys
 
+from osm_importer.buildings import build_building_meshes
 from osm_importer.fetcher import load_osm
 from osm_importer.projection import Projector
 from osm_importer.roads import extract_roads
@@ -67,8 +68,10 @@ def main(argv=None):
     roads = extract_roads(ways, nodes, projector)
     print(f"Extracted {len(roads)} roads")
 
-    # TODO: generate building meshes
-    # TODO(#749): write .map.yaml
+    buildings = build_building_meshes(ways, nodes, projector, args.mesh_dir)
+    print(f"Generated {len(buildings)} building meshes")
+
+    # TODO(#750): write .map.yaml
 
 
 if __name__ == "__main__":
