@@ -287,9 +287,7 @@ PhysicsSystem::~PhysicsSystem() {
     jolt_system_.reset();
     job_system_.reset();
     temp_allocator_.reset();
-    // Clear sInstance before destroying the renderer to avoid dangling pointer.
-    JPH::DebugRenderer::sInstance = nullptr;
-    debug_renderer_.reset();
+    debug_renderer_.reset();  // ~DebugRenderer() clears sInstance
     JPH::UnregisterTypes();
     delete JPH::Factory::sInstance;
     JPH::Factory::sInstance = nullptr;
@@ -680,8 +678,11 @@ PhysicsVehicle* PhysicsSystem::CreateVehicle(const VehicleDesc& desc,
     // ---- Constraint ----------------------------------------------------------
     JPH::VehicleConstraint* constraint =
         new JPH::VehicleConstraint(*body, vc_settings);
+    // Use kLayerDynamic so GetDefaultLayerFilter includes kLayerWorld (terrain).
+    // kLayerWorld as tester layer would query "what collides with kLayerWorld",
+    // which excludes kLayerWorld itself — making wheel raycasts miss the terrain.
     constraint->SetVehicleCollisionTester(
-        new JPH::VehicleCollisionTesterRay(kLayerWorld));
+        new JPH::VehicleCollisionTesterRay(kLayerDynamic));
 
     jolt_system_->AddConstraint(constraint);
     jolt_system_->AddStepListener(constraint);

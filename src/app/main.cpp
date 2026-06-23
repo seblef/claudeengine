@@ -24,6 +24,7 @@
 #include "environment/WaterRenderer.h"
 #include "environment/WindSystem.h"
 #include "environment/WorldTime.h"
+#include "game/ChaseCameraController.h"
 #include "game/EnvironmentLighting.h"
 #include "game/FPSCameraController.h"
 #include "game/GameCamera.h"
@@ -34,9 +35,12 @@
 #include "game/GamePlayerStart.h"
 #include "game/GameSystem.h"
 #include "game/GameTerrain.h"
+#include "game/GameVehicle.h"
 #include "terrain/TerrainData.h"
 #include "game/MapLoader.h"
 #include "game/MeshTemplate.h"
+#include "game/PlayerVehicleController.h"
+#include "game/VehicleTemplate.h"
 #include "gldevices/GLDevices.h"
 #include "physics/PhysicsSystem.h"
 #include "renderer/GeometryUtils.h"
@@ -61,12 +65,15 @@ int main(int argc, char* argv[]) {
   core::AppConfig::Init(core::Config::GetDataFolder() / "config.yaml");
   new core::EventManager();
 
-  // ---- Parse --map <path> or bare positional path -------------------------
+  // ---- Parse --map <path> and --vehicle <desc_path> -----------------------
   std::string map_path;
+  std::string vehicle_path;
   for (int i = 1; i < argc; ++i) {
     const std::string arg(argv[i]);
     if (arg == "--map" && i + 1 < argc) {
       map_path = argv[++i];
+    } else if (arg == "--vehicle" && i + 1 < argc) {
+      vehicle_path = argv[++i];
     } else if (!arg.empty() && arg[0] != '-' && map_path.empty()) {
       map_path = arg;
     }
@@ -225,6 +232,37 @@ int main(int argc, char* argv[]) {
     }
   }
 
+  // ---- Vehicle spawn (optional) --------------------------------------------
+  game::VehicleTemplate*                         vehicle_tmpl = nullptr;
+  game::GameVehicle*                             vehicle_ptr  = nullptr;
+  std::unique_ptr<game::PlayerVehicleController> player_vehicle_ctrl;
+  std::unique_ptr<game::ChaseCameraController>   chase_controller;
+
+  if (!vehicle_path.empty() && map_player_start) {
+    vehicle_tmpl = game::VehicleTemplate::GetOrLoad(vehicle_path, video);
+    if (!vehicle_tmpl) {
+      LOG_F(ERROR, "Failed to load vehicle '%s', falling back to FPS camera",
+            vehicle_path.c_str());
+    } else {
+      core::Mat4f world(map_player_start->GetWorldTransform());
+      world(1, 3) = world(1, 3) + 1.f;
+      map_player_start->SetWorldTransform(world);
+      auto vehicle_owned = std::make_unique<game::GameVehicle>(vehicle_tmpl);
+      vehicle_ptr = vehicle_owned.get();
+      vehicle_ptr->SetWorldTransform(map_player_start->GetWorldTransform());
+      game.AddObject(vehicle_ptr);
+      map_objects.push_back(std::move(vehicle_owned));
+
+      player_vehicle_ctrl = std::make_unique<game::PlayerVehicleController>();
+      vehicle_ptr->SetVehicleController(player_vehicle_ctrl.get());
+      vehicle_ptr->Activate();
+
+      chase_controller = std::make_unique<game::ChaseCameraController>();
+      chase_controller->SetCamera(&camera);
+      chase_controller->SetTarget(vehicle_ptr);
+    }
+  }
+
   // ---- Camera setup --------------------------------------------------------
   if (map_camera) {
     map_camera->SetMaxDepth(1000.f);
@@ -234,13 +272,16 @@ int main(int argc, char* argv[]) {
     camera.SetMaxDepth(1000.f);
     camera.SetScreenCenter({gfx.GetWidth() * 0.5f, gfx.GetHeight() * 0.5f});
     game.SetCamera(&camera);
-    game.SetCameraController(&controller);
-
-    if (map_player_start) {
-      const core::Mat4f& t = map_player_start->GetWorldTransform();
-      controller.SetPosition({t(0, 3), t(1, 3), t(2, 3)});
+    if (vehicle_ptr) {
+      game.SetCameraController(chase_controller.get());
     } else {
-      controller.SetPosition({0.f, 5.f, 30.f});
+      game.SetCameraController(&controller);
+      if (map_player_start) {
+        const core::Mat4f& t = map_player_start->GetWorldTransform();
+        controller.SetPosition({t(0, 3), t(1, 3), t(2, 3)});
+      } else {
+        controller.SetPosition({0.f, 5.f, 30.f});
+      }
     }
   }
 
@@ -250,7 +291,9 @@ int main(int argc, char* argv[]) {
   // P   = toggle physics body wireframe overlay.
   renderer::DebugMode debug_mode = renderer::DebugMode::kNone;
   bool physics_debug_enabled = false;
-  game.SetEventCallback([&debug_mode, &physics_debug_enabled](const core::Event& e) {
+  game.SetEventCallback([&debug_mode, &physics_debug_enabled,
+                         &player_vehicle_ctrl](const core::Event& e) {
+    if (player_vehicle_ctrl) player_vehicle_ctrl->OnEvent(e);
     if (e.type != core::EventType::kKeyDown) return;
     if (e.key == core::Key::kEscape || e.key == core::Key::k0)
       debug_mode = renderer::DebugMode::kNone;
@@ -323,6 +366,8 @@ int main(int argc, char* argv[]) {
     environment::CloudShadowRenderer::Instance().Reset();
     environment::CloudShadowRenderer::Shutdown();
   }
+
+  if (vehicle_tmpl) vehicle_tmpl->Release();
 
   physics::PhysicsSystem::Shutdown();
   game::GameSystem::Shutdown();

@@ -7,12 +7,33 @@ physics:
   max_steer_angle: 0.5
   brake_torque: 1500
   handbrake_torque: 3000
-  com_offset: [0, -0.300000012, 0]
+  half_extents: [2.5, 0.8, 4.5]
+  com_offset: [0, -0.2, 0]
   suspension:
-    front: {min_length: 0.100000001, max_length: 0.5, stiffness: 1500, damping: 200}
-    rear: {min_length: 0.100000001, max_length: 0.5, stiffness: 1500, damping: 200}
+    front: {min_length: 0.1, max_length: 0.5, stiffness: 1500, damping: 200}
+    rear: {min_length: 0.1, max_length: 0.5, stiffness: 1500, damping: 200}
 wheels:
-  front_left: {position: [2.82779384, 0.381909072, 3.95890403]}
-  front_right: {position: [-2.82779384, 0.381909072, 3.95890403]}
-  rear_left: {position: [2.80543566, 0.411482215, -4.6718955]}
-  rear_right: {position: [-2.80543566, 0.411482215, -4.6718955]}
+  front_left:
+    position: [2.82779384, -0.4, 3.95890403]
+    is_steered: true
+    is_driven: false
+    radius: 0.4
+    width: 0.3
+  front_right:
+    position: [-2.82779384, -0.4, 3.95890403]
+    is_steered: true
+    is_driven: false
+    radius: 0.4
+    width: 0.3
+  rear_left:
+    position: [2.80543566, -0.4, -4.6718955]
+    is_steered: false
+    is_driven: true
+    radius: 0.4
+    width: 0.3
+  rear_right:
+    position: [-2.80543566, -0.4, -4.6718955]
+    is_steered: false
+    is_driven: true
+    radius: 0.4
+    width: 0.3
