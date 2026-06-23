@@ -35,6 +35,7 @@ constexpr int   kCombinedPreviewH    = 480;
 constexpr float kOrbitSensitivity    = 0.4f;
 constexpr float kZoomStep            = 0.3f;
 constexpr float kDegToRad            = 3.14159265f / 180.f;
+constexpr float kPi                  = 3.14159265f;
 // Max squared drag distance (px²) that still counts as a click (4 px radius).
 constexpr float kClickThreshSqr      = 16.f;
 // Max squared screen distance (px²) for click-to-select wheel (20 px radius).
@@ -42,6 +43,13 @@ constexpr float kWheelPickThreshSqr  = 400.f;
 
 core::Mat4f PositionMat(const core::Vec3f& p) {
   return core::Mat4f::Translation(p);
+}
+
+// Wheel transform: 180° Y-rotation mirrors the mesh for right-side wheels
+// without flipping triangle winding (det = +1), avoiding backface-culling artefacts.
+core::Mat4f WheelMat(const core::Vec3f& p, bool mirrored) {
+  return mirrored ? core::Mat4f::Translation(p) * core::Mat4f::RotationY(kPi)
+                  : core::Mat4f::Translation(p);
 }
 
 }  // namespace
@@ -301,11 +309,12 @@ void VehicleEditorWindow::RebuildCombinedInstances() {
       front_wheel_tmpl_, front_wheel_tmpl_,
       rear_wheel_tmpl_,  rear_wheel_tmpl_,
   };
+  const bool mirrored[4] = {false, true, false, true};
   for (int i = 0; i < 4; ++i) {
     if (wheel_tmpls[i] && wheel_tmpls[i]->GetMesh()) {
       combined_instances_[i + 1] = std::make_unique<renderer::MeshInstance>(
           wheel_tmpls[i]->GetMesh(),
-          PositionMat(wheels[i]->position),
+          WheelMat(wheels[i]->position, mirrored[i]),
           /*always_visible=*/true);
     } else {
       combined_instances_[i + 1].reset();
@@ -395,9 +404,11 @@ void VehicleEditorWindow::RenderCombined(float time) {
       &vehicle_desc_.front_left, &vehicle_desc_.front_right,
       &vehicle_desc_.rear_left,  &vehicle_desc_.rear_right,
   };
+  const bool mirrored[4] = {false, true, false, true};
   for (int i = 0; i < 4; ++i) {
     if (combined_instances_[i + 1])
-      combined_instances_[i + 1]->SetWorldMatrix(PositionMat(wheels[i]->position));
+      combined_instances_[i + 1]->SetWorldMatrix(
+          WheelMat(wheels[i]->position, mirrored[i]));
   }
 
   renderer::MeshInstance* ptrs[5];
@@ -465,8 +476,12 @@ void VehicleEditorWindow::DrawCombinedPreview(float time) {
       new_model = new_model.Transpose();
       const core::Vec3f new_pos = {new_model(0, 3), new_model(1, 3), new_model(2, 3)};
       wd.position = new_pos;
-      if (focused_wheel_ == 0) vehicle_desc_.front_right.position.x = -new_pos.x;
-      if (focused_wheel_ == 2) vehicle_desc_.rear_right.position.x  = -new_pos.x;
+      const int opposite[4] = {1, 0, 3, 2};
+      physics::WheelDesc* all_wheels[4] = {
+          &vehicle_desc_.front_left, &vehicle_desc_.front_right,
+          &vehicle_desc_.rear_left,  &vehicle_desc_.rear_right,
+      };
+      all_wheels[opposite[focused_wheel_]]->position = {-new_pos.x, new_pos.y, new_pos.z};
       dirty_ = true;
     }
   }
@@ -602,8 +617,8 @@ void VehicleEditorWindow::DrawWheelsSection() {
     float pos[3] = {wheels[i]->position.x, wheels[i]->position.y, wheels[i]->position.z};
     if (ImGui::DragFloat3("##pos", pos, 0.01f)) {
       wheels[i]->position = {pos[0], pos[1], pos[2]};
-      if (i == 0) vehicle_desc_.front_right.position.x = -pos[0];
-      if (i == 2) vehicle_desc_.rear_right.position.x  = -pos[0];
+      const int opposite[4] = {1, 0, 3, 2};
+      wheels[opposite[i]]->position = {-pos[0], pos[1], pos[2]};
       dirty_ = true;
     }
     if (ImGui::IsItemFocused() || ImGui::IsItemActive()) focused_wheel_ = i;

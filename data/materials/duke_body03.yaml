@@ -1,0 +1,6 @@
+rendering:
+  diffuse_color: [0.168141603, 0.168141603, 0.168141603, 1]
+  emissive_color: [0, 0, 0, 0]
+  ambient_color: [0, 0, 0, 0]
+  shininess: 53.9449997
+  specular: 0.416000009
