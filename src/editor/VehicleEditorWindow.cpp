@@ -70,6 +70,12 @@ VehicleEditorWindow::VehicleEditorWindow(abstract::VideoDevice* video)
       core::Color(0.9f, 0.85f, 0.7f), 1.0f,
       core::Vec3f(0.05f, 0.05f, 0.05f),
       core::Vec3f(-1.f, -2.f, -1.f).Normalized());
+
+  // Flat light: full-white ambient, zero directional — used when lighting is off.
+  combined_flat_light_ = std::make_unique<renderer::GlobalLight>(
+      core::Color(0.f, 0.f, 0.f), 0.f,
+      core::Vec3f(1.f, 1.f, 1.f),
+      core::Vec3f(0.f, -1.f, 0.f));
 }
 
 VehicleEditorWindow::~VehicleEditorWindow() {
@@ -401,9 +407,11 @@ void VehicleEditorWindow::RenderCombined(float time) {
   }
 
   if (count > 0) {
+    renderer::GlobalLight* light =
+        preview_lit_ ? combined_light_.get() : combined_flat_light_.get();
     combined_renderer_->Render(time, combined_camera_,
                                std::span<renderer::MeshInstance* const>(ptrs, count),
-                               combined_light_.get(), combined_rtg_.get());
+                               light, combined_rtg_.get());
   }
 }
 
@@ -568,6 +576,9 @@ void VehicleEditorWindow::DrawWheelsSection() {
     ImGui::PopID();
     if (i < 3) ImGui::SameLine();
   }
+
+  ImGui::SameLine(0.f, 20.f);
+  ImGui::Checkbox("Lit", &preview_lit_);
 
   ImGui::Spacing();
 

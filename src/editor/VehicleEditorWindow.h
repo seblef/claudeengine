@@ -142,6 +142,8 @@ class VehicleEditorWindow {
   std::unique_ptr<abstract::RenderTargetGroup> combined_rtg_;
   std::unique_ptr<renderer::PreviewRenderer>   combined_renderer_;
   std::unique_ptr<renderer::GlobalLight>       combined_light_;
+  // Full-ambient, zero-directional light used when preview_lit_ is false.
+  std::unique_ptr<renderer::GlobalLight>       combined_flat_light_;
   // cppcheck-suppress unusedStructMember
   core::Camera                                 combined_camera_;
 
@@ -157,6 +159,10 @@ class VehicleEditorWindow {
   // True while the user is dragging to orbit (drag started inside the preview).
   // cppcheck-suppress unusedStructMember
   bool orbit_drag_active_       = false;
+  // When false the preview uses a flat full-ambient light so wheel positions
+  // are easier to read without directional shading.
+  // cppcheck-suppress unusedStructMember
+  bool preview_lit_             = true;
   // Vehicle editor window scroll-Y captured at end of each frame so we can
   // undo the scroll when the user wheel-zooms inside the preview.
   // cppcheck-suppress unusedStructMember
