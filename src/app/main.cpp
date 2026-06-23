@@ -315,12 +315,10 @@ int main(int argc, char* argv[]) {
   // ---- Main loop ------------------------------------------------------------
   float prev_elapsed = 0.f;
   while (game.IsRunning()) {
-    if (map_world_time || map_wind_system || vehicle_ptr) {
+    if (map_world_time || map_wind_system) {
       const float elapsed  = game.GetElapsedTime();
       const float frame_dt = elapsed - prev_elapsed;
       prev_elapsed = elapsed;
-
-      if (vehicle_ptr) vehicle_ptr->Update(frame_dt);
 
       if (map_world_time) {
         map_world_time->Advance(frame_dt);
