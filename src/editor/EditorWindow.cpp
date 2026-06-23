@@ -45,6 +45,7 @@
 #include "editor/MeshSelectionModal.h"
 #include "editor/ParticleSystemSelectionModal.h"
 #include "editor/SoundEmitterSelectionModal.h"
+#include "editor/VehicleSelectionModal.h"
 #include "editor/ObjectNamingUtils.h"
 #include "editor/ObjectsPanel.h"
 #include "editor/ResourceBrowser.h"
@@ -124,6 +125,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       mesh_modal_(std::make_unique<MeshSelectionModal>()),
       particle_modal_(std::make_unique<ParticleSystemSelectionModal>()),
       sound_modal_(std::make_unique<SoundEmitterSelectionModal>()),
+      vehicle_modal_(std::make_unique<VehicleSelectionModal>()),
       properties_panel_(std::make_unique<PropertiesPanel>()),
       resources_panel_(std::make_unique<ResourcesPanel>()),
       objects_panel_(std::make_unique<ObjectsPanel>()),
@@ -515,35 +517,7 @@ void EditorWindow::Render() {
       } else if (active_tool == EditorTool::kCreateRoad) {
         CreateRoad();
       } else if (active_tool == EditorTool::kCreateVehicle) {
-        nfdu8char_t* out_path = nullptr;
-        const nfdu8filteritem_t v_filter = {"Vehicle", "vehicle.yaml"};
-        const nfdresult_t nfd_res =
-            NFD_OpenDialogU8(&out_path, &v_filter, 1, nullptr);
-        if (nfd_res == NFD_OKAY) {
-          const std::filesystem::path full_path(out_path);
-          NFD_FreePathU8(out_path);
-          const std::filesystem::path data_dir = core::Config::GetDataFolder();
-          const std::string desc_rel =
-              std::filesystem::relative(full_path, data_dir).string();
-          game::VehicleTemplate* tmpl =
-              game::VehicleTemplate::GetOrLoad(desc_rel, video_);
-          if (tmpl) {
-            auto vehicle = std::make_unique<game::GameVehicle>(tmpl);
-            tmpl->Release();
-            vehicle->SetName(GenerateObjectName(*scene_, "vehicle"));
-            placement_tool_ = std::make_unique<PlacementTool>(
-                std::move(vehicle), 0.f,
-                ImGuiMouseCursor_ResizeAll,
-                [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
-            viewport_->SetActiveTool(placement_tool_.get());
-          } else {
-            LOG_F(WARNING, "EditorWindow: failed to load vehicle template '%s'",
-                  desc_rel.c_str());
-            toolbar_->SetActiveTool(EditorTool::kSelection);
-          }
-        } else {
-          toolbar_->SetActiveTool(EditorTool::kSelection);
-        }
+        vehicle_modal_->Open();
       }
     }
   }
@@ -591,6 +565,27 @@ void EditorWindow::Render() {
         ImGuiMouseCursor_ResizeAll,
         [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
     viewport_->SetActiveTool(placement_tool_.get());
+  }
+
+  // Vehicle selection modal — open when kCreateVehicle activated.
+  if (const std::string v_name = vehicle_modal_->Render(); !v_name.empty()) {
+    const std::string desc_rel = "vehicles/" + v_name + ".vehicle.yaml";
+    game::VehicleTemplate* tmpl =
+        game::VehicleTemplate::GetOrLoad(desc_rel, video_);
+    if (tmpl) {
+      auto vehicle = std::make_unique<game::GameVehicle>(tmpl);
+      tmpl->Release();
+      vehicle->SetName(GenerateObjectName(*scene_, v_name));
+      placement_tool_ = std::make_unique<PlacementTool>(
+          std::move(vehicle), 0.f,
+          ImGuiMouseCursor_ResizeAll,
+          [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
+      viewport_->SetActiveTool(placement_tool_.get());
+    } else {
+      LOG_F(WARNING, "EditorWindow: failed to load vehicle template '%s'",
+            desc_rel.c_str());
+      toolbar_->SetActiveTool(EditorTool::kSelection);
+    }
   }
 
   // 4. Viewport panel.

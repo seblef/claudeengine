@@ -43,6 +43,7 @@ const char* OutlinerPanel::IconForType(game::GameObjectType type) {
     case game::GameObjectType::kPlayerStart:    return ICON_FA_FLAG;
     case game::GameObjectType::kParticleSystem: return ICON_FA_FIRE;
     case game::GameObjectType::kSoundEmitter:   return ICON_FA_VOLUME_HIGH;
+    case game::GameObjectType::kVehicle:        return ICON_FA_CAR;
     default:                                    return ICON_FA_CIRCLE;
   }
 }

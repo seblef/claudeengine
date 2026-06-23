@@ -41,6 +41,7 @@ class VehicleEditorWindow;
 class MeshSelectionModal;
 class ParticleSystemSelectionModal;
 class SoundEmitterSelectionModal;
+class VehicleSelectionModal;
 class PropertiesPanel;
 class ProfilerPanel;
 class ResourceBrowser;
@@ -203,6 +204,8 @@ class EditorWindow {
   std::unique_ptr<ParticleSystemSelectionModal>    particle_modal_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<SoundEmitterSelectionModal>      sound_modal_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<VehicleSelectionModal>           vehicle_modal_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<PropertiesPanel>       properties_panel_;
   // cppcheck-suppress unusedStructMember
