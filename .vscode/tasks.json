@@ -3,7 +3,7 @@
         {
             "label": "Build Editor (dev)",
             "type": "shell",
-            "command": "cmake --build _build --target claude_editor -- -j$(nproc)",
+            "command": "cmake --build _build --target wreckoning_editor -- -j$(nproc)",
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -16,7 +16,7 @@
         {
             "label": "Build Engine (dev)",
             "type": "shell",
-            "command": "cmake --build _build --target claude_engine -- -j$(nproc)",
+            "command": "cmake --build _build --target wreckoning -- -j$(nproc)",
             "group": {
                 "kind": "build",
                 "isDefault": true
