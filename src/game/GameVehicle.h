@@ -17,6 +17,7 @@ namespace game {
 
 class GameMesh;
 class IVehicleController;
+class MeshTemplate;
 class VehicleTemplate;
 
 // A wheeled vehicle scene object driven by a PhysicsVehicle simulation.
@@ -83,8 +84,10 @@ class GameVehicle : public GameObject, public physics::IPhysicsBodyListener {
   // Activate(). May be nullptr — the vehicle will be simulated without inputs.
   void SetVehicleController(IVehicleController* ctrl) { controller_ = ctrl; }
 
-  [[nodiscard]] std::filesystem::path       GetDescPath()    const;
-  [[nodiscard]] const physics::VehicleDesc& GetVehicleDesc() const;
+  [[nodiscard]] std::filesystem::path       GetDescPath()      const;
+  [[nodiscard]] const physics::VehicleDesc& GetVehicleDesc()   const;
+  // Non-owning; used by PickingUtils for ray-triangle intersection.
+  [[nodiscard]] MeshTemplate*               GetBodyTemplate()  const;
 
  private:
   // cppcheck-suppress unusedStructMember
