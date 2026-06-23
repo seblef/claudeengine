@@ -75,6 +75,15 @@ GLTexture::GLTexture(const std::string& name, abstract::BufferUsage usage)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A,
                     static_cast<GLint>(fmt.Swizzles[3]));
 
+    // Drain any pre-existing GL errors so that the glGetError() check below
+    // only catches errors from glCompressedTexImage2D itself.
+    {
+      GLenum pre_err;
+      while ((pre_err = glGetError()) != GL_NO_ERROR)
+        LOG_F(WARNING, "GLTexture '%s': stale GL error 0x%x before upload",
+              name.c_str(), pre_err);
+    }
+
     for (std::size_t level = 0; level < tex.levels(); ++level) {
       gli::extent2d const mip_ext = tex.extent(level);
       glCompressedTexImage2D(GL_TEXTURE_2D,
