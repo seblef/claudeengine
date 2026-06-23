@@ -1,6 +1,6 @@
 rendering:
   textures:
-    diffuse: vehicles/duke_03_diffuse.png
+    diffuse: vehicles/duke_03_diffuse.dds
   diffuse_color: [1, 1, 1, 1]
   emissive_color: [0, 0, 0, 0]
   ambient_color: [0, 0, 0, 0]
