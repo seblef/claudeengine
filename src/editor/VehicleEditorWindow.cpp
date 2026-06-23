@@ -413,61 +413,21 @@ void VehicleEditorWindow::DrawCombinedPreview(float time) {
   const ImVec2 size(static_cast<float>(kCombinedPreviewW),
                     static_cast<float>(kCombinedPreviewH));
   const ImVec2 pos = ImGui::GetCursorScreenPos();
-  ImGui::InvisibleButton("##combined_preview", size);
+
+  // Dummy instead of InvisibleButton: reserves space without registering an
+  // ImGui item as hovered/active, which would make ImGuizmo::CanActivate()
+  // always return false and permanently disable gizmo dragging.
+  ImGui::Dummy(size);
 
   ImGui::GetWindowDrawList()->AddImage(
       combined_rt_->GetNativeHandle(),
       pos, ImVec2(pos.x + size.x, pos.y + size.y),
       ImVec2(0.f, 1.f), ImVec2(1.f, 0.f));
 
-  if (ImGui::IsItemHovered() || ImGui::IsItemActive()) {
-    const ImGuiIO& io = ImGui::GetIO();
-    if (io.MouseDown[ImGuiMouseButton_Left] && !ImGuizmo::IsUsing()) {
-      combined_azimuth_deg_   -= io.MouseDelta.x * kOrbitSensitivity;
-      combined_elevation_deg_ += io.MouseDelta.y * kOrbitSensitivity;
-      combined_elevation_deg_  = std::clamp(combined_elevation_deg_, -89.f, 89.f);
-    }
-    const float scroll = io.MouseWheel;
-    if (scroll != 0.f) {
-      combined_distance_ -= scroll * kZoomStep * combined_distance_;
-      combined_distance_  = std::clamp(combined_distance_, 0.5f, 200.f);
-    }
-  }
+  const ImVec2 preview_max(pos.x + size.x, pos.y + size.y);
+  const bool   in_preview = ImGui::IsMouseHoveringRect(pos, preview_max);
 
-  // Click-to-select: small drag without gizmo usage → pick nearest wheel.
-  if (ImGui::IsItemDeactivated()) {
-    const ImGuiIO& io = ImGui::GetIO();
-    if (!ImGuizmo::IsUsing() &&
-        io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Left] < kClickThreshSqr) {
-      const ImVec2 click_pos = io.MouseClickedPos[ImGuiMouseButton_Left];
-      const core::Mat4f& vp = combined_camera_.GetViewProjectionMatrix();
-      const physics::WheelDesc* const wheels[4] = {
-          &vehicle_desc_.front_left, &vehicle_desc_.front_right,
-          &vehicle_desc_.rear_left,  &vehicle_desc_.rear_right,
-      };
-      float best_dist_sq = kWheelPickThreshSqr;
-      int   best         = -1;
-      for (int i = 0; i < 4; ++i) {
-        const core::Vec3f& wp = wheels[i]->position;
-        const core::Vec4f  clip =
-            core::Vec4f(wp.x, wp.y, wp.z, 1.f) * vp;
-        if (clip.w <= 0.f) continue;
-        const float inv_w = 1.f / clip.w;
-        const float sx = pos.x + (clip.x * inv_w * 0.5f + 0.5f) * size.x;
-        const float sy = pos.y + (1.f - (clip.y * inv_w * 0.5f + 0.5f)) * size.y;
-        const float dx  = click_pos.x - sx;
-        const float dy  = click_pos.y - sy;
-        const float d2  = dx * dx + dy * dy;
-        if (d2 < best_dist_sq) {
-          best_dist_sq = d2;
-          best         = i;
-        }
-      }
-      if (best >= 0) focused_wheel_ = best;
-    }
-  }
-
-  // Always-active gizmo for the selected wheel.
+  // Gizmo for the selected wheel.
   {
     const std::array<physics::WheelDesc*, 4> wheels = {
         &vehicle_desc_.front_left, &vehicle_desc_.front_right,
@@ -500,6 +460,71 @@ void VehicleEditorWindow::DrawCombinedPreview(float time) {
       if (focused_wheel_ == 0) vehicle_desc_.front_right.position.x = -new_pos.x;
       if (focused_wheel_ == 2) vehicle_desc_.rear_right.position.x  = -new_pos.x;
       dirty_ = true;
+    }
+  }
+
+  // Orbit drag — starts when clicking inside the preview on a non-gizmo area,
+  // continues until the mouse button is released (even outside the preview).
+  {
+    const ImGuiIO& io = ImGui::GetIO();
+    if (in_preview && io.MouseClicked[ImGuiMouseButton_Left] &&
+        !ImGuizmo::IsUsing() && !ImGuizmo::IsOver()) {
+      orbit_drag_active_ = true;
+    }
+    if (!io.MouseDown[ImGuiMouseButton_Left]) orbit_drag_active_ = false;
+
+    if (orbit_drag_active_ && !ImGuizmo::IsUsing()) {
+      combined_azimuth_deg_   -= io.MouseDelta.x * kOrbitSensitivity;
+      combined_elevation_deg_ += io.MouseDelta.y * kOrbitSensitivity;
+      combined_elevation_deg_  = std::clamp(combined_elevation_deg_, -89.f, 89.f);
+    }
+  }
+
+  // Zoom — when hovering the preview, undo the window scroll that
+  // UpdateMouseWheel() already applied in NewFrame() and use the wheel for
+  // zoom instead.  preview_scroll_y_ stores the scroll captured at end of
+  // last frame (i.e. before UpdateMouseWheel touched it this frame).
+  if (in_preview) {
+    const float wheel = ImGui::GetIO().MouseWheel;
+    if (wheel != 0.f) {
+      ImGui::SetScrollY(preview_scroll_y_);
+      combined_distance_ -= wheel * kZoomStep * combined_distance_;
+      combined_distance_  = std::clamp(combined_distance_, 0.5f, 200.f);
+    }
+  }
+  preview_scroll_y_ = ImGui::GetScrollY();
+
+  // Click-to-select: short release inside preview without gizmo → nearest wheel.
+  {
+    const ImGuiIO& io = ImGui::GetIO();
+    if (in_preview && io.MouseReleased[ImGuiMouseButton_Left] &&
+        !ImGuizmo::IsUsing() &&
+        io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Left] < kClickThreshSqr) {
+      const ImVec2 click_pos = io.MouseClickedPos[ImGuiMouseButton_Left];
+      const core::Mat4f& vp = combined_camera_.GetViewProjectionMatrix();
+      const physics::WheelDesc* const wheels[4] = {
+          &vehicle_desc_.front_left, &vehicle_desc_.front_right,
+          &vehicle_desc_.rear_left,  &vehicle_desc_.rear_right,
+      };
+      float best_dist_sq = kWheelPickThreshSqr;
+      int   best         = -1;
+      for (int i = 0; i < 4; ++i) {
+        const core::Vec3f& wp = wheels[i]->position;
+        const core::Vec4f  clip =
+            core::Vec4f(wp.x, wp.y, wp.z, 1.f) * vp;
+        if (clip.w <= 0.f) continue;
+        const float inv_w = 1.f / clip.w;
+        const float sx = pos.x + (clip.x * inv_w * 0.5f + 0.5f) * size.x;
+        const float sy = pos.y + (1.f - (clip.y * inv_w * 0.5f + 0.5f)) * size.y;
+        const float dx  = click_pos.x - sx;
+        const float dy  = click_pos.y - sy;
+        const float d2  = dx * dx + dy * dy;
+        if (d2 < best_dist_sq) {
+          best_dist_sq = d2;
+          best         = i;
+        }
+      }
+      if (best >= 0) focused_wheel_ = best;
     }
   }
 }

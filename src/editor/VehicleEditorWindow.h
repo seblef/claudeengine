@@ -154,6 +154,13 @@ class VehicleEditorWindow {
   float combined_distance_      = 5.f;
   // cppcheck-suppress unusedStructMember
   core::Vec3f combined_center_  = {0.f, 0.f, 0.f};
+  // True while the user is dragging to orbit (drag started inside the preview).
+  // cppcheck-suppress unusedStructMember
+  bool orbit_drag_active_       = false;
+  // Vehicle editor window scroll-Y captured at end of each frame so we can
+  // undo the scroll when the user wheel-zooms inside the preview.
+  // cppcheck-suppress unusedStructMember
+  float preview_scroll_y_       = 0.f;
 
   // One MeshInstance per visible mesh: [0]=body, [1]=FL, [2]=FR, [3]=RL, [4]=RR.
   // cppcheck-suppress unusedStructMember
