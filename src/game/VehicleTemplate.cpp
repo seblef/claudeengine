@@ -93,24 +93,23 @@ VehicleTemplate::VehicleTemplate(const std::string& desc_path,
       }
     }
 
-    // New format: wheel positions under wheels.front_left / etc.
+    // New format: per-wheel geometry and drive flags under wheels.* nodes.
     const YAML::Node wheels = root["wheels"];
-    auto read_pos = [](physics::WheelDesc& w, const YAML::Node& n) {
-      if (n && n["position"])
-        w.position = core::ParseVec3(n["position"], w.position);
+    auto read_wheel = [](physics::WheelDesc& w, const YAML::Node& n) {
+      if (!n) return;
+      if (n["position"])
+        w.position   = core::ParseVec3(n["position"], w.position);
+      w.radius       = n["radius"].as<float>(w.radius);
+      w.width        = n["width"].as<float>(w.width);
+      w.is_driven    = n["is_driven"].as<bool>(w.is_driven);
+      w.is_steered   = n["is_steered"].as<bool>(w.is_steered);
     };
     if (wheels) {
-      read_pos(vehicle_desc_.front_left,  wheels["front_left"]);
-      read_pos(vehicle_desc_.front_right, wheels["front_right"]);
-      read_pos(vehicle_desc_.rear_left,   wheels["rear_left"]);
-      read_pos(vehicle_desc_.rear_right,  wheels["rear_right"]);
+      read_wheel(vehicle_desc_.front_left,  wheels["front_left"]);
+      read_wheel(vehicle_desc_.front_right, wheels["front_right"]);
+      read_wheel(vehicle_desc_.rear_left,   wheels["rear_left"]);
+      read_wheel(vehicle_desc_.rear_right,  wheels["rear_right"]);
     }
-
-    // Set conventional driven/steered flags (front steer, rear drive).
-    vehicle_desc_.front_left.is_steered  = true;
-    vehicle_desc_.front_right.is_steered = true;
-    vehicle_desc_.rear_left.is_driven    = true;
-    vehicle_desc_.rear_right.is_driven   = true;
   } else {
     // Legacy flat format: per-wheel nodes at root level.
     vehicle_desc_.front_left  = ParseWheelDesc(root["front_left"]);
