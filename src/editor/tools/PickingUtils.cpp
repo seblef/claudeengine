@@ -554,9 +554,6 @@ void DrawBBoxDimensionOverlay(ImDrawList*          dl,
   for (int i = 0; i < 8; ++i)
     sc[i] = ProjectToScreen(corners[i], vp, image_pos, image_size);
 
-  // Project bbox centre to screen (for computing outward offset direction).
-  const ScreenPt screen_center = ProjectToScreen(center, vp, image_pos, image_size);
-
   constexpr float kMinLengthPx    = 8.f;
   // Gap between the farthest bbox corner and the arrow line.
   constexpr float kGapPx          = 12.f;
@@ -578,32 +575,34 @@ void DrawBBoxDimensionOverlay(ImDrawList*          dl,
     const float len = std::sqrt(dx * dx + dy * dy);
     if (len < kMinLengthPx) continue;
 
-    // Perpendicular unit vector.
+    // Perpendicular unit vector (counterclockwise rotation of the axis direction).
     const float perp_x = -dy / len;
     const float perp_y =  dx / len;
 
-    // Determine outward direction: away from projected bbox centre.
-    float out_x = perp_x;
-    float out_y = perp_y;
-    if (screen_center.valid) {
-      const float cx = (s0.pos.x + s1.pos.x) * 0.5f - screen_center.pos.x;
-      const float cy = (s0.pos.y + s1.pos.y) * 0.5f - screen_center.pos.y;
-      if (cx * out_x + cy * out_y < 0.f) {
-        out_x = -out_x;
-        out_y = -out_y;
-      }
-    }
-
-    // Find the farthest corner in the outward perpendicular direction so the
-    // arrow is drawn outside the full bbox silhouette, not through the mesh.
-    float max_perp = 0.f;
+    // Project all corners onto the perpendicular to find the extents on each side.
+    // We pick the side with the larger extent so the arrow sits outside the silhouette.
+    // This is more stable than comparing against the bbox centre projection, which
+    // is nearly zero for all three axes and produces flickering near zero-crossings.
+    float max_pos = 0.f;
+    float max_neg = 0.f;
     for (const ScreenPt& sp : sc) {
       if (!sp.valid) continue;
-      const float proj = (sp.pos.x - s0.pos.x) * out_x
-                       + (sp.pos.y - s0.pos.y) * out_y;
-      if (proj > max_perp) max_perp = proj;
+      const float proj = (sp.pos.x - s0.pos.x) * perp_x
+                       + (sp.pos.y - s0.pos.y) * perp_y;
+      if (proj > max_pos) max_pos = proj;
+      else if (-proj > max_neg) max_neg = -proj;
     }
-    const float offset = max_perp + kGapPx;
+
+    float out_x, out_y, offset;
+    if (max_pos >= max_neg) {
+      out_x  = perp_x;
+      out_y  = perp_y;
+      offset = max_pos + kGapPx;
+    } else {
+      out_x  = -perp_x;
+      out_y  = -perp_y;
+      offset = max_neg + kGapPx;
+    }
 
     const ImVec2 a0(s0.pos.x + out_x * offset,
                     s0.pos.y + out_y * offset);
