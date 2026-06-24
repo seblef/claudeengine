@@ -170,14 +170,19 @@ void VehicleEditorWindow::LoadFromYaml() {
   }
 
   if (const YAML::Node wh = root["wheels"]) {
-    auto read_pos = [](physics::WheelDesc& w, const YAML::Node& n) {
-      if (n && n["position"])
+    auto read_wheel = [](physics::WheelDesc& w, const YAML::Node& n) {
+      if (!n) return;
+      if (n["position"])
         w.position = core::ParseVec3(n["position"], w.position);
+      if (n["is_driven"])
+        w.is_driven = n["is_driven"].as<bool>(w.is_driven);
+      if (n["is_steered"])
+        w.is_steered = n["is_steered"].as<bool>(w.is_steered);
     };
-    read_pos(vehicle_desc_.front_left,  wh["front_left"]);
-    read_pos(vehicle_desc_.front_right, wh["front_right"]);
-    read_pos(vehicle_desc_.rear_left,   wh["rear_left"]);
-    read_pos(vehicle_desc_.rear_right,  wh["rear_right"]);
+    read_wheel(vehicle_desc_.front_left,  wh["front_left"]);
+    read_wheel(vehicle_desc_.front_right, wh["front_right"]);
+    read_wheel(vehicle_desc_.rear_left,   wh["rear_left"]);
+    read_wheel(vehicle_desc_.rear_right,  wh["rear_right"]);
   }
 
   if (!body_mesh_path_.empty())        UpdateBodyMesh(body_mesh_path_);
@@ -221,16 +226,19 @@ void VehicleEditorWindow::SaveToYaml() {
   out << YAML::EndMap;  // physics
 
   out << YAML::Key << "wheels" << YAML::Value << YAML::BeginMap;
-  auto write_wheel = [&out](const char* key, const core::Vec3f& pos) {
-    out << YAML::Key << key << YAML::Value << YAML::Flow << YAML::BeginMap;
+  auto write_wheel = [&out](const char* key, const physics::WheelDesc& w) {
+    out << YAML::Key << key << YAML::Value << YAML::BeginMap;
     out << YAML::Key << "position" << YAML::Value << YAML::Flow
-        << YAML::BeginSeq << pos.x << pos.y << pos.z << YAML::EndSeq;
+        << YAML::BeginSeq << w.position.x << w.position.y << w.position.z
+        << YAML::EndSeq;
+    out << YAML::Key << "is_driven"  << YAML::Value << w.is_driven;
+    out << YAML::Key << "is_steered" << YAML::Value << w.is_steered;
     out << YAML::EndMap;
   };
-  write_wheel("front_left",  vehicle_desc_.front_left.position);
-  write_wheel("front_right", vehicle_desc_.front_right.position);
-  write_wheel("rear_left",   vehicle_desc_.rear_left.position);
-  write_wheel("rear_right",  vehicle_desc_.rear_right.position);
+  write_wheel("front_left",  vehicle_desc_.front_left);
+  write_wheel("front_right", vehicle_desc_.front_right);
+  write_wheel("rear_left",   vehicle_desc_.rear_left);
+  write_wheel("rear_right",  vehicle_desc_.rear_right);
   out << YAML::EndMap;  // wheels
 
   out << YAML::EndMap;  // root
@@ -627,6 +635,11 @@ void VehicleEditorWindow::DrawWheelsSection() {
       dirty_ = true;
     }
     if (ImGui::IsItemFocused() || ImGui::IsItemActive()) focused_wheel_ = i;
+
+    ImGui::SameLine();
+    if (ImGui::Checkbox("Driven##drv", &wheels[i]->is_driven))  dirty_ = true;
+    ImGui::SameLine();
+    if (ImGui::Checkbox("Steered##str", &wheels[i]->is_steered)) dirty_ = true;
 
     if (active) ImGui::PopStyleColor();
     ImGui::PopID();

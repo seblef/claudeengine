@@ -2,6 +2,7 @@
 
 #include <loguru.hpp>
 
+#include "core/MathUtils.h"
 #include "game/GameMesh.h"
 #include "game/GameObjectVisitor.h"
 #include "game/IVehicleController.h"
@@ -13,10 +14,10 @@ namespace game {
 
 namespace {
 
-core::Mat4f MirrorX() {
-  core::Mat4f m = core::Mat4f::kIdentity;
-  m(0, 0) = -1.f;
-  return m;
+// A negative-scale mirror would flip winding order and break back-face culling.
+// A 180° Y rotation achieves the same visual mirroring with det=+1.
+core::Mat4f MirrorY() {
+  return core::Mat4f::RotationY(core::kPi);
 }
 
 core::Mat4f PositionMatrix(const core::Vec3f& p) {
@@ -48,7 +49,7 @@ GameVehicle::GameVehicle(VehicleTemplate* tmpl)
   AddChild(wheel_rr_.get());
 
   const physics::VehicleDesc& vdesc = tmpl->GetVehicleDesc();
-  const core::Mat4f mirror = MirrorX();
+  const core::Mat4f mirror = MirrorY();
   wheel_fl_->SetLocalTransform(PositionMatrix(vdesc.front_left.position));
   wheel_fr_->SetLocalTransform(PositionMatrix(vdesc.front_right.position) * mirror);
   wheel_rl_->SetLocalTransform(PositionMatrix(vdesc.rear_left.position));
@@ -129,7 +130,7 @@ void GameVehicle::Update(float dt) {
 
   if (physics_vehicle_) {
     const core::Mat4f body_world_inv = GetWorldTransform().Inverse();
-    const core::Mat4f mirror         = MirrorX();
+    const core::Mat4f mirror         = MirrorY();
 
     GameMesh* wheels[4] = {
         wheel_fl_.get(), wheel_fr_.get(), wheel_rl_.get(), wheel_rr_.get()

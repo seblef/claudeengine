@@ -7,26 +7,25 @@ physics:
   max_steer_angle: 0.5
   brake_torque: 1500
   handbrake_torque: 3000
-  half_extents: [2.5, 0.8, 4.5]
-  com_offset: [0, -0.2, 0]
+  com_offset: [0, -0.200000003, 0]
   body_shape: convex_hull
   suspension:
-    front: {min_length: 0.1, max_length: 0.5, stiffness: 1500, damping: 200}
-    rear: {min_length: 0.1, max_length: 0.5, stiffness: 1500, damping: 200}
+    front: {min_length: 0.100000001, max_length: 0.5, stiffness: 1500, damping: 200}
+    rear: {min_length: 0.100000001, max_length: 0.5, stiffness: 1500, damping: 200}
 wheels:
   front_left:
-    position: [2.82779384, -0.4, 3.95890403]
-    is_steered: true
+    position: [2.82779384, 0.363551915, 3.95890403]
     is_driven: true
+    is_steered: true
   front_right:
-    position: [-2.82779384, -0.4, 3.95890403]
-    is_steered: true
+    position: [-2.82779384, 0.363551915, 3.95890403]
     is_driven: true
+    is_steered: true
   rear_left:
-    position: [2.80543566, -0.4, -4.6718955]
-    is_steered: false
+    position: [2.80543566, 0.422030151, -4.6718955]
     is_driven: false
+    is_steered: false
   rear_right:
-    position: [-2.80543566, -0.4, -4.6718955]
-    is_steered: false
+    position: [-2.80543566, 0.422030151, -4.6718955]
     is_driven: false
+    is_steered: false
