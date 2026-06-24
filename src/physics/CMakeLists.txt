@@ -3,6 +3,7 @@ add_library(physics STATIC
     JoltDebugRenderer.cpp
     Physics.cpp
     PhysicsBody.cpp
+    PhysicsShapeCache.cpp
     PhysicsSystem.cpp
     PhysicsVehicle.cpp
 )

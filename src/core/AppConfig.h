@@ -4,6 +4,7 @@
 
 #include <yaml-cpp/yaml.h>
 
+#include "core/PhysicsConfig.h"
 #include "core/PlayerConfig.h"
 #include "core/PostProcessConfig.h"
 #include "core/ShadowConfig.h"
@@ -39,12 +40,14 @@ class AppConfig {
   [[nodiscard]] static const PostProcessConfig& GetPostProcess()        { return post_process_; }
   [[nodiscard]] static       PostProcessConfig& GetMutablePostProcess() { return post_process_; }
   [[nodiscard]] static const PlayerConfig&      GetPlayer()             { return player_; }
+  [[nodiscard]] static const PhysicsConfig&     GetPhysics()            { return physics_; }
 
  private:
   static GraphicsConfig    graphics_;
   static ShadowConfig      shadows_;
   static PostProcessConfig post_process_;
   static PlayerConfig      player_;
+  static PhysicsConfig     physics_;
 };
 
 }  // namespace core

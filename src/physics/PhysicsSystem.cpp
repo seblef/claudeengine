@@ -49,6 +49,7 @@
 
 #include "core/Mat4f.h"
 #include "physics/CharacterController.h"
+#include "physics/PhysicsShapeCache.h"
 #include "physics/JoltDebugRenderer.h"
 #include "physics/CollisionLayer.h"
 #include "physics/IPhysicsBodyListener.h"
@@ -324,6 +325,10 @@ void PhysicsSystem::Init() {
     JPH::DebugRenderer::sInstance = debug_renderer_.get();
 }
 
+void PhysicsSystem::SetShapeCacheDir(std::string_view path) {
+    shape_cache_dir_ = std::string(path);
+}
+
 void PhysicsSystem::Step(float dt) {
     jolt_system_->Update(dt, 1, temp_allocator_.get(), job_system_.get());
 
@@ -416,6 +421,24 @@ PhysicsBody* PhysicsSystem::CreateBodyWithMesh(const PhysicsBodyDesc& desc,
             shape = *static_cast<JPH::ShapeRefC*>(it->second);
     }
 
+    // Disk cache (L2): try to deserialise when there is a session-cache miss.
+    std::string disk_cache_path;
+    if (shape.GetPtr() == nullptr && !shape_cache_dir_.empty()) {
+        const uint64_t hash = HashBytes(vertices, vertex_count * 3 * sizeof(float));
+        const uint64_t hash2 = HashBytes(indices,  index_count  * sizeof(uint32_t));
+        // Combine both hashes with FNV-1a to produce a single key.
+        uint64_t combined = hash;
+        const auto* h2p = reinterpret_cast<const uint8_t*>(&hash2);
+        for (size_t i = 0; i < sizeof(hash2); ++i) {
+            combined ^= h2p[i];
+            combined *= 1099511628211ULL;
+        }
+        disk_cache_path = ShapeCachePath(shape_cache_dir_, "meshes", combined);
+        shape           = TryLoadShape(disk_cache_path);
+        if (shape.GetPtr() != nullptr && shape_cache_key)
+            mesh_shape_cache_[shape_cache_key] = new JPH::ShapeRefC(shape);
+    }
+
     if (shape.GetPtr() == nullptr) {
         if (desc.shape.type == PhysicsShapeType::ConvexHull) {
             std::vector<JPH::Vec3> jolt_pts;
@@ -464,6 +487,9 @@ PhysicsBody* PhysicsSystem::CreateBodyWithMesh(const PhysicsBodyDesc& desc,
 
         if (shape_cache_key)
             mesh_shape_cache_[shape_cache_key] = new JPH::ShapeRefC(shape);
+
+        if (!disk_cache_path.empty())
+            SaveShape(shape, disk_cache_path, /*cleanup_siblings=*/false);
     }
 
     const core::Vec3f scale = ExtractScale(initial_transform);
@@ -509,21 +535,36 @@ PhysicsBody* PhysicsSystem::CreateTerrainBody(const terrain::TerrainData* data,
     for (int i = 0; i < n; ++i)
         heights[i] = min_h + (samples[i] / 65535.0f) * range;
 
-    // scale.y = 1 because sample values are already in world-space metres.
-    JPH::HeightFieldShapeSettings hf_settings(
-        heights.data(),
-        JPH::Vec3(0.0f, 0.0f, 0.0f),
-        JPH::Vec3(mpt, 1.0f, mpt),
-        static_cast<JPH::uint32>(w));
-
-    auto result = hf_settings.Create();
-    if (result.HasError()) {
-        LOG_F(FATAL, "CreateTerrainBody: HeightField creation failed: %s",
-              result.GetError().c_str());
-        return nullptr;
+    // Disk cache (L2): try to deserialise a previously built HeightFieldShape.
+    JPH::ShapeRefC terrain_shape;
+    std::string    cache_path;
+    if (!shape_cache_dir_.empty()) {
+        const uint64_t hash = HashBytes(samples, n * sizeof(uint16_t));
+        cache_path    = ShapeCachePath(shape_cache_dir_, "terrain", hash);
+        terrain_shape = TryLoadShape(cache_path);
     }
 
-    JPH::BodyCreationSettings settings(result.Get(),
+    if (terrain_shape.GetPtr() == nullptr) {
+        // scale.y = 1 because sample values are already in world-space metres.
+        JPH::HeightFieldShapeSettings hf_settings(
+            heights.data(),
+            JPH::Vec3(0.0f, 0.0f, 0.0f),
+            JPH::Vec3(mpt, 1.0f, mpt),
+            static_cast<JPH::uint32>(w));
+
+        auto result = hf_settings.Create();
+        if (result.HasError()) {
+            LOG_F(FATAL, "CreateTerrainBody: HeightField creation failed: %s",
+                  result.GetError().c_str());
+            return nullptr;
+        }
+        terrain_shape = result.Get();
+
+        if (!cache_path.empty())
+            SaveShape(terrain_shape, cache_path, /*cleanup_siblings=*/true);
+    }
+
+    JPH::BodyCreationSettings settings(terrain_shape,
                                        ExtractPosition(initial_transform),
                                        ExtractRotation(initial_transform),
                                        JPH::EMotionType::Static,

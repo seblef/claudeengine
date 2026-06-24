@@ -5,6 +5,7 @@ add_library(core STATIC
     GpuProfiler.cpp
     Logger.cpp
     MathUtils.cpp
+    PhysicsConfig.cpp
     Plane.cpp
     PlayerConfig.cpp
     PostProcessConfig.cpp
