@@ -4,15 +4,23 @@
 
 namespace physics {
 
-/// Describes a single wheel's geometry and suspension properties.
+/// Wheel dimensions inferred from the wheel mesh bounding box.
+/// Wheel meshes must be authored with their axle along X:
+///   BBox X extent = width, BBox Y/Z extent = 2 * radius.
+struct WheelGeometry {
+    // cppcheck-suppress unusedStructMember
+    float radius = 0.35f;  ///< Wheel radius (m), inferred from mesh bbox Y half-extent.
+    // cppcheck-suppress unusedStructMember
+    float width  = 0.2f;   ///< Wheel width (m), inferred from mesh bbox X extent.
+};
+
+/// Describes a single wheel's suspension properties and attachment point.
 /// Fully Jolt-free; may be serialised to YAML.
+/// Geometry (radius, width) is intentionally absent — use WheelGeometry inferred
+/// from the wheel mesh bounding box instead.
 struct WheelDesc {
     // cppcheck-suppress unusedStructMember
     core::Vec3f position;                        ///< Attachment point in vehicle body-local space.
-    // cppcheck-suppress unusedStructMember
-    float       radius               = 0.35f;   ///< Wheel radius (m).
-    // cppcheck-suppress unusedStructMember
-    float       width                = 0.2f;    ///< Wheel width (m).
     // cppcheck-suppress unusedStructMember
     float       suspension_min_length = 0.1f;   ///< Minimum suspension length at full compression (m).
     // cppcheck-suppress unusedStructMember

@@ -113,6 +113,7 @@ void VehicleEditorWindow::Open(const std::filesystem::path& path) {
     rear_wheel_tmpl_ = nullptr;
   }
 
+  use_convex_hull_body_ = false;
   body_mesh_path_.clear();
   front_wheel_mesh_path_.clear();
   rear_wheel_mesh_path_.clear();
@@ -148,6 +149,8 @@ void VehicleEditorWindow::LoadFromYaml() {
     if (ph["com_offset"])
       vehicle_desc_.com_offset =
           core::ParseVec3(ph["com_offset"], vehicle_desc_.com_offset);
+    use_convex_hull_body_ =
+        (ph["body_shape"].as<std::string>("box") == "convex_hull");
     if (const YAML::Node susp = ph["suspension"]) {
       auto read_axle = [](physics::WheelDesc& w, const YAML::Node& n) {
         w.suspension_min_length = n["min_length"].as<float>(w.suspension_min_length);
@@ -199,6 +202,8 @@ void VehicleEditorWindow::SaveToYaml() {
   out << YAML::Key << "brake_torque"       << YAML::Value << vehicle_desc_.brake_torque;
   out << YAML::Key << "handbrake_torque"   << YAML::Value << vehicle_desc_.handbrake_torque;
   core::yaml::WriteVec3f(out, "com_offset", vehicle_desc_.com_offset);
+  out << YAML::Key << "body_shape"
+      << YAML::Value << (use_convex_hull_body_ ? "convex_hull" : "box");
 
   out << YAML::Key << "suspension" << YAML::Value << YAML::BeginMap;
   auto write_axle = [&out](const char* key, const physics::WheelDesc& w) {
@@ -650,6 +655,9 @@ void VehicleEditorWindow::DrawPhysicsSection() {
     vehicle_desc_.com_offset = {com[0], com[1], com[2]};
     dirty_ = true;
   }
+
+  if (ImGui::Checkbox("Convex hull body", &use_convex_hull_body_))
+    dirty_ = true;
 
   ImGui::Spacing();
   ImGui::TextUnformatted("Front suspension");

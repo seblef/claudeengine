@@ -564,14 +564,15 @@ void PhysicsSystem::DestroyBody(PhysicsBody* body) {
 namespace {
 
 JPH::Ref<JPH::WheelSettings> BuildWheelSettings(const WheelDesc& wd,
+                                                  const WheelGeometry& geo,
                                                   float brake_torque,
                                                   float handbrake_torque,
                                                   float max_steer_angle,
                                                   bool apply_handbrake) {
     auto* ws = new JPH::WheelSettingsWV();
     ws->mPosition          = JPH::Vec3(wd.position.x, wd.position.y, wd.position.z);
-    ws->mRadius            = wd.radius;
-    ws->mWidth             = wd.width;
+    ws->mRadius            = geo.radius;
+    ws->mWidth             = geo.width;
     ws->mSuspensionMinLength = wd.suspension_min_length;
     ws->mSuspensionMaxLength = wd.suspension_max_length;
     ws->mSuspensionSpring  = JPH::SpringSettings(
@@ -588,11 +589,35 @@ JPH::Ref<JPH::WheelSettings> BuildWheelSettings(const WheelDesc& wd,
 
 PhysicsVehicle* PhysicsSystem::CreateVehicle(const VehicleDesc& desc,
                                               IPhysicsBodyListener* listener,
-                                              const core::Mat4f& initial_transform) {
-    // ---- Body shape (box + optional COM offset) ------------------------------
-    JPH::ShapeRefC box = new JPH::BoxShape(JPH::Vec3(desc.half_extents.x,
-                                                      desc.half_extents.y,
-                                                      desc.half_extents.z));
+                                              const core::Mat4f& initial_transform,
+                                              const WheelGeometry& front_wheel_geo,
+                                              const WheelGeometry& rear_wheel_geo,
+                                              const core::Vec3f* body_vertices,
+                                              int body_vertex_count) {
+    // ---- Body shape (box or convex hull, + optional COM offset) -------------
+    JPH::ShapeRefC base_shape;
+    if (body_vertices != nullptr && body_vertex_count > 0) {
+        std::vector<JPH::Vec3> jolt_pts;
+        jolt_pts.reserve(body_vertex_count);
+        for (int i = 0; i < body_vertex_count; ++i)
+            jolt_pts.push_back(JPH::Vec3(body_vertices[i].x,
+                                          body_vertices[i].y,
+                                          body_vertices[i].z));
+        JPH::ConvexHullShapeSettings hull_settings(jolt_pts.data(),
+                                                    static_cast<int>(jolt_pts.size()));
+        auto result = hull_settings.Create();
+        if (result.HasError()) {
+            LOG_F(ERROR, "CreateVehicle: ConvexHull shape failed: %s",
+                  result.GetError().c_str());
+            return nullptr;
+        }
+        base_shape = result.Get();
+    } else {
+        base_shape = new JPH::BoxShape(JPH::Vec3(desc.half_extents.x,
+                                                  desc.half_extents.y,
+                                                  desc.half_extents.z));
+    }
+
     JPH::ShapeRefC shape;
     constexpr float kZero = 0.f;
     const bool has_com_offset =
@@ -602,7 +627,7 @@ PhysicsVehicle* PhysicsSystem::CreateVehicle(const VehicleDesc& desc,
     if (has_com_offset) {
         JPH::OffsetCenterOfMassShapeSettings ocm(
             JPH::Vec3(desc.com_offset.x, desc.com_offset.y, desc.com_offset.z),
-            box);
+            base_shape);
         auto result = ocm.Create();
         if (result.HasError()) {
             LOG_F(ERROR, "CreateVehicle: OffsetCOM shape failed: %s",
@@ -611,7 +636,7 @@ PhysicsVehicle* PhysicsSystem::CreateVehicle(const VehicleDesc& desc,
         }
         shape = result.Get();
     } else {
-        shape = box;
+        shape = base_shape;
     }
 
     // ---- Body ----------------------------------------------------------------
@@ -635,16 +660,16 @@ PhysicsVehicle* PhysicsSystem::CreateVehicle(const VehicleDesc& desc,
     // ---- Wheel settings (indices: 0=FL, 1=FR, 2=RL, 3=RR) ------------------
     JPH::VehicleConstraintSettings vc_settings;
     vc_settings.mWheels.push_back(BuildWheelSettings(
-        desc.front_left,  desc.brake_torque, desc.handbrake_torque,
+        desc.front_left,  front_wheel_geo, desc.brake_torque, desc.handbrake_torque,
         desc.max_steer_angle, false));
     vc_settings.mWheels.push_back(BuildWheelSettings(
-        desc.front_right, desc.brake_torque, desc.handbrake_torque,
+        desc.front_right, front_wheel_geo, desc.brake_torque, desc.handbrake_torque,
         desc.max_steer_angle, false));
     vc_settings.mWheels.push_back(BuildWheelSettings(
-        desc.rear_left,   desc.brake_torque, desc.handbrake_torque,
+        desc.rear_left,   rear_wheel_geo, desc.brake_torque, desc.handbrake_torque,
         desc.max_steer_angle, true));
     vc_settings.mWheels.push_back(BuildWheelSettings(
-        desc.rear_right,  desc.brake_torque, desc.handbrake_torque,
+        desc.rear_right,  rear_wheel_geo, desc.brake_torque, desc.handbrake_torque,
         desc.max_steer_angle, true));
 
     // ---- Controller + differentials -----------------------------------------

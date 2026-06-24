@@ -1,5 +1,7 @@
 #include "game/VehicleTemplate.h"
 
+#include <cmath>
+
 #include <loguru.hpp>
 #include <yaml-cpp/yaml.h>
 
@@ -15,8 +17,6 @@ physics::WheelDesc ParseWheelDesc(const YAML::Node& n) {
   physics::WheelDesc d;
   if (!n) return d;
   if (n["position"]) d.position = core::ParseVec3(n["position"], d.position);
-  d.radius                = n["radius"].as<float>(d.radius);
-  d.width                 = n["width"].as<float>(d.width);
   d.suspension_min_length = n["suspension_min_length"].as<float>(d.suspension_min_length);
   d.suspension_max_length = n["suspension_max_length"].as<float>(d.suspension_max_length);
   d.suspension_stiffness  = n["suspension_stiffness"].as<float>(d.suspension_stiffness);
@@ -24,6 +24,20 @@ physics::WheelDesc ParseWheelDesc(const YAML::Node& n) {
   d.is_driven  = n["is_driven"].as<bool>(d.is_driven);
   d.is_steered = n["is_steered"].as<bool>(d.is_steered);
   return d;
+}
+
+physics::WheelGeometry InferWheelGeometry(const MeshTemplate* tmpl,
+                                           const char* label) {
+  physics::WheelGeometry geo;
+  const core::Vec3f size = tmpl->GetLocalBBox().GetSize();
+  geo.radius = size.y * 0.5f;
+  geo.width  = size.x;
+  constexpr float kToleranceFactor = 0.1f;
+  if (std::abs(size.y - size.z) > kToleranceFactor * size.y) {
+    LOG_F(WARNING, "VehicleTemplate: %s wheel has non-circular cross-section "
+          "(Y=%.3f Z=%.3f) — check mesh authoring", label, size.y, size.z);
+  }
+  return geo;
 }
 
 }  // namespace
@@ -93,14 +107,12 @@ VehicleTemplate::VehicleTemplate(const std::string& desc_path,
       }
     }
 
-    // New format: per-wheel geometry and drive flags under wheels.* nodes.
+    // New format: per-wheel drive flags and positions under wheels.* nodes.
     const YAML::Node wheels = root["wheels"];
     auto read_wheel = [](physics::WheelDesc& w, const YAML::Node& n) {
       if (!n) return;
       if (n["position"])
         w.position   = core::ParseVec3(n["position"], w.position);
-      w.radius       = n["radius"].as<float>(w.radius);
-      w.width        = n["width"].as<float>(w.width);
       w.is_driven    = n["is_driven"].as<bool>(w.is_driven);
       w.is_steered   = n["is_steered"].as<bool>(w.is_steered);
     };
@@ -110,6 +122,9 @@ VehicleTemplate::VehicleTemplate(const std::string& desc_path,
       read_wheel(vehicle_desc_.rear_left,   wheels["rear_left"]);
       read_wheel(vehicle_desc_.rear_right,  wheels["rear_right"]);
     }
+
+    const std::string body_shape_str = phys["body_shape"].as<std::string>("box");
+    use_convex_hull_body_ = (body_shape_str == "convex_hull");
   } else {
     // Legacy flat format: per-wheel nodes at root level.
     vehicle_desc_.front_left  = ParseWheelDesc(root["front_left"]);
@@ -133,6 +148,9 @@ VehicleTemplate::VehicleTemplate(const std::string& desc_path,
     body_tmpl_ = front_wheel_tmpl_ = rear_wheel_tmpl_ = nullptr;
     return;
   }
+
+  front_wheel_geo_ = InferWheelGeometry(front_wheel_tmpl_, "front");
+  rear_wheel_geo_  = InferWheelGeometry(rear_wheel_tmpl_,  "rear");
 
   initialized_ = true;
   LOG_F(INFO, "VehicleTemplate: loaded '%s'", desc_path.c_str());
@@ -174,6 +192,18 @@ const std::string& VehicleTemplate::GetDescPath() const {
 
 const physics::VehicleDesc& VehicleTemplate::GetVehicleDesc() const {
   return vehicle_desc_;
+}
+
+const physics::WheelGeometry& VehicleTemplate::GetFrontWheelGeometry() const {
+  return front_wheel_geo_;
+}
+
+const physics::WheelGeometry& VehicleTemplate::GetRearWheelGeometry() const {
+  return rear_wheel_geo_;
+}
+
+bool VehicleTemplate::UseConvexHullBody() const {
+  return use_convex_hull_body_;
 }
 
 MeshTemplate* VehicleTemplate::GetBodyTemplate() const {

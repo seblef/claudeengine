@@ -98,8 +98,17 @@ void GameVehicle::Activate() {
     LOG_F(WARNING, "GameVehicle::Activate: PhysicsSystem not available");
     return;
   }
+  const core::Vec3f* body_verts  = nullptr;
+  int                body_count  = 0;
+  if (template_->UseConvexHullBody()) {
+    const auto& positions = template_->GetBodyTemplate()->GetCPUPositions();
+    body_verts = positions.data();
+    body_count = static_cast<int>(positions.size());
+  }
   physics_vehicle_ = physics::PhysicsSystem::Instance().CreateVehicle(
-      template_->GetVehicleDesc(), this, GetWorldTransform());
+      template_->GetVehicleDesc(), this, GetWorldTransform(),
+      template_->GetFrontWheelGeometry(), template_->GetRearWheelGeometry(),
+      body_verts, body_count);
 }
 
 void GameVehicle::Deactivate() {

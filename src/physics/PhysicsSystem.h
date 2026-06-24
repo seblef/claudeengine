@@ -112,12 +112,23 @@ class PhysicsSystem : public core::Singleton<PhysicsSystem> {
     // ---- Vehicle factory ----------------------------------------------------
 
     /// Create a wheeled vehicle from a descriptor.
-    /// @param listener  Optional observer receiving body transform updates each Step().
-    ///                  May be nullptr.
-    /// @returns         Non-owning pointer; lifetime is managed by this system.
+    ///
+    /// @param desc              Vehicle physics descriptor (mass, extents, torques, wheels).
+    /// @param listener          Optional observer receiving body transform updates.  May be nullptr.
+    /// @param initial_transform World-space initial transform for the vehicle body.
+    /// @param front_wheel_geo   Wheel radius and width for the front axle (inferred from mesh bbox).
+    /// @param rear_wheel_geo    Wheel radius and width for the rear axle (inferred from mesh bbox).
+    /// @param body_vertices     Optional CPU positions of the body mesh for a ConvexHull body shape.
+    ///                          Pass nullptr (default) to use a box shape from desc.half_extents.
+    /// @param body_vertex_count Number of vertices in body_vertices (ignored when nullptr).
+    /// @returns                 Non-owning pointer; lifetime is managed by this system.
     PhysicsVehicle* CreateVehicle(const VehicleDesc& desc,
                                    IPhysicsBodyListener* listener,
-                                   const core::Mat4f& initial_transform);
+                                   const core::Mat4f& initial_transform,
+                                   const WheelGeometry& front_wheel_geo,
+                                   const WheelGeometry& rear_wheel_geo,
+                                   const core::Vec3f* body_vertices = nullptr,
+                                   int                body_vertex_count = 0);
 
     /// Remove a vehicle from the simulation and release its memory.
     /// Safe to call with nullptr.
