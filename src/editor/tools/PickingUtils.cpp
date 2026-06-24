@@ -520,9 +520,14 @@ void DrawBBoxDimensionOverlay(ImDrawList*          dl,
   const core::Vec3f center   = local_bbox.GetCenter();
   const core::Vec3f half     = local_bbox.GetSize() * 0.5f;
 
-  // Per-axis descriptors: direction, half-extent, colour, label.
+  // Per-axis descriptors: measured direction, fixed world-space perpendicular that
+  // determines which face the arrow is placed on (stable across camera movement),
+  // half-extent along the measured axis, size, colour, label.
+  //
+  // Placement convention: X → front (+Z face), Y → right (+X face), Z → bottom (-Y face).
   struct AxisDesc {
     core::Vec3f dir;
+    core::Vec3f world_perp;
     float       half_ext;
     float       size;
     ImU32       color;
@@ -530,12 +535,12 @@ void DrawBBoxDimensionOverlay(ImDrawList*          dl,
   };
 
   AxisDesc axes[3];
-  axes[0] = {core::Vec3f::kAxisX, half.x, local_bbox.GetSize().x,
-              IM_COL32(220, 60, 60, 255), ""};
-  axes[1] = {core::Vec3f::kAxisY, half.y, local_bbox.GetSize().y,
-              IM_COL32(60, 200, 60, 255), ""};
-  axes[2] = {core::Vec3f::kAxisZ, half.z, local_bbox.GetSize().z,
-              IM_COL32(60, 100, 220, 255), ""};
+  axes[0] = {core::Vec3f::kAxisX, {0.f, 0.f, 1.f},
+              half.x, local_bbox.GetSize().x, IM_COL32(220, 60, 60, 255), ""};
+  axes[1] = {core::Vec3f::kAxisY, {1.f, 0.f, 0.f},
+              half.y, local_bbox.GetSize().y, IM_COL32(60, 200, 60, 255), ""};
+  axes[2] = {core::Vec3f::kAxisZ, {0.f, -1.f, 0.f},
+              half.z, local_bbox.GetSize().z, IM_COL32(60, 100, 220, 255), ""};
 
   std::snprintf(axes[0].label, sizeof(axes[0].label), "%.2f m", axes[0].size);
   std::snprintf(axes[1].label, sizeof(axes[1].label), "%.2f m", axes[1].size);
@@ -554,8 +559,10 @@ void DrawBBoxDimensionOverlay(ImDrawList*          dl,
   for (int i = 0; i < 8; ++i)
     sc[i] = ProjectToScreen(corners[i], vp, image_pos, image_size);
 
+  // Project bbox centre once for world_perp → screen direction.
+  const ScreenPt sc_center = ProjectToScreen(center, vp, image_pos, image_size);
+
   constexpr float kMinLengthPx    = 8.f;
-  // Gap between the farthest bbox corner and the arrow line.
   constexpr float kGapPx          = 12.f;
   constexpr float kLineThickness  = 1.5f;
   constexpr float kArrowLen       = 8.f;
@@ -569,70 +576,63 @@ void DrawBBoxDimensionOverlay(ImDrawList*          dl,
     const ScreenPt s1 = ProjectToScreen(p1_world, vp, image_pos, image_size);
     if (!s0.valid || !s1.valid) continue;
 
-    // Screen-space vector along the axis.
-    const float dx = s1.pos.x - s0.pos.x;
-    const float dy = s1.pos.y - s0.pos.y;
+    // Screen-space axis direction and unit vector.
+    const float dx  = s1.pos.x - s0.pos.x;
+    const float dy  = s1.pos.y - s0.pos.y;
     const float len = std::sqrt(dx * dx + dy * dy);
     if (len < kMinLengthPx) continue;
-
-    // Perpendicular unit vector (counterclockwise rotation of the axis direction).
-    const float perp_x = -dy / len;
-    const float perp_y =  dx / len;
-
-    // Project all corners onto the perpendicular to find the extents on each side.
-    // We pick the side with the larger extent so the arrow sits outside the silhouette.
-    // This is more stable than comparing against the bbox centre projection, which
-    // is nearly zero for all three axes and produces flickering near zero-crossings.
-    float max_pos = 0.f;
-    float max_neg = 0.f;
-    for (const ScreenPt& sp : sc) {
-      if (!sp.valid) continue;
-      const float proj = (sp.pos.x - s0.pos.x) * perp_x
-                       + (sp.pos.y - s0.pos.y) * perp_y;
-      if (proj > max_pos) max_pos = proj;
-      else if (-proj > max_neg) max_neg = -proj;
-    }
-
-    float out_x, out_y, offset;
-    if (max_pos >= max_neg) {
-      out_x  = perp_x;
-      out_y  = perp_y;
-      offset = max_pos + kGapPx;
-    } else {
-      out_x  = -perp_x;
-      out_y  = -perp_y;
-      offset = max_neg + kGapPx;
-    }
-
-    const ImVec2 a0(s0.pos.x + out_x * offset,
-                    s0.pos.y + out_y * offset);
-    const ImVec2 a1(s1.pos.x + out_x * offset,
-                    s1.pos.y + out_y * offset);
-
-    dl->AddLine(a0, a1, ax.color, kLineThickness);
-
-    // Unit vector along the axis on screen.
     const float ux = dx / len;
     const float uy = dy / len;
 
-    // Draw arrowheads at both ends (pointing outward from centre).
+    // Stable outward direction: project the fixed world_perp to screen space.
+    // Using a world-space constant avoids sign flips as the camera orbits.
+    const ScreenPt sc_perp = ProjectToScreen(center + ax.world_perp,
+                                              vp, image_pos, image_size);
+    if (!sc_center.valid || !sc_perp.valid) continue;
+    float out_x = sc_perp.pos.x - sc_center.pos.x;
+    float out_y = sc_perp.pos.y - sc_center.pos.y;
+    const float out_len = std::sqrt(out_x * out_x + out_y * out_y);
+    if (out_len < 0.5f) continue;
+    out_x /= out_len;
+    out_y /= out_len;
+
+    // Find the farthest corner in the outward direction to place the arrow
+    // outside the full bbox silhouette, not clipping through the mesh.
+    float max_perp = 0.f;
+    for (const ScreenPt& sp : sc) {
+      if (!sp.valid) continue;
+      const float proj = (sp.pos.x - s0.pos.x) * out_x
+                       + (sp.pos.y - s0.pos.y) * out_y;
+      if (proj > max_perp) max_perp = proj;
+    }
+    const float offset = max_perp + kGapPx;
+
+    const ImVec2 a0(s0.pos.x + out_x * offset, s0.pos.y + out_y * offset);
+    const ImVec2 a1(s1.pos.x + out_x * offset, s1.pos.y + out_y * offset);
+
+    dl->AddLine(a0, a1, ax.color, kLineThickness);
+
+    // Arrowhead wings are perpendicular to the axis in screen space.
+    // out_x/out_y may not be perpendicular to ux/uy when world_perp is not
+    // orthogonal to the axis screen projection, so compute wing separately.
+    const float wing_x = -uy;
+    const float wing_y =  ux;
+
     auto draw_arrow = [&](ImVec2 tip, float dir_x, float dir_y) {
       const ImVec2 base_center(tip.x - dir_x * kArrowLen,
                                tip.y - dir_y * kArrowLen);
       const ImVec2 v0 = tip;
-      const ImVec2 v1(base_center.x - out_x * kArrowHalfBase,
-                      base_center.y - out_y * kArrowHalfBase);
-      const ImVec2 v2(base_center.x + out_x * kArrowHalfBase,
-                      base_center.y + out_y * kArrowHalfBase);
+      const ImVec2 v1(base_center.x - wing_x * kArrowHalfBase,
+                      base_center.y - wing_y * kArrowHalfBase);
+      const ImVec2 v2(base_center.x + wing_x * kArrowHalfBase,
+                      base_center.y + wing_y * kArrowHalfBase);
       dl->AddTriangleFilled(v0, v1, v2, ax.color);
     };
 
-    // p0 end: arrow points in -ux/-uy direction (toward p0 from inside).
     draw_arrow(a0, -ux, -uy);
-    // p1 end: arrow points in +ux/+uy direction.
     draw_arrow(a1,  ux,  uy);
 
-    // Centred label.
+    // Centred label, nudged outward from the line.
     const ImVec2 mid((a0.x + a1.x) * 0.5f + out_x * 4.f,
                      (a0.y + a1.y) * 0.5f + out_y * 4.f);
     const ImVec2 text_size = ImGui::CalcTextSize(ax.label);
