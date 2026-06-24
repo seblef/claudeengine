@@ -2,16 +2,24 @@ body_mesh: meshes/vehicles/duke_car_body.emesh
 front_wheel_mesh: meshes/vehicles/duke_car_wheel.emesh
 rear_wheel_mesh: meshes/vehicles/duke_car_wheel.emesh
 physics:
-  mass: 1200
-  max_engine_torque: 1600
-  max_steer_angle: 0.5
-  brake_torque: 1500
-  handbrake_torque: 3000
-  com_offset: [0, -0.200000003, 0]
+  mass: 980
+  max_engine_torque: 2800
+  max_steer_angle: 0.58
+  brake_torque: 2800
+  handbrake_torque: 5000
+  com_offset: [0, -0.32, 0]
   body_shape: convex_hull
   suspension:
-    front: {min_length: 0.100000001, max_length: 0.5, stiffness: 1500, damping: 200}
-    rear: {min_length: 0.100000001, max_length: 0.5, stiffness: 1500, damping: 200}
+    front:
+      min_length: 0.1
+      max_length: 0.5
+      stiffness: 2200
+      damping: 280
+    rear:
+      min_length: 0.1
+      max_length: 0.5
+      stiffness: 2000
+      damping: 280
 wheels:
   front_left:
     position: [2.82779384, 0.363551915, 3.95890403]
