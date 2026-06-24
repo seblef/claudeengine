@@ -10,6 +10,7 @@
 #include "core/BBox3.h"
 #include "core/Color.h"
 #include "core/Mat4f.h"
+#include "editor/tools/PickingUtils.h"
 #include "game/MeshTemplate.h"
 #include "renderer/GlobalLight.h"
 #include "renderer/MeshInstance.h"
@@ -82,6 +83,13 @@ void MeshPreview::Render(float time) {
       color_rt_->GetNativeHandle(),
       pos, ImVec2(pos.x + size.x, pos.y + size.y),
       ImVec2(0.f, 1.f), ImVec2(1.f, 0.f));
+
+  if (instance_) {
+    const core::Mat4f vp = camera_.GetProjectionMatrix() * camera_.GetViewMatrix();
+    DrawBBoxDimensionOverlay(ImGui::GetWindowDrawList(),
+                              tmpl_->GetLocalBBox(),
+                              vp, pos, size);
+  }
 
   if (ImGui::IsItemHovered() || ImGui::IsItemActive()) {
     const ImGuiIO& io = ImGui::GetIO();

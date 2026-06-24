@@ -218,9 +218,12 @@ void TransformTool::OnRender(const EditorToolContext& ctx,
                  ImGui::GetIO().KeyCtrl);
   }
 
-  // Orange wireframe bounding boxes for all selected objects.
-  if (!ctx.scene->GetSelection().empty())
-    DrawSelectedBBox(ctx, ImGui::GetWindowDrawList(), image_pos, image_size);
+  // Orange wireframe bounding boxes and dimension overlays for all selected objects.
+  if (!ctx.scene->GetSelection().empty()) {
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    DrawSelectedBBox(ctx, dl, image_pos, image_size);
+    DrawSelectedBBoxDimensions(ctx, dl, image_pos, image_size);
+  }
 }
 
 bool TransformTool::IsCapturingMouse() const {

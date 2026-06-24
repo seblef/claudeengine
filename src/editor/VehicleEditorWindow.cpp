@@ -21,6 +21,7 @@
 #include "core/Vec3f.h"
 #include "core/Vec4f.h"
 #include "core/YamlSerialiser.h"
+#include "editor/tools/PickingUtils.h"
 #include "game/MeshTemplate.h"
 #include "renderer/GlobalLight.h"
 #include "renderer/MeshInstance.h"
@@ -455,6 +456,19 @@ void VehicleEditorWindow::DrawCombinedPreview(float time) {
       combined_rt_->GetNativeHandle(),
       pos, ImVec2(pos.x + size.x, pos.y + size.y),
       ImVec2(0.f, 1.f), ImVec2(1.f, 0.f));
+
+  if (combined_instances_[0]) {
+    // Accumulate world-space bboxes so wheel positions are included.
+    core::BBox3 vehicle_bbox = combined_instances_[0]->GetWorldBBox();
+    for (int i = 1; i < 5; ++i) {
+      if (combined_instances_[i])
+        vehicle_bbox << combined_instances_[i]->GetWorldBBox();
+    }
+    const core::Mat4f vp = combined_camera_.GetProjectionMatrix()
+                         * combined_camera_.GetViewMatrix();
+    DrawBBoxDimensionOverlay(ImGui::GetWindowDrawList(),
+                              vehicle_bbox, vp, pos, size);
+  }
 
   const ImVec2 preview_max(pos.x + size.x, pos.y + size.y);
   const bool   in_preview = ImGui::IsMouseHoveringRect(pos, preview_max);

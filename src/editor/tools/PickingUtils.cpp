@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <limits>
 
 #include "core/BBox3.h"
@@ -509,6 +510,122 @@ void DrawHoverBBox(const EditorToolContext& ctx, ImDrawList* dl,
   DrawBBoxWireframe(dl, obj->GetLocalBBox(), obj->GetWorldTransform(), vp,
                     image_pos, image_size,
                     IM_COL32(255, 255, 255, 160), 1.0f);
+}
+
+void DrawBBoxDimensionOverlay(ImDrawList*          dl,
+                               const core::BBox3&   local_bbox,
+                               const core::Mat4f&   vp,
+                               ImVec2               image_pos,
+                               ImVec2               image_size) {
+  const core::Vec3f center   = local_bbox.GetCenter();
+  const core::Vec3f half     = local_bbox.GetSize() * 0.5f;
+
+  // Per-axis descriptors: direction, half-extent, colour, label.
+  struct AxisDesc {
+    core::Vec3f dir;
+    float       half_ext;
+    float       size;
+    ImU32       color;
+    char        label[16];
+  };
+
+  AxisDesc axes[3];
+  axes[0] = {core::Vec3f::kAxisX, half.x, local_bbox.GetSize().x,
+              IM_COL32(220, 60, 60, 255), ""};
+  axes[1] = {core::Vec3f::kAxisY, half.y, local_bbox.GetSize().y,
+              IM_COL32(60, 200, 60, 255), ""};
+  axes[2] = {core::Vec3f::kAxisZ, half.z, local_bbox.GetSize().z,
+              IM_COL32(60, 100, 220, 255), ""};
+
+  std::snprintf(axes[0].label, sizeof(axes[0].label), "%.2f m", axes[0].size);
+  std::snprintf(axes[1].label, sizeof(axes[1].label), "%.2f m", axes[1].size);
+  std::snprintf(axes[2].label, sizeof(axes[2].label), "%.2f m", axes[2].size);
+
+  // Project bbox centre to screen (for computing outward offset direction).
+  const ScreenPt screen_center = ProjectToScreen(center, vp, image_pos, image_size);
+
+  constexpr float kMinLengthPx    = 8.f;
+  constexpr float kOffsetPx       = 12.f;
+  constexpr float kLineThickness  = 1.5f;
+  constexpr float kArrowLen       = 8.f;
+  constexpr float kArrowHalfBase  = 5.f * 0.5f;
+
+  for (const AxisDesc& ax : axes) {
+    const core::Vec3f p0_world = center - ax.dir * ax.half_ext;
+    const core::Vec3f p1_world = center + ax.dir * ax.half_ext;
+
+    const ScreenPt s0 = ProjectToScreen(p0_world, vp, image_pos, image_size);
+    const ScreenPt s1 = ProjectToScreen(p1_world, vp, image_pos, image_size);
+    if (!s0.valid || !s1.valid) continue;
+
+    // Screen-space vector along the axis.
+    const float dx = s1.pos.x - s0.pos.x;
+    const float dy = s1.pos.y - s0.pos.y;
+    const float len = std::sqrt(dx * dx + dy * dy);
+    if (len < kMinLengthPx) continue;
+
+    // Perpendicular (outward from bbox screen centre) offset.
+    const float perp_x = -dy / len;
+    const float perp_y =  dx / len;
+
+    // Determine outward direction: away from projected bbox centre.
+    float out_x = perp_x;
+    float out_y = perp_y;
+    if (screen_center.valid) {
+      const float cx = (s0.pos.x + s1.pos.x) * 0.5f - screen_center.pos.x;
+      const float cy = (s0.pos.y + s1.pos.y) * 0.5f - screen_center.pos.y;
+      if (cx * out_x + cy * out_y < 0.f) {
+        out_x = -out_x;
+        out_y = -out_y;
+      }
+    }
+
+    const ImVec2 a0(s0.pos.x + out_x * kOffsetPx,
+                    s0.pos.y + out_y * kOffsetPx);
+    const ImVec2 a1(s1.pos.x + out_x * kOffsetPx,
+                    s1.pos.y + out_y * kOffsetPx);
+
+    dl->AddLine(a0, a1, ax.color, kLineThickness);
+
+    // Unit vector along the axis on screen.
+    const float ux = dx / len;
+    const float uy = dy / len;
+
+    // Draw arrowheads at both ends (pointing outward from centre).
+    auto draw_arrow = [&](ImVec2 tip, float dir_x, float dir_y) {
+      const ImVec2 base_center(tip.x - dir_x * kArrowLen,
+                               tip.y - dir_y * kArrowLen);
+      const ImVec2 v0 = tip;
+      const ImVec2 v1(base_center.x - out_x * kArrowHalfBase,
+                      base_center.y - out_y * kArrowHalfBase);
+      const ImVec2 v2(base_center.x + out_x * kArrowHalfBase,
+                      base_center.y + out_y * kArrowHalfBase);
+      dl->AddTriangleFilled(v0, v1, v2, ax.color);
+    };
+
+    // p0 end: arrow points in -ux/-uy direction (toward p0 from inside).
+    draw_arrow(a0, -ux, -uy);
+    // p1 end: arrow points in +ux/+uy direction.
+    draw_arrow(a1,  ux,  uy);
+
+    // Centred label.
+    const ImVec2 mid((a0.x + a1.x) * 0.5f + out_x * 4.f,
+                     (a0.y + a1.y) * 0.5f + out_y * 4.f);
+    const ImVec2 text_size = ImGui::CalcTextSize(ax.label);
+    const ImVec2 text_pos(mid.x - text_size.x * 0.5f,
+                          mid.y - text_size.y * 0.5f);
+    dl->AddText(text_pos, ax.color, ax.label);
+  }
+}
+
+void DrawSelectedBBoxDimensions(const EditorToolContext& ctx, ImDrawList* dl,
+                                 ImVec2 image_pos, ImVec2 image_size) {
+  const core::Mat4f& vp = ctx.camera->GetCamera()->GetViewProjectionMatrix();
+  for (const game::GameObject* obj : ctx.scene->GetSelection()) {
+    // Use world-space bbox so displayed dimensions include object scale.
+    DrawBBoxDimensionOverlay(dl, obj->GetWorldBBox(),
+                             vp, image_pos, image_size);
+  }
 }
 
 }  // namespace editor
