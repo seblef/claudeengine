@@ -541,11 +541,25 @@ void DrawBBoxDimensionOverlay(ImDrawList*          dl,
   std::snprintf(axes[1].label, sizeof(axes[1].label), "%.2f m", axes[1].size);
   std::snprintf(axes[2].label, sizeof(axes[2].label), "%.2f m", axes[2].size);
 
+  // Project all 8 corners once — used to push each arrow outside the bbox silhouette.
+  const core::Vec3f& mn = local_bbox.GetMin();
+  const core::Vec3f& mx = local_bbox.GetMax();
+  const core::Vec3f corners[8] = {
+    {mn.x, mn.y, mn.z}, {mx.x, mn.y, mn.z},
+    {mn.x, mx.y, mn.z}, {mx.x, mx.y, mn.z},
+    {mn.x, mn.y, mx.z}, {mx.x, mn.y, mx.z},
+    {mn.x, mx.y, mx.z}, {mx.x, mx.y, mx.z},
+  };
+  ScreenPt sc[8];
+  for (int i = 0; i < 8; ++i)
+    sc[i] = ProjectToScreen(corners[i], vp, image_pos, image_size);
+
   // Project bbox centre to screen (for computing outward offset direction).
   const ScreenPt screen_center = ProjectToScreen(center, vp, image_pos, image_size);
 
   constexpr float kMinLengthPx    = 8.f;
-  constexpr float kOffsetPx       = 12.f;
+  // Gap between the farthest bbox corner and the arrow line.
+  constexpr float kGapPx          = 12.f;
   constexpr float kLineThickness  = 1.5f;
   constexpr float kArrowLen       = 8.f;
   constexpr float kArrowHalfBase  = 5.f * 0.5f;
@@ -564,7 +578,7 @@ void DrawBBoxDimensionOverlay(ImDrawList*          dl,
     const float len = std::sqrt(dx * dx + dy * dy);
     if (len < kMinLengthPx) continue;
 
-    // Perpendicular (outward from bbox screen centre) offset.
+    // Perpendicular unit vector.
     const float perp_x = -dy / len;
     const float perp_y =  dx / len;
 
@@ -580,10 +594,21 @@ void DrawBBoxDimensionOverlay(ImDrawList*          dl,
       }
     }
 
-    const ImVec2 a0(s0.pos.x + out_x * kOffsetPx,
-                    s0.pos.y + out_y * kOffsetPx);
-    const ImVec2 a1(s1.pos.x + out_x * kOffsetPx,
-                    s1.pos.y + out_y * kOffsetPx);
+    // Find the farthest corner in the outward perpendicular direction so the
+    // arrow is drawn outside the full bbox silhouette, not through the mesh.
+    float max_perp = 0.f;
+    for (const ScreenPt& sp : sc) {
+      if (!sp.valid) continue;
+      const float proj = (sp.pos.x - s0.pos.x) * out_x
+                       + (sp.pos.y - s0.pos.y) * out_y;
+      if (proj > max_perp) max_perp = proj;
+    }
+    const float offset = max_perp + kGapPx;
+
+    const ImVec2 a0(s0.pos.x + out_x * offset,
+                    s0.pos.y + out_y * offset);
+    const ImVec2 a1(s1.pos.x + out_x * offset,
+                    s1.pos.y + out_y * offset);
 
     dl->AddLine(a0, a1, ax.color, kLineThickness);
 
