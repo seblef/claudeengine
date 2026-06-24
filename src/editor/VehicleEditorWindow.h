@@ -118,6 +118,8 @@ class VehicleEditorWindow {
 
   // cppcheck-suppress unusedStructMember
   physics::VehicleDesc vehicle_desc_;
+  // cppcheck-suppress unusedStructMember
+  bool use_convex_hull_body_ = false;
 
   // Index of the active wheel in the selector. 0=FL, 1=FR, 2=RL, 3=RR.
   // Always in [0, 3]: set by the radio-button bar, click-to-select, or

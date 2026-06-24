@@ -41,8 +41,11 @@ class VehicleTemplate : public core::Resource<std::string, VehicleTemplate> {
   VehicleTemplate& operator=(const VehicleTemplate&) = delete;
 
   // The descriptor path used to identify this template (equal to GetId()).
-  [[nodiscard]] const std::string&          GetDescPath()           const;
-  [[nodiscard]] const physics::VehicleDesc& GetVehicleDesc()        const;
+  [[nodiscard]] const std::string&            GetDescPath()            const;
+  [[nodiscard]] const physics::VehicleDesc&  GetVehicleDesc()         const;
+  [[nodiscard]] const physics::WheelGeometry& GetFrontWheelGeometry() const;
+  [[nodiscard]] const physics::WheelGeometry& GetRearWheelGeometry()  const;
+  [[nodiscard]] bool                          UseConvexHullBody()      const;
   // Non-owning views; callers must not Release() these directly.
   [[nodiscard]] MeshTemplate*               GetBodyTemplate()        const;
   [[nodiscard]] MeshTemplate*               GetFrontWheelTemplate()  const;
@@ -53,7 +56,13 @@ class VehicleTemplate : public core::Resource<std::string, VehicleTemplate> {
                             abstract::VideoDevice* video);
 
   // cppcheck-suppress unusedStructMember
-  physics::VehicleDesc vehicle_desc_;
+  physics::VehicleDesc    vehicle_desc_;
+  // cppcheck-suppress unusedStructMember
+  physics::WheelGeometry  front_wheel_geo_;
+  // cppcheck-suppress unusedStructMember
+  physics::WheelGeometry  rear_wheel_geo_;
+  // cppcheck-suppress unusedStructMember
+  bool                    use_convex_hull_body_ = false;
   // cppcheck-suppress unusedStructMember
   MeshTemplate*        body_tmpl_        = nullptr;
   // cppcheck-suppress unusedStructMember
