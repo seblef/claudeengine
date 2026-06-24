@@ -10,6 +10,9 @@
 
 namespace editor {
 
+VehicleSelectionModal::VehicleSelectionModal(const char* popup_id)
+    : popup_id_(popup_id) {}
+
 void VehicleSelectionModal::Open() {
   entries_.clear();
   selected_ = -1;
@@ -31,11 +34,11 @@ void VehicleSelectionModal::Open() {
 
 std::string VehicleSelectionModal::Render() {
   if (is_open_) {
-    ImGui::OpenPopup("Select Vehicle");
+    ImGui::OpenPopup(popup_id_);
     is_open_ = false;
   }
 
-  if (!ImGui::BeginPopupModal("Select Vehicle", nullptr,
+  if (!ImGui::BeginPopupModal(popup_id_, nullptr,
                               ImGuiWindowFlags_AlwaysAutoResize)) {
     return {};
   }

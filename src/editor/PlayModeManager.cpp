@@ -12,9 +12,11 @@
 #include "game/ChaseCameraController.h"
 #include "game/GameMesh.h"
 #include "game/GamePlayerStart.h"
+#include "game/GameSystem.h"
 #include "game/GameTerrain.h"
 #include "game/GameVehicle.h"
 #include "game/PlayerVehicleController.h"
+#include "game/VehicleTemplate.h"
 #include "physics/PhysicsBody.h"
 #include "physics/PhysicsBodyDesc.h"
 #include "physics/PhysicsSystem.h"
@@ -66,10 +68,6 @@ void PlayModeManager::EnterVisitor::Visit(game::GameTerrain& t) {
   terrain = &t;
 }
 
-void PlayModeManager::EnterVisitor::Visit(game::GameVehicle& v) {
-  if (!vehicle) vehicle = &v;
-}
-
 // ---- PlayModeManager --------------------------------------------------------
 
 PlayModeManager::PlayModeManager(EditorScene* scene,
@@ -100,7 +98,7 @@ void PlayModeManager::SetStatusMessage(const std::string& msg) {
   if (on_status_message_) on_status_message_(msg);
 }
 
-void PlayModeManager::Enter() {
+void PlayModeManager::Enter(const std::string& vehicle_name) {
   if (playing_) return;
 
   // 1. Validate file path.
@@ -109,42 +107,52 @@ void PlayModeManager::Enter() {
     return;
   }
 
-  // 2. Validate player start via visitor.
+  // 2. Load vehicle template and create the vehicle.
+  const std::string desc_path = "vehicles/" + vehicle_name + ".vehicle.yaml";
+  game::VehicleTemplate* tmpl = game::VehicleTemplate::GetOrLoad(desc_path, video_);
+  if (!tmpl) {
+    SetStatusMessage("Failed to load vehicle '" + vehicle_name + "'");
+    return;
+  }
+  owned_vehicle_ = std::make_unique<game::GameVehicle>(tmpl);
+  tmpl->Release();
+
+  // 3. Locate player start and collect static mesh physics bodies via visitor.
   EnterVisitor visitor;
   for (game::GameObject* obj : scene_->GetObjects())
     obj->Accept(visitor);
 
   if (!visitor.player_start) {
+    owned_vehicle_.reset();
     SetStatusMessage("Place a Player Start before entering Play mode");
     return;
   }
 
-  if (!visitor.vehicle) {
-    SetStatusMessage("Place a Vehicle in the scene before entering Play mode");
-    return;
-  }
-
-  // 3. Auto-save.
+  // 4. Auto-save.
   const EditorCameraController::CameraState cam_state = viewport_->GetCameraState();
   if (!MapSerializer::Save(*scene_, cam_state, scene_->GetFilePath())) {
+    owned_vehicle_.reset();
     SetStatusMessage("Failed to save the map — Play mode aborted");
     return;
   }
   saved_camera_state_ = cam_state;
   saved_file_path_    = scene_->GetFilePath();
 
-  // 4. Deactivate editor tools.
+  // 5. Deactivate editor tools.
   toolbar_->SetActiveTool(EditorTool::kSelection);
   tools_frozen_  = true;
 
-  // 5. Hide editor panels.
+  // 6. Hide editor panels.
   panels_hidden_ = true;
 
-  // 6. Show HUD — UIRenderer is not instanced in the editor app so we rely
-  //    on the panels_hidden_ flag checked by EditorWindow instead.
+  // 7. Place vehicle at player start and register it with the scene system.
+  //    AddObject() is used directly so the vehicle is not added to EditorScene's
+  //    dynamic pool (avoiding spurious outliner entries during play mode).
+  owned_vehicle_->SetWorldTransform(visitor.player_start->GetWorldTransform());
+  game::GameSystem::Instance().AddObject(owned_vehicle_.get());
+  vehicle_ = owned_vehicle_.get();
 
-  // 7. Activate the vehicle and wire player input + chase camera.
-  vehicle_ = visitor.vehicle;
+  // 8. Activate the vehicle and wire player input + chase camera.
   vehicle_controller_ = std::make_unique<game::PlayerVehicleController>();
   vehicle_->SetVehicleController(vehicle_controller_.get());
   vehicle_->Activate();
@@ -157,11 +165,11 @@ void PlayModeManager::Enter() {
   // chase camera transform inside EditorViewport::Render().
   viewport_->SetInPlayMode(true);
 
-  // 8. Register static physics bodies for meshes.
+  // 9. Register static physics bodies for meshes.
   play_bodies_ = std::move(visitor.created_bodies);
 
-  // 9. The terrain body is already managed by GameTerrain::OnAddedToScene();
-  //    we do not create a second body and do not store a handle here.
+  // 10. The terrain body is already managed by GameTerrain::OnAddedToScene();
+  //     we do not create a second body and do not store a handle here.
 
   playing_ = true;
 
@@ -188,7 +196,14 @@ void PlayModeManager::Exit() {
   vehicle_controller_.reset();
   vehicle_ = nullptr;
 
-  // 3. Fire the on_exit_ callback so the caller can reset the old scene and
+  // 3. Remove the vehicle spawned by Enter() from the scene and destroy it.
+  //    RemoveObject() calls OnRemovedFromScene() which deactivates physics.
+  if (owned_vehicle_) {
+    game::GameSystem::Instance().RemoveObject(owned_vehicle_.get());
+    owned_vehicle_.reset();
+  }
+
+  // 4. Fire the on_exit_ callback so the caller can reset the old scene and
   // load a fresh one. The caller must destroy the old scene BEFORE calling
   // MapSerializer::Load() to prevent FoliageRenderer double-instantiation
   // (GameTerrain::OnRemovedFromScene() destroys the singleton only when the
@@ -198,23 +213,21 @@ void PlayModeManager::Exit() {
     on_exit_(saved_file_path_, saved_camera_state_);
   }
 
-  // 4. Restore editor camera controller.
+  // 5. Restore editor camera controller.
   viewport_->SetInPlayMode(false);
 
   // Destroy the chase controller after restoring the viewport so no dangling
   // pointer is held in EditorViewport during the transition.
   chase_controller_.reset();
 
-  // 4 & 5. Restore panels and tools.
+  // 6 & 7. Restore panels and tools.
   panels_hidden_ = false;
   tools_frozen_  = false;
 
-  // 6. Hide HUD (no-op — UIRenderer not instanced in the editor app).
-
-  // 7.
+  // 8.
   toolbar_->SetInPlayMode(false);
 
-  // 8.
+  // 9.
   playing_ = false;
 
   // 9. Shut down profilers before the next Logger flush.

@@ -74,10 +74,11 @@ class PlayModeManager {
   void SetOnStatusMessage(std::function<void(std::string)> cb);
 
   // Attempts to enter play mode. Validates the scene (file path, player start),
-  // auto-saves, hides panels, installs the FPS camera, and registers physics.
+  // auto-saves, spawns a vehicle from the given template name at the player
+  // start, installs a chase camera, and registers static mesh physics bodies.
   // No-op and shows a status-bar warning if preconditions are not met.
   // No-op if already playing.
-  void Enter();
+  void Enter(const std::string& vehicle_name);
 
   // Exits play mode: tears down play-time physics bodies, restores viewport and
   // toolbar state, and fires the on_exit_ callback so the caller can reset the
@@ -105,7 +106,6 @@ class PlayModeManager {
    public:
     game::GamePlayerStart* player_start = nullptr;
     game::GameTerrain*     terrain      = nullptr;
-    game::GameVehicle*     vehicle      = nullptr;
 
     void Visit(game::GameCamera&)            override {}
     void Visit(game::GameLight&)             override {}
@@ -116,7 +116,7 @@ class PlayModeManager {
     void Visit(game::GameRoad&)              override {}
     void Visit(game::GameSoundEmitter&)      override {}
     void Visit(game::GameTerrain& t)         override;
-    void Visit(game::GameVehicle& v)         override;
+    void Visit(game::GameVehicle&)           override {}
 
     // Physics bodies created for meshes without an existing physics descriptor.
     // Filled during the visit and transferred to play_bodies_ after traversal.
@@ -141,7 +141,10 @@ class PlayModeManager {
   std::unique_ptr<game::ChaseCameraController>   chase_controller_;
   std::unique_ptr<game::PlayerVehicleController> vehicle_controller_;
 
-  // Non-owning; valid between Enter() and Exit().
+  // Owns the vehicle spawned by Enter(); destroyed in Exit().
+  std::unique_ptr<game::GameVehicle> owned_vehicle_;
+
+  // Non-owning alias to owned_vehicle_; valid between Enter() and Exit().
   // cppcheck-suppress unusedStructMember
   game::GameVehicle* vehicle_ = nullptr;
 

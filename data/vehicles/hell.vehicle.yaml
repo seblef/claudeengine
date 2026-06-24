@@ -3,7 +3,7 @@ front_wheel_mesh: meshes/vehicles/duke_car_wheel.emesh
 rear_wheel_mesh: meshes/vehicles/duke_car_wheel.emesh
 physics:
   mass: 1200
-  max_engine_torque: 300
+  max_engine_torque: 1600
   max_steer_angle: 0.5
   brake_torque: 1500
   handbrake_torque: 3000
@@ -16,24 +16,24 @@ wheels:
   front_left:
     position: [2.82779384, -0.4, 3.95890403]
     is_steered: true
-    is_driven: false
+    is_driven: true
     radius: 0.4
     width: 0.3
   front_right:
     position: [-2.82779384, -0.4, 3.95890403]
     is_steered: true
-    is_driven: false
+    is_driven: true
     radius: 0.4
     width: 0.3
   rear_left:
     position: [2.80543566, -0.4, -4.6718955]
     is_steered: false
-    is_driven: true
+    is_driven: false
     radius: 0.4
     width: 0.3
   rear_right:
     position: [-2.80543566, -0.4, -4.6718955]
     is_steered: false
-    is_driven: true
+    is_driven: false
     radius: 0.4
     width: 0.3

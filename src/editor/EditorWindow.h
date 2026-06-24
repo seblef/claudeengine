@@ -206,6 +206,10 @@ class EditorWindow {
   std::unique_ptr<SoundEmitterSelectionModal>      sound_modal_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<VehicleSelectionModal>           vehicle_modal_;
+  // Separate modal instance for Play mode vehicle selection (distinct from
+  // vehicle_modal_ which is used for kCreateVehicle scene placement).
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<VehicleSelectionModal>           play_vehicle_modal_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<PropertiesPanel>       properties_panel_;
   // cppcheck-suppress unusedStructMember
