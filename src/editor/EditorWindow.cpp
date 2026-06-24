@@ -126,7 +126,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       particle_modal_(std::make_unique<ParticleSystemSelectionModal>()),
       sound_modal_(std::make_unique<SoundEmitterSelectionModal>()),
       vehicle_modal_(std::make_unique<VehicleSelectionModal>()),
-      play_vehicle_modal_(std::make_unique<VehicleSelectionModal>()),
+      play_vehicle_modal_(std::make_unique<VehicleSelectionModal>("Select Play Vehicle")),
       properties_panel_(std::make_unique<PropertiesPanel>()),
       resources_panel_(std::make_unique<ResourcesPanel>()),
       objects_panel_(std::make_unique<ObjectsPanel>()),
