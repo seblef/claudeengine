@@ -88,12 +88,19 @@ class GameVehicle : public GameObject, public physics::IPhysicsBodyListener {
   // Activate(). May be nullptr — the vehicle will be simulated without inputs.
   void SetVehicleController(IVehicleController* ctrl) { controller_ = ctrl; }
 
+  /// True while the vehicle is actively driving in reverse.
+  [[nodiscard]] bool IsReversing() const {
+    return drive_state_ == DriveState::kReverse;
+  }
+
   [[nodiscard]] std::filesystem::path       GetDescPath()      const;
   [[nodiscard]] const physics::VehicleDesc& GetVehicleDesc()   const;
   // Non-owning; used by PickingUtils for ray-triangle intersection.
   [[nodiscard]] MeshTemplate*               GetBodyTemplate()  const;
 
  private:
+  enum class DriveState { kForward, kBraking, kReverse };
+
   // cppcheck-suppress unusedStructMember
   VehicleTemplate*          template_;
 
@@ -115,6 +122,11 @@ class GameVehicle : public GameObject, public physics::IPhysicsBodyListener {
   // Non-owning; set by the caller before Activate().
   // cppcheck-suppress unusedStructMember
   IVehicleController*       controller_      = nullptr;
+
+  // cppcheck-suppress unusedStructMember
+  DriveState                drive_state_     = DriveState::kForward;
+  // cppcheck-suppress unusedStructMember
+  float                     reverse_timer_   = 0.f;
 };
 
 }  // namespace game

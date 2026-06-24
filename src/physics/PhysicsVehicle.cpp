@@ -65,6 +65,12 @@ void PhysicsVehicle::SetSteer(float v)     { steer_     = v; }
 void PhysicsVehicle::SetBrake(float v)     { brake_     = v; }
 void PhysicsVehicle::SetHandbrake(bool on) { handbrake_ = on; }
 
+float PhysicsVehicle::GetForwardSpeed() const {
+    const JPH::Vec3 vel     = body_->GetLinearVelocity();
+    const JPH::Vec3 forward = body_->GetRotation() * JPH::Vec3(0.f, 0.f, 1.f);
+    return vel.Dot(forward);
+}
+
 core::Mat4f PhysicsVehicle::GetBodyWorldTransform() const {
     return JoltMatToMat4f(body_->GetWorldTransform());
 }

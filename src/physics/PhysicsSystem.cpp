@@ -528,7 +528,7 @@ PhysicsBody* PhysicsSystem::CreateTerrainBody(const terrain::TerrainData* data,
                                        ExtractRotation(initial_transform),
                                        JPH::EMotionType::Static,
                                        kLayerWorld);
-    settings.mFriction = 0.5f;
+    settings.mFriction = 0.7f;
 
     const JPH::BodyID id =
         jolt_system_->GetBodyInterface().CreateAndAddBody(
