@@ -9,7 +9,7 @@ namespace game {
 class GameCamera;
 class GameObject;
 
-// Third-person spring-arm camera controller.
+// Third-person spring-arm camera controller with keyboard-driven orbit.
 //
 // Follows a target GameObject by positioning the camera behind and above it.
 // The camera position is spring-smoothed each frame using a frame-rate-independent
@@ -19,13 +19,15 @@ class GameObject;
 // The look direction is NOT smoothed: the camera always points directly at the
 // target, slightly above its centre, to avoid disorienting lag.
 //
-// OnEvent() is a no-op: this controller has no keyboard or mouse input.
+// Orbit controls: hold U to rotate left, hold I to rotate right, press R to
+// reset to directly behind the car. The yaw offset is relative to the target's
+// heading so the camera tracks turns naturally.
 class ChaseCameraController : public ICameraController {
  public:
   ChaseCameraController();
 
   void SetCamera(GameCamera* camera) override;
-  void OnEvent(const core::Event& event) override {}
+  void OnEvent(const core::Event& event) override;
   void Update(float dt) override;
 
   // Sets the scene object the camera will follow.
@@ -45,6 +47,10 @@ class ChaseCameraController : public ICameraController {
   // Higher values = snappier. Uses 1 - exp(-k * dt). Default: 8.0.
   void SetSpringStiffness(float k);
 
+  // Sets the orbit angular speed in radians per second.
+  // Default: 2.094 rad/s (~π*2/3, full orbit in ~3 s).
+  void SetOrbitSpeed(float rad_per_sec);
+
  private:
   // cppcheck-suppress unusedStructMember
   GameCamera*       camera_      = nullptr;
@@ -61,6 +67,16 @@ class ChaseCameraController : public ICameraController {
   float arm_height_       =  3.f;
   // cppcheck-suppress unusedStructMember
   float spring_stiffness_ =  8.f;
+
+  // Orbit state.
+  // cppcheck-suppress unusedStructMember
+  float yaw_offset_        = 0.f;     // radians, relative to target forward
+  // cppcheck-suppress unusedStructMember
+  float orbit_speed_       = 2.094f;  // rad/s
+  // cppcheck-suppress unusedStructMember
+  bool  orbit_left_held_   = false;
+  // cppcheck-suppress unusedStructMember
+  bool  orbit_right_held_  = false;
 };
 
 }  // namespace game

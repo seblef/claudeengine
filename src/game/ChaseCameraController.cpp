@@ -2,6 +2,8 @@
 
 #include <cmath>
 
+#include "core/EventType.h"
+#include "core/Key.h"
 #include "core/Mat4f.h"
 #include "core/Vec3f.h"
 #include "game/GameCamera.h"
@@ -23,9 +25,26 @@ void ChaseCameraController::SetTarget(const GameObject* target) {
   target_ = target;
 }
 
-void ChaseCameraController::SetArmLength(float m)        { arm_length_       = m; }
-void ChaseCameraController::SetArmHeight(float m)        { arm_height_       = m; }
-void ChaseCameraController::SetSpringStiffness(float k)  { spring_stiffness_ = k; }
+void ChaseCameraController::SetArmLength(float m)           { arm_length_       = m; }
+void ChaseCameraController::SetArmHeight(float m)           { arm_height_       = m; }
+void ChaseCameraController::SetSpringStiffness(float k)     { spring_stiffness_ = k; }
+void ChaseCameraController::SetOrbitSpeed(float rad_per_sec){ orbit_speed_      = rad_per_sec; }
+
+void ChaseCameraController::OnEvent(const core::Event& event) {
+  switch (event.type) {
+    case core::EventType::kKeyDown:
+      if (event.key == core::Key::kU) orbit_left_held_  = true;
+      if (event.key == core::Key::kI) orbit_right_held_ = true;
+      if (event.key == core::Key::kR) yaw_offset_       = 0.f;
+      break;
+    case core::EventType::kKeyUp:
+      if (event.key == core::Key::kU) orbit_left_held_  = false;
+      if (event.key == core::Key::kI) orbit_right_held_ = false;
+      break;
+    default:
+      break;
+  }
+}
 
 void ChaseCameraController::Update(float dt) {
   if (!camera_ || !target_) return;
@@ -37,15 +56,29 @@ void ChaseCameraController::Update(float dt) {
   // (Unlike the camera matrix, which stores -forward in column 2.)
   const core::Vec3f target_forward = {world(0, 2), world(1, 2), world(2, 2)};
 
+  // Accumulate orbit offset from held keys.
+  if (orbit_left_held_)  yaw_offset_ -= orbit_speed_ * dt;
+  if (orbit_right_held_) yaw_offset_ += orbit_speed_ * dt;
+
   // Scale arm by object size so the camera always clears the target's extent.
   const core::Vec3f bbox_size   = target_->GetLocalBBox().GetSize();
   const float       half_diag   = bbox_size.Length() * 0.5f;
   const float       eff_length  = arm_length_ + half_diag;
   const float       eff_height  = arm_height_ + bbox_size.y * 0.5f;
 
-  // Desired position: behind and above the target.
+  // Rotate the arm direction by the yaw offset (Y-axis rotation in world space,
+  // applied to the target's XZ forward vector so offset stays car-relative).
+  const float       c          = std::cos(yaw_offset_);
+  const float       s          = std::sin(yaw_offset_);
+  const core::Vec3f orbit_dir  = core::Vec3f{
+      target_forward.x * c + target_forward.z * s,
+      0.f,
+      -target_forward.x * s + target_forward.z * c
+  }.Normalized();
+
+  // Desired position: behind and above the target along the orbit direction.
   core::Vec3f desired = target_pos
-      - target_forward * eff_length
+      - orbit_dir * eff_length
       + core::Vec3f::kAxisY * eff_height;
 
   // Wall-clip: cast a ray from the target toward the desired position and pull
