@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -61,6 +63,11 @@ class PhysicsSystem : public core::Singleton<PhysicsSystem> {
 
     /// Initialise the Jolt world.  Must be called once before Step().
     void Init();
+
+    /// Set the directory where serialised Jolt shape cache files are stored.
+    /// Call after Init() and before any CreateTerrainBody / CreateBodyWithMesh
+    /// calls.  If never called (or path is empty) disk caching is disabled.
+    void SetShapeCacheDir(std::string_view path);
 
     /// Advance the simulation by dt seconds, then dispatch updated transforms
     /// to all registered Dynamic body listeners.
@@ -187,6 +194,8 @@ class PhysicsSystem : public core::Singleton<PhysicsSystem> {
     // Values are void* to avoid exposing JPH types in this header.
     // cppcheck-suppress unusedStructMember
     std::unordered_map<const void*, void*>    mesh_shape_cache_;
+    // cppcheck-suppress unusedStructMember
+    std::string shape_cache_dir_;  ///< Empty = disk caching disabled.
 };
 
 }  // namespace physics
