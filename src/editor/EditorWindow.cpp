@@ -126,6 +126,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       particle_modal_(std::make_unique<ParticleSystemSelectionModal>()),
       sound_modal_(std::make_unique<SoundEmitterSelectionModal>()),
       vehicle_modal_(std::make_unique<VehicleSelectionModal>()),
+      play_vehicle_modal_(std::make_unique<VehicleSelectionModal>()),
       properties_panel_(std::make_unique<PropertiesPanel>()),
       resources_panel_(std::make_unique<ResourcesPanel>()),
       objects_panel_(std::make_unique<ObjectsPanel>()),
@@ -164,9 +165,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
 
   toolbar_->SetCommandHistory(&history_);
   toolbar_->SetOnPlay([this]{
-    play_mode_->Enter();
-    toolbar_->SetInPlayMode(play_mode_->IsPlaying());
-    if (play_mode_->IsPlaying()) show_profiler_panel_ = true;
+    play_vehicle_modal_->Open();
   });
   toolbar_->SetOnStop([this]{
     play_mode_->Exit();
@@ -565,6 +564,13 @@ void EditorWindow::Render() {
         ImGuiMouseCursor_ResizeAll,
         [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
     viewport_->SetActiveTool(placement_tool_.get());
+  }
+
+  // Play mode vehicle selection modal — open when the Play button is clicked.
+  if (const std::string play_v_name = play_vehicle_modal_->Render(); !play_v_name.empty()) {
+    play_mode_->Enter(play_v_name);
+    toolbar_->SetInPlayMode(play_mode_->IsPlaying());
+    if (play_mode_->IsPlaying()) show_profiler_panel_ = true;
   }
 
   // Vehicle selection modal — open when kCreateVehicle activated.
