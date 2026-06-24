@@ -42,6 +42,10 @@ class PhysicsVehicle {
 
     // ---- Simulation output (call each frame after PhysicsSystem::Step()) -----
 
+    /// Signed speed along the vehicle's forward axis (m/s).
+    /// Positive = moving forward, negative = moving backward.
+    [[nodiscard]] float GetForwardSpeed() const;
+
     /// World-space transform of the vehicle body origin.
     [[nodiscard]] core::Mat4f GetBodyWorldTransform() const;
 

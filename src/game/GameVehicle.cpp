@@ -14,6 +14,10 @@ namespace game {
 
 namespace {
 
+constexpr float kReverseEngageDelay    = 0.3f;   ///< Brake-hold time (s) before reverse engages.
+constexpr float kReverseSpeedThreshold = 0.3f;   ///< Speed (m/s) below which the car is considered stopped.
+constexpr float kReverseThrottle       = 0.6f;   ///< Fraction of max engine torque applied in reverse.
+
 // A negative-scale mirror would flip winding order and break back-face culling.
 // A 180° Y rotation achieves the same visual mirroring with det=+1.
 core::Mat4f MirrorY() {
@@ -122,9 +126,44 @@ void GameVehicle::Deactivate() {
 void GameVehicle::Update(float dt) {
   if (physics_vehicle_ && controller_) {
     controller_->Update(dt);
-    physics_vehicle_->SetThrottle(controller_->GetThrottle());
+
+    const float throttle = controller_->GetThrottle();
+    const float brake    = controller_->GetBrake();
+    const float speed    = physics_vehicle_->GetForwardSpeed();
+
+    switch (drive_state_) {
+      case DriveState::kForward:
+        physics_vehicle_->SetThrottle(throttle);
+        physics_vehicle_->SetBrake(brake);
+        if (brake > 0.f && speed < kReverseSpeedThreshold) {
+          drive_state_   = DriveState::kBraking;
+          reverse_timer_ = 0.f;
+        }
+        break;
+
+      case DriveState::kBraking:
+        physics_vehicle_->SetThrottle(0.f);
+        physics_vehicle_->SetBrake(brake);
+        if (brake == 0.f || throttle > 0.f) {
+          drive_state_ = DriveState::kForward;
+        } else if (speed < kReverseSpeedThreshold) {
+          reverse_timer_ += dt;
+          if (reverse_timer_ >= kReverseEngageDelay)
+            drive_state_ = DriveState::kReverse;
+        } else {
+          reverse_timer_ = 0.f;
+        }
+        break;
+
+      case DriveState::kReverse:
+        physics_vehicle_->SetThrottle(-kReverseThrottle);
+        physics_vehicle_->SetBrake(0.f);
+        if (brake == 0.f || throttle > 0.f)
+          drive_state_ = DriveState::kForward;
+        break;
+    }
+
     physics_vehicle_->SetSteer(controller_->GetSteer());
-    physics_vehicle_->SetBrake(controller_->GetBrake());
     physics_vehicle_->SetHandbrake(controller_->GetHandbrake());
   }
 
