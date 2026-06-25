@@ -6,6 +6,7 @@
 #include <Jolt/Physics/Body/BodyInterface.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/Physics/Vehicle/VehicleConstraint.h>
+#include <Jolt/Physics/Vehicle/Wheel.h>
 #include <Jolt/Physics/Vehicle/WheeledVehicleController.h>
 
 #include "physics/IPhysicsBodyListener.h"
@@ -85,6 +86,30 @@ core::Mat4f PhysicsVehicle::GetWheelWorldTransform(int wheel_index) const {
         static_cast<JPH::uint>(wheel_index),
         -JPH::Vec3::sAxisX(),
         JPH::Vec3::sAxisY()));
+}
+
+WheelContact PhysicsVehicle::GetWheelContact(int wheel_index) const {
+    const JPH::Wheel* w = constraint_->GetWheel(static_cast<JPH::uint>(wheel_index));
+    WheelContact result;
+    result.has_contact     = w->HasContact();
+    result.contact_body_id = w->GetContactBodyID().GetIndexAndSequenceNumber();
+    if (result.has_contact) {
+        const JPH::RVec3 pos = w->GetContactPosition();
+        result.position = core::Vec3f(
+            static_cast<float>(pos.GetX()),
+            static_cast<float>(pos.GetY()),
+            static_cast<float>(pos.GetZ()));
+    }
+    return result;
+}
+
+int PhysicsVehicle::GetWheelCount() const {
+    return static_cast<int>(constraint_->GetWheels().size());
+}
+
+float PhysicsVehicle::GetWheelWidth(int wheel_index) const {
+    return constraint_->GetWheel(static_cast<JPH::uint>(wheel_index))
+               ->GetSettings()->mWidth;
 }
 
 }  // namespace physics

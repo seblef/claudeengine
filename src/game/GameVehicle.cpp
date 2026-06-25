@@ -9,6 +9,8 @@
 #include "game/VehicleTemplate.h"
 #include "physics/PhysicsSystem.h"
 #include "physics/PhysicsVehicle.h"
+#include "renderer/Renderer.h"
+#include "track/TireTrackSystem.h"
 
 namespace game {
 
@@ -114,10 +116,21 @@ void GameVehicle::Activate() {
       template_->GetVehicleDesc(), this, GetWorldTransform(),
       template_->GetFrontWheelGeometry(), template_->GetRearWheelGeometry(),
       body_verts, body_count);
+
+  if (renderer::Renderer::IsInstanced()) {
+    track::TireTrackSystem* tts =
+        renderer::Renderer::Instance().GetTireTrackSystem();
+    if (tts) tts->RegisterVehicle(physics_vehicle_);
+  }
 }
 
 void GameVehicle::Deactivate() {
   if (!physics_vehicle_) return;
+  if (renderer::Renderer::IsInstanced()) {
+    track::TireTrackSystem* tts =
+        renderer::Renderer::Instance().GetTireTrackSystem();
+    if (tts) tts->UnregisterVehicle(physics_vehicle_);
+  }
   if (physics::PhysicsSystem::IsInstanced())
     physics::PhysicsSystem::Instance().DestroyVehicle(physics_vehicle_);
   physics_vehicle_ = nullptr;
@@ -158,7 +171,7 @@ void GameVehicle::Update(float dt) {
       case DriveState::kReverse:
         physics_vehicle_->SetThrottle(-kReverseThrottle);
         physics_vehicle_->SetBrake(0.f);
-        if (brake == 0.f || throttle > 0.f)
+        if (brake == 0.f || throttle > 0.f) drive_state_ = DriveState::kForward;
         break;
     }
 

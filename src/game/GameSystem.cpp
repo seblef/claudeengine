@@ -9,6 +9,7 @@
 #include "game/GameParticleSystem.h"
 #include "physics/PhysicsSystem.h"
 #include "renderer/Renderer.h"
+#include "track/TireTrackSystem.h"
 
 namespace game {
 
@@ -19,10 +20,29 @@ GameSystem::GameSystem(abstract::Devices* devices)
           devices->GetVideoDevice())),
       hud_screen_(std::make_unique<ui::HUDScreen>()),
       loading_screen_(std::make_unique<ui::LoadingScreen>()) {
-  renderer::Renderer::Instance().SetParticleRenderer(particle_renderer_.get());
   abstract::VideoDevice* video = devices->GetVideoDevice();
+  renderer::Renderer::Instance().SetParticleRenderer(particle_renderer_.get());
+  tire_track_system_ = std::make_unique<track::TireTrackSystem>(video);
+  renderer::Renderer::Instance().SetTireTrackSystem(tire_track_system_.get());
+
+  const char* kTrackTexPaths[physics::kSurfaceTypeCount] = {
+      "tracks/track_generic.dds",
+      "tracks/track_terrain.dds",
+      "tracks/track_road.dds",
+  };
+  for (int t = 0; t < physics::kSurfaceTypeCount; ++t) {
+    track_textures_[t] = video->CreateTexture(kTrackTexPaths[t]);
+    tire_track_system_->SetTrackTexture(
+        static_cast<physics::SurfaceType>(t), track_textures_[t]);
+  }
   hud_screen_->Build(video);
   loading_screen_->Build(video);
+}
+
+GameSystem::~GameSystem() {
+  for (abstract::Texture* tex : track_textures_) {
+    if (tex) tex->Release();
+  }
 }
 
 void GameSystem::Update() {
@@ -56,6 +76,10 @@ void GameSystem::Update() {
 
   if (physics::PhysicsSystem::IsInstanced()) {
     physics::PhysicsSystem::Instance().Step(dt);
+  }
+
+  if (tire_track_system_) {
+    tire_track_system_->Update(dt);
   }
 
   for (GameObject* obj : objects_) {

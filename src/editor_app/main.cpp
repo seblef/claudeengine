@@ -39,6 +39,9 @@ int main(int argc, char* argv[]) {
 
   new physics::PhysicsSystem();
   physics::PhysicsSystem::Instance().Init();
+  const std::string& shape_cache = core::AppConfig::GetPhysics().GetShapeCacheDir();
+  if (!shape_cache.empty())
+    physics::PhysicsSystem::Instance().SetShapeCacheDir(shape_cache);
 
   new game::GameSystem(&devices);
 

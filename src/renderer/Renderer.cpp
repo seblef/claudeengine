@@ -19,6 +19,7 @@
 #include "environment/WindInfos.h"
 #include "environment/WindSystem.h"
 #include "particles/ParticleRenderer.h"
+#include "track/TireTrackSystem.h"
 #include "renderer/CSMInfos.h"
 #include "renderer/GeometryUtils.h"
 #include "renderer/LightRenderer.h"
@@ -409,7 +410,29 @@ void Renderer::Update(float time, const core::Camera* camera,
     emissive_fbo_.UnbindForWriting();
   }
 
-  // 4c. Particle forward pass — kAdditive and kAlphaBlend emitters drawn into
+  // 4c. Tire track pass — flat alpha-blended ground decals rendered before
+  //     particles so tracks appear below any particle effects that sit on the
+  //     ground.  Depth write is disabled (tracks must not occlude geometry).
+  if (tire_track_system_) {
+    // cppcheck-suppress shadowVariable
+    PROFILE_SCOPE("Renderer::TireTracks");
+    GPU_PROFILE_SCOPE(video_, "Renderer::TireTracks");
+    emissive_fbo_.BindForWriting();
+    video_->SetDepthTestEnabled(true);
+    video_->SetDepthWriteEnabled(false);
+    video_->SetDepthFunc(abstract::CompareFunc::kLessEqual);
+    video_->SetBlendEnabled(true,
+                            abstract::BlendFactor::kSrcAlpha,
+                            abstract::BlendFactor::kOneMinusSrcAlpha);
+    tire_track_system_->Render(*camera_);
+    video_->SetBlendEnabled(false);
+    video_->SetDepthFunc(abstract::CompareFunc::kLess);
+    video_->SetDepthWriteEnabled(true);
+    video_->SetDepthTestEnabled(false);
+    emissive_fbo_.UnbindForWriting();
+  }
+
+  // 4d. Particle forward pass — kAdditive and kAlphaBlend emitters drawn into
   //     the emissive HDR RT after water so they correctly appear on top of the
   //     water surface. Alpha-blend emitters are sorted back-to-front.
   //     RenderForwardPass manages its own blend/depth state and restores defaults.
