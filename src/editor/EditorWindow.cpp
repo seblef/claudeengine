@@ -49,6 +49,7 @@
 #include "editor/VehicleSelectionModal.h"
 #include "editor/ObjectNamingUtils.h"
 #include "editor/ObjectsPanel.h"
+#include "editor/EmeshInfoPanel.h"
 #include "editor/ResourceBrowser.h"
 #include "editor/ResourcePanelRegistry.h"
 #include "editor/VehicleEditorWindow.h"
@@ -286,6 +287,13 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   } else {
     LOG_F(WARNING, "Editor 3D audio unavailable — sound toggle will be a no-op");
   }
+
+  // .emesh files open in a read-only info panel tab (no "New" button).
+  resource_panel_registry_.Register(
+      ".emesh",
+      [](std::filesystem::path path) -> std::unique_ptr<IResourcePanel> {
+        return std::make_unique<EmeshInfoPanel>(std::move(path));
+      });
 
   // Wire vehicle editor: open in dedicated window, "New" button creates skeleton.
   vehicle_editor_->SetOnPlaceInScene([this](const std::filesystem::path& vpath) {
