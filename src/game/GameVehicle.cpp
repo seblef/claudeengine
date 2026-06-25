@@ -171,7 +171,7 @@ void GameVehicle::Update(float dt) {
       case DriveState::kReverse:
         physics_vehicle_->SetThrottle(-kReverseThrottle);
         physics_vehicle_->SetBrake(0.f);
-        if (brake == 0.f || throttle > 0.f)
+        if (brake == 0.f || throttle > 0.f) drive_state_ = DriveState::kForward;
         break;
     }
 

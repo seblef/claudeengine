@@ -26,9 +26,9 @@ GameSystem::GameSystem(abstract::Devices* devices)
   renderer::Renderer::Instance().SetTireTrackSystem(tire_track_system_.get());
 
   const char* kTrackTexPaths[physics::kSurfaceTypeCount] = {
-      "tracks/track_generic.png",
-      "tracks/track_terrain.png",
-      "tracks/track_road.png",
+      "tracks/track_generic.dds",
+      "tracks/track_terrain.dds",
+      "tracks/track_road.dds",
   };
   for (int t = 0; t < physics::kSurfaceTypeCount; ++t) {
     track_textures_[t] = video->CreateTexture(kTrackTexPaths[t]);

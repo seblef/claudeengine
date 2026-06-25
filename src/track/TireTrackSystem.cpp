@@ -202,6 +202,8 @@ void TireTrackSystem::Render(const core::Camera& camera) {
 
     shader_->Activate();
     ibo_->Bind();
+    video_->SetBlendEnabled(true, abstract::BlendFactor::kSrcAlpha,
+                            abstract::BlendFactor::kOneMinusSrcAlpha);
     video_->SetPrimitiveType(abstract::PrimitiveType::kTriangleList);
     video_->SetIndexType(abstract::IndexType::kUInt32);
 
