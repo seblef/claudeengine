@@ -60,6 +60,12 @@ class PropertiesPanel {
     on_play_sound_once_ = std::move(cb);
   }
 
+  // Sets the callback invoked when the road width slider changes. The caller
+  // is responsible for regenerating the road mesh (it owns the terrain data).
+  void SetOnRoadWidthChanged(std::function<void(game::GameRoad*)> cb) {
+    on_road_width_changed_ = std::move(cb);
+  }
+
   // Renders the properties UI inside the current ImGui window.
   // obj may be nullptr (no selection).
   void Render(game::GameObject* obj);
@@ -90,6 +96,8 @@ class PropertiesPanel {
   std::function<void(game::GameObject*)>   on_transform_changed_;
   // cppcheck-suppress unusedStructMember
   std::function<void(const std::string&, float)> on_play_sound_once_;
+  // cppcheck-suppress unusedStructMember
+  std::function<void(game::GameRoad*)>            on_road_width_changed_;
   // cppcheck-suppress unusedStructMember
   SoundEmitterSelectionModal               sound_picker_modal_{"Change Sound"};
   // cppcheck-suppress unusedStructMember

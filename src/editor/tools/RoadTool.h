@@ -27,16 +27,20 @@ class EditorScene;
 // OnRender() each frame (kEditing):
 //   - Projects control points to screen and draws coloured circles
 //     (yellow = selected, white = hovered, grey = default).
+//   - Draws a ghost filled circle under the cursor (preview of the next insert).
 //   - Draws an ImGuizmo translate gizmo on the selected point.
 //   - On LMB click on a control point: selects it.
 //   - On LMB click on empty terrain: inserts a new point after the current
 //     selection (or appends when nothing is selected) and regenerates the mesh.
-//   - Shows a small Road width slider overlay at the top-left of the viewport.
+//   - Road width is edited via the Properties panel (not a viewport overlay).
 //
 // OnRender() each frame (kCreating):
 //   - On LMB click on terrain: creates the road on the first click, appends
 //     a control point on each subsequent click, regenerates the mesh.
-//   - Draws a ghost line from the last placed point to the mouse cursor.
+//   - On LMB click on an existing control point: selects it.
+//   - Shows an ImGuizmo translate gizmo on the selected point.
+//   - Draws a ghost line from the last placed point to the mouse cursor
+//     (suppressed while hovering or dragging a control point).
 //   - Shows a hint overlay with keyboard instructions.
 //
 // OnEvent() (kEditing): Delete key removes the selected control point

@@ -91,6 +91,9 @@ class EditorViewport {
   // Provides terrain data used to ray-cast placement hit points.
   // Pass nullptr when no terrain is in the scene.
   void SetTerrainData(const terrain::TerrainData* data) { terrain_data_ = data; }
+  [[nodiscard]] const terrain::TerrainData* GetTerrainData() const {
+    return terrain_data_;
+  }
 
   // Wires the rendering settings panel so physics gizmos can be toggled.
   // Non-owning; must outlive this viewport.
