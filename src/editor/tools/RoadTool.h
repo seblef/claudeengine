@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+
 #include "core/Event.h"
 #include "core/Mat4f.h"
 #include "core/Vec3f.h"
@@ -25,16 +27,20 @@ class EditorScene;
 // OnRender() each frame (kEditing):
 //   - Projects control points to screen and draws coloured circles
 //     (yellow = selected, white = hovered, grey = default).
+//   - Draws a ghost filled circle under the cursor (preview of the next insert).
 //   - Draws an ImGuizmo translate gizmo on the selected point.
 //   - On LMB click on a control point: selects it.
 //   - On LMB click on empty terrain: inserts a new point after the current
 //     selection (or appends when nothing is selected) and regenerates the mesh.
-//   - Shows a small Road width slider overlay at the top-left of the viewport.
+//   - Road width is edited via the Properties panel (not a viewport overlay).
 //
 // OnRender() each frame (kCreating):
 //   - On LMB click on terrain: creates the road on the first click, appends
 //     a control point on each subsequent click, regenerates the mesh.
-//   - Draws a ghost line from the last placed point to the mouse cursor.
+//   - On LMB click on an existing control point: selects it.
+//   - Shows an ImGuizmo translate gizmo on the selected point.
+//   - Draws a ghost line from the last placed point to the mouse cursor
+//     (suppressed while hovering or dragging a control point).
 //   - Shows a hint overlay with keyboard instructions.
 //
 // OnEvent() (kEditing): Delete key removes the selected control point
@@ -65,6 +71,11 @@ class RoadTool : public EditorToolBase {
   // Returns true while the tool is laying a new road (kCreating mode).
   // Used by EditorWindow to suppress the road auto-activation auto-logic.
   [[nodiscard]] bool IsCreating() const { return mode_ == Mode::kCreating; }
+
+  // Registers a callback fired whenever the road or its spline is mutated
+  // (finalization, control-point add/move/delete, width change). Wire this to
+  // set the editor's scene-dirty flag.
+  void SetOnDirty(std::function<void()> cb) { on_dirty_ = std::move(cb); }
 
  private:
   // Projects a world-space point to screen space using the view-projection
@@ -110,6 +121,8 @@ class RoadTool : public EditorToolBase {
   // True when the mouse is within hover radius of any control point.
   // cppcheck-suppress unusedStructMember
   bool            hovering_       = false;
+  // cppcheck-suppress unusedStructMember
+  std::function<void()> on_dirty_;
 };
 
 }  // namespace editor

@@ -633,6 +633,14 @@ void PropertiesPanel::RenderParticleSystemProperties(
 void PropertiesPanel::RenderRoadProperties(game::GameRoad* road) {
   ImGui::SeparatorText("Road");
 
+  float w = road->GetWidth();
+  if (ImGui::SliderFloat("Width (m)", &w, 1.f, 30.f, "%.1f")) {
+    road->SetWidth(w);
+    if (on_road_width_changed_) on_road_width_changed_(road);
+  }
+
+  ImGui::Spacing();
+
   const game::GameMaterial* mat = road->GetMaterialPtr();
   ImGui::LabelText("Material", "%s", mat ? mat->GetId().c_str() : "(none)");
 

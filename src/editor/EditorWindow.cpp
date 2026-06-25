@@ -193,6 +193,16 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   objects_panel_->SetCommandHistory(&history_);
   outliner_panel_->SetCommandHistory(&history_);
   history_.SetOnDirty([this]{ scene_dirty_ = true; });
+  road_tool_->SetOnDirty([this]{ scene_dirty_ = true; });
+  properties_panel_->SetOnRoadWidthChanged([this](game::GameRoad* road) {
+    const terrain::TerrainData* td = viewport_->GetTerrainData();
+    if (td) {
+      road->RegenerateMesh([td](float x, float z) { return td->GetHeight(x, z); });
+    } else {
+      road->RegenerateMesh(nullptr);
+    }
+    scene_dirty_ = true;
+  });
   resources_panel_->SetOnMaterialOpen(
       [this](game::GameMaterial* mat) { material_editor_->Open(mat); });
   resources_panel_->SetOnImportMaterial([this] { ImportMaterial(); });

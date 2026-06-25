@@ -24,6 +24,7 @@ GameRoad::GameRoad(abstract::VideoDevice* video)
       video_(video) {}
 
 GameRoad::~GameRoad() {
+  if (material_) material_->Release();
   DestroyPhysicsBody();
 }
 
@@ -89,7 +90,7 @@ void GameRoad::RegenerateMesh(
     const float t = static_cast<float>(i) * inv_n;
     const core::Vec3f tangent  = spline_.GetTangent(t).Normalized();
     // binormal (road-right direction)
-    const core::Vec3f binormal = tangent.Cross(kUp).Normalized();
+    const core::Vec3f binormal = kUp.Cross(tangent).Normalized();
     const core::Vec3f normal   = kUp;
 
     for (int side = 0; side < 2; ++side) {
@@ -153,6 +154,8 @@ void GameRoad::RegenerateMesh(
 }
 
 void GameRoad::SetMaterial(GameMaterial* mat) {
+  if (mat) mat->AddRef();
+  if (material_) material_->Release();
   material_ = mat;
   if (mesh_ && mat)
     mesh_->SetMaterial(mat->GetMaterial());
