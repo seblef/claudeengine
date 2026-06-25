@@ -362,9 +362,11 @@ void VehicleEditorWindow::RebuildCombinedInstances() {
 // ---- Mesh file pickers ------------------------------------------------------
 
 void VehicleEditorWindow::PickBodyMesh() {
+  const std::string mesh_dir =
+      (core::Config::GetDataFolder() / "meshes").string();
   nfdu8char_t* out_path = nullptr;
   const nfdu8filteritem_t filter = {"Mesh", "obj,fbx,emesh"};
-  if (NFD_OpenDialogU8(&out_path, &filter, 1, nullptr) != NFD_OKAY) return;
+  if (NFD_OpenDialogU8(&out_path, &filter, 1, mesh_dir.c_str()) != NFD_OKAY) return;
 
   const std::filesystem::path abs(out_path);
   NFD_FreePathU8(out_path);
@@ -375,9 +377,11 @@ void VehicleEditorWindow::PickBodyMesh() {
 }
 
 void VehicleEditorWindow::PickFrontWheelMesh() {
+  const std::string mesh_dir =
+      (core::Config::GetDataFolder() / "meshes").string();
   nfdu8char_t* out_path = nullptr;
   const nfdu8filteritem_t filter = {"Mesh", "obj,fbx,emesh"};
-  if (NFD_OpenDialogU8(&out_path, &filter, 1, nullptr) != NFD_OKAY) return;
+  if (NFD_OpenDialogU8(&out_path, &filter, 1, mesh_dir.c_str()) != NFD_OKAY) return;
 
   const std::filesystem::path abs(out_path);
   NFD_FreePathU8(out_path);
@@ -388,9 +392,11 @@ void VehicleEditorWindow::PickFrontWheelMesh() {
 }
 
 void VehicleEditorWindow::PickRearWheelMesh() {
+  const std::string mesh_dir =
+      (core::Config::GetDataFolder() / "meshes").string();
   nfdu8char_t* out_path = nullptr;
   const nfdu8filteritem_t filter = {"Mesh", "obj,fbx,emesh"};
-  if (NFD_OpenDialogU8(&out_path, &filter, 1, nullptr) != NFD_OKAY) return;
+  if (NFD_OpenDialogU8(&out_path, &filter, 1, mesh_dir.c_str()) != NFD_OKAY) return;
 
   const std::filesystem::path abs(out_path);
   NFD_FreePathU8(out_path);

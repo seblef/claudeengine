@@ -1063,10 +1063,11 @@ void EditorWindow::SaveCurrent() {
 
 void EditorWindow::SaveAs() {
   const std::string default_name = scene_->GetMapName() + ".map.yaml";
+  const std::string maps_dir = (core::Config::GetDataFolder() / "maps").string();
   nfdu8char_t* out_path = nullptr;
   const nfdu8filteritem_t filter = {"Map", kMapFilter};
   const nfdresult_t result =
-      NFD_SaveDialogU8(&out_path, &filter, 1, nullptr, default_name.c_str());
+      NFD_SaveDialogU8(&out_path, &filter, 1, maps_dir.c_str(), default_name.c_str());
   if (result != NFD_OKAY) {
     if (result == NFD_ERROR)
       LOG_F(ERROR, "NFD error opening save dialog");
@@ -1092,10 +1093,11 @@ void EditorWindow::SaveAs() {
 }
 
 void EditorWindow::LoadFromFile() {
+  const std::string maps_dir = (core::Config::GetDataFolder() / "maps").string();
   nfdu8char_t* out_path = nullptr;
   const nfdu8filteritem_t filter = {"Map", kMapFilter};
   const nfdresult_t result =
-      NFD_OpenDialogU8(&out_path, &filter, 1, nullptr);
+      NFD_OpenDialogU8(&out_path, &filter, 1, maps_dir.c_str());
   if (result != NFD_OKAY) {
     if (result == NFD_ERROR)
       LOG_F(ERROR, "NFD error opening load dialog");
@@ -1252,9 +1254,12 @@ void EditorWindow::RenderUnsavedChangesModal() {
 }
 
 void EditorWindow::ImportMaterial() {
+  const std::string mats_dir =
+      (core::Config::GetDataFolder() / "materials").string();
   nfdu8char_t* out_path = nullptr;
   const nfdu8filteritem_t filter = {"Material", "yaml"};
-  const nfdresult_t result = NFD_OpenDialogU8(&out_path, &filter, 1, nullptr);
+  const nfdresult_t result =
+      NFD_OpenDialogU8(&out_path, &filter, 1, mats_dir.c_str());
   if (result == NFD_OKAY) {
     const std::string name =
         std::filesystem::path(out_path).stem().string();
@@ -1268,9 +1273,12 @@ void EditorWindow::ImportMaterial() {
 }
 
 void EditorWindow::ImportMesh() {
+  const std::string meshes_dir =
+      (core::Config::GetDataFolder() / "meshes").string();
   nfdu8char_t* out_path = nullptr;
   const nfdu8filteritem_t filter = {"Mesh", "obj,fbx,emesh"};
-  const nfdresult_t result = NFD_OpenDialogU8(&out_path, &filter, 1, nullptr);
+  const nfdresult_t result =
+      NFD_OpenDialogU8(&out_path, &filter, 1, meshes_dir.c_str());
   if (result != NFD_OKAY) {
     if (result == NFD_ERROR)
       LOG_F(ERROR, "NFD error opening mesh dialog");
