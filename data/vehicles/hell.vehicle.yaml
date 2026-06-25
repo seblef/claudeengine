@@ -7,6 +7,9 @@ physics:
   max_steer_angle: 0.58
   brake_torque: 2800
   handbrake_torque: 5000
+  engine_inertia: 0.1
+  gear_switch_time: 0.1
+  clutch_strength: 40.0
   com_offset: [0, -0.32, 0]
   body_shape: convex_hull
   suspension:

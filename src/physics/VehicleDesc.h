@@ -53,6 +53,12 @@ struct VehicleDesc {
     // cppcheck-suppress unusedStructMember
     float       handbrake_torque  = 3000.f;              ///< Hand-brake torque (rear wheels only, Nm).
     // cppcheck-suppress unusedStructMember
+    float       engine_inertia    = 0.1f;    ///< Engine rotational inertia (kg·m²). Lower = faster rev response.
+    // cppcheck-suppress unusedStructMember
+    float       gear_switch_time  = 0.1f;    ///< Time to complete a gear change (s). 0 = instant.
+    // cppcheck-suppress unusedStructMember
+    float       clutch_strength   = 40.0f;   ///< Clutch engagement strength. Higher = snappier power delivery.
+    // cppcheck-suppress unusedStructMember
     WheelDesc   front_left;
     // cppcheck-suppress unusedStructMember
     WheelDesc   front_right;

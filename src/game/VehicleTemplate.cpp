@@ -81,6 +81,9 @@ VehicleTemplate::VehicleTemplate(const std::string& desc_path,
       pd["brake_torque"].as<float>(vehicle_desc_.brake_torque);
   vehicle_desc_.handbrake_torque  =
       pd["handbrake_torque"].as<float>(vehicle_desc_.handbrake_torque);
+  vehicle_desc_.engine_inertia   = pd["engine_inertia"].as<float>(vehicle_desc_.engine_inertia);
+  vehicle_desc_.gear_switch_time = pd["gear_switch_time"].as<float>(vehicle_desc_.gear_switch_time);
+  vehicle_desc_.clutch_strength  = pd["clutch_strength"].as<float>(vehicle_desc_.clutch_strength);
   if (pd["half_extents"])
     vehicle_desc_.half_extents =
         core::ParseVec3(pd["half_extents"], vehicle_desc_.half_extents);
