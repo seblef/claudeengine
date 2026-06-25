@@ -9,6 +9,7 @@
 #include "game/GameParticleSystem.h"
 #include "physics/PhysicsSystem.h"
 #include "renderer/Renderer.h"
+#include "track/TireTrackSystem.h"
 
 namespace game {
 
@@ -19,8 +20,10 @@ GameSystem::GameSystem(abstract::Devices* devices)
           devices->GetVideoDevice())),
       hud_screen_(std::make_unique<ui::HUDScreen>()),
       loading_screen_(std::make_unique<ui::LoadingScreen>()) {
-  renderer::Renderer::Instance().SetParticleRenderer(particle_renderer_.get());
   abstract::VideoDevice* video = devices->GetVideoDevice();
+  renderer::Renderer::Instance().SetParticleRenderer(particle_renderer_.get());
+  tire_track_system_ = std::make_unique<track::TireTrackSystem>(video);
+  renderer::Renderer::Instance().SetTireTrackSystem(tire_track_system_.get());
   hud_screen_->Build(video);
   loading_screen_->Build(video);
 }
@@ -56,6 +59,10 @@ void GameSystem::Update() {
 
   if (physics::PhysicsSystem::IsInstanced()) {
     physics::PhysicsSystem::Instance().Step(dt);
+  }
+
+  if (tire_track_system_) {
+    tire_track_system_->Update(dt);
   }
 
   for (GameObject* obj : objects_) {

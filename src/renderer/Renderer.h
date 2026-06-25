@@ -32,6 +32,7 @@ namespace environment { class SkyRenderer;         }
 namespace environment { class WaterRenderer;       }
 namespace environment { class WindSystem;          }
 namespace particles   { class ParticleRenderer; }
+namespace track       { class TireTrackSystem;  }
 
 namespace renderer {
 
@@ -215,6 +216,19 @@ class Renderer : public core::Singleton<Renderer> {
     return particle_renderer_;
   }
 
+  // Registers the TireTrackSystem drawn in the forward pass (SrcAlpha blend)
+  // before particles, so tracks appear underneath particle effects.
+  // Pass nullptr to detach. The caller retains ownership.
+  void SetTireTrackSystem(track::TireTrackSystem* tracks) {
+    tire_track_system_ = tracks;
+  }
+
+  // Returns the active TireTrackSystem, or nullptr if none is set.
+  // Used by GameVehicle::Activate() to register physics vehicles.
+  [[nodiscard]] track::TireTrackSystem* GetTireTrackSystem() const {
+    return tire_track_system_;
+  }
+
   // Forwarding wrappers for WireframeRenderer configuration.
   static void SetGizmosEnabled(bool enabled) {
     WireframeRenderer::Instance().SetGizmosEnabled(enabled);
@@ -324,6 +338,10 @@ class Renderer : public core::Singleton<Renderer> {
   // Optional particle renderer for kGBuffer emitters. Not owned by Renderer.
   // cppcheck-suppress unusedStructMember
   particles::ParticleRenderer* particle_renderer_ = nullptr;
+
+  // Optional tire track system rendered before particles. Not owned by Renderer.
+  // cppcheck-suppress unusedStructMember
+  track::TireTrackSystem* tire_track_system_ = nullptr;
 
   // cppcheck-suppress unusedStructMember
   PostProcessInfos post_process_infos_;

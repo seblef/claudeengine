@@ -1,6 +1,9 @@
 #pragma once
 
+#include <cstdint>
+
 #include "core/Mat4f.h"
+#include "core/Vec3f.h"
 
 // Forward-declare Jolt internals so Jolt headers never leak into consumers.
 namespace JPH {
@@ -13,6 +16,16 @@ namespace physics {
 
 class IPhysicsBodyListener;
 class PhysicsSystem;
+
+/// Contact information for a single wheel, queried after PhysicsSystem::Step().
+struct WheelContact {
+    // cppcheck-suppress unusedStructMember
+    bool        has_contact;      ///< True when the wheel is touching the ground.
+    // cppcheck-suppress unusedStructMember
+    core::Vec3f position;         ///< World-space contact point (valid only when has_contact).
+    // cppcheck-suppress unusedStructMember
+    uint32_t    contact_body_id;  ///< Jolt BodyID packed as index+sequence (opaque to callers).
+};
 
 /// Opaque handle representing a simulated wheeled vehicle owned by PhysicsSystem.
 ///
@@ -54,6 +67,13 @@ class PhysicsVehicle {
     /// Returns a matrix that positions and orients a cylinder aligned with the
     /// local Y axis in model space (the standard Jolt wheel convention).
     [[nodiscard]] core::Mat4f GetWheelWorldTransform(int wheel_index) const;
+
+    /// Returns contact information for wheel at index.
+    /// Must be called after PhysicsSystem::Step().
+    [[nodiscard]] WheelContact GetWheelContact(int wheel_index) const;
+
+    /// Returns the number of wheels on this vehicle.
+    [[nodiscard]] int GetWheelCount() const;
 
  private:
     friend class PhysicsSystem;

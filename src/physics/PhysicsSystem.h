@@ -6,7 +6,6 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 #include "core/Mat4f.h"
@@ -16,6 +15,7 @@
 #include "physics/PhysicsBodyDesc.h"
 #include "physics/PhysicsVehicle.h"
 #include "physics/RaycastResult.h"
+#include "physics/SurfaceMaterial.h"
 #include "physics/VehicleDesc.h"
 
 // Forward-declare Jolt internals so Jolt headers never leak into consumers.
@@ -160,6 +160,17 @@ class PhysicsSystem : public core::Singleton<PhysicsSystem> {
     /// (typically after Step()) to keep contact-point flags in sync.
     void DrawDebug(const PhysicsDebugDrawSettings& settings);
 
+    // ---- Surface type tagging -----------------------------------------------
+
+    /// Tag a body's surface type for track-texture selection.
+    /// @param body  A non-null body previously returned by CreateBody* or CreateTerrainBody.
+    /// @param type  Surface category to associate.  Overrides any previous tag.
+    void SetBodySurfaceType(const PhysicsBody* body, SurfaceType type);
+
+    /// Returns the surface type associated with the given raw Jolt body ID,
+    /// or SurfaceType::kGeneric if the body was never tagged.
+    [[nodiscard]] SurfaceType GetSurfaceType(uint32_t jolt_body_id) const;
+
     // ---- Query --------------------------------------------------------------
 
     /// Cast a ray and return the closest hit, or std::nullopt if nothing is hit.
@@ -185,8 +196,11 @@ class PhysicsSystem : public core::Singleton<PhysicsSystem> {
     std::vector<std::unique_ptr<PhysicsBody>>    bodies_;    // owns all bodies
     // cppcheck-suppress unusedStructMember
     std::vector<std::unique_ptr<PhysicsVehicle>> vehicles_;  // owns all vehicles
+    // Maps Jolt body ID (index+sequence packed value) to surface type.
+    // Terrain bodies are auto-registered as kTerrain; road bodies are tagged
+    // by callers via SetBodySurfaceType(); all others default to kGeneric.
     // cppcheck-suppress unusedStructMember
-    std::unordered_set<uint32_t>              terrain_body_ids_;
+    std::unordered_map<uint32_t, SurfaceType>  surface_types_;
     // cppcheck-suppress unusedStructMember
     std::unique_ptr<JoltDebugRenderer> debug_renderer_;
     // Maps opaque shape_cache_key pointers to heap-allocated JPH::ShapeRefC*

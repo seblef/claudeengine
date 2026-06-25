@@ -58,6 +58,7 @@
 #include "physics/PhysicsShapeType.h"
 #include "physics/PhysicsVehicle.h"
 #include "physics/RaycastResult.h"
+#include "physics/SurfaceMaterial.h"
 #include "physics/VehicleDesc.h"
 #include "terrain/TerrainData.h"
 
@@ -248,17 +249,19 @@ class BodyDebugFilter final : public JPH::BodyDrawFilter {
  public:
     /// @param has_selection   True when only a subset of bodies should be drawn.
     /// @param selected_ids    Pre-computed set of JPH BodyID packed values.
-    /// @param terrain_ids     Set of terrain body IDs to always skip.
+    /// @param surface_types   Map of body ID → SurfaceType; terrain bodies are skipped.
     BodyDebugFilter(bool has_selection,
                     const std::unordered_set<uint32_t>& selected_ids,
-                    const std::unordered_set<uint32_t>& terrain_ids)
+                    const std::unordered_map<uint32_t, SurfaceType>& surface_types)
         : has_selection_(has_selection),
           selected_ids_(selected_ids),
-          terrain_ids_(terrain_ids) {}
+          surface_types_(surface_types) {}
 
     bool ShouldDraw(const JPH::Body& inBody) const override {
         const uint32_t id = inBody.GetID().GetIndexAndSequenceNumber();
-        if (terrain_ids_.count(id)) return false;
+        const auto it = surface_types_.find(id);
+        if (it != surface_types_.end() && it->second == SurfaceType::kTerrain)
+            return false;
         if (has_selection_)
             return selected_ids_.count(id) > 0;
         return true;
@@ -267,7 +270,7 @@ class BodyDebugFilter final : public JPH::BodyDrawFilter {
  private:
     bool has_selection_;
     const std::unordered_set<uint32_t>& selected_ids_;
-    const std::unordered_set<uint32_t>& terrain_ids_;
+    const std::unordered_map<uint32_t, SurfaceType>& surface_types_;
 };
 
 }  // namespace
@@ -580,7 +583,7 @@ PhysicsBody* PhysicsSystem::CreateTerrainBody(const terrain::TerrainData* data,
                         nullptr, jolt_system_.get(),
                         nullptr, core::Vec3f(1.f, 1.f, 1.f)));
     PhysicsBody* terrain_body = body.get();
-    terrain_body_ids_.insert(id.GetIndexAndSequenceNumber());
+    surface_types_[id.GetIndexAndSequenceNumber()] = SurfaceType::kTerrain;
     bodies_.push_back(std::move(body));
     return terrain_body;
 }
@@ -592,7 +595,7 @@ void PhysicsSystem::DestroyBody(PhysicsBody* body) {
     JPH::BodyInterface& iface = jolt_system_->GetBodyInterface();
     iface.RemoveBody(id);
     iface.DestroyBody(id);
-    terrain_body_ids_.erase(id.GetIndexAndSequenceNumber());
+    surface_types_.erase(id.GetIndexAndSequenceNumber());
 
     bodies_.erase(
         std::remove_if(bodies_.begin(), bodies_.end(),
@@ -830,6 +833,16 @@ std::optional<RaycastResult> PhysicsSystem::Raycast(
     return result;
 }
 
+void PhysicsSystem::SetBodySurfaceType(const PhysicsBody* body, SurfaceType type) {
+    if (!body) return;
+    surface_types_[body->body_id_] = type;
+}
+
+SurfaceType PhysicsSystem::GetSurfaceType(uint32_t jolt_body_id) const {
+    const auto it = surface_types_.find(jolt_body_id);
+    return (it != surface_types_.end()) ? it->second : SurfaceType::kGeneric;
+}
+
 void PhysicsSystem::DrawDebug(const PhysicsDebugDrawSettings& settings) {
     // Build a lookup set from the selected bodies (uses body_id_ via friend access).
     std::unordered_set<uint32_t> selected_ids;
@@ -839,7 +852,7 @@ void PhysicsSystem::DrawDebug(const PhysicsDebugDrawSettings& settings) {
     }
 
     BodyDebugFilter filter(settings.selectedBodies != nullptr, selected_ids,
-                           terrain_body_ids_);
+                           surface_types_);
 
     if (settings.drawShapes) {
         JPH::BodyManager::DrawSettings draw_settings;

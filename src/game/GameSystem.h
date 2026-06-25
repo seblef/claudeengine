@@ -12,6 +12,7 @@
 #include "game/GameObject.h"
 #include "game/ICameraController.h"
 #include "particles/ParticleRenderer.h"
+#include "track/TireTrackSystem.h"
 #include "ui/HUDScreen.h"
 #include "ui/LoadingScreen.h"
 
@@ -104,6 +105,8 @@ class GameSystem : public core::Singleton<GameSystem> {
   std::function<void(const core::Event&)> event_callback_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<particles::ParticleRenderer> particle_renderer_;
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<track::TireTrackSystem>      tire_track_system_;
   // cppcheck-suppress unusedStructMember
   audio::SoundManager* sound_manager_ = nullptr;
   // cppcheck-suppress unusedStructMember

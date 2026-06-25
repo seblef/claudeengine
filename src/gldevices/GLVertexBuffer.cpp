@@ -8,6 +8,7 @@
 #include "core/VertexBase.h"
 #include "core/VertexParticle.h"
 #include "core/VertexTerrain.h"
+#include "core/VertexTrack.h"
 #include "core/VertexType.h"
 
 #include <cstddef>
@@ -108,6 +109,22 @@ void ConfigureAttributes(core::VertexType vertex_type) {
       glEnableVertexAttribArray(6);
       glVertexAttribPointer(6, 1, GL_FLOAT, GL_FALSE, stride,
           reinterpret_cast<const void*>(offsetof(core::VertexParticle, frame_blend)));
+      break;
+    }
+    case core::VertexType::kTrack: {
+      const GLsizei stride = static_cast<GLsizei>(sizeof(core::VertexTrack));
+      // location 0: position (vec3)
+      glEnableVertexAttribArray(0);
+      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride,
+          reinterpret_cast<const void*>(offsetof(core::VertexTrack, position)));
+      // location 1: uv (vec2)
+      glEnableVertexAttribArray(1);
+      glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride,
+          reinterpret_cast<const void*>(offsetof(core::VertexTrack, uv)));
+      // location 2: alpha (float)
+      glEnableVertexAttribArray(2);
+      glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, stride,
+          reinterpret_cast<const void*>(offsetof(core::VertexTrack, alpha)));
       break;
     }
     default:

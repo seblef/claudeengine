@@ -8,6 +8,7 @@
 #include "core/VertexBase.h"
 #include "core/VertexParticle.h"
 #include "core/VertexTerrain.h"
+#include "core/VertexTrack.h"
 
 namespace core {
 
@@ -18,6 +19,7 @@ enum class VertexType : uint8_t {
   k3D,
   kTerrain,
   kParticle,
+  kTrack,
   kCount
 };
 
@@ -28,6 +30,7 @@ constexpr size_t kVertexSize[] = {
     sizeof(Vertex3D),       // k3D
     sizeof(VertexTerrain),  // kTerrain
     sizeof(VertexParticle),  // kParticle
+    sizeof(VertexTrack),    // kTrack
 };
 
 static_assert(sizeof(kVertexSize) / sizeof(kVertexSize[0]) ==
