@@ -716,6 +716,9 @@ PhysicsVehicle* PhysicsSystem::CreateVehicle(const VehicleDesc& desc,
     // ---- Controller + differentials -----------------------------------------
     auto* ctrl = new JPH::WheeledVehicleControllerSettings();
     ctrl->mEngine.mMaxTorque = desc.max_engine_torque;
+    ctrl->mEngine.mInertia   = 0.1f;   // default 0.5 — low inertia = fast rev response
+    ctrl->mTransmission.mSwitchTime     = 0.1f;   // default 0.5s — shorter clutch-out window
+    ctrl->mTransmission.mClutchStrength = 40.0f;  // default 10 — snappy engagement
 
     const bool front_driven =
         desc.front_left.is_driven || desc.front_right.is_driven;

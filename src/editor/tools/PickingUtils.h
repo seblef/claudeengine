@@ -2,6 +2,9 @@
 
 #include <imgui.h>
 
+#include "core/BBox3.h"
+#include "core/Mat4f.h"
+
 namespace game { class GameObject; }
 
 namespace editor {
@@ -33,5 +36,20 @@ void DrawSelectedBBox(const EditorToolContext& ctx, ImDrawList* dl,
 void DrawHoverBBox(const EditorToolContext& ctx, ImDrawList* dl,
                    ImVec2 image_pos, ImVec2 image_size,
                    const game::GameObject* obj);
+
+// Draws three coloured double-sided dimension arrows (X=red, Y=green, Z=blue)
+// on dl, using vp (view × projection) to project local_bbox face centres into
+// image space.  image_pos / image_size are the ImGui image top-left and size.
+// Axes whose projected length is < 8 px are suppressed.
+void DrawBBoxDimensionOverlay(ImDrawList*          dl,
+                               const core::BBox3&   local_bbox,
+                               const core::Mat4f&   vp,
+                               ImVec2               image_pos,
+                               ImVec2               image_size);
+
+// Draws dimension overlay for each selected object using world-space bboxes so
+// that object scale is reflected in the labels. Call after DrawSelectedBBox().
+void DrawSelectedBBoxDimensions(const EditorToolContext& ctx, ImDrawList* dl,
+                                 ImVec2 image_pos, ImVec2 image_size);
 
 }  // namespace editor

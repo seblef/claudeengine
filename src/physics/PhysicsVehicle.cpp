@@ -76,9 +76,14 @@ core::Mat4f PhysicsVehicle::GetBodyWorldTransform() const {
 }
 
 core::Mat4f PhysicsVehicle::GetWheelWorldTransform(int wheel_index) const {
+    // Jolt's default wheel basis has local_right = forward × up = +Z × +Y = -X.
+    // Passing +X as inWheelRight causes rotational_to_local to apply an implicit
+    // 180° Y-rotation to every wheel.  Pass -X so the two -X factors cancel and
+    // the returned transform is a pure translation + wheel-spin, letting
+    // GameVehicle::Update apply MirrorY only for right-side wheels as intended.
     return JoltMatToMat4f(constraint_->GetWheelWorldTransform(
         static_cast<JPH::uint>(wheel_index),
-        JPH::Vec3::sAxisX(),
+        -JPH::Vec3::sAxisX(),
         JPH::Vec3::sAxisY()));
 }
 
