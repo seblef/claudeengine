@@ -25,7 +25,8 @@ GameMesh::~GameMesh() {
 }
 
 void GameMesh::OnAddedToScene() {
-  renderer::Renderer::Instance().AddRenderable(instance_.get());
+  if (visible_)
+    renderer::Renderer::Instance().AddRenderable(instance_.get());
   in_scene_ = true;
   if (physics_desc_) {
     CreatePhysicsBody();
@@ -34,7 +35,8 @@ void GameMesh::OnAddedToScene() {
 
 void GameMesh::OnRemovedFromScene() {
   DestroyPhysicsBody();
-  renderer::Renderer::Instance().RemoveRenderable(instance_.get());
+  if (visible_)
+    renderer::Renderer::Instance().RemoveRenderable(instance_.get());
   in_scene_ = false;
 }
 
@@ -62,6 +64,16 @@ void GameMesh::ClearPhysicsDesc() {
 
 void GameMesh::OnBodyTransformUpdated(const core::Mat4f& transform) {
   SetWorldTransformPhysics(transform);
+}
+
+void GameMesh::SetVisible(bool visible) {
+  if (visible_ == visible) return;
+  visible_ = visible;
+  if (!in_scene_) return;
+  if (visible_)
+    renderer::Renderer::Instance().AddRenderable(instance_.get());
+  else
+    renderer::Renderer::Instance().RemoveRenderable(instance_.get());
 }
 
 MeshTemplate* GameMesh::GetTemplate() const {

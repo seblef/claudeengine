@@ -84,6 +84,13 @@ class GameMesh : public GameObject, public physics::IPhysicsBodyListener {
     return physics_body_;
   }
 
+  // Controls rendering visibility. When set to false the mesh is removed from
+  // the renderer's renderable list; when set to true it is re-added.
+  // Has no effect while the mesh is not in scene.
+  void SetVisible(bool visible);
+
+  [[nodiscard]] bool IsVisible() const { return visible_; }
+
  private:
   void CreatePhysicsBody();
   void DestroyPhysicsBody();
@@ -101,6 +108,8 @@ class GameMesh : public GameObject, public physics::IPhysicsBodyListener {
   physics::PhysicsBody* physics_body_ = nullptr;
   // cppcheck-suppress unusedStructMember
   bool in_scene_ = false;
+  // cppcheck-suppress unusedStructMember
+  bool visible_  = true;
 };
 
 }  // namespace game

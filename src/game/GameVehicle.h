@@ -99,7 +99,7 @@ class GameVehicle : public GameObject, public physics::IPhysicsBodyListener {
   [[nodiscard]] MeshTemplate*               GetBodyTemplate()  const;
 
  private:
-  enum class DriveState { kForward, kBraking, kReverse };
+  enum class DriveState { kForward, kBraking, kReverse, kFlipped, kRecovering };
 
   // cppcheck-suppress unusedStructMember
   VehicleTemplate*          template_;
@@ -123,10 +123,21 @@ class GameVehicle : public GameObject, public physics::IPhysicsBodyListener {
   // cppcheck-suppress unusedStructMember
   IVehicleController*       controller_      = nullptr;
 
+  // Snaps the vehicle upright: computes an upright pose from the current
+  // transform, lifts the body, and zeroes velocities.
+  void SelfRight();
+
+  // Sets the visibility of the body mesh and all four wheel meshes.
+  void SetMeshesVisible(bool visible);
+
   // cppcheck-suppress unusedStructMember
   DriveState                drive_state_     = DriveState::kForward;
   // cppcheck-suppress unusedStructMember
   float                     reverse_timer_   = 0.f;
+  // cppcheck-suppress unusedStructMember
+  float                     flip_timer_      = 0.f;
+  // cppcheck-suppress unusedStructMember
+  float                     recovery_timer_  = 0.f;
 };
 
 }  // namespace game

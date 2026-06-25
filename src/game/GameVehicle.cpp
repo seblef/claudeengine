@@ -20,6 +20,13 @@ constexpr float kReverseEngageDelay    = 0.3f;   ///< Brake-hold time (s) before
 constexpr float kReverseSpeedThreshold = 0.3f;   ///< Speed (m/s) below which the car is considered stopped.
 constexpr float kReverseThrottle       = 0.6f;   ///< Fraction of max engine torque applied in reverse.
 
+constexpr float kFlipDetectionThreshold = -0.5f;  ///< dot(vehicle_up, world_up) below which the vehicle is flipped.
+constexpr float kFlipSpeedThreshold     =  1.0f;  ///< Speed (m/s) below which flip detection is active.
+constexpr float kFlipDelay              =  2.0f;  ///< Time (s) upside-down before auto self-right triggers.
+constexpr float kSelfRightLiftOffset    =  0.5f;  ///< Upward offset (m) applied to position on self-right.
+constexpr float kRecoveryDuration       =  1.5f;  ///< Duration (s) of the post-self-right visibility flicker.
+constexpr float kFlickerFrequency       =  8.0f;  ///< Flicker rate (Hz) during recovery.
+
 // A negative-scale mirror would flip winding order and break back-face culling.
 // A 180° Y rotation achieves the same visual mirroring with det=+1.
 core::Mat4f MirrorY() {
@@ -137,49 +144,107 @@ void GameVehicle::Deactivate() {
 }
 
 void GameVehicle::Update(float dt) {
-  if (physics_vehicle_ && controller_) {
-    controller_->Update(dt);
+  if (physics_vehicle_) {
+    const core::Mat4f transform = physics_vehicle_->GetBodyWorldTransform();
+    const float       speed     = physics_vehicle_->GetForwardSpeed();
 
-    const float throttle = controller_->GetThrottle();
-    const float brake    = controller_->GetBrake();
-    const float speed    = physics_vehicle_->GetForwardSpeed();
+    // --- Flip state machine ---------------------------------------------------
+    // Column 1 of the local-to-world transform is the vehicle's local Y axis
+    // expressed in world space.
+    const core::Vec3f vehicle_up(transform(0, 1), transform(1, 1), transform(2, 1));
+    const float up_dot = vehicle_up.Normalized().Dot(core::Vec3f::kAxisY);
 
     switch (drive_state_) {
       case DriveState::kForward:
-        physics_vehicle_->SetThrottle(throttle);
-        physics_vehicle_->SetBrake(brake);
-        if (brake > 0.f && speed < kReverseSpeedThreshold) {
-          drive_state_   = DriveState::kBraking;
-          reverse_timer_ = 0.f;
-        }
-        break;
-
       case DriveState::kBraking:
-        physics_vehicle_->SetThrottle(0.f);
-        physics_vehicle_->SetBrake(brake);
-        if (brake == 0.f || throttle > 0.f) {
-          drive_state_ = DriveState::kForward;
-        } else if (speed < kReverseSpeedThreshold) {
-          reverse_timer_ += dt;
-          if (reverse_timer_ >= kReverseEngageDelay)
-            drive_state_ = DriveState::kReverse;
-        } else {
-          reverse_timer_ = 0.f;
+      case DriveState::kReverse:
+        if (up_dot < kFlipDetectionThreshold &&
+            std::fabs(speed) < kFlipSpeedThreshold) {
+          drive_state_ = DriveState::kFlipped;
+          flip_timer_  = 0.f;
         }
         break;
 
-      case DriveState::kReverse:
-        physics_vehicle_->SetThrottle(-kReverseThrottle);
-        physics_vehicle_->SetBrake(0.f);
-        if (brake == 0.f || throttle > 0.f) drive_state_ = DriveState::kForward;
+      case DriveState::kFlipped:
+        if (up_dot >= kFlipDetectionThreshold) {
+          // Player rocked the vehicle back naturally — no flicker needed.
+          drive_state_ = DriveState::kForward;
+          flip_timer_  = 0.f;
+        } else {
+          flip_timer_ += dt;
+          if (flip_timer_ >= kFlipDelay)
+            SelfRight();
+        }
+        break;
+
+      case DriveState::kRecovering:
+        recovery_timer_ -= dt;
+        if (recovery_timer_ <= 0.f) {
+          drive_state_ = DriveState::kForward;
+          SetMeshesVisible(true);
+        } else {
+          const bool visible =
+              (static_cast<int>(recovery_timer_ * kFlickerFrequency * 2.f) % 2) == 0;
+          SetMeshesVisible(visible);
+        }
         break;
     }
 
-    physics_vehicle_->SetSteer(controller_->GetSteer());
-    physics_vehicle_->SetHandbrake(controller_->GetHandbrake());
-  }
+    // --- Driver input --------------------------------------------------------
+    // Inputs are suppressed while the vehicle is flipped (stuck) or recovering.
+    if (controller_ &&
+        drive_state_ != DriveState::kFlipped &&
+        drive_state_ != DriveState::kRecovering) {
+      controller_->Update(dt);
 
-  if (physics_vehicle_) {
+      const float throttle = controller_->GetThrottle();
+      const float brake    = controller_->GetBrake();
+
+      switch (drive_state_) {
+        case DriveState::kForward:
+          physics_vehicle_->SetThrottle(throttle);
+          physics_vehicle_->SetBrake(brake);
+          if (brake > 0.f && speed < kReverseSpeedThreshold) {
+            drive_state_   = DriveState::kBraking;
+            reverse_timer_ = 0.f;
+          }
+          break;
+
+        case DriveState::kBraking:
+          physics_vehicle_->SetThrottle(0.f);
+          physics_vehicle_->SetBrake(brake);
+          if (brake == 0.f || throttle > 0.f) {
+            drive_state_ = DriveState::kForward;
+          } else if (speed < kReverseSpeedThreshold) {
+            reverse_timer_ += dt;
+            if (reverse_timer_ >= kReverseEngageDelay)
+              drive_state_ = DriveState::kReverse;
+          } else {
+            reverse_timer_ = 0.f;
+          }
+          break;
+
+        case DriveState::kReverse:
+          physics_vehicle_->SetThrottle(-kReverseThrottle);
+          physics_vehicle_->SetBrake(0.f);
+          if (brake == 0.f || throttle > 0.f) drive_state_ = DriveState::kForward;
+          break;
+
+        case DriveState::kFlipped:
+        case DriveState::kRecovering:
+          break;
+      }
+
+      physics_vehicle_->SetSteer(controller_->GetSteer());
+      physics_vehicle_->SetHandbrake(controller_->GetHandbrake());
+    } else if (drive_state_ == DriveState::kFlipped) {
+      physics_vehicle_->SetThrottle(0.f);
+      physics_vehicle_->SetBrake(0.f);
+      physics_vehicle_->SetSteer(0.f);
+      physics_vehicle_->SetHandbrake(false);
+    }
+
+    // --- Wheel transforms ----------------------------------------------------
     const core::Mat4f body_world_inv = GetWorldTransform().Inverse();
     const core::Mat4f mirror         = MirrorY();
 
@@ -197,6 +262,41 @@ void GameVehicle::Update(float dt) {
   }
 
   GameObject::Update(dt);
+}
+
+void GameVehicle::SelfRight() {
+  const core::Mat4f transform = physics_vehicle_->GetBodyWorldTransform();
+
+  // Column 2 of the local-to-world transform is the vehicle's local Z (forward)
+  // in world space.  Project onto the XZ plane to extract yaw.
+  const float fx = transform(0, 2);
+  const float fz = transform(2, 2);
+  const float fw_len = std::sqrt(fx * fx + fz * fz);
+  // atan2(fx, fz): sin(yaw) = fx, cos(yaw) = fz for RotationY(yaw).
+  const float yaw = (fw_len > 1e-4f) ? std::atan2(fx, fz) : 0.f;
+
+  // Build upright transform: yaw rotation only, lifted above current position.
+  core::Mat4f upright = core::Mat4f::RotationY(yaw);
+  upright(0, 3) = transform(0, 3);
+  upright(1, 3) = transform(1, 3) + kSelfRightLiftOffset;
+  upright(2, 3) = transform(2, 3);
+
+  physics_vehicle_->SetBodyTransform(upright);
+  physics_vehicle_->ZeroVelocities();
+
+  drive_state_    = DriveState::kRecovering;
+  recovery_timer_ = kRecoveryDuration;
+  flip_timer_     = 0.f;
+
+  LOG_F(INFO, "GameVehicle: self-righted at yaw=%.2f rad", yaw);
+}
+
+void GameVehicle::SetMeshesVisible(bool visible) {
+  body_mesh_->SetVisible(visible);
+  wheel_fl_->SetVisible(visible);
+  wheel_fr_->SetVisible(visible);
+  wheel_rl_->SetVisible(visible);
+  wheel_rr_->SetVisible(visible);
 }
 
 void GameVehicle::OnBodyTransformUpdated(const core::Mat4f& transform) {
