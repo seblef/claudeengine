@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -16,8 +17,10 @@ class ResourcePanelRegistry;
 //
 // Scans data/ recursively on construction and on every Refresh click; lists
 // only files whose extension suffix is registered in the ResourcePanelRegistry.
-// Displays one collapsible section per registered extension. Double-clicking
-// an entry opens (or focuses) a panel tab below the tree view.
+// Displays one collapsible section per registered extension. Within each
+// section the actual directory structure under data/ is reflected as an
+// ImGui::TreeNode hierarchy. Double-clicking a leaf opens (or focuses) a panel
+// tab below the tree view.
 //
 // Dirty-close protection mirrors EditorWindow::RenderUnsavedChangesModal:
 // closing a dirty tab triggers a Save / Discard / Cancel modal.
@@ -38,7 +41,14 @@ class ResourceBrowser {
     bool                            want_close = false;
   };
 
-  // Scans data/ and rebuilds file_map_.
+  // One node in the per-extension directory tree.  std::map keeps children
+  // sorted by name without an explicit sort pass.
+  struct DirNode {
+    std::map<std::string, DirNode>     children;  // cppcheck-suppress unusedStructMember
+    std::vector<std::filesystem::path> files;     // cppcheck-suppress unusedStructMember
+  };
+
+  // Scans data/ and rebuilds tree_map_.
   void Scan();
 
   // Returns the index into open_panels_ for canonical_path, or -1.
@@ -49,6 +59,10 @@ class ResourceBrowser {
 
   // Renders the collapsible tree of discovered files.
   void RenderTree();
+
+  // Recursively renders one DirNode as ImGui::TreeNode / Selectable leaves.
+  void RenderDirNode(const DirNode& node, const std::string& ext,
+                     const std::string& id_prefix);
 
   // Renders the tab bar of open panels below the tree.
   void RenderPanelTabs();
@@ -62,9 +76,9 @@ class ResourceBrowser {
   // cppcheck-suppress unusedStructMember
   ResourcePanelRegistry* registry_;
 
-  // extension suffix → list of discovered paths
+  // extension suffix → root DirNode for all files with that suffix under data/
   // cppcheck-suppress unusedStructMember
-  std::unordered_map<std::string, std::vector<std::filesystem::path>> file_map_;
+  std::unordered_map<std::string, DirNode> tree_map_;
 
   // cppcheck-suppress unusedStructMember
   std::vector<OpenPanel> open_panels_;

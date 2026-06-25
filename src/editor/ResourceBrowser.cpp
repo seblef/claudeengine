@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <functional>
 #include <iterator>
 #include <string>
 
@@ -43,7 +44,7 @@ void ResourceBrowser::Render() {
 }
 
 void ResourceBrowser::Scan() {
-  file_map_.clear();
+  tree_map_.clear();
 
   const std::filesystem::path data_dir = core::Config::GetDataFolder();
   if (!std::filesystem::exists(data_dir)) return;
@@ -54,20 +55,41 @@ void ResourceBrowser::Scan() {
     if (!entry.is_regular_file()) continue;
     if (!registry_->CanOpen(entry.path())) continue;
 
-    // Determine the matching extension suffix via the registry.
     for (const std::string& ext : registry_->GetExtensions()) {
       const std::string filename = entry.path().filename().string();
-      if (filename.size() >= ext.size() &&
-          filename.compare(filename.size() - ext.size(), ext.size(), ext) == 0) {
-        file_map_[ext].push_back(entry.path());
-        break;
+      if (filename.size() < ext.size()) continue;
+      if (filename.compare(filename.size() - ext.size(), ext.size(), ext) != 0)
+        continue;
+
+      // Build the relative path from data_dir so we can walk its components.
+      const std::filesystem::path rel =
+          std::filesystem::relative(entry.path(), data_dir, ec);
+      if (ec) break;
+
+      // Walk all parent components (skip the filename itself) to build the
+      // DirNode subtree, then append the file at the leaf level.
+      DirNode* node = &tree_map_[ext];
+      auto it = rel.begin();
+      const auto end = rel.end();
+      // Advance through every component except the last (the filename).
+      for (auto next = it; next != end; it = next) {
+        ++next;
+        if (next == end) break;  // last component is the filename
+        node = &node->children[it->string()];
       }
+      node->files.push_back(entry.path());
+      break;
     }
   }
 
-  // Sort entries within each section for stable display order.
-  for (auto& [ext, paths] : file_map_) {
-    std::sort(paths.begin(), paths.end());
+  // Sort file lists at each node for stable display order.
+  for (auto& [ext, root] : tree_map_) {
+    std::function<void(DirNode&)> sort_node = [&](DirNode& n) {
+      std::sort(n.files.begin(), n.files.end());
+      for (auto& [name, child] : n.children)
+        sort_node(child);
+    };
+    sort_node(root);
   }
 }
 
@@ -123,6 +145,29 @@ void ResourceBrowser::OpenOrFocus(const std::filesystem::path& path) {
   open_panels_.push_back({canonical, display, std::move(panel), false});
 }
 
+void ResourceBrowser::RenderDirNode(const DirNode& node, const std::string& ext,
+                                    const std::string& id_prefix) {
+  for (const auto& [dir_name, child] : node.children) {
+    const std::string node_id = id_prefix + "/" + dir_name;
+    if (ImGui::TreeNode(node_id.c_str(), "%s", dir_name.c_str())) {
+      RenderDirNode(child, ext, node_id);
+      ImGui::TreePop();
+    }
+  }
+
+  for (const std::filesystem::path& path : node.files) {
+    std::string stem = path.filename().string();
+    if (stem.size() >= ext.size())
+      stem.resize(stem.size() - ext.size());
+
+    ImGui::Selectable(stem.c_str(), false);
+    if (ImGui::IsItemHovered() &&
+        ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+      OpenOrFocus(path);
+    }
+  }
+}
+
 void ResourceBrowser::RenderTree() {
   for (const std::string& ext : registry_->GetExtensions()) {
     // Section label: strip leading dot from the extension suffix.
@@ -136,8 +181,6 @@ void ResourceBrowser::RenderTree() {
     const bool open = ImGui::CollapsingHeader(label.c_str(), header_flags);
 
     // "New" button overlaid on the right edge of the section header.
-    // SameLine() alone would place it beyond the content region (CollapsingHeader
-    // fills the full width), so we pass an explicit X offset instead.
     if (registry_->CanCreate(ext)) {
       const std::string btn_label = "New##new_" + ext;
       const float btn_w = ImGui::CalcTextSize("New").x +
@@ -153,24 +196,16 @@ void ResourceBrowser::RenderTree() {
 
     if (!open) continue;
 
-    auto it = file_map_.find(ext);
-    if (it == file_map_.end() || it->second.empty()) {
+    auto it = tree_map_.find(ext);
+    if (it == tree_map_.end() ||
+        (it->second.children.empty() && it->second.files.empty())) {
       ImGui::TextDisabled("(none)");
       continue;
     }
 
-    for (const std::filesystem::path& path : it->second) {
-      std::string stem = path.filename().string();
-      // Strip the extension suffix to get a clean display name.
-      if (stem.size() >= ext.size())
-        stem.resize(stem.size() - ext.size());
-
-      ImGui::Selectable(stem.c_str(), false);
-      if (ImGui::IsItemHovered() &&
-          ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-        OpenOrFocus(path);
-      }
-    }
+    ImGui::Indent();
+    RenderDirNode(it->second, ext, "##rb_" + ext);
+    ImGui::Unindent();
   }
 }
 

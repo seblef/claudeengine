@@ -4,6 +4,7 @@ add_library(editor STATIC
     tinyexr_impl.cpp
     ${tinyexr_SOURCE_DIR}/deps/miniz/miniz.c
     EditorCameraController.cpp
+    EmeshInfoPanel.cpp
     EditorCommandHistory.cpp
     EditorScene.cpp
     EditorSystem.cpp
