@@ -133,7 +133,8 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       outliner_panel_(std::make_unique<OutlinerPanel>()),
       log_panel_(std::make_unique<LogPanel>()),
       profiler_panel_(std::make_unique<ProfilerPanel>()),
-      road_tool_(std::make_unique<RoadTool>()) {
+      road_tool_(std::make_unique<RoadTool>()),
+      align_tool_(std::make_unique<AlignTool>()) {
   play_mode_ = std::make_unique<PlayModeManager>(
       scene_.get(), toolbar_.get(), viewport_.get(), video_);
   play_mode_->SetOnStatusMessage([this](std::string msg) {
@@ -194,6 +195,12 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   outliner_panel_->SetCommandHistory(&history_);
   history_.SetOnDirty([this]{ scene_dirty_ = true; });
   road_tool_->SetOnDirty([this]{ scene_dirty_ = true; });
+  align_tool_->SetOnDone([this]{
+    EditorToolBase* prev = align_prev_base_tool_;
+    align_prev_base_tool_ = nullptr;
+    viewport_->SetActiveTool(prev ? prev : selection_tool_.get());
+  });
+  toolbar_->SetOnAlign([this]{ ActivateAlignTool(); });
   properties_panel_->SetOnRoadWidthChanged([this](game::GameRoad* road) {
     const terrain::TerrainData* td = viewport_->GetTerrainData();
     if (td) {
@@ -456,6 +463,8 @@ void EditorWindow::Render() {
           return o->GetType() == game::GameObjectType::kTerrain;
         });
     toolbar_->SetCanCenterOnObject(can_center);
+
+    toolbar_->SetCanAlign(!sel.empty());
 
     // Group: >=2 root-level objects (no parent pivot) in the selection.
     const bool can_group = sel.size() >= 2 && std::all_of(sel.begin(), sel.end(),
@@ -1551,6 +1560,20 @@ void EditorWindow::UngroupSelectedPivot() {
   if (pivot->GetChildren().empty()) return;
   history_.Push(std::make_unique<UngroupPivotCommand>(scene_.get(), pivot));
   scene_dirty_ = true;
+}
+
+void EditorWindow::ActivateAlignTool() {
+  const EditorTool t = toolbar_->GetActiveTool();
+  if (t == EditorTool::kTranslate)
+    align_prev_base_tool_ = translate_tool_.get();
+  else if (t == EditorTool::kRotate)
+    align_prev_base_tool_ = rotate_tool_.get();
+  else if (t == EditorTool::kScale)
+    align_prev_base_tool_ = scale_tool_.get();
+  else
+    align_prev_base_tool_ = selection_tool_.get();
+
+  viewport_->SetActiveTool(align_tool_.get());
 }
 
 void EditorWindow::WireTerrainPanel() {

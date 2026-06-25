@@ -245,6 +245,17 @@ void EditorToolbar::Render() {
   ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
   ImGui::SameLine();
 
+  // Align action button — snaps selected objects to a picked target.
+  ImGui::BeginDisabled(!can_align_);
+  if (ImGui::Button(ICON_FA_ALIGN_CENTER) && on_align_)
+    on_align_();
+  ImGui::SetItemTooltip("Align selected objects to a target");
+  if (!can_align_)
+    ImGui::SetItemTooltip("Select one or more objects first");
+  ImGui::EndDisabled();
+
+  ImGui::SameLine();
+
   // Reference gauge button — places a 1 m cube for visual scale reference.
   if (ImGui::Button(ICON_FA_RULER_COMBINED) && on_place_gauge_)
     on_place_gauge_();

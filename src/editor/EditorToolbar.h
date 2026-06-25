@@ -130,6 +130,14 @@ class EditorToolbar {
   // Greys out the Play button. Should be false when no map is loaded or map has no file path.
   void SetPlayEnabled(bool enabled) { play_enabled_ = enabled; }
 
+  // Registers a callback fired when the "Align" action button is clicked.
+  // The callback should activate AlignTool in the viewport.
+  void SetOnAlign(std::function<void()> cb) { on_align_ = std::move(cb); }
+
+  // Enables or greys out the "Align" button.
+  // Should be false when nothing is selected.
+  void SetCanAlign(bool b) { can_align_ = b; }
+
   // Registers a callback fired when the "Place Gauge" button is clicked.
   // The callback should create a GameGauge and push a PlaceObjectCommand.
   void SetOnPlaceGauge(std::function<void()> cb) {
@@ -202,6 +210,10 @@ class EditorToolbar {
   std::function<void(bool)> on_sound_toggle_;
   // cppcheck-suppress unusedStructMember
   bool                  sound_enabled_      = false;
+  // cppcheck-suppress unusedStructMember
+  std::function<void()> on_align_;
+  // cppcheck-suppress unusedStructMember
+  bool                  can_align_          = false;
   // cppcheck-suppress unusedStructMember
   std::function<void()> on_place_gauge_;
 };
