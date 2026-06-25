@@ -1,9 +1,12 @@
 #pragma once
 
 #include <functional>
+#include <utility>
+#include <vector>
 
 #include "core/BBox3.h"
 #include "core/Event.h"
+#include "core/Mat4f.h"
 #include "core/Vec3f.h"
 #include "editor/tools/EditorToolBase.h"
 
@@ -23,9 +26,11 @@ class EditorScene;
 //   kPickingTarget — viewport awaits a target click; hovering non-selected
 //                    objects shows a yellow wireframe bbox.  Pressing Escape
 //                    cancels and fires on_done_.
-//   kShowingModal  — alignment-options modal is open.  Apply commits via a
-//                    MultiTransformCommand (undoable); Cancel discards.
-//                    Both paths fire on_done_.
+//   kShowingModal  — alignment-options modal is open with a live preview:
+//                    objects move as the user adjusts options.  Apply commits
+//                    via a MultiTransformCommand (undoable).  Cancel restores
+//                    all objects to their pre-modal positions.  Both paths
+//                    fire on_done_.
 //
 // Options (source/target reference points, group mode) persist across
 // activations — AlignTool lives for the editor session lifetime.
@@ -61,8 +66,17 @@ class AlignTool : public EditorToolBase {
   // Returns the min/center/max value of bbox on the given axis (0=X,1=Y,2=Z).
   static float RefPoint(const core::BBox3& bbox, int axis, int ref);
 
-  // Translates selected objects to align with target_ and pushes a command.
-  void ApplyAlignment(const EditorToolContext& ctx);
+  // Restores all selected objects to their saved (pre-modal) world transforms.
+  void RestoreSaved();
+
+  // Applies a live preview: moves selected objects according to current options_
+  // without pushing a command.  Must be preceded by RestoreSaved() each frame
+  // so the delta is always computed from the clean original positions.
+  void PreviewAlignment(const EditorToolContext& ctx);
+
+  // Pushes a MultiTransformCommand recording the move from saved_transforms_
+  // to the objects' current world transforms.
+  void CommitAlignment();
 
   // Draws the modal each frame while it is open; returns the user action.
   ModalResult RenderModal();
@@ -88,6 +102,11 @@ class AlignTool : public EditorToolBase {
   // Triggers ImGui::OpenPopup on the first kShowingModal frame.
   // cppcheck-suppress unusedStructMember
   bool open_popup_ = false;
+
+  // World transforms captured when the modal opens; used to restore on Cancel
+  // and as "before" entries in the MultiTransformCommand on Apply.
+  // cppcheck-suppress unusedStructMember
+  std::vector<std::pair<game::GameObject*, core::Mat4f>> saved_transforms_;
 
   // Options persist across activations (session-scoped).
   // cppcheck-suppress unusedStructMember

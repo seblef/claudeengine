@@ -1,6 +1,8 @@
 #include "editor/tools/AlignTool.h"
 
 #include <algorithm>
+#include <memory>
+#include <utility>
 #include <vector>
 
 #include "core/BBox3.h"
@@ -24,17 +26,17 @@ namespace editor {
 
 namespace {
 
-constexpr ImU32  kPickHoverColor    = IM_COL32(255, 220, 0, 200);
+constexpr ImU32  kPickHoverColor     = IM_COL32(255, 220, 0, 200);
 constexpr float  kPickHoverThickness = 1.5f;
-constexpr ImU32  kPickHintBg        = IM_COL32(0, 0, 0, 140);
-constexpr char   kPopupId[]         = "Align##modal";
-const char* const kRefLabels[]      = {"Min", "Ctr", "Max"};
+constexpr ImU32  kPickHintBg         = IM_COL32(0, 0, 0, 140);
+constexpr char   kPopupId[]          = "Align##modal";
+const char* const kRefLabels[]       = {"Min", "Ctr", "Max"};
 
 // Draws a yellow wireframe bounding box around obj for pick-target feedback.
 void DrawPickHoverBBox(const game::GameObject* obj, const core::Mat4f& vp,
                        ImDrawList* dl, ImVec2 image_pos, ImVec2 image_size) {
-  const auto& bbox  = obj->GetLocalBBox();
-  const auto& model = obj->GetWorldTransform();
+  const auto& bbox    = obj->GetLocalBBox();
+  const auto& model   = obj->GetWorldTransform();
   const auto  corners = bbox.GetCorners();
 
   struct ScreenPt { ImVec2 pos; bool valid; };
@@ -46,7 +48,7 @@ void DrawPickHoverBBox(const game::GameObject* obj, const core::Mat4f& vp,
       sc[i].valid = false;
       continue;
     }
-    const float iw = 1.f / c.w;
+    const float iw  = 1.f / c.w;
     sc[i].pos   = {(c.x * iw + 1.f) * 0.5f * image_size.x + image_pos.x,
                    (1.f - c.y * iw) * 0.5f * image_size.y + image_pos.y};
     sc[i].valid = true;
@@ -83,13 +85,15 @@ void AlignTool::OnActivate(const EditorToolContext& ctx) {
   hovered_    = nullptr;
   target_     = nullptr;
   open_popup_ = false;
+  saved_transforms_.clear();
 }
 
 void AlignTool::OnDeactivate() {
-  scene_   = nullptr;
-  history_ = nullptr;
-  hovered_ = nullptr;
-  target_  = nullptr;
+  scene_           = nullptr;
+  history_         = nullptr;
+  hovered_         = nullptr;
+  target_          = nullptr;
+  saved_transforms_.clear();
 }
 
 void AlignTool::OnEvent(const core::Event& event) {
@@ -104,21 +108,17 @@ bool AlignTool::IsCapturingMouse() const {
   return true;
 }
 
-void AlignTool::Done() {
-  state_      = State::kPickingTarget;
-  hovered_    = nullptr;
-  target_     = nullptr;
-  open_popup_ = false;
-  if (on_done_) on_done_();
+void AlignTool::RestoreSaved() {
+  for (const auto& entry : saved_transforms_)
+    entry.first->SetWorldTransform(entry.second);
 }
 
-void AlignTool::ApplyAlignment(const EditorToolContext& ctx) {
-  if (!target_ || !ctx.scene || !history_) return;
+void AlignTool::PreviewAlignment(const EditorToolContext& ctx) {
+  if (!target_ || !ctx.scene) return;
 
   const auto&       sel      = ctx.scene->GetSelection();
   const core::BBox3 tgt_bbox = target_->GetWorldBBox();
 
-  // Compute the translation delta for a given source bbox.
   auto compute_delta = [&](const core::BBox3& src_bbox) -> core::Vec3f {
     core::Vec3f d(0.f, 0.f, 0.f);
     for (int a = 0; a < 3; ++a) {
@@ -132,40 +132,42 @@ void AlignTool::ApplyAlignment(const EditorToolContext& ctx) {
     return d;
   };
 
-  std::vector<MultiTransformCommand::Entry> entries;
-  entries.reserve(sel.size());
-
   if (options_.group_mode && sel.size() > 1) {
-    // Single delta computed from the combined selection bbox.
     core::BBox3 group_bbox = sel[0]->GetWorldBBox();
     for (std::size_t i = 1; i < sel.size(); ++i)
       group_bbox << sel[i]->GetWorldBBox();
 
     const core::Vec3f delta = compute_delta(group_bbox);
     for (game::GameObject* obj : sel) {
-      const core::Mat4f before = obj->GetWorldTransform();
-      core::Mat4f       after  = before;
-      after(0, 3) += delta.x;
-      after(1, 3) += delta.y;
-      after(2, 3) += delta.z;
-      obj->SetWorldTransform(after);
-      entries.push_back({obj, before, after});
+      core::Mat4f t = obj->GetWorldTransform();
+      t(0, 3) += delta.x;
+      t(1, 3) += delta.y;
+      t(2, 3) += delta.z;
+      obj->SetWorldTransform(t);
     }
   } else {
-    // Each object is aligned independently.
     for (game::GameObject* obj : sel) {
-      const core::BBox3 src_bbox = obj->GetWorldBBox();
-      const core::Vec3f delta    = compute_delta(src_bbox);
-      const core::Mat4f before   = obj->GetWorldTransform();
-      core::Mat4f       after    = before;
-      after(0, 3) += delta.x;
-      after(1, 3) += delta.y;
-      after(2, 3) += delta.z;
-      obj->SetWorldTransform(after);
-      entries.push_back({obj, before, after});
+      const core::Vec3f delta = compute_delta(obj->GetWorldBBox());
+      core::Mat4f t = obj->GetWorldTransform();
+      t(0, 3) += delta.x;
+      t(1, 3) += delta.y;
+      t(2, 3) += delta.z;
+      obj->SetWorldTransform(t);
     }
   }
+}
 
+void AlignTool::CommitAlignment() {
+  if (saved_transforms_.empty() || !history_) return;
+
+  std::vector<MultiTransformCommand::Entry> entries;
+  entries.reserve(saved_transforms_.size());
+  std::transform(saved_transforms_.begin(), saved_transforms_.end(),
+                 std::back_inserter(entries),
+                 [](const std::pair<game::GameObject*, core::Mat4f>& e) {
+                   return MultiTransformCommand::Entry{
+                       e.first, e.second, e.first->GetWorldTransform()};
+                 });
   if (!entries.empty())
     history_->Push(std::make_unique<MultiTransformCommand>(std::move(entries)));
 }
@@ -187,15 +189,14 @@ AlignTool::ModalResult AlignTool::RenderModal() {
   ImGui::Separator();
   ImGui::Spacing();
 
-  // Axis table: axis | align/ignore | source ref | → | target ref
   constexpr ImGuiTableFlags kTableFlags =
       ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingFixedFit;
   if (ImGui::BeginTable("##align_axes", 5, kTableFlags)) {
-    ImGui::TableSetupColumn("Axis",        ImGuiTableColumnFlags_WidthFixed, 24.f);
-    ImGui::TableSetupColumn("Align",       ImGuiTableColumnFlags_WidthFixed, 96.f);
-    ImGui::TableSetupColumn("Source ref",  ImGuiTableColumnFlags_WidthFixed, 120.f);
-    ImGui::TableSetupColumn("Arrow",       ImGuiTableColumnFlags_WidthFixed, 16.f);
-    ImGui::TableSetupColumn("Target ref",  ImGuiTableColumnFlags_WidthFixed, 120.f);
+    ImGui::TableSetupColumn("Axis",       ImGuiTableColumnFlags_WidthFixed, 24.f);
+    ImGui::TableSetupColumn("Align",      ImGuiTableColumnFlags_WidthFixed, 96.f);
+    ImGui::TableSetupColumn("Source ref", ImGuiTableColumnFlags_WidthFixed, 120.f);
+    ImGui::TableSetupColumn("Arrow",      ImGuiTableColumnFlags_WidthFixed, 16.f);
+    ImGui::TableSetupColumn("Target ref", ImGuiTableColumnFlags_WidthFixed, 120.f);
     ImGui::TableHeadersRow();
 
     const char* kAxisLabels[] = {"X", "Y", "Z"};
@@ -203,11 +204,9 @@ AlignTool::ModalResult AlignTool::RenderModal() {
       ImGui::TableNextRow();
       ImGui::PushID(a);
 
-      // Column 0: axis label
       ImGui::TableSetColumnIndex(0);
       ImGui::TextUnformatted(kAxisLabels[a]);
 
-      // Column 1: align / ignore radio buttons
       ImGui::TableSetColumnIndex(1);
       int align_val = options_.align[a] ? 1 : 0;
       ImGui::RadioButton("Align##al",  &align_val, 1); ImGui::SameLine();
@@ -216,7 +215,6 @@ AlignTool::ModalResult AlignTool::RenderModal() {
 
       const bool active = options_.align[a];
 
-      // Column 2: source reference
       ImGui::TableSetColumnIndex(2);
       ImGui::BeginDisabled(!active);
       for (int r = 0; r < 3; ++r) {
@@ -227,13 +225,11 @@ AlignTool::ModalResult AlignTool::RenderModal() {
       }
       ImGui::EndDisabled();
 
-      // Column 3: arrow
       ImGui::TableSetColumnIndex(3);
       ImGui::BeginDisabled(!active);
       ImGui::TextUnformatted("\xe2\x86\x92");  // UTF-8 → (U+2192)
       ImGui::EndDisabled();
 
-      // Column 4: target reference
       ImGui::TableSetColumnIndex(4);
       ImGui::BeginDisabled(!active);
       for (int r = 0; r < 3; ++r) {
@@ -249,7 +245,7 @@ AlignTool::ModalResult AlignTool::RenderModal() {
     ImGui::EndTable();
   }
 
-  // Group mode — only shown for multi-selection.
+  // Group mode row — only visible for multi-selection.
   if (scene_ && scene_->GetSelection().size() > 1) {
     ImGui::Spacing();
     ImGui::Separator();
@@ -280,15 +276,21 @@ AlignTool::ModalResult AlignTool::RenderModal() {
   return result;
 }
 
+void AlignTool::Done() {
+  state_      = State::kPickingTarget;
+  hovered_    = nullptr;
+  target_     = nullptr;
+  open_popup_ = false;
+  if (on_done_) on_done_();
+}
+
 void AlignTool::OnRender(const EditorToolContext& ctx,
                           ImVec2 image_pos, ImVec2 image_size) {
   if (!ctx.scene) return;
 
   if (state_ == State::kPickingTarget) {
-    // Set cursor to crosshair to signal pick mode.
     ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
 
-    // Show a hint overlay.
     ImDrawList* dl = ImGui::GetWindowDrawList();
     const ImVec2 hint_pos = {image_pos.x + 8.f, image_pos.y + 8.f};
     const char* hint = "Click target object to align to — Escape to cancel";
@@ -300,25 +302,21 @@ void AlignTool::OnRender(const EditorToolContext& ctx,
         kPickHintBg, 3.f);
     dl->AddText(hint_pos, IM_COL32(255, 220, 0, 255), hint);
 
-    // Detect hover (avoid selected objects).
     const bool window_hovered = ImGui::IsWindowHovered();
     if (window_hovered) {
       game::GameObject* candidate =
           PickHitAt(ctx, ImGui::GetMousePos(), image_pos, image_size);
-      // Reject selected objects as targets.
       hovered_ = (candidate && !ctx.scene->IsSelected(candidate))
                      ? candidate : nullptr;
     } else {
       hovered_ = nullptr;
     }
 
-    // Draw yellow bbox around the hover candidate.
     if (hovered_) {
       const core::Mat4f& vp = ctx.camera->GetCamera()->GetViewProjectionMatrix();
       DrawPickHoverBBox(hovered_, vp, dl, image_pos, image_size);
     }
 
-    // Confirm target on LMB click.
     if (window_hovered && hovered_ &&
         ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
       target_     = hovered_;
@@ -329,12 +327,32 @@ void AlignTool::OnRender(const EditorToolContext& ctx,
     return;
   }
 
-  // kShowingModal
+  // kShowingModal — live preview.
+
+  // Capture originals on the first frame (when open_popup_ is still true).
+  if (open_popup_) {
+    saved_transforms_.clear();
+    const auto& sel = ctx.scene->GetSelection();
+    saved_transforms_.reserve(sel.size());
+    std::transform(sel.begin(), sel.end(),
+                   std::back_inserter(saved_transforms_),
+                   [](game::GameObject* obj) {
+                     return std::make_pair(obj, obj->GetWorldTransform());
+                   });
+  }
+
+  // Each frame: restore originals then re-apply with current options so the
+  // viewport reflects whatever the user has set in the modal this frame.
+  RestoreSaved();
+  PreviewAlignment(ctx);
+
   const ModalResult result = RenderModal();
+
   if (result == ModalResult::kApply) {
-    ApplyAlignment(ctx);
+    CommitAlignment();
     Done();
   } else if (result == ModalResult::kCancel) {
+    RestoreSaved();
     Done();
   }
 }
