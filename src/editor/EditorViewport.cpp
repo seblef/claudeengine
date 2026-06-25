@@ -13,6 +13,7 @@
 #include "core/ProjectionType.h"
 #include "core/Vec3f.h"
 #include "editor/EditorScene.h"
+#include "editor/GaugeGizmos.h"
 #include "editor/PickingAccelerator.h"
 #include "editor/PivotGizmos.h"
 #include "editor/PlayerStartGizmos.h"
@@ -36,6 +37,7 @@
 #include <loguru.hpp>
 
 namespace editor {
+
 
 EditorViewport::~EditorViewport() = default;
 
@@ -195,6 +197,7 @@ void EditorViewport::Render() {
         scene_ ? scene_->GetSelectedObject() : nullptr);
     if (scene_) {
       const float cam_dist = camera_ctrl_->GetDistance();
+      editor::EnqueueGaugeGizmos(scene_->GetObjects(), scene_->GetSelectedObject());
       editor::EnqueuePivotGizmos(scene_->GetObjects(), scene_->GetSelectedObject());
       if (!rendering_settings_panel_ ||
           rendering_settings_panel_->IsOverlayPlayerStartsEnabled()) {
@@ -268,6 +271,10 @@ void EditorViewport::PlaceMeshAt(ImVec2 mouse_pos, ImVec2 image_pos,
 
 EditorCameraController::CameraState EditorViewport::GetCameraState() const {
   return camera_ctrl_->GetState();
+}
+
+core::Vec3f EditorViewport::GetCameraFocusPoint() const {
+  return camera_ctrl_->GetState().focus;
 }
 
 const core::Mat4f& EditorViewport::GetCameraWorldTransform() const {

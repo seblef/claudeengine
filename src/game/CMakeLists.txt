@@ -3,6 +3,7 @@ add_library(game STATIC
     FPSCameraController.cpp
     PlayerVehicleController.cpp
     GameCamera.cpp
+    GameGauge.cpp
     GameObject.cpp
     GameLight.cpp
     GameMaterial.cpp

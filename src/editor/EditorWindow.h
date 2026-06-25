@@ -107,6 +107,9 @@ class EditorWindow {
   // No-op when nothing is selected or the selection is a terrain.
   void CenterCameraOnObject();
 
+  // Places a reference gauge (GameGauge) at the camera focus point via PlaceObjectCommand.
+  void PlaceGauge();
+
   // Pastes the clipboard object into the scene with a small position offset.
   // Pushes a PlaceObjectCommand so the paste is undoable.
   void PasteObject();

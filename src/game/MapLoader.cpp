@@ -18,6 +18,7 @@
 #include "core/ProjectionType.h"
 #include "core/YamlSerialiser.h"
 #include "game/GameCamera.h"
+#include "game/GameGauge.h"
 #include "game/GameLight.h"
 #include "game/GameMaterial.h"
 #include "game/GameMesh.h"
@@ -373,6 +374,16 @@ std::unique_ptr<GameObject> ParsePlayerStart(const YAML::Node& node) {
   return ps;
 }
 
+std::unique_ptr<GameObject> ParseGauge(const YAML::Node& node) {
+  const std::string name      = node["name"].as<std::string>("Gauge");
+  const core::Mat4f transform = core::ParseMat4(node["transform"]);
+
+  auto gauge = std::make_unique<GameGauge>();
+  gauge->SetName(name);
+  gauge->SetWorldTransform(transform);
+  return gauge;
+}
+
 std::unique_ptr<GameObject> ParseParticleSystem(const YAML::Node& node,
                                                abstract::VideoDevice* video) {
   const std::string tmpl_name = node["template"].as<std::string>("");
@@ -643,6 +654,8 @@ MapData MapLoader::Load(const std::filesystem::path& path,
         go = ParseVehicle(obj, video);
       } else if (type == "road") {
         go = ParseRoad(obj, video);
+      } else if (type == "gauge") {
+        go = ParseGauge(obj);
       } else {
         LOG_F(WARNING, "MapLoader: unknown object type '%s', skipping",
               type.c_str());

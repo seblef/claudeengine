@@ -334,6 +334,17 @@ game::GameObject* PickHitAt(const EditorToolContext& ctx, ImVec2 mouse_pos,
     }
   }
 
+  // Gauge pass: ray-BBox intersection (gauges have a 1×1×1 m world bbox).
+  for (game::GameObject* obj : candidates) {
+    if (obj->GetType() != game::GameObjectType::kGauge) continue;
+    float t;
+    if (!obj->GetWorldBBox().IntersectsRay(ray_origin, ray_dir, t)) continue;
+    if (t < t_best) {
+      t_best = t;
+      hit = obj;
+    }
+  }
+
   // Light pass: screen-space proximity against wireframe geometry.
   constexpr float kLightPickThresholdPx = 8.f;
   float best_light_dist_px = kLightPickThresholdPx;

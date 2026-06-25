@@ -31,6 +31,7 @@
 #include "editor/EditorToolbar.h"
 #include "editor/commands/GroupUnderPivotCommand.h"
 #include "editor/commands/PlaceObjectCommand.h"
+#include "game/GameGauge.h"
 #include "editor/commands/TransformCommand.h"
 #include "editor/commands/UngroupPivotCommand.h"
 #include "editor/EditorViewport.h"
@@ -182,6 +183,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   toolbar_->SetOnCenterOnObject([this]{ CenterCameraOnObject(); });
   toolbar_->SetOnGroupObjects([this]{ GroupUnderPivot(); });
   toolbar_->SetOnUngroupObjects([this]{ UngroupSelectedPivot(); });
+  toolbar_->SetOnPlaceGauge([this]{ PlaceGauge(); });
   viewport_->SetScene(scene_.get());
   viewport_->SetCommandHistory(&history_);
   viewport_->SetActiveTool(selection_tool_.get());
@@ -1533,6 +1535,15 @@ void EditorWindow::CenterCameraOnObject() {
     combined << sel[i]->GetWorldBBox();
 
   viewport_->FrameObject(combined);
+}
+
+void EditorWindow::PlaceGauge() {
+  auto gauge = std::make_unique<game::GameGauge>();
+  gauge->SetName(GenerateObjectName(*scene_, "gauge"));
+  gauge->SetWorldTransform(
+      core::Mat4f::Translation(viewport_->GetCameraFocusPoint()));
+  history_.Push(std::make_unique<PlaceObjectCommand>(scene_.get(), std::move(gauge)));
+  scene_dirty_ = true;
 }
 
 void EditorWindow::GroupUnderPivot() {

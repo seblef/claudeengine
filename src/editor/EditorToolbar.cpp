@@ -245,6 +245,15 @@ void EditorToolbar::Render() {
   ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
   ImGui::SameLine();
 
+  // Reference gauge button — places a 1 m cube for visual scale reference.
+  if (ImGui::Button(ICON_FA_RULER_COMBINED) && on_place_gauge_)
+    on_place_gauge_();
+  ImGui::SetItemTooltip("Place reference gauge (1\xc3\x97""1\xc3\x97""1 m cube) at camera focus");
+
+  ImGui::SameLine();
+  ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+  ImGui::SameLine();
+
   // Sound enable/disable toggle.
   // Capture state before the button so Push/Pop are balanced regardless of click.
   const bool sound_was_enabled = sound_enabled_;

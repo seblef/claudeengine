@@ -3,6 +3,7 @@
 namespace game {
 
 class GameCamera;
+class GameGauge;
 class GameLight;
 class GameMesh;
 class GameParticleSystem;
@@ -22,6 +23,7 @@ class GameObjectVisitor {
   virtual ~GameObjectVisitor() = default;
 
   virtual void Visit(GameCamera& camera)                  = 0;
+  virtual void Visit(GameGauge& gauge)                    {}  // default no-op
   virtual void Visit(GameLight& light)                    = 0;
   virtual void Visit(GameMesh& mesh)                      = 0;
   virtual void Visit(GameParticleSystem& particle_system) = 0;

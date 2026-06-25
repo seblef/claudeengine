@@ -13,6 +13,7 @@
 #include "core/Config.h"
 #include "environment/EnvironmentDesc.h"
 #include "game/GameCamera.h"
+#include "game/GameGauge.h"
 #include "game/GameLight.h"
 #include "game/GameMaterial.h"
 #include "game/GameMesh.h"
@@ -352,6 +353,16 @@ void MapSerializer::SerializeVisitor::Visit(game::GameCamera& camera) {
   EmitParentField();
   out_ << YAML::Key << "transform" << YAML::Value;
   EmitTransform(out_, camera.GetWorldTransform());
+  out_ << YAML::EndMap;
+}
+
+void MapSerializer::SerializeVisitor::Visit(game::GameGauge& gauge) {
+  out_ << YAML::BeginMap;
+  out_ << YAML::Key << "name"      << YAML::Value << gauge.GetName();
+  out_ << YAML::Key << "type"      << YAML::Value << "gauge";
+  EmitParentField();
+  out_ << YAML::Key << "transform" << YAML::Value;
+  EmitTransform(out_, gauge.GetWorldTransform());
   out_ << YAML::EndMap;
 }
 
@@ -696,6 +707,7 @@ std::optional<MapLoadResult> MapSerializer::Load(
   EditorCameraController::CameraState cam{};
   try {
     YAML::Node root = YAML::LoadFile(path.string());
+
     const YAML::Node& editor = root["editor"];
     if (editor) {
       // New nested format: editor.camera.{ focus, azimuth, elevation, distance }
