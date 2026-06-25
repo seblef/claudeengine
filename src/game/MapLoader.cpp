@@ -336,6 +336,37 @@ std::unique_ptr<GameObject> ParseLight(const YAML::Node& node) {
   if (node["shadow_bias"])
     desc.shadow_bias = node["shadow_bias"].as<float>(desc.shadow_bias);
 
+  switch (light_type) {
+    case renderer::LightType::kGlobal:
+      if (node["direction"])
+        desc.direction = core::ParseVec3(node["direction"], desc.direction);
+      if (node["ambient_color"])
+        desc.ambient_color = core::ParseVec3(node["ambient_color"], desc.ambient_color);
+      break;
+    case renderer::LightType::kCircleSpot:
+      if (node["direction"])
+        desc.direction = core::ParseVec3(node["direction"], desc.direction);
+      if (node["inner_angle"])
+        desc.inner_angle = node["inner_angle"].as<float>(desc.inner_angle);
+      if (node["outer_angle"])
+        desc.outer_angle = node["outer_angle"].as<float>(desc.outer_angle);
+      if (node["range"])
+        desc.range = node["range"].as<float>(desc.range);
+      break;
+    case renderer::LightType::kRectSpot:
+      if (node["direction"])
+        desc.direction = core::ParseVec3(node["direction"], desc.direction);
+      if (node["h_angle"])
+        desc.h_angle = node["h_angle"].as<float>(desc.h_angle);
+      if (node["v_angle"])
+        desc.v_angle = node["v_angle"].as<float>(desc.v_angle);
+      if (node["range"])
+        desc.range = node["range"].as<float>(desc.range);
+      break;
+    default:
+      break;
+  }
+
   auto light = std::make_unique<GameLight>(light_type, desc);
   light->SetName(name);
   light->SetWorldTransform(transform);
