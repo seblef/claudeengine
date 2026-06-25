@@ -78,6 +78,14 @@ class PhysicsVehicle {
     /// Returns the physical width of wheel at index in metres (from WheelSettings::mWidth).
     [[nodiscard]] float GetWheelWidth(int wheel_index) const;
 
+    /// Teleports the body to the given world transform; wakes the body if sleeping.
+    /// The translation part of the matrix is used as position; the upper-left 3×3
+    /// is interpreted as the rotation.
+    void SetBodyTransform(const core::Mat4f& transform);
+
+    /// Zeroes both linear and angular velocity on the body.
+    void ZeroVelocities();
+
  private:
     friend class PhysicsSystem;
 

@@ -112,4 +112,27 @@ float PhysicsVehicle::GetWheelWidth(int wheel_index) const {
                ->GetSettings()->mWidth;
 }
 
+void PhysicsVehicle::SetBodyTransform(const core::Mat4f& transform) {
+    // Extract position from column 3.
+    const JPH::RVec3 pos(
+        static_cast<JPH::Real>(transform(0, 3)),
+        static_cast<JPH::Real>(transform(1, 3)),
+        static_cast<JPH::Real>(transform(2, 3)));
+    // Build a Jolt rotation matrix from the upper-left 3×3.
+    // Jolt Mat44 constructor takes column vectors; our column j = (row0, row1, row2).
+    const JPH::Mat44 rot(
+        JPH::Vec4(transform(0, 0), transform(1, 0), transform(2, 0), 0.f),
+        JPH::Vec4(transform(0, 1), transform(1, 1), transform(2, 1), 0.f),
+        JPH::Vec4(transform(0, 2), transform(1, 2), transform(2, 2), 0.f),
+        JPH::Vec4(0.f, 0.f, 0.f, 1.f));
+    jolt_system_->GetBodyInterface().SetPositionAndRotation(
+        body_->GetID(), pos, rot.GetQuaternion(), JPH::EActivation::Activate);
+}
+
+void PhysicsVehicle::ZeroVelocities() {
+    JPH::BodyInterface& iface = jolt_system_->GetBodyInterface();
+    iface.SetLinearVelocity(body_->GetID(), JPH::Vec3::sZero());
+    iface.SetAngularVelocity(body_->GetID(), JPH::Vec3::sZero());
+}
+
 }  // namespace physics
