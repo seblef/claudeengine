@@ -191,6 +191,13 @@ void RoadTool::RenderCreating(const EditorToolContext& ctx,
     road->GetSpline().AddControlPoint(*hit);
     road_ = static_cast<game::GameRoad*>(
         ctx.scene->AddDynamicObject(std::move(road)));
+    // Assign the default road material. GetOrLoad returns an AddRef'd pointer;
+    // SetMaterial does not AddRef, so we keep our ref alive (do not Release).
+    if (ctx.video) {
+      game::GameMaterial* mat =
+          game::GameMaterial::GetOrLoad("road_sample", ctx.video);
+      if (mat) road_->SetMaterial(mat);
+    }
     LOG_F(INFO, "RoadTool: started road '%s' at (%.2f, %.2f, %.2f)",
           road_->GetName().c_str(), hit->x, hit->y, hit->z);
     return;
