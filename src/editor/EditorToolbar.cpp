@@ -245,20 +245,10 @@ void EditorToolbar::Render() {
   ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
   ImGui::SameLine();
 
-  // Reference gauge buttons.
+  // Reference gauge button — places a 1 m cube for visual scale reference.
   if (ImGui::Button(ICON_FA_RULER_COMBINED) && on_place_gauge_)
     on_place_gauge_();
-  ImGui::SetItemTooltip("Place reference gauge (1 m cube) at camera focus");
-
-  ImGui::SameLine();
-
-  ImGui::BeginDisabled(!can_clear_gauges_);
-  if (ImGui::Button(ICON_FA_TRASH_CAN) && on_clear_gauges_)
-    on_clear_gauges_();
-  ImGui::SetItemTooltip("Delete all reference gauges");
-  if (!can_clear_gauges_)
-    ImGui::SetItemTooltip("No gauges in the scene");
-  ImGui::EndDisabled();
+  ImGui::SetItemTooltip("Place reference gauge (1\xc3\x97""1\xc3\x97""1 m cube) at camera focus");
 
   ImGui::SameLine();
   ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);

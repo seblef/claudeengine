@@ -9,6 +9,7 @@
 #include "editor/EditorCameraController.h"
 #include "editor/EditorScene.h"
 #include "game/GameCamera.h"
+#include "game/GameGauge.h"
 #include "game/GameLight.h"
 #include "game/GameMesh.h"
 #include "game/GameObjectVisitor.h"
@@ -66,6 +67,7 @@ class MapSerializer {
     }
 
     void Visit(game::GameCamera& camera)                override;
+    void Visit(game::GameGauge& gauge)                  override;
     void Visit(game::GameLight& light)                  override;
     void Visit(game::GameMesh& mesh)                    override;
     void Visit(game::GameParticleSystem& particle_system) override;

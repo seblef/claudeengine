@@ -30,8 +30,8 @@
 #include "editor/tools/TerrainSculptTool.h"
 #include "editor/EditorToolbar.h"
 #include "editor/commands/GroupUnderPivotCommand.h"
-#include "editor/commands/PlaceGaugeCommand.h"
 #include "editor/commands/PlaceObjectCommand.h"
+#include "game/GameGauge.h"
 #include "editor/commands/TransformCommand.h"
 #include "editor/commands/UngroupPivotCommand.h"
 #include "editor/EditorViewport.h"
@@ -184,7 +184,6 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   toolbar_->SetOnGroupObjects([this]{ GroupUnderPivot(); });
   toolbar_->SetOnUngroupObjects([this]{ UngroupSelectedPivot(); });
   toolbar_->SetOnPlaceGauge([this]{ PlaceGauge(); });
-  toolbar_->SetOnClearGauges([this]{ ClearGauges(); });
   viewport_->SetScene(scene_.get());
   viewport_->SetCommandHistory(&history_);
   viewport_->SetActiveTool(selection_tool_.get());
@@ -457,7 +456,6 @@ void EditorWindow::Render() {
         sel[0]->GetType() == game::GameObjectType::kPivot &&
         !static_cast<const game::GamePivot*>(sel[0])->GetChildren().empty();
     toolbar_->SetCanUngroup(can_ungroup);
-    toolbar_->SetCanClearGauges(!scene_->GetGauges().empty());
   }
   toolbar_->Render();
   const EditorTool active_tool = toolbar_->GetActiveTool();
@@ -1540,15 +1538,11 @@ void EditorWindow::CenterCameraOnObject() {
 }
 
 void EditorWindow::PlaceGauge() {
-  EditorGauge gauge;
-  gauge.position = viewport_->GetCameraFocusPoint();
-  history_.Push(std::make_unique<PlaceGaugeCommand>(scene_.get(), gauge));
-  scene_dirty_ = true;
-}
-
-void EditorWindow::ClearGauges() {
-  if (scene_->GetGauges().empty()) return;
-  scene_->GetGauges().clear();
+  auto gauge = std::make_unique<game::GameGauge>();
+  gauge->SetName(GenerateObjectName(*scene_, "gauge"));
+  gauge->SetWorldTransform(
+      core::Mat4f::Translation(viewport_->GetCameraFocusPoint()));
+  history_.Push(std::make_unique<PlaceObjectCommand>(scene_.get(), std::move(gauge)));
   scene_dirty_ = true;
 }
 

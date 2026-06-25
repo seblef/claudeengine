@@ -14,6 +14,7 @@ enum class GameObjectType {
   kPivot,
   kVehicle,
   kRoad,
+  kGauge,   // editor-only scale-reference cube; ignored by game runtime
 };
 
 }  // namespace game
