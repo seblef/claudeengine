@@ -228,7 +228,7 @@ void RoadTool::RenderCreating(const EditorToolContext& ctx,
   const bool clicked = ImGui::IsMouseReleased(ImGuiMouseButton_Left);
   if (clicked && hit) {
     spline.AddControlPoint(*hit);
-    if (spline.GetPointCount() >= 2) Regenerate(ctx);
+    if (spline.GetPointCount() >= kMinPoints) Regenerate(ctx);
     LOG_F(9, "RoadTool: added control point at (%.2f, %.2f, %.2f)",
           hit->x, hit->y, hit->z);
   }
