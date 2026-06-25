@@ -27,13 +27,15 @@ constexpr int kMaxQuadsPerWheel = 512;
 /// Single oriented quad emitted by a wheel on ground contact.
 struct TrackQuad {
     // cppcheck-suppress unusedStructMember
-    core::Vec3f           center;   ///< World-space center of the quad.
+    core::Vec3f           center;      ///< World-space center of the quad.
     // cppcheck-suppress unusedStructMember
-    core::Vec3f           forward;  ///< Normalised wheel heading at emission time.
+    core::Vec3f           forward;     ///< Normalised wheel heading at emission time.
     // cppcheck-suppress unusedStructMember
-    float                 alpha;    ///< Fade factor: 1.0 at emission, 0.0 when dead.
+    float                 alpha;       ///< Fade factor: 1.0 at emission, 0.0 when dead.
     // cppcheck-suppress unusedStructMember
-    physics::SurfaceType  surface;  ///< Determines texture selection.
+    float                 half_length;  ///< Half the actual distance to the previous quad.
+    // cppcheck-suppress unusedStructMember
+    physics::SurfaceType  surface;     ///< Determines texture selection.
 };
 
 /// Manages per-wheel tire track ribbons for all registered vehicles.

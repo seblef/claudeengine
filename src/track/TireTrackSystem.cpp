@@ -155,11 +155,16 @@ void TireTrackSystem::Update(float dt) {
 
             if (should_emit) {
                 core::Vec3f heading;
+                float       half_len = emit_interval_ * 0.5f;
                 if (ws.has_last_pos) {
-                    heading = contact.position - ws.last_pos;
-                    const float hlen = heading.Length();
-                    if (hlen > 1e-6f) heading = heading * (1.f / hlen);
-                    else heading = core::Vec3f(0.f, 0.f, 1.f);
+                    const core::Vec3f delta = contact.position - ws.last_pos;
+                    const float dist = delta.Length();
+                    if (dist > 1e-6f) {
+                        heading  = delta * (1.f / dist);
+                        half_len = dist * 0.5f;
+                    } else {
+                        heading = core::Vec3f(0.f, 0.f, 1.f);
+                    }
                 } else {
                     heading = core::Vec3f(0.f, 0.f, 1.f);
                 }
@@ -167,9 +172,10 @@ void TireTrackSystem::Update(float dt) {
                 // Write at tail = (head + count) % kMaxQuadsPerWheel.
                 // If the ring is full, overwrite the oldest entry (advance head).
                 const int tail = (ws.head + ws.count) % kMaxQuadsPerWheel;
-                ws.quads[tail].center  = contact.position;
-                ws.quads[tail].forward = heading;
-                ws.quads[tail].alpha   = 1.f;
+                ws.quads[tail].center      = contact.position;
+                ws.quads[tail].forward     = heading;
+                ws.quads[tail].alpha       = 1.f;
+                ws.quads[tail].half_length = half_len;
 
                 physics::SurfaceType surface = physics::SurfaceType::kGeneric;
                 if (physics::PhysicsSystem::IsInstanced())
@@ -213,7 +219,6 @@ void TireTrackSystem::RenderWheel(WheelState& ws) {
     static thread_local std::vector<core::VertexTrack> scratch;
     scratch.clear();
 
-    const float half_length = emit_interval_ * 0.5f;
     const float half_width  = ws.half_width;
 
     // Count quads per surface type to compute offsets.
@@ -244,7 +249,7 @@ void TireTrackSystem::RenderWheel(WheelState& ws) {
         if (st < 0 || st >= physics::kSurfaceTypeCount) continue;
 
         core::VertexTrack verts[4];
-        BuildQuadVertices(q, half_width, half_length, verts);
+        BuildQuadVertices(q, half_width, q.half_length, verts);
         const int dest = cursor[st] * 4;
         scratch[dest]     = verts[0];
         scratch[dest + 1] = verts[1];
