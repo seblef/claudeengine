@@ -21,6 +21,7 @@
 #include "editor/TerrainCreationDialog.h"
 #include "editor/TerrainEditorPanel.h"
 #include "editor/SoundPreviewPlayer.h"
+#include "editor/tools/AlignTool.h"
 #include "editor/tools/PlacementTool.h"
 #include "editor/tools/RoadTool.h"
 #include "editor/tools/SelectionTool.h"
@@ -113,6 +114,10 @@ class EditorWindow {
   // Pastes the clipboard object into the scene with a small position offset.
   // Pushes a PlaceObjectCommand so the paste is undoable.
   void PasteObject();
+
+  // Activates AlignTool in the viewport; captures the current base tool so it
+  // can be restored when the align flow completes.
+  void ActivateAlignTool();
 
   // Activates 3D spatial audio for all GameSoundEmitter objects in the scene.
   // Wires each emitter to the editor sound manager and starts looping playback.
@@ -255,6 +260,12 @@ class EditorWindow {
   // Road spline-editing tool: created once, activated on road selection.
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<RoadTool>              road_tool_;
+  // Align tool: created once, activated on demand via the toolbar action button.
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<AlignTool>             align_tool_;
+  // Base tool to restore after the align flow completes (not owned).
+  // cppcheck-suppress unusedStructMember
+  EditorToolBase*                        align_prev_base_tool_ = nullptr;
 
   // Tracks the previous frame's active tool to detect transitions.
   // cppcheck-suppress unusedStructMember
