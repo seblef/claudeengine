@@ -39,6 +39,11 @@ class GameLight : public GameObject {
 
   [[nodiscard]] renderer::Light* GetLight() const;
 
+  // Pulls the renderer light's current local bbox (which it keeps up-to-date
+  // after property mutations) into the GameObject side so selection and
+  // culling stay consistent.
+  void RefreshBBox();
+
  private:
   // Instantiates the right renderer::Light subclass from type and desc.
   static std::unique_ptr<renderer::Light> CreateRendererLight(

@@ -11,10 +11,9 @@ class IVisibilitySystem;  // forward declaration — full type not needed here
 
 // Abstract base for all renderable objects (meshes, actors, lights, etc.).
 //
-// Maintains a world matrix, a local bounding box (immutable after
-// construction), and a world bounding box (recomputed whenever the world
-// matrix changes). Records the last frame the object was enqueued to support
-// frame-based visibility culling.
+// Maintains a world matrix, a local bounding box, and a world bounding box
+// (recomputed whenever the world matrix or local bbox changes). Records the
+// last frame the object was enqueued to support frame-based visibility culling.
 class Renderable {
  public:
   // Constructs from a local bbox, initial world matrix, and visibility flag.
@@ -67,6 +66,11 @@ class Renderable {
 
   void          SetVisibilityId(uintptr_t id);
   [[nodiscard]] uintptr_t GetVisibilityId() const;
+
+ protected:
+  // Updates local_bbox_ and recomputes world_bbox_ = local_bbox_ * world_matrix_.
+  // Notifies the visibility system so culling structures stay consistent.
+  void SetLocalBBox(const core::BBox3& bbox);
 
  private:
   // cppcheck-suppress unusedStructMember

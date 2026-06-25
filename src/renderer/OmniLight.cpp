@@ -12,6 +12,11 @@ OmniLight::OmniLight(const core::Color& color, float intensity, float radius,
             /*always_visible=*/false),
       radius_(radius) {}
 
+void OmniLight::SetRadius(float r) {
+  radius_ = r;
+  SetLocalBBox({{-r, -r, -r}, {r, r, r}});
+}
+
 core::Mat4f OmniLight::GetVolumeMatrix() const {
   // Extract the translation (world position) from column 3 of the world matrix.
   const core::Mat4f& wm = GetWorldMatrix();

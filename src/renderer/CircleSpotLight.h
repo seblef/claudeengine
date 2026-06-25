@@ -46,8 +46,8 @@ class CircleSpotLight : public Light {
   [[nodiscard]] core::Vec3f GetDirection() const;
 
   void SetInnerAngle(float a) { inner_angle_ = a; }
-  void SetOuterAngle(float a) { outer_angle_ = a; }
-  void SetRange(float r)      { range_ = r; }
+  void SetOuterAngle(float a);
+  void SetRange(float r);
 
   // Sets the light direction from a world-space vector. The local-space
   // direction is derived by applying R^T (the inverse rotation of the current
@@ -56,6 +56,9 @@ class CircleSpotLight : public Light {
   void SetDirection(const core::Vec3f& world_dir);
 
  private:
+  void RecomputeLocalBBox();
+
+
   // cppcheck-suppress unusedStructMember
   float inner_angle_;
   // cppcheck-suppress unusedStructMember

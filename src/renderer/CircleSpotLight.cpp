@@ -3,7 +3,9 @@
 #include <cmath>
 #include <optional>
 
+#include "core/BBox3.h"
 #include "core/Mat4f.h"
+#include "core/Vec3f.h"
 
 namespace renderer {
 
@@ -30,14 +32,34 @@ CircleSpotLight::CircleSpotLight(const core::Color& color, float intensity,
                                  float range, const core::Vec3f& direction,
                                  const core::Mat4f& world_matrix)
     : Light(LightType::kCircleSpot, color, intensity,
-            // Conservative sphere AABB of radius `range` in local space.
             core::BBox3({-range, -range, -range}, {range, range, range}),
             world_matrix,
             /*always_visible=*/false),
       inner_angle_(inner_angle),
       outer_angle_(outer_angle),
       range_(range),
-      local_direction_(direction) {}
+      local_direction_(direction) {
+  RecomputeLocalBBox();
+}
+
+void CircleSpotLight::RecomputeLocalBBox() {
+  const float base_r = std::tan(outer_angle_) * range_;
+  const core::Vec3f base_center = local_direction_ * range_;
+  core::BBox3 bbox(core::Vec3f::kZero, core::Vec3f::kZero);
+  bbox << base_center;
+  const core::Vec3f exp(base_r, base_r, base_r);
+  SetLocalBBox({bbox.GetMin() - exp, bbox.GetMax() + exp});
+}
+
+void CircleSpotLight::SetOuterAngle(float a) {
+  outer_angle_ = a;
+  RecomputeLocalBBox();
+}
+
+void CircleSpotLight::SetRange(float r) {
+  range_ = r;
+  RecomputeLocalBBox();
+}
 
 core::Vec3f CircleSpotLight::GetDirection() const {
   return TransformNoTranslation(local_direction_, GetWorldMatrix()).Normalized();
@@ -50,6 +72,7 @@ void CircleSpotLight::SetDirection(const core::Vec3f& world_dir) {
       wm(0,1)*world_dir.x + wm(1,1)*world_dir.y + wm(2,1)*world_dir.z,
       wm(0,2)*world_dir.x + wm(1,2)*world_dir.y + wm(2,2)*world_dir.z
   ).Normalized();
+  RecomputeLocalBBox();
 }
 
 core::Mat4f CircleSpotLight::GetVolumeMatrix() const {
