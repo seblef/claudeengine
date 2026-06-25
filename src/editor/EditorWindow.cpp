@@ -193,6 +193,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   objects_panel_->SetCommandHistory(&history_);
   outliner_panel_->SetCommandHistory(&history_);
   history_.SetOnDirty([this]{ scene_dirty_ = true; });
+  road_tool_->SetOnDirty([this]{ scene_dirty_ = true; });
   resources_panel_->SetOnMaterialOpen(
       [this](game::GameMaterial* mat) { material_editor_->Open(mat); });
   resources_panel_->SetOnImportMaterial([this] { ImportMaterial(); });

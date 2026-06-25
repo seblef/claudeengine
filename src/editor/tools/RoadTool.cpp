@@ -93,6 +93,7 @@ void RoadTool::OnEvent(const core::Event& event) {
       // selected road and transitions the toolbar from kCreateRoad to kRoad.
       mode_ = Mode::kEditing;
       selected_point_ = -1;
+      if (on_dirty_) on_dirty_();
       if (scene_) scene_->SetSelectedObject(road_);
     } else if (event.key == core::Key::kEscape) {
       // Cancel: remove the road from scene if one was started.
@@ -115,6 +116,7 @@ void RoadTool::OnEvent(const core::Event& event) {
 
   spline.RemoveControlPoint(selected_point_);
   selected_point_ = std::min(selected_point_, spline.GetPointCount() - 1);
+  if (on_dirty_) on_dirty_();
   LOG_F(9, "RoadTool: removed control point, %d remaining",
         spline.GetPointCount());
 }
@@ -191,12 +193,13 @@ void RoadTool::RenderCreating(const EditorToolContext& ctx,
     road->GetSpline().AddControlPoint(*hit);
     road_ = static_cast<game::GameRoad*>(
         ctx.scene->AddDynamicObject(std::move(road)));
-    // Assign the default road material. GetOrLoad returns an AddRef'd pointer;
-    // SetMaterial does not AddRef, so we keep our ref alive (do not Release).
     if (ctx.video) {
       game::GameMaterial* mat =
           game::GameMaterial::GetOrLoad("road_sample", ctx.video);
-      if (mat) road_->SetMaterial(mat);
+      if (mat) {
+        road_->SetMaterial(mat);
+        mat->Release();
+      }
     }
     LOG_F(INFO, "RoadTool: started road '%s' at (%.2f, %.2f, %.2f)",
           road_->GetName().c_str(), hit->x, hit->y, hit->z);
@@ -271,6 +274,7 @@ void RoadTool::RenderEditing(const EditorToolContext& ctx,
     if (ImGui::SliderFloat("Road width (m)", &w, 1.f, 30.f, "%.1f")) {
       road_->SetWidth(w);
       Regenerate(ctx);
+      if (on_dirty_) on_dirty_();
     }
   }
   ImGui::End();
@@ -333,6 +337,7 @@ void RoadTool::RenderEditing(const EditorToolContext& ctx,
           model_after(3, 0), model_after(3, 1), model_after(3, 2)};
       spline.SetControlPoint(selected_point_, new_pos);
       Regenerate(ctx);
+      if (on_dirty_) on_dirty_();
       dragging_ = true;
     } else {
       dragging_ = ImGuizmo::IsUsing();
@@ -357,6 +362,7 @@ void RoadTool::RenderEditing(const EditorToolContext& ctx,
                             ? spline.GetPointCount() - 1
                             : insert_after + 1;
       Regenerate(ctx);
+      if (on_dirty_) on_dirty_();
       LOG_F(9, "RoadTool: inserted control point at (%.2f, %.2f, %.2f)",
             hit->x, hit->y, hit->z);
     }

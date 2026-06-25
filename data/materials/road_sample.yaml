@@ -1,0 +1,8 @@
+rendering:
+  textures:
+    diffuse: roads/road_sample.dds
+  diffuse_color: [1, 1, 1, 1]
+  emissive_color: [0, 0, 0, 0]
+  ambient_color: [0, 0, 0, 0]
+  shininess: 97.9110031
+  specular: 1

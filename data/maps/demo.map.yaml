@@ -32,7 +32,7 @@ environment:
   cloud_enabled: true
   cloud_density: 0.310000002
   wind_enabled: true
-  wind_direction: [0.484809577, 0, 0.874619722]
+  wind_direction: [0.484809637, 0, 0.874619842]
   wind_strength: 1.20000005
   start_time_of_day: 13.1300001
   time_scale: 60
@@ -276,6 +276,19 @@ objects:
     sound: crickets
     volume_scale: 1
     transform: [0.99822408, -0.0589873455, -0.00831495412, 612.790344, 0.0592633188, 0.997511804, 0.0381845571, 31.29669, 0.00604185835, -0.0386095159, 0.999236166, 1114.66345, 0, 0, 0, 1]
+  - name: road_001
+    type: road
+    width: 8
+    samples_per_metre: 1
+    material: materials/road_sample.yaml
+    control_points:
+      - [546.924561, 26.1615753, 1093.1969]
+      - [506.865997, 26.3350906, 1155.47449]
+      - [482.307953, 25.2680473, 1127.21313]
+      - [470.87561, 22.8682709, 1113.80908]
+      - [507.965546, 25.1255875, 1124.84985]
+      - [500.751038, 23.7087135, 1101.72607]
+      - [532.724854, 25.4961281, 1100.16333]
 terrain:
   heightmap: demo.r16
   heightmap_width: 4096
@@ -309,10 +322,10 @@ terrain:
       cull_distance: 80
       billboard_distance: 35
 editor:
-  selected_object: Object
+  selected_object: road_001
   camera:
-    focus: [572.770996, 37.8306122, 1121.172]
-    azimuth: -0.0577374026
-    elevation: 0.414203405
+    focus: [529.408081, 26.2695694, 1140.6377]
+    azimuth: 0.65226227
+    elevation: 0.584203243
     distance: 77.5522995
   snap_grid: 0

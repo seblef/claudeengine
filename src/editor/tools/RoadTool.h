@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+
 #include "core/Event.h"
 #include "core/Mat4f.h"
 #include "core/Vec3f.h"
@@ -66,6 +68,11 @@ class RoadTool : public EditorToolBase {
   // Used by EditorWindow to suppress the road auto-activation auto-logic.
   [[nodiscard]] bool IsCreating() const { return mode_ == Mode::kCreating; }
 
+  // Registers a callback fired whenever the road or its spline is mutated
+  // (finalization, control-point add/move/delete, width change). Wire this to
+  // set the editor's scene-dirty flag.
+  void SetOnDirty(std::function<void()> cb) { on_dirty_ = std::move(cb); }
+
  private:
   // Projects a world-space point to screen space using the view-projection
   // matrix. Returns false when the point is behind the camera (clip.w <= 0).
@@ -110,6 +117,8 @@ class RoadTool : public EditorToolBase {
   // True when the mouse is within hover radius of any control point.
   // cppcheck-suppress unusedStructMember
   bool            hovering_       = false;
+  // cppcheck-suppress unusedStructMember
+  std::function<void()> on_dirty_;
 };
 
 }  // namespace editor
