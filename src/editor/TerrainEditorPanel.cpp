@@ -662,10 +662,12 @@ void TerrainEditorPanel::RenderImportWindow() {
     ImGui::Spacing();
 
     if (ImGui::Button("Import PNG...", {-1.f, 0.f})) {
+      const std::string tex_dir =
+          (core::Config::GetDataFolder() / "textures").string();
       nfdu8char_t* out_path = nullptr;
       const nfdu8filteritem_t filter = {"PNG Heightmap", "png"};
       const nfdresult_t res =
-          NFD_OpenDialogU8(&out_path, &filter, 1, nullptr);
+          NFD_OpenDialogU8(&out_path, &filter, 1, tex_dir.c_str());
       if (res == NFD_OKAY) {
         const std::string path(out_path);
         NFD_FreePathU8(out_path);
@@ -676,10 +678,12 @@ void TerrainEditorPanel::RenderImportWindow() {
     }
 
     if (ImGui::Button("Import HDR / EXR...", {-1.f, 0.f})) {
+      const std::string tex_dir =
+          (core::Config::GetDataFolder() / "textures").string();
       nfdu8char_t* out_path = nullptr;
       const nfdu8filteritem_t filter = {"HDR / EXR Heightmap", "hdr,exr"};
       const nfdresult_t res =
-          NFD_OpenDialogU8(&out_path, &filter, 1, nullptr);
+          NFD_OpenDialogU8(&out_path, &filter, 1, tex_dir.c_str());
       if (res == NFD_OKAY) {
         const std::string path(out_path);
         NFD_FreePathU8(out_path);
@@ -711,10 +715,12 @@ void TerrainEditorPanel::RenderExportTab() {
   ImGui::Spacing();
 
   if (ImGui::Button("Export PNG...", {-1.f, 0.f})) {
+    const std::string tex_dir =
+        (core::Config::GetDataFolder() / "textures").string();
     nfdu8char_t* out_path = nullptr;
     const nfdu8filteritem_t filter = {"PNG Heightmap", "png"};
     const nfdresult_t res =
-        NFD_SaveDialogU8(&out_path, &filter, 1, nullptr, "heightmap.png");
+        NFD_SaveDialogU8(&out_path, &filter, 1, tex_dir.c_str(), "heightmap.png");
     if (res == NFD_OKAY) {
       const std::string path(out_path);
       NFD_FreePathU8(out_path);
@@ -725,10 +731,12 @@ void TerrainEditorPanel::RenderExportTab() {
   }
 
   if (ImGui::Button("Export R16...", {-1.f, 0.f})) {
+    const std::string tex_dir =
+        (core::Config::GetDataFolder() / "textures").string();
     nfdu8char_t* out_path = nullptr;
     const nfdu8filteritem_t filter = {"Raw 16-bit Heightmap", "r16"};
     const nfdresult_t res =
-        NFD_SaveDialogU8(&out_path, &filter, 1, nullptr, "heightmap.r16");
+        NFD_SaveDialogU8(&out_path, &filter, 1, tex_dir.c_str(), "heightmap.r16");
     if (res == NFD_OKAY) {
       const std::string path(out_path);
       NFD_FreePathU8(out_path);
