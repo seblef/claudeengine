@@ -75,6 +75,9 @@ class PhysicsVehicle {
     /// Returns the number of wheels on this vehicle.
     [[nodiscard]] int GetWheelCount() const;
 
+    /// Returns the physical width of wheel at index in metres (from WheelSettings::mWidth).
+    [[nodiscard]] float GetWheelWidth(int wheel_index) const;
+
  private:
     friend class PhysicsSystem;
 

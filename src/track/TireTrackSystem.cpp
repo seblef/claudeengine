@@ -66,11 +66,6 @@ void BuildQuadVertices(const TrackQuad& q,
     out[3] = core::VertexTrack(front_center + right * half_width, core::Vec2f(1.f, 1.f), q.alpha);
 }
 
-float Vec3fDistanceSq(const core::Vec3f& a, const core::Vec3f& b) {
-    const float dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
-    return dx * dx + dy * dy + dz * dz;
-}
-
 }  // namespace
 
 TireTrackSystem::TireTrackSystem(abstract::VideoDevice* video)
@@ -109,6 +104,7 @@ void TireTrackSystem::RegisterVehicle(const physics::PhysicsVehicle* vehicle) {
     entry.wheels.resize(wheel_count);
 
     for (int i = 0; i < wheel_count; ++i) {
+        entry.wheels[i].half_width = vehicle->GetWheelWidth(i) * 0.5f;
         entry.wheels[i].vbo = video_->CreateVertexBuffer(
             core::VertexType::kTrack,
             kMaxQuadsPerWheel * 4,
@@ -155,7 +151,7 @@ void TireTrackSystem::Update(float dt) {
 
             const bool should_emit =
                 !ws.has_last_pos ||
-                Vec3fDistanceSq(contact.position, ws.last_pos) >= emit_interval_sq;
+                contact.position.SquaredDistance(ws.last_pos) >= emit_interval_sq;
 
             if (should_emit) {
                 core::Vec3f heading;
@@ -218,6 +214,7 @@ void TireTrackSystem::RenderWheel(WheelState& ws) {
     scratch.clear();
 
     const float half_length = emit_interval_ * 0.5f;
+    const float half_width  = ws.half_width;
 
     // Count quads per surface type to compute offsets.
     int counts[physics::kSurfaceTypeCount] = {};
@@ -247,7 +244,7 @@ void TireTrackSystem::RenderWheel(WheelState& ws) {
         if (st < 0 || st >= physics::kSurfaceTypeCount) continue;
 
         core::VertexTrack verts[4];
-        BuildQuadVertices(q, half_width_, half_length, verts);
+        BuildQuadVertices(q, half_width, half_length, verts);
         const int dest = cursor[st] * 4;
         scratch[dest]     = verts[0];
         scratch[dest + 1] = verts[1];
@@ -259,6 +256,7 @@ void TireTrackSystem::RenderWheel(WheelState& ws) {
     // Upload to VBO and draw each surface type.
     ws.vbo->Bind();
     ws.vbo->Fill(scratch.data(), total * 4, 0);
+    ibo_->Bind();
 
     for (int t = 0; t < physics::kSurfaceTypeCount; ++t) {
         if (counts[t] == 0) continue;

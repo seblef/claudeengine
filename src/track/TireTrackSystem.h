@@ -59,9 +59,6 @@ class TireTrackSystem {
     /// Tracks on that surface will sample this texture.  Pass nullptr to use no texture.
     void SetTrackTexture(physics::SurfaceType type, abstract::Texture* tex);
 
-    /// Half-width of each track quad in metres (default 0.25 m → 0.5 m total).
-    void SetTrackWidth(float metres)      { half_width_     = metres; }
-
     /// Minimum travel distance in metres before a new quad is emitted (default 0.10 m).
     void SetEmitInterval(float metres)    { emit_interval_  = metres; }
 
@@ -99,6 +96,8 @@ class TireTrackSystem {
         bool         has_last_pos = false;
         // cppcheck-suppress unusedStructMember
         core::Vec3f  last_pos;
+        // cppcheck-suppress unusedStructMember
+        float        half_width   = 0.25f;  ///< Half the physical wheel width (metres).
 
         // GPU resources — one VBO per wheel, pre-allocated.
         // cppcheck-suppress unusedStructMember
@@ -126,8 +125,6 @@ class TireTrackSystem {
     // cppcheck-suppress unusedStructMember
     std::array<abstract::Texture*, physics::kSurfaceTypeCount> textures_ = {};
 
-    // cppcheck-suppress unusedStructMember
-    float half_width_    = 0.25f;
     // cppcheck-suppress unusedStructMember
     float emit_interval_ = 0.10f;
     // cppcheck-suppress unusedStructMember

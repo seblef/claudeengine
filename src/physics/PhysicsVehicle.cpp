@@ -107,4 +107,9 @@ int PhysicsVehicle::GetWheelCount() const {
     return static_cast<int>(constraint_->GetWheels().size());
 }
 
+float PhysicsVehicle::GetWheelWidth(int wheel_index) const {
+    return constraint_->GetWheel(static_cast<JPH::uint>(wheel_index))
+               ->GetSettings()->mWidth;
+}
+
 }  // namespace physics
