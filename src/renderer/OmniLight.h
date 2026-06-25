@@ -25,7 +25,7 @@ class OmniLight : public Light {
                                           float              tan_half_fov) const override;
 
   [[nodiscard]] float GetRadius() const { return radius_; }
-  void SetRadius(float r)               { radius_ = r; }
+  void SetRadius(float r);
 
  private:
   // cppcheck-suppress unusedStructMember

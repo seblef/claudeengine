@@ -26,6 +26,12 @@ void Renderable::SetWorldMatrix(const core::Mat4f& m) {
   if (visibility_system_) visibility_system_->OnRenderableMoved(this);
 }
 
+void Renderable::SetLocalBBox(const core::BBox3& bbox) {
+  local_bbox_ = bbox;
+  world_bbox_ = local_bbox_ * world_matrix_;
+  if (visibility_system_) visibility_system_->OnRenderableMoved(this);
+}
+
 const core::BBox3& Renderable::GetLocalBBox() const { return local_bbox_; }
 const core::BBox3& Renderable::GetWorldBBox() const { return world_bbox_; }
 

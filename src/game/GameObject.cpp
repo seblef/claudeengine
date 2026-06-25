@@ -28,6 +28,11 @@ void GameObject::SetWorldTransform(const core::Mat4f& transform) {
     SetLocalTransform(transform);
 }
 
+void GameObject::SetLocalBBox(const core::BBox3& bbox) {
+  local_bbox_ = bbox;
+  world_bbox_ = local_bbox_ * world_transform_;
+}
+
 void GameObject::SetWorldTransformPhysics(const core::Mat4f& transform) {
   world_transform_ = transform;
   local_transform_ = parent_ ? (parent_->world_transform_.Inverse() * transform)

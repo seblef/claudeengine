@@ -105,6 +105,7 @@ void ApplySnapshot(game::GameLight* game_light, const LightSnapshot& s) {
       break;
     }
   }
+  game_light->RefreshBBox();
 }
 
 LightPropertyCommand::LightPropertyCommand(game::GameLight* light,

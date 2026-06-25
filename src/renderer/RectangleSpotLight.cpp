@@ -3,7 +3,9 @@
 #include <cmath>
 #include <optional>
 
+#include "core/BBox3.h"
 #include "core/Mat4f.h"
+#include "core/Vec3f.h"
 
 namespace renderer {
 
@@ -33,7 +35,41 @@ RectangleSpotLight::RectangleSpotLight(const core::Color& color, float intensity
       h_angle_(h_angle),
       v_angle_(v_angle),
       range_(range),
-      local_direction_(direction) {}
+      local_direction_(direction) {
+  RecomputeLocalBBox();
+}
+
+void RectangleSpotLight::RecomputeLocalBBox() {
+  const float half_w = std::tan(h_angle_) * range_;
+  const float half_h = std::tan(v_angle_) * range_;
+  const core::Vec3f& dir = local_direction_;
+  const core::Vec3f up =
+      (std::abs(dir.y) < 0.99f) ? core::Vec3f::kAxisY : core::Vec3f::kAxisX;
+  const core::Vec3f right = dir.Cross(up).Normalized();
+  const core::Vec3f fwd   = dir.Cross(right);
+  const core::Vec3f base  = dir * range_;
+  core::BBox3 bbox(core::Vec3f::kZero, core::Vec3f::kZero);
+  bbox << (base + right * half_w + fwd * half_h);
+  bbox << (base - right * half_w + fwd * half_h);
+  bbox << (base - right * half_w - fwd * half_h);
+  bbox << (base + right * half_w - fwd * half_h);
+  SetLocalBBox(bbox);
+}
+
+void RectangleSpotLight::SetHAngle(float a) {
+  h_angle_ = a;
+  RecomputeLocalBBox();
+}
+
+void RectangleSpotLight::SetVAngle(float a) {
+  v_angle_ = a;
+  RecomputeLocalBBox();
+}
+
+void RectangleSpotLight::SetRange(float r) {
+  range_ = r;
+  RecomputeLocalBBox();
+}
 
 core::Vec3f RectangleSpotLight::GetDirection() const {
   return TransformNoTranslation(local_direction_, GetWorldMatrix()).Normalized();
@@ -46,6 +82,7 @@ void RectangleSpotLight::SetDirection(const core::Vec3f& world_dir) {
       wm(0,1)*world_dir.x + wm(1,1)*world_dir.y + wm(2,1)*world_dir.z,
       wm(0,2)*world_dir.x + wm(1,2)*world_dir.y + wm(2,2)*world_dir.z
   ).Normalized();
+  RecomputeLocalBBox();
 }
 
 core::Mat4f RectangleSpotLight::GetVolumeMatrix() const {

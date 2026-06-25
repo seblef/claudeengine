@@ -251,8 +251,10 @@ void PropertiesPanel::RenderLightProperties(game::GameLight* game_light) {
   if (is_omni) {
     auto* omni = static_cast<renderer::OmniLight*>(light);
     float radius = omni->GetRadius();
-    if (ImGui::DragFloat("Radius", &radius, 0.1f, 0.1f, 500.f))
+    if (ImGui::DragFloat("Radius", &radius, 0.1f, 0.1f, 500.f)) {
       omni->SetRadius(radius);
+      game_light->RefreshBBox();
+    }
     track();
   } else {
     float dummy = 0.f;
@@ -276,12 +278,15 @@ void PropertiesPanel::RenderLightProperties(game::GameLight* game_light) {
     if (ImGui::DragFloat("Outer Angle (°)", &outer_deg, 0.1f, outer_min, 89.f)) {
       if (outer_deg <= inner_deg) outer_deg = inner_deg + 0.1f;
       spot->SetOuterAngle(outer_deg * kDeg2Rad);
+      game_light->RefreshBBox();
     }
     track();
 
     float range = spot->GetRange();
-    if (ImGui::DragFloat("Range##circle", &range, 0.1f, 0.1f, 1000.f))
+    if (ImGui::DragFloat("Range##circle", &range, 0.1f, 0.1f, 1000.f)) {
       spot->SetRange(range);
+      game_light->RefreshBBox();
+    }
     track();
 
     auto [yaw, pitch] = Vec3fToYawPitch(spot->GetDirection());
@@ -290,8 +295,10 @@ void PropertiesPanel::RenderLightProperties(game::GameLight* game_light) {
     track();
     dir_changed |= ImGui::DragFloat("Pitch (°)##circle", &pitch, 0.1f,  -89.f,  89.f);
     track();
-    if (dir_changed)
+    if (dir_changed) {
       spot->SetDirection(YawPitchToVec3f(yaw, pitch));
+      game_light->RefreshBBox();
+    }
   } else {
     float dummy = 0.f;
     ImGui::DragFloat("Inner Angle (°)", &dummy, 0.1f, 0.f,  89.f);
@@ -310,17 +317,23 @@ void PropertiesPanel::RenderLightProperties(game::GameLight* game_light) {
     float h_deg = rect->GetHAngle() * kRad2Deg;
     float v_deg = rect->GetVAngle() * kRad2Deg;
 
-    if (ImGui::DragFloat("H Angle (°)", &h_deg, 0.1f, 0.1f, 89.f))
+    if (ImGui::DragFloat("H Angle (°)", &h_deg, 0.1f, 0.1f, 89.f)) {
       rect->SetHAngle(h_deg * kDeg2Rad);
+      game_light->RefreshBBox();
+    }
     track();
 
-    if (ImGui::DragFloat("V Angle (°)", &v_deg, 0.1f, 0.1f, 89.f))
+    if (ImGui::DragFloat("V Angle (°)", &v_deg, 0.1f, 0.1f, 89.f)) {
       rect->SetVAngle(v_deg * kDeg2Rad);
+      game_light->RefreshBBox();
+    }
     track();
 
     float range = rect->GetRange();
-    if (ImGui::DragFloat("Range##rect", &range, 0.1f, 0.1f, 1000.f))
+    if (ImGui::DragFloat("Range##rect", &range, 0.1f, 0.1f, 1000.f)) {
       rect->SetRange(range);
+      game_light->RefreshBBox();
+    }
     track();
 
     auto [yaw, pitch] = Vec3fToYawPitch(rect->GetDirection());
@@ -329,8 +342,10 @@ void PropertiesPanel::RenderLightProperties(game::GameLight* game_light) {
     track();
     dir_changed |= ImGui::DragFloat("Pitch (°)##rect", &pitch, 0.1f,  -89.f,  89.f);
     track();
-    if (dir_changed)
+    if (dir_changed) {
       rect->SetDirection(YawPitchToVec3f(yaw, pitch));
+      game_light->RefreshBBox();
+    }
   } else {
     float dummy = 0.f;
     ImGui::DragFloat("H Angle (°)", &dummy, 0.1f, 0.1f, 89.f);

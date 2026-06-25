@@ -46,9 +46,9 @@ class RectangleSpotLight : public Light {
   // upper-left 3×3 of the current world matrix.
   [[nodiscard]] core::Vec3f GetDirection() const;
 
-  void SetHAngle(float a) { h_angle_ = a; }
-  void SetVAngle(float a) { v_angle_ = a; }
-  void SetRange(float r)  { range_ = r; }
+  void SetHAngle(float a);
+  void SetVAngle(float a);
+  void SetRange(float r);
 
   // Sets the light direction from a world-space vector. The local-space
   // direction is derived by applying R^T so that subsequent world-matrix
@@ -56,6 +56,9 @@ class RectangleSpotLight : public Light {
   void SetDirection(const core::Vec3f& world_dir);
 
  private:
+  void RecomputeLocalBBox();
+
+
   // cppcheck-suppress unusedStructMember
   float h_angle_;
   // cppcheck-suppress unusedStructMember

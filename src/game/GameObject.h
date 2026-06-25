@@ -23,7 +23,7 @@ namespace game {
 // Do not modify world_transform_ or local_transform_ directly.
 class GameObject {
  public:
-  // local_bbox: AABB in local (object) space; fixed for the object's lifetime.
+  // local_bbox: initial AABB in local (object) space.
   GameObject(GameObjectType type, const core::BBox3& local_bbox);
 
   virtual ~GameObject() = default;
@@ -92,6 +92,10 @@ class GameObject {
   virtual void OnRemovedFromScene() = 0;
 
  protected:
+  // Updates local_bbox_ and recomputes world_bbox_ = local_bbox_ * world_transform_.
+  // Does not propagate to children (their bboxes are independent).
+  void SetLocalBBox(const core::BBox3& bbox);
+
   // Physics-driven world transform update: updates world_transform_ and
   // local_transform_ from the simulation result, then propagates downward to
   // children. Must NOT back-propagate to parent_ to avoid loops.
