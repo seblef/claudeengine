@@ -63,7 +63,6 @@
 #include "game/GameParticleSystem.h"
 #include "game/GamePivot.h"
 #include "game/GamePlayerStart.h"
-#include "game/GameRoad.h"
 #include "game/GameSoundEmitter.h"
 #include "game/GameTerrain.h"
 #include "game/GameVehicle.h"
@@ -517,7 +516,8 @@ void EditorWindow::Render() {
       } else if (active_tool == EditorTool::kCreateSoundEmitter) {
         sound_modal_->Open();
       } else if (active_tool == EditorTool::kCreateRoad) {
-        CreateRoad();
+        road_tool_->OnActivateCreation();
+        viewport_->SetActiveTool(road_tool_.get());
       } else if (active_tool == EditorTool::kCreateVehicle) {
         vehicle_modal_->Open();
       }
@@ -752,14 +752,19 @@ void EditorWindow::Render() {
   }
 
   // 11e. Auto-activate road tool when a GameRoad is selected.
-  if (!play_mode_->AreToolsFrozen()) {
+  // Suppressed while RoadTool is in creation mode so that selecting the
+  // newly-created road mid-flow does not prematurely switch to editing mode.
+  // Extends to kCreateRoad so Escape (cancel) drives the toolbar to kSelection.
+  if (!play_mode_->AreToolsFrozen() && !road_tool_->IsCreating()) {
     const game::GameObject* sel = scene_->GetSelectedObject();
     const bool road_selected =
         sel && sel->GetType() == game::GameObjectType::kRoad;
     if (road_selected && active_tool != EditorTool::kRoad) {
       toolbar_->SetActiveTool(EditorTool::kRoad);
       viewport_->SetActiveTool(road_tool_.get());
-    } else if (!road_selected && active_tool == EditorTool::kRoad) {
+    } else if (!road_selected &&
+               (active_tool == EditorTool::kRoad ||
+                active_tool == EditorTool::kCreateRoad)) {
       toolbar_->SetActiveTool(EditorTool::kSelection);
       viewport_->SetActiveTool(selection_tool_.get());
     }
@@ -1282,35 +1287,6 @@ game::GameTerrain* FindTerrain(const EditorScene& scene) {
 }
 }  // namespace
 
-void EditorWindow::CreateRoad() {
-  auto road = std::make_unique<game::GameRoad>(video_);
-  road->SetName(GenerateObjectName(*scene_, "road"));
-
-  // Four control points forming a small rectangular loop.
-  track::RoadSpline& spline = road->GetSpline();
-  spline.AddControlPoint({-10.f, 0.f,  -5.f});
-  spline.AddControlPoint({ 10.f, 0.f,  -5.f});
-  spline.AddControlPoint({ 10.f, 0.f,   5.f});
-  spline.AddControlPoint({-10.f, 0.f,   5.f});
-
-  // Build initial mesh; use terrain height if available.
-  const game::GameTerrain* gt = FindTerrain(*scene_);
-  if (gt) {
-    const terrain::TerrainData* td = &gt->GetData();
-    road->RegenerateMesh([td](float x, float z) {
-      return td->GetHeight(x, z);
-    });
-  } else {
-    road->RegenerateMesh(nullptr);
-  }
-
-  game::GameRoad* road_ptr = road.get();
-  scene_->AddDynamicObject(std::move(road));
-  scene_->SetSelectedObject(road_ptr);
-  toolbar_->SetActiveTool(EditorTool::kSelection);
-  scene_dirty_ = true;
-  LOG_F(INFO, "Road '%s' created", road_ptr->GetName().c_str());
-}
 
 void EditorWindow::CreateTerrain() {
   const TerrainCreationDialog::Params& p = terrain_dialog_.GetParams();

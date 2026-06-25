@@ -11,12 +11,18 @@ namespace game { class GameRoad; }
 
 namespace editor {
 
+class EditorScene;
+
 // Tool for in-scene spline editing of a GameRoad object.
 //
-// Auto-activated by EditorWindow when a GameRoad is selected; deactivates when
-// selection changes to a non-road object. Never exposed as a toolbar button.
+// Operates in two modes:
+//   kEditing  — user selects and drags existing control points; entered via
+//               OnActivate() when a GameRoad is already selected.
+//   kCreating — user clicks terrain to lay control points one by one; entered
+//               via OnActivateCreation() when the Create Road toolbar action
+//               fires.  Enter finalises (≥ 3 points required); Escape cancels.
 //
-// OnRender() each frame:
+// OnRender() each frame (kEditing):
 //   - Projects control points to screen and draws coloured circles
 //     (yellow = selected, white = hovered, grey = default).
 //   - Draws an ImGuizmo translate gizmo on the selected point.
@@ -25,19 +31,40 @@ namespace editor {
 //     selection (or appends when nothing is selected) and regenerates the mesh.
 //   - Shows a small Road width slider overlay at the top-left of the viewport.
 //
-// OnEvent() handles the Delete key to remove the selected control point
-// (minimum spline size of 3 points is enforced).
+// OnRender() each frame (kCreating):
+//   - On LMB click on terrain: creates the road on the first click, appends
+//     a control point on each subsequent click, regenerates the mesh.
+//   - Draws a ghost line from the last placed point to the mouse cursor.
+//   - Shows a hint overlay with keyboard instructions.
+//
+// OnEvent() (kEditing): Delete key removes the selected control point
+//   (minimum spline size of 3 points is enforced).
+// OnEvent() (kCreating): Enter finalises; Escape cancels and removes the road.
 //
 // IsCapturingMouse() returns true when dragging or hovering a control point
 // so the selection tool does not fire at the same time.
 class RoadTool : public EditorToolBase {
  public:
+  enum class Mode { kEditing, kCreating };
+
+  // Enters kEditing mode; called by EditorViewport when an existing road is
+  // already selected.
   void OnActivate(const EditorToolContext& ctx) override;
+
+  // Enters kCreating mode; called by EditorWindow instead of OnActivate() when
+  // the Create Road toolbar action is activated.  Must be called before
+  // viewport_->SetActiveTool() so that the flag is consumed by OnActivate().
+  void OnActivateCreation();
+
   void OnDeactivate() override;
   void OnEvent(const core::Event& event) override;
   void OnRender(const EditorToolContext& ctx,
                 ImVec2 image_pos, ImVec2 image_size) override;
   bool IsCapturingMouse() const override;
+
+  // Returns true while the tool is laying a new road (kCreating mode).
+  // Used by EditorWindow to suppress the road auto-activation auto-logic.
+  [[nodiscard]] bool IsCreating() const { return mode_ == Mode::kCreating; }
 
  private:
   // Projects a world-space point to screen space using the view-projection
@@ -51,7 +78,28 @@ class RoadTool : public EditorToolBase {
   // ctx.terrain_data (returns 0 when nullptr).
   void Regenerate(const EditorToolContext& ctx) const;
 
-  // Not owned; points to the road selected when OnActivate() was called.
+  // Renders the creation-mode overlay (hint text, ghost line, point circles).
+  void RenderCreating(const EditorToolContext& ctx,
+                      ImVec2 image_pos, ImVec2 image_size);
+
+  // Renders the editing-mode overlay (width slider, point circles, gizmo).
+  void RenderEditing(const EditorToolContext& ctx,
+                     ImVec2 image_pos, ImVec2 image_size);
+
+  // cppcheck-suppress unusedStructMember
+  Mode mode_ = Mode::kEditing;
+
+  // Set by OnActivateCreation(); consumed and cleared by OnActivate().
+  // cppcheck-suppress unusedStructMember
+  bool entering_creation_mode_ = false;
+
+  // Non-owning pointer to the scene; set in OnActivate(), used during creation
+  // to add or remove the road.
+  // cppcheck-suppress unusedStructMember
+  EditorScene* scene_ = nullptr;
+
+  // Not owned; points to the road selected when OnActivate() was called, or
+  // to the road created on the first click in creation mode.
   // cppcheck-suppress unusedStructMember
   game::GameRoad* road_           = nullptr;
   // Index of the selected control point (-1 = none).
