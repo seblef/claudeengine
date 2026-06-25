@@ -1,0 +1,106 @@
+name: untitled
+map_size: 120
+global_light:
+  direction: [-0.42399919, -0.847998381, -0.317999393]
+  color: [0.899999976, 0.850000024, 0.699999988]
+  intensity: 1.20000005
+  ambient_color: [0, 0, 0]
+  cast_shadow: true
+  shadow_resolution: 1024
+  shadow_bias: 0.00499999989
+environment:
+  {}
+objects:
+  - name: Object
+    type: mesh
+    transform: [1, 0, 0, 46.4658089, 0, 1, 0, 0, 0, 0, 1, 8.87842655, 0, 0, 0, 1]
+    mesh: meshes/road-crossing.emesh
+    material: materials/road_colormap.yaml
+  - name: Object
+    type: mesh
+    transform: [1, 0, 0, 36.4658089, 0, 1, 0, 0, 0, 0, 1, 8.87842655, 0, 0, 0, 1]
+    mesh: meshes/road-driveway-double.emesh
+    material: materials/road_colormap.yaml
+  - name: Object
+    type: mesh
+    parent: pivot_001
+    transform: [-0.99996829, 0, 0.00789825805, 18.8205814, 0, 1, 0, -0.00580215454, -0.00789825805, 0, -0.99996829, 4.4074707, 0, 0, 0, 1]
+    mesh: meshes/light-curved.emesh
+    material: materials/road_colormap.yaml
+  - name: cspot_001
+    type: light
+    parent: pivot_001
+    light_type: circle_spot
+    transform: [1, 0, 0, 18.7933922, 0, 1, 0, 6.67908573, 0, 0, 1, 6.29699087, 0, 0, 0, 1]
+    color: [0.960177004, 0.72240746, 0.526822746]
+    intensity: 1
+    cast_shadow: true
+    shadow_resolution: 256
+    shadow_bias: 0.00499999989
+    direction: [0, -1, 0]
+    inner_angle: 0.200000003
+    outer_angle: 0.485515714
+    range: 9
+  - name: Object_002
+    type: mesh
+    transform: [1, 0, 0, 16.4658089, 0, 1, 0, 0, 0, 0, 1, 8.87842655, 0, 0, 0, 1]
+    mesh: meshes/road-driveway-double.emesh
+    material: materials/road_colormap.yaml
+  - name: Object_003
+    type: mesh
+    transform: [1, 0, 0, 26.4658089, 0, 1, 0, 0, 0, 0, 1, 8.87842655, 0, 0, 0, 1]
+    mesh: meshes/road-driveway-double.emesh
+    material: materials/road_colormap.yaml
+  - name: gauge_001
+    type: gauge
+    transform: [1, 0, 0, 17.2482586, 0, 1, 0, 0.357478559, 0, 0, 1, 7.47310781, 0, 0, 0, 1]
+  - name: player_start_001
+    type: player_start
+    transform: [1, 0, 0, 15.1968861, 0, 1, 0, -0.0127186775, 0, 0, 1, 8.90811634, 0, 0, 0, 1]
+  - name: pivot_001
+    type: pivot
+    transform: [1, 0, 0, 18.7933922, 0, 1, 0, 2.17908621, 0, 0, 1, 6.29699087, 0, 0, 0, 1]
+  - name: pivot_002
+    type: pivot
+    transform: [-0.999999106, -1.81992584e-06, 3.31212705e-12, 18.3793564, -1.81992425e-06, 1, -1.81992425e-06, 2.17908621, 0, -1.81992584e-06, -0.999999106, 11.4287853, 0, 0, 0, 1]
+  - name: cspot_003
+    type: light
+    parent: pivot_002
+    light_type: circle_spot
+    transform: [-0.999999106, -1.81992584e-06, 3.31212705e-12, 18.3793488, -1.81992425e-06, 1, -1.81992425e-06, 6.67908573, 0, -1.81992584e-06, -0.999999106, 11.4287767, 0, 0, 0, 1]
+    color: [0.960177004, 0.72240746, 0.526822746]
+    intensity: 1
+    cast_shadow: true
+    shadow_resolution: 256
+    shadow_bias: 0.00499999989
+    direction: [1.5916218e-12, -1, 1.59161573e-12]
+    inner_angle: 0.200000003
+    outer_angle: 0.485515714
+    range: 9
+  - name: Object_004
+    type: mesh
+    parent: pivot_002
+    transform: [0.999967396, -1.81992584e-06, -0.00789825059, 18.3521709, 1.83424072e-06, 1, 1.80549227e-06, -0.00579881668, 0.00789825059, -1.81992584e-06, 0.999967396, 13.3183079, 0, 0, 0, 1]
+    mesh: meshes/light-curved.emesh
+    material: materials/road_colormap.yaml
+terrain:
+  heightmap: track.r16
+  heightmap_width: 1024
+  heightmap_height: 1024
+  meters_per_texel: 1
+  min_height: 0
+  max_height: 100
+  material:
+    layers:
+      - albedo: default/diffuse.dds
+        normal: default/normal.dds
+        tiling: 8
+    splatmap: track_splat.png
+editor:
+  selected_object: ~
+  camera:
+    focus: [10.9493208, 4.3483305, 8.00192928]
+    azimuth: -1.57000017
+    elevation: 0.310000688
+    distance: 19.3891048
+  snap_grid: 0
