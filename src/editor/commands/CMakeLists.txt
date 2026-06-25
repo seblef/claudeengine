@@ -6,6 +6,7 @@ target_sources(editor PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/LightPropertyCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialAssignCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialPropertyCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/RoadMaterialAssignCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/MultiTransformCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/PaintBrushCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/PhysicsPropertyCommand.cpp

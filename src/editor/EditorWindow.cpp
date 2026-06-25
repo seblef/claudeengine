@@ -189,6 +189,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   viewport_->SetActiveTool(selection_tool_.get());
   viewport_->SetRenderingSettingsPanel(&rendering_settings_panel_);
   properties_panel_->SetCommandHistory(&history_);
+  properties_panel_->SetVideoDevice(video_);
   material_editor_->SetCommandHistory(&history_);
   objects_panel_->SetCommandHistory(&history_);
   outliner_panel_->SetCommandHistory(&history_);
