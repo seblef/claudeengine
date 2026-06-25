@@ -19,8 +19,10 @@ class MeshInstance : public Renderable {
   void Enqueue() override;
 
   // Returns true when the mesh's material has shadow casting enabled.
+  // Returns false when no material is assigned.
   [[nodiscard]] bool IsShadowCaster() const override {
-    return model_->GetMaterial()->GetCastShadow();
+    const Material* mat = model_->GetMaterial();
+    return mat && mat->GetCastShadow();
   }
 
   // Enqueues this instance in MeshRenderer's depth queue if it is a shadow caster.

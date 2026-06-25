@@ -18,12 +18,15 @@
 #include "editor/commands/LightPropertyCommand.h"
 #include "editor/commands/PhysicsPropertyCommand.h"
 #include "editor/commands/RenameObjectCommand.h"
+#include "editor/commands/RoadMaterialAssignCommand.h"
 #include "editor/commands/TransformCommand.h"
 #include "game/GameLight.h"
+#include "game/GameMaterial.h"
 #include "game/GameMesh.h"
 #include "game/GameObject.h"
 #include "game/GameObjectType.h"
 #include "game/GameParticleSystem.h"
+#include "game/GameRoad.h"
 #include "game/GameSoundEmitter.h"
 #include "game/MeshTemplate.h"
 #include "particles/ParticleSystemTemplate.h"
@@ -124,6 +127,9 @@ void PropertiesPanel::Render(game::GameObject* obj) {
     case game::GameObjectType::kParticleSystem:
       RenderParticleSystemProperties(
           static_cast<const game::GameParticleSystem*>(obj));
+      break;
+    case game::GameObjectType::kRoad:
+      RenderRoadProperties(static_cast<game::GameRoad*>(obj));
       break;
     case game::GameObjectType::kSoundEmitter:
       RenderSoundEmitterProperties(
@@ -621,6 +627,35 @@ void PropertiesPanel::RenderParticleSystemProperties(
   if (tmpl && on_open_particle_editor_) {
     if (ImGui::Button("Open in Particle Editor"))
       on_open_particle_editor_(tmpl->GetId());
+  }
+}
+
+void PropertiesPanel::RenderRoadProperties(game::GameRoad* road) {
+  ImGui::SeparatorText("Road");
+
+  const game::GameMaterial* mat = road->GetMaterialPtr();
+  ImGui::LabelText("Material", "%s", mat ? mat->GetId().c_str() : "(none)");
+
+  if (ImGui::Button("Change...##material"))
+    material_picker_modal_.Open();
+
+  const std::string picked = material_picker_modal_.Render();
+  if (!picked.empty() && video_) {
+    game::GameMaterial* after = game::GameMaterial::GetOrLoad(picked, video_);
+    if (after) {
+      game::GameMaterial* before =
+          const_cast<game::GameMaterial*>(road->GetMaterialPtr());
+      if (history_) {
+        history_->Push(
+            std::make_unique<RoadMaterialAssignCommand>(road, before, after));
+        // Command AddRef'd after in its constructor; release the GetOrLoad ref.
+        after->Release();
+      } else {
+        // GameRoad::SetMaterial does not AddRef, so keep the GetOrLoad ref alive
+        // to ensure the material is not destroyed while the road uses it.
+        road->SetMaterial(after);
+      }
+    }
   }
 }
 

@@ -4,7 +4,9 @@
 #include <optional>
 #include <string>
 
+#include "abstract/VideoDevice.h"
 #include "core/Mat4f.h"
+#include "editor/MaterialSelectionModal.h"
 #include "editor/SoundEmitterSelectionModal.h"
 #include "editor/commands/LightPropertyCommand.h"
 #include "physics/PhysicsBodyDesc.h"
@@ -14,6 +16,7 @@ class GameObject;
 class GameLight;
 class GameMesh;
 class GameParticleSystem;
+class GameRoad;
 class GameSoundEmitter;
 }  // namespace game
 
@@ -32,6 +35,9 @@ class PropertiesPanel {
 
   // Registers the undo/redo history. Must be called before the first Render().
   void SetCommandHistory(EditorCommandHistory* history) { history_ = history; }
+
+  // Provides the video device used to load materials in the road properties panel.
+  void SetVideoDevice(abstract::VideoDevice* video) { video_ = video; }
 
   // Sets the callback invoked when "Open in Particle Editor" is clicked.
   // Receives the template name (basename without extension).
@@ -63,10 +69,13 @@ class PropertiesPanel {
   void RenderLightProperties(game::GameLight* light);
   void RenderMeshProperties(game::GameMesh* mesh);
   void RenderParticleSystemProperties(const game::GameParticleSystem* ps);
+  void RenderRoadProperties(game::GameRoad* road);
   void RenderSoundEmitterProperties(game::GameSoundEmitter* emitter);
 
   // cppcheck-suppress unusedStructMember
   EditorCommandHistory* history_              = nullptr;
+  // cppcheck-suppress unusedStructMember
+  abstract::VideoDevice* video_              = nullptr;
   // cppcheck-suppress unusedStructMember
   LightSnapshot         before_snapshot_      = {};
   // cppcheck-suppress unusedStructMember
@@ -83,6 +92,8 @@ class PropertiesPanel {
   std::function<void(const std::string&, float)> on_play_sound_once_;
   // cppcheck-suppress unusedStructMember
   SoundEmitterSelectionModal               sound_picker_modal_{"Change Sound"};
+  // cppcheck-suppress unusedStructMember
+  MaterialSelectionModal                   material_picker_modal_{"Change Material"};
 };
 
 }  // namespace editor

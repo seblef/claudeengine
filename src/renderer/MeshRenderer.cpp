@@ -76,7 +76,7 @@ void MeshRenderer::RenderEmissive() {
     const int sub_count = geo->GetSubMeshCount();
     if (sub_count == 0) {
       const Material* mat = mesh->GetMaterial();
-      if (!mat->IsEmissive()) continue;
+      if (!mat || !mat->IsEmissive()) continue;
 
       if (geo != current_geo) {
         geo->Set();
