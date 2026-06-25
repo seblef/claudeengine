@@ -110,6 +110,8 @@ class MeshEditorWindow {
   void RenderMaterialSlots();
   void RenderTransformControls();
   void RenderBottomBar(EditorScene* scene);
+  // Renders the "Pick material" popup anchored near the triggering slot button.
+  void RenderPickMaterialPopup();
 
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice*   video_;
@@ -156,6 +158,20 @@ class MeshEditorWindow {
 
   // Releases all entries in session_mat_cache_ and clears the map.
   void ClearSessionMaterialCache();
+
+  // Stems of all .yaml files in data/materials/ — populated once when the
+  // Pick popup opens.
+  // cppcheck-suppress unusedStructMember
+  std::vector<std::string> material_stems_;
+
+  // Index of the slot that triggered the Pick popup (-1 = popup closed).
+  // cppcheck-suppress unusedStructMember
+  int pick_popup_slot_        = -1;
+
+  // True for exactly one frame: triggers ImGui::OpenPopup at window level so
+  // the popup ID is not scoped under PushID(i).
+  // cppcheck-suppress unusedStructMember
+  bool pick_popup_requested_  = false;
 };
 
 }  // namespace editor

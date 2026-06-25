@@ -351,6 +351,13 @@ void MeshEditorWindow::Render(EditorScene* scene) {
   ImGui::Separator();
   RenderBottomBar(scene);
 
+  // Open the Pick popup at window level so its ID is not scoped under PushID(i).
+  if (pick_popup_requested_) {
+    ImGui::OpenPopup("##pick_mat");
+    pick_popup_requested_ = false;
+  }
+  RenderPickMaterialPopup();
+
   ImGui::End();
 }
 
@@ -367,7 +374,7 @@ void MeshEditorWindow::RenderMaterialSlots() {
   if (!ImGui::BeginTable("##mat_slots", 2, kFlags)) return;
 
   ImGui::TableSetupColumn("Name",   ImGuiTableColumnFlags_WidthStretch);
-  ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, 48.f);
+  ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, 96.f);
   ImGui::TableHeadersRow();
 
   for (int i = 0; i < static_cast<int>(mat_slots_.size()); ++i) {
@@ -434,10 +441,56 @@ void MeshEditorWindow::RenderMaterialSlots() {
         material_editor_->OpenWithDesc(desc);
       }
     }
+
+    ImGui::SameLine();
+    if (ImGui::SmallButton(ICON_FA_LAYER_GROUP " Pick")) {
+      material_stems_.clear();
+      const auto mat_root = core::Config::GetDataFolder() / "materials";
+      std::error_code ec;
+      for (const auto& entry :
+           std::filesystem::directory_iterator(mat_root, ec)) {
+        if (entry.is_regular_file() && entry.path().extension() == ".yaml")
+          material_stems_.push_back(entry.path().stem().string());
+      }
+      std::sort(material_stems_.begin(), material_stems_.end());
+      pick_popup_slot_      = i;
+      pick_popup_requested_ = true;
+    }
+
     ImGui::PopID();
   }
 
   ImGui::EndTable();
+}
+
+void MeshEditorWindow::RenderPickMaterialPopup() {
+  if (pick_popup_slot_ < 0) return;
+
+  ImGui::SetNextWindowSize(ImVec2(240.f, 280.f), ImGuiCond_Always);
+  if (!ImGui::BeginPopup("##pick_mat")) {
+    pick_popup_slot_ = -1;
+    return;
+  }
+
+  ImGui::BeginChild("##mat_list", ImVec2(0.f, 220.f));
+  for (const auto& stem : material_stems_) {
+    if (ImGui::Selectable(stem.c_str())) {
+      auto& slot = mat_slots_[pick_popup_slot_];
+      std::strncpy(slot.name_buf, stem.c_str(), sizeof(slot.name_buf) - 1);
+      slot.saved_material_path = "materials/" + stem + ".yaml";
+      preview_dirty_   = true;
+      pick_popup_slot_ = -1;
+      ImGui::CloseCurrentPopup();
+    }
+  }
+  ImGui::EndChild();
+
+  if (ImGui::Button("Cancel")) {
+    pick_popup_slot_ = -1;
+    ImGui::CloseCurrentPopup();
+  }
+
+  ImGui::EndPopup();
 }
 
 void MeshEditorWindow::RenderTransformControls() {
