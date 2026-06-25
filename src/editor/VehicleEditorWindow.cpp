@@ -147,6 +147,9 @@ void VehicleEditorWindow::LoadFromYaml() {
         ph["brake_torque"].as<float>(vehicle_desc_.brake_torque);
     vehicle_desc_.handbrake_torque  =
         ph["handbrake_torque"].as<float>(vehicle_desc_.handbrake_torque);
+    vehicle_desc_.engine_inertia   = ph["engine_inertia"].as<float>(vehicle_desc_.engine_inertia);
+    vehicle_desc_.gear_switch_time = ph["gear_switch_time"].as<float>(vehicle_desc_.gear_switch_time);
+    vehicle_desc_.clutch_strength  = ph["clutch_strength"].as<float>(vehicle_desc_.clutch_strength);
     if (ph["com_offset"])
       vehicle_desc_.com_offset =
           core::ParseVec3(ph["com_offset"], vehicle_desc_.com_offset);
@@ -207,6 +210,9 @@ void VehicleEditorWindow::SaveToYaml() {
   out << YAML::Key << "max_steer_angle"    << YAML::Value << vehicle_desc_.max_steer_angle;
   out << YAML::Key << "brake_torque"       << YAML::Value << vehicle_desc_.brake_torque;
   out << YAML::Key << "handbrake_torque"   << YAML::Value << vehicle_desc_.handbrake_torque;
+  out << YAML::Key << "engine_inertia"    << YAML::Value << vehicle_desc_.engine_inertia;
+  out << YAML::Key << "gear_switch_time"  << YAML::Value << vehicle_desc_.gear_switch_time;
+  out << YAML::Key << "clutch_strength"   << YAML::Value << vehicle_desc_.clutch_strength;
   core::yaml::WriteVec3f(out, "com_offset", vehicle_desc_.com_offset);
   out << YAML::Key << "body_shape"
       << YAML::Value << (use_convex_hull_body_ ? "convex_hull" : "box");
@@ -709,6 +715,21 @@ void VehicleEditorWindow::DrawPhysicsSection() {
 
   ImGui::TextUnformatted("Rear suspension");
   draw_susp(vehicle_desc_.rear_left, vehicle_desc_.rear_right, "rear_susp");
+
+  ImGui::SeparatorText("Transmission");
+  dirty_ |= ImGui::DragFloat(
+      "Engine inertia (kg\xc2\xb7m\xc2\xb2)", &vehicle_desc_.engine_inertia, 0.01f, 0.01f, 5.f, "%.3f");
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Lower = engine revs faster. Jolt default: 0.5");
+  dirty_ |= ImGui::DragFloat(
+      "Gear switch time (s)", &vehicle_desc_.gear_switch_time, 0.01f, 0.f, 2.f, "%.2f");
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip(
+        "Seconds with clutch disengaged per gear change. 0 = instant. Jolt default: 0.5");
+  dirty_ |= ImGui::DragFloat(
+      "Clutch strength", &vehicle_desc_.clutch_strength, 1.f, 1.f, 200.f, "%.0f");
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Power delivery snap on clutch re-engagement. Jolt default: 10");
 }
 
 void VehicleEditorWindow::DrawActionsBar() {
