@@ -24,8 +24,25 @@ GameSystem::GameSystem(abstract::Devices* devices)
   renderer::Renderer::Instance().SetParticleRenderer(particle_renderer_.get());
   tire_track_system_ = std::make_unique<track::TireTrackSystem>(video);
   renderer::Renderer::Instance().SetTireTrackSystem(tire_track_system_.get());
+
+  const char* kTrackTexPaths[physics::kSurfaceTypeCount] = {
+      "tracks/track_generic.png",
+      "tracks/track_terrain.png",
+      "tracks/track_road.png",
+  };
+  for (int t = 0; t < physics::kSurfaceTypeCount; ++t) {
+    track_textures_[t] = video->CreateTexture(kTrackTexPaths[t]);
+    tire_track_system_->SetTrackTexture(
+        static_cast<physics::SurfaceType>(t), track_textures_[t]);
+  }
   hud_screen_->Build(video);
   loading_screen_->Build(video);
+}
+
+GameSystem::~GameSystem() {
+  for (abstract::Texture* tex : track_textures_) {
+    if (tex) tex->Release();
+  }
 }
 
 void GameSystem::Update() {

@@ -5,8 +5,12 @@
 #include <memory>
 #include <vector>
 
+#include <array>
+
 #include "abstract/Devices.h"
+#include "abstract/Texture.h"
 #include "core/Event.h"
+#include "physics/SurfaceMaterial.h"
 #include "core/Singleton.h"
 #include "game/GameCamera.h"
 #include "game/GameObject.h"
@@ -39,6 +43,7 @@ class GameSystem : public core::Singleton<GameSystem> {
  public:
   // devices must outlive this GameSystem.
   explicit GameSystem(abstract::Devices* devices);
+  ~GameSystem();
 
   // Advances the simulation and renders one frame.
   void Update();
@@ -107,6 +112,9 @@ class GameSystem : public core::Singleton<GameSystem> {
   std::unique_ptr<particles::ParticleRenderer> particle_renderer_;
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<track::TireTrackSystem>      tire_track_system_;
+  // Track textures owned by GameSystem (ref-counted; released in destructor).
+  // cppcheck-suppress unusedStructMember
+  std::array<abstract::Texture*, physics::kSurfaceTypeCount> track_textures_ = {};
   // cppcheck-suppress unusedStructMember
   audio::SoundManager* sound_manager_ = nullptr;
   // cppcheck-suppress unusedStructMember
