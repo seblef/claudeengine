@@ -9,6 +9,7 @@
 
 #include "abstract/VideoDevice.h"
 #include "core/BBox3.h"
+#include "core/Vec3f.h"
 #include "environment/EnvironmentDesc.h"
 #include "game/GameLight.h"
 #include "game/GameLightDesc.h"
@@ -19,6 +20,13 @@
 #include "game/MeshTemplate.h"
 
 namespace editor {
+
+// Editor-only scale reference: a 1 × 1 × 1 m wireframe cube rendered in the
+// viewport but never saved to or loaded from the game-runtime map loader.
+struct EditorGauge {
+  // cppcheck-suppress unusedStructMember
+  core::Vec3f position;
+};
 
 // Editor scene: a floor plane, a unit cube, and a global directional light.
 //
@@ -172,6 +180,12 @@ class EditorScene {
     environment_desc_ = desc;
   }
 
+  // ---- Reference gauges -------------------------------------------------------
+
+  // Returns the list of editor-only scale-reference cubes.
+  [[nodiscard]] const std::vector<EditorGauge>& GetGauges() const { return gauges_; }
+  std::vector<EditorGauge>&                     GetGauges()       { return gauges_; }
+
  private:
   // cppcheck-suppress unusedStructMember
   std::string             map_name_  = "untitled";
@@ -206,6 +220,10 @@ class EditorScene {
   std::function<void(game::GameObject*)> on_object_added_;
   // cppcheck-suppress unusedStructMember
   std::function<void(game::GameObject*)> on_object_removed_;
+
+  // Editor-only scale reference cubes — not sent to the renderer or physics.
+  // cppcheck-suppress unusedStructMember
+  std::vector<EditorGauge> gauges_;
 };
 
 }  // namespace editor

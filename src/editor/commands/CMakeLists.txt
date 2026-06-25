@@ -9,6 +9,7 @@ target_sources(editor PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/MultiTransformCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/PaintBrushCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/PhysicsPropertyCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/PlaceGaugeCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/PlaceObjectCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/RenameObjectCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ReparentCommand.cpp

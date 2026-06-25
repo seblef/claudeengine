@@ -623,6 +623,18 @@ bool MapSerializer::Save(const EditorScene& scene,
   // root mapping level).
   visitor.EmitTerrain(terrain_obj);
 
+  // Editor-only reference gauges — never read by the game-runtime map loader.
+  if (!scene.GetGauges().empty()) {
+    out << YAML::Key << "gauges" << YAML::Value << YAML::BeginSeq;
+    for (const auto& gauge : scene.GetGauges()) {
+      out << YAML::BeginMap;
+      out << YAML::Key << "position" << YAML::Value;
+      EmitVec3(out, gauge.position);
+      out << YAML::EndMap;
+    }
+    out << YAML::EndSeq;
+  }
+
   // Editor camera + selection state.
   const game::GameObject* sel = scene.GetSelectedObject();
   out << YAML::Key << "editor" << YAML::Value << YAML::BeginMap;
@@ -696,6 +708,20 @@ std::optional<MapLoadResult> MapSerializer::Load(
   EditorCameraController::CameraState cam{};
   try {
     YAML::Node root = YAML::LoadFile(path.string());
+
+    // Reference gauges — silently skipped when the key is absent (backward compat).
+    const YAML::Node& gauges_node = root["gauges"];
+    if (gauges_node && gauges_node.IsSequence()) {
+      for (const YAML::Node& g : gauges_node) {
+        const YAML::Node& pos = g["position"];
+        if (pos && pos.IsSequence() && pos.size() >= 3) {
+          EditorGauge gauge;
+          gauge.position = {pos[0].as<float>(), pos[1].as<float>(), pos[2].as<float>()};
+          result.scene->GetGauges().push_back(gauge);
+        }
+      }
+    }
+
     const YAML::Node& editor = root["editor"];
     if (editor) {
       // New nested format: editor.camera.{ focus, azimuth, elevation, distance }

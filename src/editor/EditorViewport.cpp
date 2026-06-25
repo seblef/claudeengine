@@ -12,6 +12,7 @@
 #include "core/Mat4f.h"
 #include "core/ProjectionType.h"
 #include "core/Vec3f.h"
+#include "core/Vec4f.h"
 #include "editor/EditorScene.h"
 #include "editor/PickingAccelerator.h"
 #include "editor/PivotGizmos.h"
@@ -36,6 +37,52 @@
 #include <loguru.hpp>
 
 namespace editor {
+
+namespace {
+
+// Draws a world-space axis-aligned wireframe cube with the given half-extents
+// centred on center. vp is the combined view-projection matrix.
+void DrawCubeWireframe(ImDrawList* dl, const core::Vec3f& center, float half,
+                       const core::Mat4f& vp, ImVec2 image_pos, ImVec2 image_size,
+                       ImU32 color) {
+  const core::Vec3f corners[8] = {
+    center + core::Vec3f(-half, -half, -half),
+    center + core::Vec3f( half, -half, -half),
+    center + core::Vec3f(-half,  half, -half),
+    center + core::Vec3f( half,  half, -half),
+    center + core::Vec3f(-half, -half,  half),
+    center + core::Vec3f( half, -half,  half),
+    center + core::Vec3f(-half,  half,  half),
+    center + core::Vec3f( half,  half,  half),
+  };
+
+  struct Pt { ImVec2 pos; bool valid; };
+  Pt sc[8];
+  for (int i = 0; i < 8; ++i) {
+    const core::Vec3f& w = corners[i];
+    const core::Vec4f clip = core::Vec4f(w.x, w.y, w.z, 1.f) * vp;
+    if (clip.w <= 0.f) {
+      sc[i].valid = false;
+      continue;
+    }
+    const float inv_w = 1.f / clip.w;
+    sc[i].pos.x = (clip.x * inv_w + 1.f) * 0.5f * image_size.x + image_pos.x;
+    sc[i].pos.y = (1.f - clip.y * inv_w) * 0.5f * image_size.y + image_pos.y;
+    sc[i].valid = true;
+  }
+
+  constexpr int kEdges[12][2] = {
+    {0,1},{1,3},{3,2},{2,0},
+    {4,5},{5,7},{7,6},{6,4},
+    {0,4},{1,5},{3,7},{2,6},
+  };
+  for (const auto* e : kEdges) {
+    if (sc[e[0]].valid && sc[e[1]].valid)
+      dl->AddLine(sc[e[0]].pos, sc[e[1]].pos, color, 1.5f);
+  }
+}
+
+}  // namespace
 
 EditorViewport::~EditorViewport() = default;
 
@@ -188,6 +235,16 @@ void EditorViewport::Render() {
     physics::PhysicsSystem::Instance().DrawDebug(debug_settings);
   }
 
+  // Draw reference gauge wireframes — editor-only, never rendered at game runtime.
+  if (!in_play_mode_ && scene_ && !scene_->GetGauges().empty()) {
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    const core::Mat4f& vp = camera_->GetCamera()->GetViewProjectionMatrix();
+    for (const auto& gauge : scene_->GetGauges()) {
+      DrawCubeWireframe(dl, gauge.position, 0.5f, vp, image_pos, avail,
+                        IM_COL32(255, 220, 50, 200));
+    }
+  }
+
   // Editor-only overlays: gizmos, highlights, and the orbit widget.
   // Skipped in play mode — the player sees the world without editor decorations.
   if (!in_play_mode_) {
@@ -268,6 +325,10 @@ void EditorViewport::PlaceMeshAt(ImVec2 mouse_pos, ImVec2 image_pos,
 
 EditorCameraController::CameraState EditorViewport::GetCameraState() const {
   return camera_ctrl_->GetState();
+}
+
+core::Vec3f EditorViewport::GetCameraFocusPoint() const {
+  return camera_ctrl_->GetState().focus;
 }
 
 const core::Mat4f& EditorViewport::GetCameraWorldTransform() const {

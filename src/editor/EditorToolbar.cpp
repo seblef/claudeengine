@@ -245,6 +245,25 @@ void EditorToolbar::Render() {
   ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
   ImGui::SameLine();
 
+  // Reference gauge buttons.
+  if (ImGui::Button(ICON_FA_RULER_COMBINED) && on_place_gauge_)
+    on_place_gauge_();
+  ImGui::SetItemTooltip("Place reference gauge (1 m cube) at camera focus");
+
+  ImGui::SameLine();
+
+  ImGui::BeginDisabled(!can_clear_gauges_);
+  if (ImGui::Button(ICON_FA_TRASH_CAN) && on_clear_gauges_)
+    on_clear_gauges_();
+  ImGui::SetItemTooltip("Delete all reference gauges");
+  if (!can_clear_gauges_)
+    ImGui::SetItemTooltip("No gauges in the scene");
+  ImGui::EndDisabled();
+
+  ImGui::SameLine();
+  ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+  ImGui::SameLine();
+
   // Sound enable/disable toggle.
   // Capture state before the button so Push/Pop are balanced regardless of click.
   const bool sound_was_enabled = sound_enabled_;

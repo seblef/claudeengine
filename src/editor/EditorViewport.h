@@ -74,6 +74,10 @@ class EditorViewport {
   // Useful for updating the audio listener each frame.
   [[nodiscard]] const core::Mat4f& GetCameraWorldTransform() const;
 
+  // Returns the camera controller's current look-at focus point in world space.
+  // Used for placing editor gizmos (e.g. reference gauges) at the scene centre.
+  [[nodiscard]] core::Vec3f GetCameraFocusPoint() const;
+
   // Adjusts the camera focus and distance so the given bounding box fills the view.
   void FrameObject(const core::BBox3& bbox);
 

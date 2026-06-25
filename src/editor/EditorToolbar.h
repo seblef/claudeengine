@@ -130,6 +130,21 @@ class EditorToolbar {
   // Greys out the Play button. Should be false when no map is loaded or map has no file path.
   void SetPlayEnabled(bool enabled) { play_enabled_ = enabled; }
 
+  // Registers a callback fired when the "Place Gauge" button is clicked.
+  // The callback should push a PlaceGaugeCommand onto the command history.
+  void SetOnPlaceGauge(std::function<void()> cb) {
+    on_place_gauge_ = std::move(cb);
+  }
+
+  // Registers a callback fired when the "Clear Gauges" button is clicked.
+  void SetOnClearGauges(std::function<void()> cb) {
+    on_clear_gauges_ = std::move(cb);
+  }
+
+  // Enables or greys out the "Clear Gauges" button.
+  // Should be false when the scene has no gauges.
+  void SetCanClearGauges(bool b) { can_clear_gauges_ = b; }
+
   // Registers a callback fired when the sound-enable toggle is clicked.
   // The bool argument is the new enabled state.
   void SetOnSoundToggle(std::function<void(bool)> cb) {
@@ -196,6 +211,12 @@ class EditorToolbar {
   std::function<void(bool)> on_sound_toggle_;
   // cppcheck-suppress unusedStructMember
   bool                  sound_enabled_      = false;
+  // cppcheck-suppress unusedStructMember
+  std::function<void()> on_place_gauge_;
+  // cppcheck-suppress unusedStructMember
+  std::function<void()> on_clear_gauges_;
+  // cppcheck-suppress unusedStructMember
+  bool                  can_clear_gauges_   = false;
 };
 
 }  // namespace editor
