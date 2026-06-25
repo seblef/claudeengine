@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 
 #include "core/Mat4f.h"
@@ -99,12 +100,7 @@ class BBox3 {
 
   // Transforms all 8 corners by `m` and returns the AABB of the results.
   [[nodiscard]] inline BBox3 operator*(const Mat4f& m) const {
-    const Vec3f corners[8] = {
-      {min_.x, min_.y, min_.z}, {max_.x, min_.y, min_.z},
-      {min_.x, max_.y, min_.z}, {max_.x, max_.y, min_.z},
-      {min_.x, min_.y, max_.z}, {max_.x, min_.y, max_.z},
-      {min_.x, max_.y, max_.z}, {max_.x, max_.y, max_.z},
-    };
+    const std::array<Vec3f, 8> corners = GetCorners();
     BBox3 result(corners[0] * m, corners[0] * m);
     for (int i = 1; i < 8; ++i) result << (corners[i] * m);
     return result;
@@ -225,6 +221,24 @@ class BBox3 {
       return true;
     }
     return false;
+  }
+
+  // Retrieve bbox corners. Corner indices:
+  //  0 - left, bottom, near
+  //  1 - right, bottom, near
+  //  2 - left, top, near
+  //  3 - right, top, near
+  //  4 - left, bottom, far
+  //  5 - right, bottom, far
+  //  6 - left, top, far
+  //  7 - right, top, far
+  [[nodiscard]] std::array<Vec3f,8> GetCorners() const {
+    return {
+      Vec3f(min_.x, min_.y, min_.z), Vec3f(max_.x, min_.y, min_.z),
+      Vec3f(min_.x, max_.y, min_.z), Vec3f(max_.x, max_.y, min_.z),
+      Vec3f(min_.x, min_.y, max_.z), Vec3f(max_.x, min_.y, max_.z),
+      Vec3f(min_.x, max_.y, max_.z), Vec3f(max_.x, max_.y, max_.z),
+    };
   }
 
  private:
