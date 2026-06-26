@@ -49,7 +49,6 @@
 #include "editor/VehicleSelectionModal.h"
 #include "editor/ObjectNamingUtils.h"
 #include "editor/ObjectsPanel.h"
-#include "editor/EmeshInfoPanel.h"
 #include "editor/ResourceBrowser.h"
 #include "editor/ResourcePanelRegistry.h"
 #include "editor/VehicleEditorWindow.h"
@@ -293,11 +292,22 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
     LOG_F(WARNING, "Editor 3D audio unavailable — sound toggle will be a no-op");
   }
 
-  // .emesh files open in a read-only info panel tab (no "New" button).
-  resource_panel_registry_.Register(
+  // .emesh files open in MeshEditorWindow in edit mode (no "New" button).
+  resource_panel_registry_.RegisterOpenCallback(
       ".emesh",
-      [](std::filesystem::path path) -> std::unique_ptr<IResourcePanel> {
-        return std::make_unique<EmeshInfoPanel>(std::move(path));
+      [this](const std::filesystem::path& path) {
+        mesh_editor_->OpenEdit(path);
+      });
+  resource_panel_registry_.RegisterDragDrop(
+      ".emesh",
+      [this](const std::filesystem::path& path) {
+        const std::filesystem::path data_dir = core::Config::GetDataFolder();
+        const std::string rel =
+            std::filesystem::relative(path, data_dir).string();
+        game::MeshTemplate* tmpl = game::MeshTemplate::GetOrLoad(rel, video_);
+        if (!tmpl) return;
+        ImGui::SetDragDropPayload("MESH_TEMPLATE", &tmpl, sizeof(tmpl));
+        ImGui::Text("Place: %s", path.stem().string().c_str());
       });
 
   // Wire vehicle editor: open in dedicated window, "New" button creates skeleton.
