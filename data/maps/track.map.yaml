@@ -1,15 +1,15 @@
 name: untitled
-map_size: 120
+map_size: 2048
 global_light:
-  direction: [-0.42399919, -0.847998381, -0.317999393]
-  color: [0.899999976, 0.850000024, 0.699999988]
-  intensity: 1.20000005
+  direction: [-0.00024422133, -0.707106769, -0.707106769]
+  color: [1, 0.949999988, 0.800000012]
+  intensity: 1.20001161
   ambient_color: [0, 0, 0]
   cast_shadow: true
   shadow_resolution: 1024
   shadow_bias: 0.00499999989
 environment:
-  {}
+  sky_enabled: true
 objects:
   - name: Object
     type: mesh
@@ -72,7 +72,7 @@ objects:
     transform: [1, 0, 0, 17.2482586, 0, 1, 0, 0.357478559, 0, 0, 1, 7.47310781, 0, 0, 0, 1]
   - name: player_start_001
     type: player_start
-    transform: [1, 0, 0, 15.1968861, 0, 1, 0, 0.819950223, 0, 0, 1, 8.84947205, 0, 0, 0, 1]
+    transform: [0, 0, 0.99999994, 15.1968861, 0, 1, 0, 0.819950223, -0.99999994, 0, 0, 8.84947205, 0, 0, 0, 1]
   - name: pivot_001
     type: pivot
     transform: [1, 0, 0, 18.7933922, 0, 1, 0, 2.17908621, 0, 0, 1, 6.29699087, 0, 0, 0, 1]
@@ -89,7 +89,7 @@ objects:
     cast_shadow: true
     shadow_resolution: 256
     shadow_bias: 0.00499999989
-    direction: [1.81992107e-06, -1, 1.81992107e-06]
+    direction: [1.81991788e-06, -1, 1.81991788e-06]
     inner_angle: 0.200000003
     outer_angle: 0.485515714
     range: 9
@@ -99,6 +99,11 @@ objects:
     transform: [0.999967396, -1.81992584e-06, -0.00789825059, 18.3521709, 1.83424072e-06, 1, 1.80549227e-06, -0.00579881668, 0.00789825059, -1.81992584e-06, 0.999967396, 13.3183079, 0, 0, 0, 1]
     mesh: meshes/road/light-curved.emesh
     material: materials/road_colormap.yaml
+  - name: Object
+    type: mesh
+    transform: [0.999999821, 0, 0.000488340855, 18.771347, 0, 1, 0, 0.0190134048, -0.000488340855, 0, 0.999999821, 18.7557755, 0, 0, 0, 1]
+    mesh: meshes/city/commercial/building-a.emesh
+    material: materials/commercial_colormap.yaml
 terrain:
   heightmap: track.r16
   heightmap_width: 1024
@@ -113,10 +118,10 @@ terrain:
         tiling: 8
     splatmap: track_splat.png
 editor:
-  selected_object: ~
+  selected_object: cspot_001
   camera:
-    focus: [10.9493208, 4.3483305, 8.00192928]
-    azimuth: -1.57000017
-    elevation: 0.310000688
-    distance: 19.3891048
+    focus: [8.13331413, 6.14824724, 14.46978]
+    azimuth: -0.915037632
+    elevation: 0.530000329
+    distance: 1.96688211
   snap_grid: 0

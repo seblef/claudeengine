@@ -18,6 +18,7 @@
 #include "environment/EnvironmentDesc.h"
 #include "environment/SkyRenderer.h"
 #include "environment/WaterRenderer.h"
+#include "game/EnvironmentLighting.h"
 #include "game/GameLightDesc.h"
 #include "game/GameObjectType.h"
 #include "game/GameTerrain.h"
@@ -255,10 +256,20 @@ void EnvironmentEditorPanel::UpdateGlobalLightFromSky() {
         std::max(0.f, sky_toward.y) / kSinMaxElevation;
     desc.color     = core::Color(1.f, 0.95f, 0.8f);
     desc.intensity = kSunMaxIntensity * elevation_factor;
+
+    // Ambient: blend from dawn/dusk orange-pink to noon light-grey.
+    const float t = std::min(sky_toward.y / game::kDawnDuskElevationY, 1.f);
+    const core::Vec3f dawn_ambient(0.4f, 0.25f, 0.2f);
+    const core::Vec3f noon_ambient(0.35f, 0.35f, 0.38f);
+    desc.ambient_color = core::Vec3f(
+        dawn_ambient.x + t * (noon_ambient.x - dawn_ambient.x),
+        dawn_ambient.y + t * (noon_ambient.y - dawn_ambient.y),
+        dawn_ambient.z + t * (noon_ambient.z - dawn_ambient.z));
   } else {
     // Moon: cool blue-white, dim.
-    desc.color     = core::Color(0.45f, 0.5f, 0.8f);
-    desc.intensity = kMoonIntensity;
+    desc.color         = core::Color(0.45f, 0.5f, 0.8f);
+    desc.intensity     = kMoonIntensity;
+    desc.ambient_color = core::Vec3f(0.02f, 0.02f, 0.05f);
   }
 
   scene_->SetGlobalLightDesc(desc);

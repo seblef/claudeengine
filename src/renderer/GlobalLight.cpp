@@ -28,12 +28,16 @@ void GlobalLight::ComputeCascadeMatrices(const core::Camera& camera,
                                          CSMInfos& out) const {
   // Cap shadow distance independently of the camera far plane so that each
   // cascade covers a small enough world area to produce sharp shadow texels.
-  // With a 2000-unit far plane the first cascade would span ~250 units, making
-  // texels visibly large ("squares") even at close range.
-  static constexpr float kMaxShadowDistance = 500.f;
+  // With lambda=0.5 the uniform split component gives cascade 0 ≈ z_far/4 depth
+  // range, which at 500 units produces a ~63-unit first cascade (bounding sphere
+  // ~80 units, ~16 cm texels at 1024px) — visibly "squared" on close surfaces.
+  // At 150 units cascade 0 covers ~19 units (bounding sphere ~24, ~9 cm texels).
+  static constexpr float kMaxShadowDistance = 150.f;
   const float z_near  = camera.GetMinDepth();
   const float z_far   = std::min(camera.GetMaxDepth(), kMaxShadowDistance);
-  const float aspect  = camera.GetScreenCenter().x / camera.GetScreenCenter().y;
+  const float aspect  = (camera.GetScreenCenter().y > 0.f)
+                        ? camera.GetScreenCenter().x / camera.GetScreenCenter().y
+                        : 1.f;
   const float thfov_y = std::tan(camera.GetFOV() * 0.5f);
   const float thfov_x = thfov_y * aspect;
   const core::Mat4f& inv_view = camera.GetInverseViewMatrix();
