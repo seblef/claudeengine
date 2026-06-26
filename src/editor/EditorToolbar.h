@@ -167,11 +167,16 @@ class EditorToolbar {
   void SetPositionSnap(float v)      { position_snap_ = v; }
   void SetRotationSnap(float v)      { rotation_snap_ = v; }
   void SetScaleSnap(float v)         { scale_snap_    = v; }
+  // Controls whether the XZ grid overlay is drawn when snap is enabled.
+  // Loaded from config; no toolbar UI — set to false in config.yaml to decouple
+  // grid visibility from snap state.
+  void SetShowGrid(bool v) { show_grid_ = v; }
 
   [[nodiscard]] bool  IsSnapEnabled()   const { return snap_enabled_;  }
   [[nodiscard]] float GetPositionSnap() const { return position_snap_; }
   [[nodiscard]] float GetRotationSnap() const { return rotation_snap_; }
   [[nodiscard]] float GetScaleSnap()    const { return scale_snap_;    }
+  [[nodiscard]] bool  IsShowGrid()      const { return show_grid_;     }
 
   // Reflects the scene dirty state; the Save button is greyed out when false.
   void SetDirty(bool dirty) { dirty_ = dirty; }
@@ -237,6 +242,8 @@ class EditorToolbar {
   std::function<void()> on_snap_changed_;
   // cppcheck-suppress unusedStructMember
   bool                  snap_enabled_       = false;
+  // cppcheck-suppress unusedStructMember
+  bool                  show_grid_          = true;
   // cppcheck-suppress unusedStructMember
   float                 position_snap_      = 0.1f;
   // cppcheck-suppress unusedStructMember

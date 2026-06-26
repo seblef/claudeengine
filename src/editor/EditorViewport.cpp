@@ -1,6 +1,7 @@
 #include "editor/EditorViewport.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <memory>
 #include <span>
@@ -12,7 +13,9 @@
 #include "core/Mat4f.h"
 #include "core/ProjectionType.h"
 #include "core/Vec3f.h"
+#include "core/Vec4f.h"
 #include "editor/EditorScene.h"
+#include "editor/EditorToolbar.h"
 #include "editor/GaugeGizmos.h"
 #include "editor/PickingAccelerator.h"
 #include "editor/PivotGizmos.h"
@@ -214,6 +217,8 @@ void EditorViewport::Render() {
       renderer::WireframeRenderer::Instance().Render(
           *camera_->GetCamera(), wireframe_fbo_.get(), render_fbo_.get());
 
+    DrawSnapGrid(image_pos, avail);
+
     // XYZ axis overlay — bottom-right corner of the viewport panel.
     // ImGuizmo uses row-major storage with row-vector convention (translation in
     // last row), which is the transpose of our column-vector Mat4f convention.
@@ -316,6 +321,60 @@ void EditorViewport::SetActiveTool(EditorToolBase* tool) {
 
 void EditorViewport::UpdateMovedObject(game::GameObject* obj) {
   picking_acc_.UpdateMoved(obj);
+}
+
+void EditorViewport::DrawSnapGrid(ImVec2 image_pos, ImVec2 image_size) {
+  if (!toolbar_ || !toolbar_->IsSnapEnabled() || !toolbar_->IsShowGrid()) return;
+
+  const float step = toolbar_->GetPositionSnap();
+  if (step <= 0.f) return;
+
+  // Snap the grid origin to the nearest cell so the grid stays fixed as the
+  // camera orbits (it jumps by one cell increment at a time, not per pixel).
+  const core::Vec3f focus = camera_ctrl_->GetState().focus;
+  const float cx = std::floor(focus.x / step) * step;
+  const float cz = std::floor(focus.z / step) * step;
+
+  // Number of cells to draw on each side of the origin.
+  constexpr int kHalfCells  = 10;
+  constexpr int kMajorEvery = 10;
+  const float extent = step * static_cast<float>(kHalfCells);
+
+  constexpr ImU32 kMinorColor = IM_COL32(102, 102, 102, 89);
+  constexpr ImU32 kMajorColor = IM_COL32(128, 128, 128, 128);
+
+  const core::Mat4f& vp = camera_->GetCamera()->GetViewProjectionMatrix();
+  ImDrawList* dl = ImGui::GetWindowDrawList();
+
+  // Project a world-space XZ point (Y=0) to screen space via the VP matrix.
+  // Returns (screen_pos, valid). Invalid when the point is behind the camera.
+  auto project = [&](float x, float z) -> std::pair<ImVec2, bool> {
+    const core::Vec4f clip = core::Vec4f(x, 0.f, z, 1.f) * vp;
+    if (clip.w <= 0.f) return {{}, false};
+    const float inv_w = 1.f / clip.w;
+    return {
+      {(clip.x * inv_w + 1.f) * 0.5f * image_size.x + image_pos.x,
+       (1.f - clip.y * inv_w) * 0.5f * image_size.y + image_pos.y},
+      true
+    };
+  };
+
+  for (int i = -kHalfCells; i <= kHalfCells; ++i) {
+    const ImU32 color = (i % kMajorEvery == 0) ? kMajorColor : kMinorColor;
+    const float fi = static_cast<float>(i);
+
+    // Horizontal line (constant Z, spans X)
+    const float z = cz + fi * step;
+    auto [s0, ok0] = project(cx - extent, z);
+    auto [s1, ok1] = project(cx + extent, z);
+    if (ok0 && ok1) dl->AddLine(s0, s1, color, 1.f);
+
+    // Vertical line (constant X, spans Z)
+    const float x = cx + fi * step;
+    auto [s2, ok2] = project(x, cz - extent);
+    auto [s3, ok3] = project(x, cz + extent);
+    if (ok2 && ok3) dl->AddLine(s2, s3, color, 1.f);
+  }
 }
 
 }  // namespace editor

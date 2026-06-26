@@ -193,6 +193,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   viewport_->SetCommandHistory(&history_);
   viewport_->SetActiveTool(selection_tool_.get());
   viewport_->SetRenderingSettingsPanel(&rendering_settings_panel_);
+  viewport_->SetToolbar(toolbar_.get());
   properties_panel_->SetCommandHistory(&history_);
   properties_panel_->SetVideoDevice(video_);
   material_editor_->SetCommandHistory(&history_);
@@ -401,10 +402,11 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
         rendering_settings_panel_.SetOverlayPlayerStartsEnabled(v.as<bool>());
     }
     if (auto sn = editor["snap"]) {
-      if (auto v = sn["enabled"])  toolbar_->SetSnapEnabled(v.as<bool>());
-      if (auto v = sn["position"]) toolbar_->SetPositionSnap(v.as<float>());
-      if (auto v = sn["rotation"]) toolbar_->SetRotationSnap(v.as<float>());
-      if (auto v = sn["scale"])    toolbar_->SetScaleSnap(v.as<float>());
+      if (auto v = sn["enabled"])   toolbar_->SetSnapEnabled(v.as<bool>());
+      if (auto v = sn["show_grid"]) toolbar_->SetShowGrid(v.as<bool>());
+      if (auto v = sn["position"])  toolbar_->SetPositionSnap(v.as<float>());
+      if (auto v = sn["rotation"])  toolbar_->SetRotationSnap(v.as<float>());
+      if (auto v = sn["scale"])     toolbar_->SetScaleSnap(v.as<float>());
     }
   }
 }
@@ -1239,10 +1241,11 @@ void EditorWindow::SaveSnapSettings() {
     root = core::LoadYamlFile(config_path);
   } catch (...) {}
 
-  root["editor"]["snap"]["enabled"]  = toolbar_->IsSnapEnabled();
-  root["editor"]["snap"]["position"] = toolbar_->GetPositionSnap();
-  root["editor"]["snap"]["rotation"] = toolbar_->GetRotationSnap();
-  root["editor"]["snap"]["scale"]    = toolbar_->GetScaleSnap();
+  root["editor"]["snap"]["enabled"]   = toolbar_->IsSnapEnabled();
+  root["editor"]["snap"]["show_grid"] = toolbar_->IsShowGrid();
+  root["editor"]["snap"]["position"]  = toolbar_->GetPositionSnap();
+  root["editor"]["snap"]["rotation"]  = toolbar_->GetRotationSnap();
+  root["editor"]["snap"]["scale"]     = toolbar_->GetScaleSnap();
 
   std::ofstream out(config_path);
   out << root;

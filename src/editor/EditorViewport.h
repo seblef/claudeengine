@@ -25,6 +25,7 @@ namespace terrain { class TerrainData; }
 namespace editor {
 
 class EditorScene;
+class EditorToolbar;
 class RenderingSettingsPanel;
 class SelectionTool;
 
@@ -81,6 +82,10 @@ class EditorViewport {
   // Adjusts the camera focus and distance so the given bounding box fills the view.
   void FrameObject(const core::BBox3& bbox);
 
+  // Provides the snap toolbar so the viewport can read snap state for the grid
+  // overlay. Non-owning; must outlive this viewport.
+  void SetToolbar(const EditorToolbar* toolbar) { toolbar_ = toolbar; }
+
   // Enables or disables the terrain wireframe debug overlay.
   static void SetTerrainWireframeDebugEnabled(bool enabled);
 
@@ -117,6 +122,10 @@ class EditorViewport {
   // the ray through mouse_pos, then selects it. Used by the drag-and-drop flow.
   void PlaceMeshAt(ImVec2 mouse_pos, ImVec2 image_pos, ImVec2 image_size,
                    game::MeshTemplate* tmpl);
+
+  // Draws the XZ snap grid overlay when snap is enabled. Projects world-space
+  // grid lines into screen space and renders them onto the current ImDrawList.
+  void DrawSnapGrid(ImVec2 image_pos, ImVec2 image_size);
 
   // cppcheck-suppress unusedStructMember
   abstract::VideoDevice*                       video_;
@@ -156,6 +165,10 @@ class EditorViewport {
   // Non-owned; set by EditorWindow so the viewport can read render toggles.
   // cppcheck-suppress unusedStructMember
   RenderingSettingsPanel* rendering_settings_panel_ = nullptr;
+
+  // Non-owned; set by EditorWindow so the viewport can read snap state.
+  // cppcheck-suppress unusedStructMember
+  const EditorToolbar* toolbar_ = nullptr;
 
   // True while the editor is in Play mode. Suspends the orbit camera controller
   // and hides editor-only overlays (gizmos, tools, orbit widget).
