@@ -301,10 +301,8 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   resource_panel_registry_.RegisterDragDrop(
       ".emesh",
       [this](const std::filesystem::path& path) {
-        const std::filesystem::path data_dir = core::Config::GetDataFolder();
-        const std::string rel =
-            std::filesystem::relative(path, data_dir).string();
-        game::MeshTemplate* tmpl = game::MeshTemplate::GetOrLoad(rel, video_);
+        game::MeshTemplate* tmpl =
+            game::MeshTemplate::GetOrLoad(path.string(), video_);
         if (!tmpl) return;
         ImGui::SetDragDropPayload("MESH_TEMPLATE", &tmpl, sizeof(tmpl));
         ImGui::Text("Place: %s", path.stem().string().c_str());
