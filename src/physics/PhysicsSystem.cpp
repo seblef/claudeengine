@@ -692,6 +692,7 @@ PhysicsVehicle* PhysicsSystem::CreateVehicle(const VehicleDesc& desc,
     body_settings.mOverrideMassProperties =
         JPH::EOverrideMassProperties::CalculateInertia;
     body_settings.mMassPropertiesOverride.mMass = desc.mass;
+    body_settings.mFriction = 0.5f;
 
     JPH::BodyInterface& iface = jolt_system_->GetBodyInterface();
     JPH::Body* body = iface.CreateBody(body_settings);
