@@ -173,6 +173,10 @@ class EditorToolbar {
   void SetShowGrid(bool v) { show_grid_ = v; }
 
   [[nodiscard]] bool  IsSnapEnabled()   const { return snap_enabled_;  }
+  // Returns the live snap state: persistent toggle XOR Ctrl key.
+  // Tools should call this when deciding whether to snap; IsSnapEnabled() is
+  // reserved for config persistence and the toolbar button visual state.
+  [[nodiscard]] bool  IsSnapEffectivelyEnabled() const;
   [[nodiscard]] float GetPositionSnap() const { return position_snap_; }
   [[nodiscard]] float GetRotationSnap() const { return rotation_snap_; }
   [[nodiscard]] float GetScaleSnap()    const { return scale_snap_;    }

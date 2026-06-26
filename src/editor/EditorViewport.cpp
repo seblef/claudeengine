@@ -324,7 +324,7 @@ void EditorViewport::UpdateMovedObject(game::GameObject* obj) {
 }
 
 void EditorViewport::DrawSnapGrid(ImVec2 image_pos, ImVec2 image_size) {
-  if (!toolbar_ || !toolbar_->IsSnapEnabled() || !toolbar_->IsShowGrid()) return;
+  if (!toolbar_ || !toolbar_->IsSnapEffectivelyEnabled() || !toolbar_->IsShowGrid()) return;
 
   const float step = toolbar_->GetPositionSnap();
   if (step <= 0.f) return;

@@ -53,7 +53,7 @@ void PlacementTool::UpdatePreviewPosition(const EditorToolContext& ctx,
 
   if (preview_object_) {
     float x = hit->x, z = hit->z;
-    if (toolbar_ && toolbar_->IsSnapEnabled()) {
+    if (toolbar_ && toolbar_->IsSnapEffectivelyEnabled()) {
       const float s = toolbar_->GetPositionSnap();
       x = SnapValue(x, s);
       z = SnapValue(z, s);

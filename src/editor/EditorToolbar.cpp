@@ -8,6 +8,11 @@
 
 namespace editor {
 
+bool EditorToolbar::IsSnapEffectivelyEnabled() const {
+  const bool ctrl = ImGui::GetIO().KeyCtrl;
+  return ctrl ? !snap_enabled_ : snap_enabled_;
+}
+
 namespace {
 
 struct ToolEntry {
@@ -286,17 +291,36 @@ void EditorToolbar::Render() {
   ImGui::SameLine();
 
   // Snap toggle button.
-  const bool snap_was_enabled = snap_enabled_;
-  if (snap_was_enabled)
+  // Highlight with the active colour when snap is effectively on (persistent
+  // toggle OR Ctrl override), but use a dimmer tint when Ctrl is the only
+  // reason so the user can distinguish the transient override from the
+  // persistent-on state.
+  const bool snap_effective  = IsSnapEffectivelyEnabled();
+  const bool ctrl_overriding = (ImGui::GetIO().KeyCtrl);
+  constexpr ImVec4 kOverrideColour = ImVec4(0.184f, 0.769f, 0.698f, 0.55f);
+  int snap_pushed_colors = 0;
+  if (snap_effective && !ctrl_overriding) {
     ImGui::PushStyleColor(ImGuiCol_Button, kActiveColour);
+    snap_pushed_colors = 1;
+  } else if (snap_effective && ctrl_overriding) {
+    ImGui::PushStyleColor(ImGuiCol_Button, kOverrideColour);
+    snap_pushed_colors = 1;
+  }
   if (ImGui::Button(ICON_FA_MAGNET)) {
     snap_enabled_ = !snap_enabled_;
     if (on_snap_changed_) on_snap_changed_();
   }
-  ImGui::SetItemTooltip(snap_enabled_ ? "Snap enabled (click to disable)"
-                                      : "Snap disabled (click to enable)");
-  if (snap_was_enabled)
-    ImGui::PopStyleColor();
+  if (ctrl_overriding) {
+    ImGui::SetItemTooltip(snap_effective
+        ? "Snap enabled (Ctrl override; release Ctrl or click to toggle)"
+        : "Snap disabled (Ctrl override; release Ctrl or click to toggle)");
+  } else {
+    ImGui::SetItemTooltip(snap_enabled_
+        ? "Snap enabled (click to disable; hold Ctrl to temporarily disable)"
+        : "Snap disabled (click to enable; hold Ctrl to temporarily enable)");
+  }
+  if (snap_pushed_colors > 0)
+    ImGui::PopStyleColor(snap_pushed_colors);
 
   ImGui::SameLine();
 
