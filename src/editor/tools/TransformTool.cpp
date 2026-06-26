@@ -29,7 +29,7 @@ namespace editor {
 TransformTool::TransformTool(ImGuizmo::OPERATION op) : op_(op) {}
 
 float* TransformTool::BuildSnapArray(float snap[3]) const {
-  if (!toolbar_ || !toolbar_->IsSnapEnabled()) return nullptr;
+  if (!toolbar_ || !toolbar_->IsSnapEffectivelyEnabled()) return nullptr;
   snap[0] = snap[1] = snap[2] = 0.f;
   if (op_ == ImGuizmo::TRANSLATE) {
     const float s = toolbar_->GetPositionSnap();
