@@ -15,6 +15,7 @@
 #include "editor/PickingAccelerator.h"
 #include "editor/commands/MultiTransformCommand.h"
 #include "editor/commands/TransformCommand.h"
+#include "editor/EditorToolbar.h"
 #include "editor/tools/EditorToolContext.h"
 #include "editor/tools/PickingUtils.h"
 #include "game/GameCamera.h"
@@ -26,6 +27,20 @@
 namespace editor {
 
 TransformTool::TransformTool(ImGuizmo::OPERATION op) : op_(op) {}
+
+float* TransformTool::BuildSnapArray(float snap[3]) const {
+  if (!toolbar_ || !toolbar_->IsSnapEnabled()) return nullptr;
+  snap[0] = snap[1] = snap[2] = 0.f;
+  if (op_ == ImGuizmo::TRANSLATE) {
+    const float s = toolbar_->GetPositionSnap();
+    snap[0] = snap[1] = snap[2] = s;
+  } else if (op_ == ImGuizmo::ROTATE) {
+    snap[0] = toolbar_->GetRotationSnap();
+  } else if (op_ == ImGuizmo::SCALE) {
+    snap[0] = toolbar_->GetScaleSnap();
+  }
+  return snap;
+}
 
 void TransformTool::OnDeactivate() {
   hovered_object_       = nullptr;
@@ -95,7 +110,10 @@ void TransformTool::OnRender(const EditorToolContext& ctx,
     float model_im[16];
     std::memcpy(model_im, model_t.Data(), sizeof(model_im));
 
-    ImGuizmo::Manipulate(view_im, proj_im, op_, ImGuizmo::WORLD, model_im);
+    float snap[3];
+    float* snap_ptr = BuildSnapArray(snap);
+    ImGuizmo::Manipulate(view_im, proj_im, op_, ImGuizmo::WORLD, model_im,
+                         nullptr, snap_ptr);
 
     const bool gizmo_using = ImGuizmo::IsUsing();
 
@@ -146,7 +164,10 @@ void TransformTool::OnRender(const EditorToolContext& ctx,
       std::memcpy(model_im, pivot_t.Data(), sizeof(model_im));
     }
 
-    ImGuizmo::Manipulate(view_im, proj_im, op_, ImGuizmo::WORLD, model_im);
+    float snap[3];
+    float* snap_ptr = BuildSnapArray(snap);
+    ImGuizmo::Manipulate(view_im, proj_im, op_, ImGuizmo::WORLD, model_im,
+                         nullptr, snap_ptr);
 
     const bool gizmo_using = ImGuizmo::IsUsing();
 

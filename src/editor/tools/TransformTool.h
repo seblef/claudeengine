@@ -14,6 +14,8 @@ namespace game { class GameObject; }
 
 namespace editor {
 
+class EditorToolbar;
+
 // Editor tool that wraps a single ImGuizmo transform operation (translate,
 // rotate, or scale). Supports both single-object and multi-selection.
 //
@@ -36,6 +38,10 @@ class TransformTool : public EditorToolBase {
  public:
   explicit TransformTool(ImGuizmo::OPERATION op);
 
+  // Provides the toolbar for reading snap settings each frame. Non-owning;
+  // must outlive this tool.
+  void SetToolbar(const EditorToolbar* toolbar) { toolbar_ = toolbar; }
+
   void OnDeactivate() override;
   void OnRender(const EditorToolContext& ctx,
                 ImVec2 image_pos, ImVec2 image_size) override;
@@ -45,7 +51,13 @@ class TransformTool : public EditorToolBase {
   bool IsCapturingMouse() const override;
 
  private:
+  // Builds the snap array for ImGuizmo::Manipulate() based on toolbar state.
+  // Returns a pointer to snap[3] when snapping is active, nullptr otherwise.
+  float* BuildSnapArray(float snap[3]) const;
+
   ImGuizmo::OPERATION      op_;
+  // cppcheck-suppress unusedStructMember
+  const EditorToolbar*     toolbar_          = nullptr;
   bool                     gizmo_was_using_  = false;
   // Per-drag snapshots — populated when the drag starts, cleared after.
   // cppcheck-suppress unusedStructMember

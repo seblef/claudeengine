@@ -186,6 +186,9 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
   toolbar_->SetOnGroupObjects([this]{ GroupUnderPivot(); });
   toolbar_->SetOnUngroupObjects([this]{ UngroupSelectedPivot(); });
   toolbar_->SetOnPlaceGauge([this]{ PlaceGauge(); });
+  translate_tool_->SetToolbar(toolbar_.get());
+  rotate_tool_->SetToolbar(toolbar_.get());
+  scale_tool_->SetToolbar(toolbar_.get());
   viewport_->SetScene(scene_.get());
   viewport_->SetCommandHistory(&history_);
   viewport_->SetActiveTool(selection_tool_.get());
