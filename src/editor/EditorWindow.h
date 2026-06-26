@@ -152,6 +152,9 @@ class EditorWindow {
   // Persists overlay gizmo visibility settings to the editor section of config.yaml.
   void SaveOverlaySettings();
 
+  // Persists snap enabled flag and granularities to the editor section of config.yaml.
+  void SaveSnapSettings();
+
   // Shows the "Unsaved Changes" modal if dirty, then fires on_proceed.
   // Stores on_proceed in pending_after_save_ and sets the open flag.
   void CheckDirtyThenRun(std::function<void()> on_proceed);

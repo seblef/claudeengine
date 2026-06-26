@@ -1,5 +1,7 @@
 #include "editor/EditorToolbar.h"
 
+#include <algorithm>
+
 #include <IconsFontAwesome6.h>
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -278,6 +280,49 @@ void EditorToolbar::Render() {
                                        : "Sound disabled (click to enable)");
   if (sound_was_enabled)
     ImGui::PopStyleColor();
+
+  ImGui::SameLine();
+  ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+  ImGui::SameLine();
+
+  // Snap toggle button.
+  const bool snap_was_enabled = snap_enabled_;
+  if (snap_was_enabled)
+    ImGui::PushStyleColor(ImGuiCol_Button, kActiveColour);
+  if (ImGui::Button(ICON_FA_MAGNET)) {
+    snap_enabled_ = !snap_enabled_;
+    if (on_snap_changed_) on_snap_changed_();
+  }
+  ImGui::SetItemTooltip(snap_enabled_ ? "Snap enabled (click to disable)"
+                                      : "Snap disabled (click to enable)");
+  if (snap_was_enabled)
+    ImGui::PopStyleColor();
+
+  ImGui::SameLine();
+
+  // Snap granularity controls — always visible so values are editable at a glance.
+  ImGui::SetNextItemWidth(55.0f);
+  if (ImGui::DragFloat("##pos_snap", &position_snap_, 0.01f, 0.001f, 100.0f, "%.3f")) {
+    position_snap_ = std::max(position_snap_, 0.001f);
+    if (on_snap_changed_) on_snap_changed_();
+  }
+  ImGui::SetItemTooltip("Position snap (m)");
+  ImGui::SameLine();
+
+  ImGui::SetNextItemWidth(50.0f);
+  if (ImGui::DragFloat("##rot_snap", &rotation_snap_, 0.5f, 0.1f, 180.0f, "%.1f\xc2\xb0")) {
+    rotation_snap_ = std::max(rotation_snap_, 0.1f);
+    if (on_snap_changed_) on_snap_changed_();
+  }
+  ImGui::SetItemTooltip("Rotation snap (degrees)");
+  ImGui::SameLine();
+
+  ImGui::SetNextItemWidth(55.0f);
+  if (ImGui::DragFloat("##scl_snap", &scale_snap_, 0.01f, 0.001f, 100.0f, "%.3f")) {
+    scale_snap_ = std::max(scale_snap_, 0.001f);
+    if (on_snap_changed_) on_snap_changed_();
+  }
+  ImGui::SetItemTooltip("Scale snap");
 
   ImGui::End();
 }

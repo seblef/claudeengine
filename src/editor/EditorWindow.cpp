@@ -178,6 +178,7 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
     if (enabled) EnableSceneSound();
     else         DisableSceneSound();
   });
+  toolbar_->SetOnSnapChanged([this]{ SaveSnapSettings(); });
   toolbar_->SetOnCopy([this]{ CopySelectedObject(); });
   toolbar_->SetOnPaste([this]{ PasteObject(); });
   toolbar_->SetOnFallToTerrain([this]{ FallToTerrain(); });
@@ -396,6 +397,12 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
       if (auto v = ov["player_starts"])
         rendering_settings_panel_.SetOverlayPlayerStartsEnabled(v.as<bool>());
     }
+    if (auto sn = editor["snap"]) {
+      if (auto v = sn["enabled"])  toolbar_->SetSnapEnabled(v.as<bool>());
+      if (auto v = sn["position"]) toolbar_->SetPositionSnap(v.as<float>());
+      if (auto v = sn["rotation"]) toolbar_->SetRotationSnap(v.as<float>());
+      if (auto v = sn["scale"])    toolbar_->SetScaleSnap(v.as<float>());
+    }
   }
 }
 
@@ -405,6 +412,7 @@ EditorWindow::~EditorWindow() {
   DisableSceneSound();
   SavePhysicsDebugSettings();
   SaveOverlaySettings();
+  SaveSnapSettings();
   loguru::remove_callback("editor_log");
 }
 
@@ -1209,6 +1217,22 @@ void EditorWindow::SaveOverlaySettings() {
       rendering_settings_panel_.IsOverlayParticlesEnabled();
   root["editor"]["overlay"]["player_starts"] =
       rendering_settings_panel_.IsOverlayPlayerStartsEnabled();
+
+  std::ofstream out(config_path);
+  out << root;
+}
+
+void EditorWindow::SaveSnapSettings() {
+  const auto config_path = core::Config::GetDataFolder() / "config.yaml";
+  YAML::Node root;
+  try {
+    root = core::LoadYamlFile(config_path);
+  } catch (...) {}
+
+  root["editor"]["snap"]["enabled"]  = toolbar_->IsSnapEnabled();
+  root["editor"]["snap"]["position"] = toolbar_->GetPositionSnap();
+  root["editor"]["snap"]["rotation"] = toolbar_->GetRotationSnap();
+  root["editor"]["snap"]["scale"]    = toolbar_->GetScaleSnap();
 
   std::ofstream out(config_path);
   out << root;
