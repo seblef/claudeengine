@@ -156,6 +156,23 @@ class EditorToolbar {
   // Returns true when the sound-enable toggle is on.
   [[nodiscard]] bool IsSoundEnabled() const { return sound_enabled_; }
 
+  // Registers a callback fired when any snap setting (enabled flag or a
+  // granularity value) changes; used by EditorWindow to persist to config.yaml.
+  void SetOnSnapChanged(std::function<void()> cb) {
+    on_snap_changed_ = std::move(cb);
+  }
+
+  // Initialises snap state loaded from config; does NOT fire on_snap_changed_.
+  void SetSnapEnabled(bool enabled)  { snap_enabled_  = enabled; }
+  void SetPositionSnap(float v)      { position_snap_ = v; }
+  void SetRotationSnap(float v)      { rotation_snap_ = v; }
+  void SetScaleSnap(float v)         { scale_snap_    = v; }
+
+  [[nodiscard]] bool  IsSnapEnabled()   const { return snap_enabled_;  }
+  [[nodiscard]] float GetPositionSnap() const { return position_snap_; }
+  [[nodiscard]] float GetRotationSnap() const { return rotation_snap_; }
+  [[nodiscard]] float GetScaleSnap()    const { return scale_snap_;    }
+
   // Reflects the scene dirty state; the Save button is greyed out when false.
   void SetDirty(bool dirty) { dirty_ = dirty; }
 
@@ -216,6 +233,16 @@ class EditorToolbar {
   bool                  can_align_          = false;
   // cppcheck-suppress unusedStructMember
   std::function<void()> on_place_gauge_;
+  // cppcheck-suppress unusedStructMember
+  std::function<void()> on_snap_changed_;
+  // cppcheck-suppress unusedStructMember
+  bool                  snap_enabled_       = false;
+  // cppcheck-suppress unusedStructMember
+  float                 position_snap_      = 0.1f;
+  // cppcheck-suppress unusedStructMember
+  float                 rotation_snap_      = 45.0f;
+  // cppcheck-suppress unusedStructMember
+  float                 scale_snap_         = 0.1f;
 };
 
 }  // namespace editor
