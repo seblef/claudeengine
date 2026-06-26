@@ -1,5 +1,6 @@
 #include "editor/tools/PlacementTool.h"
 
+#include <cmath>
 #include <memory>
 #include <utility>
 
@@ -58,8 +59,13 @@ void PlacementTool::UpdatePreviewPosition(const EditorToolContext& ctx,
       x = SnapValue(x, s);
       z = SnapValue(z, s);
     }
+    const core::Mat4f current = preview_object_->GetWorldTransform();
+    const float fx = current(0, 2), fz = current(2, 2);
+    const float fw_len = std::sqrt(fx * fx + fz * fz);
+    const float yaw = (fw_len > 1e-4f) ? std::atan2(fx, fz) : 0.f;
     preview_object_->SetWorldTransform(
-        core::Mat4f::Translation({x, hit->y + preview_height_, z}));
+        core::Mat4f::Translation({x, hit->y + preview_height_, z}) *
+        core::Mat4f::RotationY(yaw));
     if (ctx.picking_acc)
       ctx.picking_acc->UpdateMoved(preview_object_);
   }

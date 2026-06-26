@@ -10,9 +10,12 @@ namespace editor {
 
 namespace {
 
-constexpr float kPoleHeight = 2.0f;
-constexpr float kFlagWidth  = 0.8f;
-constexpr float kFlagHeight = 0.5f;
+constexpr float kPoleHeight   = 2.0f;
+constexpr float kFlagWidth    = 0.8f;
+constexpr float kFlagHeight   = 0.5f;
+constexpr float kArrowLength  = 1.5f;
+constexpr float kArrowHead    = 0.3f;
+constexpr float kArrowSpread  = 0.15f;
 
 const core::Color kPoleColor(1.f, 1.f, 1.f, 1.f);
 const core::Color kFlagColor(0.f, 0.8f, 0.267f, 1.f);
@@ -45,6 +48,14 @@ void EnqueuePlayerStartGizmos(const std::vector<game::GameObject*>& objects,
     wr.PushOverlaySegment(flag_a, flag_b, flag_color);
     wr.PushOverlaySegment(flag_b, flag_c, flag_color);
     wr.PushOverlaySegment(flag_c, flag_a, flag_color);
+
+    // Direction arrow along local +Z (column 2 of the world transform).
+    const core::Vec3f dir(wt(0, 2), wt(1, 2), wt(2, 2));
+    const core::Vec3f perp(wt(0, 0), wt(1, 0), wt(2, 0));
+    const core::Vec3f tip = base + dir * kArrowLength;
+    wr.PushOverlaySegment(base, tip, flag_color);
+    wr.PushOverlaySegment(tip, tip - dir * kArrowHead + perp * kArrowSpread, flag_color);
+    wr.PushOverlaySegment(tip, tip - dir * kArrowHead - perp * kArrowSpread, flag_color);
   }
 }
 
