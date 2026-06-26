@@ -25,4 +25,9 @@ inline core::Vec3f YawPitchToVec3f(float yaw, float pitch) {
   return {cos_p * std::sin(y), -std::sin(p), cos_p * std::cos(y)};
 }
 
+// Rounds value to the nearest multiple of snap.
+inline float SnapValue(float value, float snap) {
+  return std::round(value / snap) * snap;
+}
+
 }  // namespace editor

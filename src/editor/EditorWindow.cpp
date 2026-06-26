@@ -532,6 +532,7 @@ void EditorWindow::Render() {
             std::move(light), 10.f,
             ImGuiMouseCursor_ResizeAll,
             [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
+        placement_tool_->SetToolbar(toolbar_.get());
         viewport_->SetActiveTool(placement_tool_.get());
       } else if (active_tool == EditorTool::kCreatePivot) {
         auto pivot = std::make_unique<game::GamePivot>();
@@ -540,6 +541,7 @@ void EditorWindow::Render() {
             std::move(pivot), 0.f,
             ImGuiMouseCursor_ResizeAll,
             [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
+        placement_tool_->SetToolbar(toolbar_.get());
         viewport_->SetActiveTool(placement_tool_.get());
       } else if (active_tool == EditorTool::kCreatePlayerStart) {
         auto ps = std::make_unique<game::GamePlayerStart>();
@@ -548,6 +550,7 @@ void EditorWindow::Render() {
             std::move(ps), 0.f,
             ImGuiMouseCursor_ResizeAll,
             [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
+        placement_tool_->SetToolbar(toolbar_.get());
         viewport_->SetActiveTool(placement_tool_.get());
       } else if (active_tool == EditorTool::kCreateParticleSystem) {
         particle_modal_->Open();
@@ -573,6 +576,7 @@ void EditorWindow::Render() {
         std::move(mesh), 0.f,
         ImGuiMouseCursor_None,
         [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
+    placement_tool_->SetToolbar(toolbar_.get());
     viewport_->SetActiveTool(placement_tool_.get());
   }
 
@@ -588,6 +592,7 @@ void EditorWindow::Render() {
           std::move(ps), 0.f,
           ImGuiMouseCursor_ResizeAll,
           [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
+      placement_tool_->SetToolbar(toolbar_.get());
       viewport_->SetActiveTool(placement_tool_.get());
     }
   }
@@ -604,6 +609,7 @@ void EditorWindow::Render() {
         std::move(emitter), 0.f,
         ImGuiMouseCursor_ResizeAll,
         [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
+    placement_tool_->SetToolbar(toolbar_.get());
     viewport_->SetActiveTool(placement_tool_.get());
   }
 
@@ -627,6 +633,7 @@ void EditorWindow::Render() {
           std::move(vehicle), 0.f,
           ImGuiMouseCursor_ResizeAll,
           [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
+      placement_tool_->SetToolbar(toolbar_.get());
       viewport_->SetActiveTool(placement_tool_.get());
     } else {
       LOG_F(WARNING, "EditorWindow: failed to load vehicle template '%s'",

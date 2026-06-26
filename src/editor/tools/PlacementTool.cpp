@@ -6,6 +6,8 @@
 #include "core/Mat4f.h"
 #include "editor/EditorCommandHistory.h"
 #include "editor/EditorScene.h"
+#include "editor/EditorToolbar.h"
+#include "editor/EditorUtils.h"
 #include "editor/PickingAccelerator.h"
 #include "editor/commands/PlaceObjectCommand.h"
 #include "editor/tools/EditorToolContext.h"
@@ -50,8 +52,14 @@ void PlacementTool::UpdatePreviewPosition(const EditorToolContext& ctx,
     preview_object_ = ctx.scene->AddDynamicObject(std::move(pending_preview_));
 
   if (preview_object_) {
+    float x = hit->x, z = hit->z;
+    if (toolbar_ && toolbar_->IsSnapEnabled()) {
+      const float s = toolbar_->GetPositionSnap();
+      x = SnapValue(x, s);
+      z = SnapValue(z, s);
+    }
     preview_object_->SetWorldTransform(
-        core::Mat4f::Translation({hit->x, hit->y + preview_height_, hit->z}));
+        core::Mat4f::Translation({x, hit->y + preview_height_, z}));
     if (ctx.picking_acc)
       ctx.picking_acc->UpdateMoved(preview_object_);
   }

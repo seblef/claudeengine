@@ -12,6 +12,7 @@ namespace game { class GameObject; }
 namespace editor {
 
 class EditorScene;
+class EditorToolbar;
 class PickingAccelerator;
 
 // Tool that manages object-creation preview and placement.
@@ -35,6 +36,10 @@ class PlacementTool : public EditorToolBase {
                 float height,
                 ImGuiMouseCursor cursor,
                 std::function<void()> on_done);
+
+  // Provides the toolbar for reading snap settings each frame. Non-owning;
+  // must outlive this tool.
+  void SetToolbar(const EditorToolbar* toolbar) { toolbar_ = toolbar; }
 
   void OnActivate(const EditorToolContext& ctx) override;
   void OnDeactivate() override;
@@ -61,9 +66,11 @@ class PlacementTool : public EditorToolBase {
 
   // Cached from OnActivate(); cleared on OnDeactivate().
   // cppcheck-suppress unusedStructMember
-  EditorScene*        scene_       = nullptr;
+  EditorScene*          scene_       = nullptr;
   // cppcheck-suppress unusedStructMember
-  PickingAccelerator* picking_acc_ = nullptr;
+  PickingAccelerator*   picking_acc_ = nullptr;
+  // cppcheck-suppress unusedStructMember
+  const EditorToolbar*  toolbar_     = nullptr;
 };
 
 }  // namespace editor
