@@ -356,17 +356,29 @@ void EditorViewport::DrawSnapGrid(ImVec2 image_pos, ImVec2 image_size) {
   const core::Mat4f& vp = camera_->GetCamera()->GetViewProjectionMatrix();
   ImDrawList* dl = ImGui::GetWindowDrawList();
 
-  // Project a world-space XZ point (Y=0) to screen space via the VP matrix.
-  // Returns (screen_pos, valid). Invalid when the point is behind the camera.
-  auto project = [&](float x, float z) -> std::pair<ImVec2, bool> {
-    const core::Vec4f clip = core::Vec4f(x, 0.f, z, 1.f) * vp;
-    if (clip.w <= 0.f) return {{}, false};
-    const float inv_w = 1.f / clip.w;
-    return {
-      {(clip.x * inv_w + 1.f) * 0.5f * image_size.x + image_pos.x,
-       (1.f - clip.y * inv_w) * 0.5f * image_size.y + image_pos.y},
-      true
-    };
+  // Projects a clip-space point to screen coordinates.
+  auto to_screen = [&](const core::Vec4f& c) -> ImVec2 {
+    const float inv_w = 1.f / c.w;
+    return {(c.x * inv_w + 1.f) * 0.5f * image_size.x + image_pos.x,
+            (1.f - c.y * inv_w) * 0.5f * image_size.y + image_pos.y};
+  };
+
+  // Draws a world-space XZ line from (x0,z0) to (x1,z1) with near-plane clipping.
+  // When one endpoint is behind the camera (w <= 0), the line is clipped to the
+  // w = 0 boundary so both axis directions remain visible regardless of yaw.
+  constexpr float kWMin = 1e-4f;
+  auto draw_line = [&](float x0, float z0, float x1, float z1, ImU32 color) {
+    core::Vec4f a = core::Vec4f(x0, 0.f, z0, 1.f) * vp;
+    core::Vec4f b = core::Vec4f(x1, 0.f, z1, 1.f) * vp;
+    if (a.w < kWMin && b.w < kWMin) return;
+    if (a.w < kWMin) {
+      const float t = (kWMin - a.w) / (b.w - a.w);
+      a = a + (b - a) * t;
+    } else if (b.w < kWMin) {
+      const float t = (kWMin - b.w) / (a.w - b.w);
+      b = b + (a - b) * t;
+    }
+    dl->AddLine(to_screen(a), to_screen(b), color, 1.f);
   };
 
   for (int i = -half_cells; i <= half_cells; ++i) {
@@ -374,16 +386,10 @@ void EditorViewport::DrawSnapGrid(ImVec2 image_pos, ImVec2 image_size) {
     const float fi = static_cast<float>(i);
 
     // Horizontal line (constant Z, spans X)
-    const float z = cz + fi * step;
-    auto [s0, ok0] = project(cx - line_span, z);
-    auto [s1, ok1] = project(cx + line_span, z);
-    if (ok0 && ok1) dl->AddLine(s0, s1, color, 1.f);
+    draw_line(cx - line_span, cz + fi * step, cx + line_span, cz + fi * step, color);
 
     // Vertical line (constant X, spans Z)
-    const float x = cx + fi * step;
-    auto [s2, ok2] = project(x, cz - line_span);
-    auto [s3, ok3] = project(x, cz + line_span);
-    if (ok2 && ok3) dl->AddLine(s2, s3, color, 1.f);
+    draw_line(cx + fi * step, cz - line_span, cx + fi * step, cz + line_span, color);
   }
 }
 
