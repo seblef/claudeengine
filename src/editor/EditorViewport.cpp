@@ -329,19 +329,29 @@ void EditorViewport::DrawSnapGrid(ImVec2 image_pos, ImVec2 image_size) {
   const float step = toolbar_->GetPositionSnap();
   if (step <= 0.f) return;
 
-  // Snap the grid origin to the nearest cell so the grid stays fixed as the
-  // camera orbits (it jumps by one cell increment at a time, not per pixel).
+  const float cam_dist = camera_ctrl_->GetDistance();
+
+  // Scale the cell count with camera distance so the grid fills the visible
+  // viewport regardless of zoom level or snap granularity.
+  constexpr int   kMinHalfCells = 10;
+  constexpr int   kMaxHalfCells = 200;
+  const int half_cells = std::clamp(
+      static_cast<int>(cam_dist / step), kMinHalfCells, kMaxHalfCells);
+
+  // Snap the grid origin so every line lands on a world-space multiple of step.
   const core::Vec3f focus = camera_ctrl_->GetState().focus;
   const float cx = std::floor(focus.x / step) * step;
   const float cz = std::floor(focus.z / step) * step;
 
-  // Number of cells to draw on each side of the origin.
-  constexpr int kHalfCells  = 10;
-  constexpr int kMajorEvery = 10;
-  const float extent = step * static_cast<float>(kHalfCells);
+  // Line endpoints extend far beyond the visible cells (4× camera distance).
+  // This keeps the endpoints off-screen so that the one-step shift of cx/cz
+  // when the origin snaps is imperceptible (< 0.25% of the total span).
+  constexpr float kLineOverextend = 4.f;
+  const float line_span = cam_dist * kLineOverextend;
 
-  constexpr ImU32 kMinorColor = IM_COL32(102, 102, 102, 89);
-  constexpr ImU32 kMajorColor = IM_COL32(128, 128, 128, 128);
+  constexpr int   kMajorEvery  = 10;
+  constexpr ImU32 kMinorColor  = IM_COL32(102, 102, 102, 89);
+  constexpr ImU32 kMajorColor  = IM_COL32(128, 128, 128, 128);
 
   const core::Mat4f& vp = camera_->GetCamera()->GetViewProjectionMatrix();
   ImDrawList* dl = ImGui::GetWindowDrawList();
@@ -359,20 +369,20 @@ void EditorViewport::DrawSnapGrid(ImVec2 image_pos, ImVec2 image_size) {
     };
   };
 
-  for (int i = -kHalfCells; i <= kHalfCells; ++i) {
+  for (int i = -half_cells; i <= half_cells; ++i) {
     const ImU32 color = (i % kMajorEvery == 0) ? kMajorColor : kMinorColor;
     const float fi = static_cast<float>(i);
 
     // Horizontal line (constant Z, spans X)
     const float z = cz + fi * step;
-    auto [s0, ok0] = project(cx - extent, z);
-    auto [s1, ok1] = project(cx + extent, z);
+    auto [s0, ok0] = project(cx - line_span, z);
+    auto [s1, ok1] = project(cx + line_span, z);
     if (ok0 && ok1) dl->AddLine(s0, s1, color, 1.f);
 
     // Vertical line (constant X, spans Z)
     const float x = cx + fi * step;
-    auto [s2, ok2] = project(x, cz - extent);
-    auto [s3, ok3] = project(x, cz + extent);
+    auto [s2, ok2] = project(x, cz - line_span);
+    auto [s3, ok3] = project(x, cz + line_span);
     if (ok2 && ok3) dl->AddLine(s2, s3, color, 1.f);
   }
 }
