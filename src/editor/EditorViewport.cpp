@@ -1,6 +1,7 @@
 #include "editor/EditorViewport.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <memory>
 #include <span>
@@ -12,7 +13,9 @@
 #include "core/Mat4f.h"
 #include "core/ProjectionType.h"
 #include "core/Vec3f.h"
+#include "core/Vec4f.h"
 #include "editor/EditorScene.h"
+#include "editor/EditorToolbar.h"
 #include "editor/GaugeGizmos.h"
 #include "editor/PickingAccelerator.h"
 #include "editor/PivotGizmos.h"
@@ -214,6 +217,8 @@ void EditorViewport::Render() {
       renderer::WireframeRenderer::Instance().Render(
           *camera_->GetCamera(), wireframe_fbo_.get(), render_fbo_.get());
 
+    DrawSnapGrid(image_pos, avail);
+
     // XYZ axis overlay — bottom-right corner of the viewport panel.
     // ImGuizmo uses row-major storage with row-vector convention (translation in
     // last row), which is the transpose of our column-vector Mat4f convention.
@@ -316,6 +321,76 @@ void EditorViewport::SetActiveTool(EditorToolBase* tool) {
 
 void EditorViewport::UpdateMovedObject(game::GameObject* obj) {
   picking_acc_.UpdateMoved(obj);
+}
+
+void EditorViewport::DrawSnapGrid(ImVec2 image_pos, ImVec2 image_size) {
+  if (!toolbar_ || !toolbar_->IsSnapEnabled() || !toolbar_->IsShowGrid()) return;
+
+  const float step = toolbar_->GetPositionSnap();
+  if (step <= 0.f) return;
+
+  const float cam_dist = camera_ctrl_->GetDistance();
+
+  // Scale the cell count with camera distance so the grid fills the visible
+  // viewport regardless of zoom level or snap granularity.
+  constexpr int   kMinHalfCells = 10;
+  constexpr int   kMaxHalfCells = 200;
+  const int half_cells = std::clamp(
+      static_cast<int>(cam_dist / step), kMinHalfCells, kMaxHalfCells);
+
+  // Snap the grid origin so every line lands on a world-space multiple of step.
+  const core::Vec3f focus = camera_ctrl_->GetState().focus;
+  const float cx = std::floor(focus.x / step) * step;
+  const float cz = std::floor(focus.z / step) * step;
+
+  // Line endpoints extend far beyond the visible cells (4× camera distance).
+  // This keeps the endpoints off-screen so that the one-step shift of cx/cz
+  // when the origin snaps is imperceptible (< 0.25% of the total span).
+  constexpr float kLineOverextend = 4.f;
+  const float line_span = cam_dist * kLineOverextend;
+
+  constexpr int   kMajorEvery  = 10;
+  constexpr ImU32 kMinorColor  = IM_COL32(102, 102, 102, 89);
+  constexpr ImU32 kMajorColor  = IM_COL32(128, 128, 128, 128);
+
+  const core::Mat4f& vp = camera_->GetCamera()->GetViewProjectionMatrix();
+  ImDrawList* dl = ImGui::GetWindowDrawList();
+
+  // Projects a clip-space point to screen coordinates.
+  auto to_screen = [&](const core::Vec4f& c) -> ImVec2 {
+    const float inv_w = 1.f / c.w;
+    return {(c.x * inv_w + 1.f) * 0.5f * image_size.x + image_pos.x,
+            (1.f - c.y * inv_w) * 0.5f * image_size.y + image_pos.y};
+  };
+
+  // Draws a world-space XZ line from (x0,z0) to (x1,z1) with near-plane clipping.
+  // When one endpoint is behind the camera (w <= 0), the line is clipped to the
+  // w = 0 boundary so both axis directions remain visible regardless of yaw.
+  constexpr float kWMin = 1e-4f;
+  auto draw_line = [&](float x0, float z0, float x1, float z1, ImU32 color) {
+    core::Vec4f a = core::Vec4f(x0, 0.f, z0, 1.f) * vp;
+    core::Vec4f b = core::Vec4f(x1, 0.f, z1, 1.f) * vp;
+    if (a.w < kWMin && b.w < kWMin) return;
+    if (a.w < kWMin) {
+      const float t = (kWMin - a.w) / (b.w - a.w);
+      a = a + (b - a) * t;
+    } else if (b.w < kWMin) {
+      const float t = (kWMin - b.w) / (a.w - b.w);
+      b = b + (a - b) * t;
+    }
+    dl->AddLine(to_screen(a), to_screen(b), color, 1.f);
+  };
+
+  for (int i = -half_cells; i <= half_cells; ++i) {
+    const ImU32 color = (i % kMajorEvery == 0) ? kMajorColor : kMinorColor;
+    const float fi = static_cast<float>(i);
+
+    // Horizontal line (constant Z, spans X)
+    draw_line(cx - line_span, cz + fi * step, cx + line_span, cz + fi * step, color);
+
+    // Vertical line (constant X, spans Z)
+    draw_line(cx + fi * step, cz - line_span, cx + fi * step, cz + line_span, color);
+  }
 }
 
 }  // namespace editor
