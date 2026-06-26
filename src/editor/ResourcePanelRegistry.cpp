@@ -65,6 +65,25 @@ void ResourcePanelRegistry::InvokeOpenCallback(
     it->second(path);
 }
 
+void ResourcePanelRegistry::RegisterDragDrop(std::string_view extension,
+                                             DragDropSourceFn fn) {
+  drag_drop_fns_[std::string(extension)] = std::move(fn);
+}
+
+bool ResourcePanelRegistry::HasDragDrop(
+    const std::filesystem::path& path) const {
+  const std::string ext = MatchExtension(path);
+  return !ext.empty() && drag_drop_fns_.count(ext) > 0;
+}
+
+void ResourcePanelRegistry::InvokeDragDrop(
+    const std::filesystem::path& path) const {
+  const std::string ext = MatchExtension(path);
+  const auto it = drag_drop_fns_.find(ext);
+  if (it != drag_drop_fns_.end())
+    it->second(path);
+}
+
 std::string ResourcePanelRegistry::MatchExtension(
     const std::filesystem::path& path) const {
   const std::string filename = path.filename().string();

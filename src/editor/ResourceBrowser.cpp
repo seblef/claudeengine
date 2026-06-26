@@ -165,6 +165,12 @@ void ResourceBrowser::RenderDirNode(const DirNode& node, const std::string& ext,
         ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
       OpenOrFocus(path);
     }
+    if (registry_->HasDragDrop(path)) {
+      if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+        registry_->InvokeDragDrop(path);
+        ImGui::EndDragDropSource();
+      }
+    }
   }
 }
 

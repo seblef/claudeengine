@@ -26,6 +26,9 @@ using NewFileFactory =
 // responsible for showing the editor window.
 using OpenCallback = std::function<void(const std::filesystem::path&)>;
 
+// Called from inside BeginDragDropSource to set the payload and preview text.
+using DragDropSourceFn = std::function<void(const std::filesystem::path&)>;
+
 // Maps a compound extension suffix (e.g. ".vehicle.yaml") to either a factory
 // that produces an IResourcePanel tab or an external OpenCallback, and
 // optionally to a factory that creates a new skeleton file on disk.
@@ -79,6 +82,17 @@ class ResourcePanelRegistry {
   // Invokes the external open callback for path. No-op if none is registered.
   void InvokeOpenCallback(const std::filesystem::path& path) const;
 
+  // Registers a drag-drop source callback for extension. A second call
+  // overwrites the first.
+  void RegisterDragDrop(std::string_view extension, DragDropSourceFn fn);
+
+  // Returns true if a drag-drop callback is registered for path's extension.
+  [[nodiscard]] bool HasDragDrop(const std::filesystem::path& path) const;
+
+  // Invokes the drag-drop callback for path. Must be called inside
+  // BeginDragDropSource / EndDragDropSource. No-op if none registered.
+  void InvokeDragDrop(const std::filesystem::path& path) const;
+
   // Returns true if a new-file factory is registered for extension.
   [[nodiscard]] bool CanCreate(std::string_view extension) const;
 
@@ -105,6 +119,8 @@ class ResourcePanelRegistry {
   std::unordered_map<std::string, NewFileFactory>  new_factories_;
   // cppcheck-suppress unusedStructMember
   std::unordered_map<std::string, OpenCallback>    open_callbacks_;
+  // cppcheck-suppress unusedStructMember
+  std::unordered_map<std::string, DragDropSourceFn> drag_drop_fns_;
   // Kept in insertion order so the browser can display sections consistently.
   std::vector<std::string> extensions_;
 };
