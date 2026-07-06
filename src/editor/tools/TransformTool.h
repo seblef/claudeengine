@@ -53,7 +53,15 @@ class TransformTool : public EditorToolBase {
  private:
   // Builds the snap array for ImGuizmo::Manipulate() based on toolbar state.
   // Returns a pointer to snap[3] when snapping is active, nullptr otherwise.
+  // Translation is excluded (returns nullptr for TRANSLATE): ImGuizmo's native
+  // snap rounds the drag delta relative to the drag-start position rather
+  // than the destination position, so position snapping is instead applied
+  // to the absolute result in OnRender(). See GetActivePositionSnap().
   float* BuildSnapArray(float snap[3]) const;
+
+  // Returns the position snap step when this tool is a TRANSLATE operation
+  // and snapping is enabled on the toolbar; 0.f otherwise (no snapping).
+  float GetActivePositionSnap() const;
 
   ImGuizmo::OPERATION      op_;
   // cppcheck-suppress unusedStructMember

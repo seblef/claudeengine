@@ -16,6 +16,7 @@
 #include "editor/commands/MultiTransformCommand.h"
 #include "editor/commands/TransformCommand.h"
 #include "editor/EditorToolbar.h"
+#include "editor/EditorUtils.h"
 #include "editor/tools/EditorToolContext.h"
 #include "editor/tools/PickingUtils.h"
 #include "game/GameCamera.h"
@@ -26,20 +27,41 @@
 
 namespace editor {
 
+namespace {
+
+// Rounds transform's translation column to the nearest multiple of `snap`
+// in-place. No-op when snap is not strictly positive.
+void SnapTranslation(core::Mat4f* transform, float snap) {
+  if (snap <= 0.f) return;
+  (*transform)(0, 3) = SnapValue((*transform)(0, 3), snap);
+  (*transform)(1, 3) = SnapValue((*transform)(1, 3), snap);
+  (*transform)(2, 3) = SnapValue((*transform)(2, 3), snap);
+}
+
+}  // namespace
+
 TransformTool::TransformTool(ImGuizmo::OPERATION op) : op_(op) {}
 
 float* TransformTool::BuildSnapArray(float snap[3]) const {
   if (!toolbar_ || !toolbar_->IsSnapEffectivelyEnabled()) return nullptr;
+  // Translation snapping is handled after the fact on the absolute position
+  // (see GetActivePositionSnap() / SnapTranslation()) rather than passed to
+  // ImGuizmo, whose native snap rounds the drag-start-relative delta instead
+  // of the destination position.
+  if (op_ == ImGuizmo::TRANSLATE) return nullptr;
   snap[0] = snap[1] = snap[2] = 0.f;
-  if (op_ == ImGuizmo::TRANSLATE) {
-    const float s = toolbar_->GetPositionSnap();
-    snap[0] = snap[1] = snap[2] = s;
-  } else if (op_ == ImGuizmo::ROTATE) {
+  if (op_ == ImGuizmo::ROTATE) {
     snap[0] = toolbar_->GetRotationSnap();
   } else if (op_ == ImGuizmo::SCALE) {
     snap[0] = toolbar_->GetScaleSnap();
   }
   return snap;
+}
+
+float TransformTool::GetActivePositionSnap() const {
+  if (op_ != ImGuizmo::TRANSLATE) return 0.f;
+  if (!toolbar_ || !toolbar_->IsSnapEffectivelyEnabled()) return 0.f;
+  return toolbar_->GetPositionSnap();
 }
 
 void TransformTool::OnDeactivate() {
@@ -125,8 +147,9 @@ void TransformTool::OnRender(const EditorToolContext& ctx,
     }
 
     if (gizmo_using) {
-      const core::Mat4f model_t_after(model_im);
-      obj->SetWorldTransform(model_t_after.Transpose());
+      core::Mat4f model_t_after = core::Mat4f(model_im).Transpose();
+      SnapTranslation(&model_t_after, GetActivePositionSnap());
+      obj->SetWorldTransform(model_t_after);
     }
 
     if (gizmo_was_using_ && !gizmo_using) {
@@ -190,11 +213,15 @@ void TransformTool::OnRender(const EditorToolContext& ctx,
     }
 
     if (gizmo_using && !drag_objects_.empty()) {
-      // Store the updated pivot for the next frame.
-      std::memcpy(pivot_im_, model_im, sizeof(pivot_im_));
-
       // Apply: new_T[i] = pivot_after * T(-centre_init) * T_before[i].
-      const core::Mat4f pivot_after = core::Mat4f(model_im).Transpose();
+      core::Mat4f pivot_after = core::Mat4f(model_im).Transpose();
+      SnapTranslation(&pivot_after, GetActivePositionSnap());
+
+      // Store the updated (possibly snapped) pivot for the next frame so the
+      // gizmo widget visually tracks the snapped position.
+      const core::Mat4f pivot_after_im = pivot_after.Transpose();
+      std::memcpy(pivot_im_, pivot_after_im.Data(), sizeof(pivot_im_));
+
       const core::Mat4f pivot_before_inv =
           core::Mat4f::Translation(-pivot_center_);
 
