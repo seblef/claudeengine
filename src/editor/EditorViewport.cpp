@@ -16,6 +16,7 @@
 #include "core/Vec4f.h"
 #include "editor/EditorScene.h"
 #include "editor/EditorToolbar.h"
+#include "editor/EditorUtils.h"
 #include "editor/GaugeGizmos.h"
 #include "editor/PickingAccelerator.h"
 #include "editor/PivotGizmos.h"
@@ -263,8 +264,15 @@ void EditorViewport::PlaceMeshAt(ImVec2 mouse_pos, ImVec2 image_pos,
                                       mouse_pos, image_pos, image_size);
   if (!hit) return;
 
+  core::Vec3f position = *hit;
+  if (toolbar_ && toolbar_->IsSnapEffectivelyEnabled()) {
+    const float snap = toolbar_->GetPositionSnap();
+    position.x = SnapValue(position.x, snap);
+    position.z = SnapValue(position.z, snap);
+  }
+
   auto mesh = std::make_unique<game::GameMesh>(tmpl);
-  mesh->SetWorldTransform(core::Mat4f::Translation(*hit));
+  mesh->SetWorldTransform(core::Mat4f::Translation(position));
 
   if (history_) {
     history_->Push(std::make_unique<PlaceObjectCommand>(scene_, std::move(mesh)));
