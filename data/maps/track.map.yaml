@@ -4,7 +4,7 @@ global_light:
   direction: [-0.00024422133, -0.707106769, -0.707106769]
   color: [1, 0.949999988, 0.800000012]
   intensity: 1.20001161
-  ambient_color: [0, 0, 0]
+  ambient_color: [0.349999994, 0.349999994, 0.379999995]
   cast_shadow: true
   shadow_resolution: 1024
   shadow_bias: 0.00499999989
@@ -67,12 +67,6 @@ objects:
       shape: exact
       motion_type: static
       friction: 0.904999971
-  - name: gauge_001
-    type: gauge
-    transform: [1, 0, 0, 17.2482586, 0, 1, 0, 0.357478559, 0, 0, 1, 7.47310781, 0, 0, 0, 1]
-  - name: player_start_001
-    type: player_start
-    transform: [0, 0, 0.99999994, 15.1968861, 0, 1, 0, 0.819950223, -0.99999994, 0, 0, 8.84947205, 0, 0, 0, 1]
   - name: pivot_001
     type: pivot
     transform: [1, 0, 0, 18.7933922, 0, 1, 0, 2.17908621, 0, 0, 1, 6.29699087, 0, 0, 0, 1]
@@ -89,7 +83,7 @@ objects:
     cast_shadow: true
     shadow_resolution: 256
     shadow_bias: 0.00499999989
-    direction: [1.81991788e-06, -1, 1.81991788e-06]
+    direction: [1.27329319e-11, -1, 1.27329258e-11]
     inner_angle: 0.200000003
     outer_angle: 0.485515714
     range: 9
@@ -104,6 +98,2196 @@ objects:
     transform: [0.999999821, 0, 0.000488340855, 18.771347, 0, 1, 0, 0.0190134048, -0.000488340855, 0, 0.999999821, 18.7557755, 0, 0, 0, 1]
     mesh: meshes/city/commercial/building-a.emesh
     material: materials/commercial_colormap.yaml
+  - name: Object
+    type: mesh
+    transform: [1, 0, 0, 36.7041016, 0, 1, 0, 0.00352287292, 0, 0, 1, 21.5344467, 0, 0, 0, 1]
+    mesh: meshes/city/suburb/building-type-a.emesh
+    material: materials/suburban_colormap.yaml
+  - name: Object
+    type: mesh
+    transform: [1, 0, 0, 36.5068779, 0, 1, 0, -0.0265312195, 0, 0, 1, 15.9927588, 0, 0, 0, 1]
+    mesh: meshes/city/suburb/driveway-long.emesh
+    material: materials/suburban_colormap.yaml
+  - name: Object
+    type: mesh
+    transform: [-0.99999994, 0, -0.0003452003, 1004, 0, 1, 0, 0, 0.0003452003, 0, -0.99999994, 30, 0, 0, 0, 1]
+    mesh: meshes/road/road-end.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [1, 0, 0, 994, 0, 1, 0, 0, 0, 0, 1, 30, 0, 0, 0, 1]
+    mesh: meshes/road/road-driveway-single.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.976000011
+  - name: Object
+    type: mesh
+    transform: [1, 0, 0, 985, 0, 1, 0, 0.0198364258, 0, 0, 1, 30, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [1, 0, 0, 975, 0, 1, 0, 0, 0, 0, 1, 30, 0, 0, 0, 1]
+    mesh: meshes/road/road-intersection-line.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [1, 0, 0, 965, 0, 1, 0, 0, 0, 0, 1, 30, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_005
+    type: mesh
+    transform: [0.000488311052, 0, -0.999999881, 975, 0, 1, 0, 0, 0.999999881, 0, 0.000488311052, 40, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_006
+    type: mesh
+    transform: [0, 0, 0.99999994, 975, 0, 1, 0, 0, -0.99999994, 0, 0, 50, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_007
+    type: mesh
+    transform: [1, 0, 0, 955, 0, 1, 0, 0, 0, 0, 1, 30, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [1, 0, 0, 992, 0, 1, 0, 0, 0, 0, 1, 45, 0, 0, 0, 1]
+    mesh: meshes/city/suburb/building-type-n.emesh
+    material: materials/suburban_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object
+    type: mesh
+    transform: [-0.000488311052, 0, 0.999999881, 1007, 0, 1, 0, 0, -0.999999881, 0, -0.000488311052, 38, 0, 0, 0, 1]
+    mesh: meshes/city/suburb/fence.emesh
+    material: materials/suburban_colormap.yaml
+    physics:
+      shape: box
+      half_extents: [2.37500024, 1.3499999, 0.37500003]
+      center_offset: [0, 1.3499999, 0]
+      motion_type: dynamic
+      collision_layer: 4
+  - name: Object_008
+    type: mesh
+    transform: [-0.000488311052, 0, 0.999999881, 1007, 0, 1, 0, 0, -0.999999881, 0, -0.000488311052, 42, 0, 0, 0, 1]
+    mesh: meshes/city/suburb/fence.emesh
+    material: materials/suburban_colormap.yaml
+    physics:
+      shape: box
+      half_extents: [2.37500024, 1.3499999, 0.37500003]
+      center_offset: [0, 1.3499999, 0]
+      motion_type: dynamic
+      collision_layer: 4
+  - name: Object_009
+    type: mesh
+    transform: [-0.000488311052, 0, 0.999999881, 1007, 0, 1, 0, 0, -0.999999881, 0, -0.000488311052, 46, 0, 0, 0, 1]
+    mesh: meshes/city/suburb/fence.emesh
+    material: materials/suburban_colormap.yaml
+    physics:
+      shape: box
+      half_extents: [2.37500024, 1.3499999, 0.37500003]
+      center_offset: [0, 1.3499999, 0]
+      motion_type: dynamic
+      collision_layer: 4
+  - name: Object_010
+    type: mesh
+    transform: [-0.000488311052, 0, 0.999999881, 1007, 0, 1, 0, 0, -0.999999881, 0, -0.000488311052, 50, 0, 0, 0, 1]
+    mesh: meshes/city/suburb/fence.emesh
+    material: materials/suburban_colormap.yaml
+    physics:
+      shape: box
+      half_extents: [2.37500024, 1.3499999, 0.37500003]
+      center_offset: [0, 1.3499999, 0]
+      motion_type: dynamic
+      collision_layer: 4
+  - name: Object_011
+    type: mesh
+    transform: [-0.000488311052, 0, 0.999999881, 1007, 0, 1, 0, 0, -0.999999881, 0, -0.000488311052, 54, 0, 0, 0, 1]
+    mesh: meshes/city/suburb/fence.emesh
+    material: materials/suburban_colormap.yaml
+    physics:
+      shape: box
+      half_extents: [2.37500024, 1.3499999, 0.37500003]
+      center_offset: [0, 1.3499999, 0]
+      motion_type: dynamic
+      collision_layer: 4
+  - name: Object_012
+    type: mesh
+    transform: [0.999999881, 0, 0.000488311052, 1005, 0, 1, -0, 0, -0.000488311052, 0, 0.999999881, 56, 0, 0, 0, 1]
+    mesh: meshes/city/suburb/fence.emesh
+    material: materials/suburban_colormap.yaml
+    physics:
+      shape: box
+      half_extents: [2.37500024, 1.3499999, 0.37500003]
+      center_offset: [0, 1.3499999, 0]
+      motion_type: dynamic
+      collision_layer: 4
+  - name: Object_013
+    type: mesh
+    transform: [0.999999881, 0, 0.000488311052, 1001, 0, 1, 0, 0, -0.000488311052, 0, 0.999999881, 56, 0, 0, 0, 1]
+    mesh: meshes/city/suburb/fence.emesh
+    material: materials/suburban_colormap.yaml
+    physics:
+      shape: box
+      half_extents: [2.37500024, 1.3499999, 0.37500003]
+      center_offset: [0, 1.3499999, 0]
+      motion_type: dynamic
+      collision_layer: 4
+  - name: Object_014
+    type: mesh
+    transform: [0.999999881, 0, 0.000488311052, 997, 0, 1, 0, 0, -0.000488311052, 0, 0.999999881, 56, 0, 0, 0, 1]
+    mesh: meshes/city/suburb/fence.emesh
+    material: materials/suburban_colormap.yaml
+    physics:
+      shape: box
+      half_extents: [2.37500024, 1.3499999, 0.37500003]
+      center_offset: [0, 1.3499999, 0]
+      motion_type: dynamic
+      collision_layer: 4
+  - name: Object_015
+    type: mesh
+    transform: [0.999999881, 0, 0.000488311052, 993, 0, 1, 0, 0, -0.000488311052, 0, 0.999999881, 56, 0, 0, 0, 1]
+    mesh: meshes/city/suburb/fence.emesh
+    material: materials/suburban_colormap.yaml
+    physics:
+      shape: box
+      half_extents: [2.37500024, 1.3499999, 0.37500003]
+      center_offset: [0, 1.3499999, 0]
+      motion_type: dynamic
+      collision_layer: 4
+  - name: Object_016
+    type: mesh
+    transform: [0.999999881, 0, 0.000488311052, 989, 0, 1, 0, 0, -0.000488311052, 0, 0.999999881, 56, 0, 0, 0, 1]
+    mesh: meshes/city/suburb/fence.emesh
+    material: materials/suburban_colormap.yaml
+    physics:
+      shape: box
+      half_extents: [2.37500024, 1.3499999, 0.37500003]
+      center_offset: [0, 1.3499999, 0]
+      motion_type: dynamic
+      collision_layer: 4
+  - name: Object_017
+    type: mesh
+    transform: [0.999999881, 0, 0.000488311052, 985, 0, 1, 0, 0, -0.000488311052, 0, 0.999999881, 56, 0, 0, 0, 1]
+    mesh: meshes/city/suburb/fence.emesh
+    material: materials/suburban_colormap.yaml
+    physics:
+      shape: box
+      half_extents: [2.37500024, 1.3499999, 0.37500003]
+      center_offset: [0, 1.3499999, 0]
+      motion_type: dynamic
+      collision_layer: 4
+  - name: Object
+    type: mesh
+    transform: [-8.94069672e-08, 0, 0.999999881, 989, 0, 1, 0, 0, -0.999999881, 0, -8.94069672e-08, 88, 0, 0, 0, 1]
+    mesh: meshes/city/industrial/building-q.emesh
+    material: materials/industrial_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object_019
+    type: mesh
+    transform: [-0.999999881, 0, 0.000488311052, 975, 0, 1, 0, 0, -0.000488311052, 0, -0.999999881, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-intersection-line.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_020
+    type: mesh
+    transform: [1, 0, 0, 985, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [0.000274688005, 0.000205229415, 0.999999881, 975, 4.03460326e-05, 1, -0.000205240518, 0, -0.999999881, 4.04023958e-05, 0.000274688005, 57, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight-half.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_021
+    type: mesh
+    transform: [1, 0, 0, 995, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [1, 0, 0, 1010, 0, 1, 0, 0, 0, 0, 1, 69, 0, 0, 0, 1]
+    mesh: meshes/road/road-curve.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [1, 0, 0, 1010, 0, 1, 0, 0, 0, 0, 1, 69, 0, 0, 0, 1]
+    mesh: meshes/road/road-curve-barrier.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 84, 0, 0, 0, 1]
+    mesh: meshes/road/road-side-entry.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, -0, -0.99999994, 0, 0, 94, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_022
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 104, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_023
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 114, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_024
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 124, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_025
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 134, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_026
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 144, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_027
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 154, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_028
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 164, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_029
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_030
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 184, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_031
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 194, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_032
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 204, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, -0, -0.99999994, 0, 0, 84, 0, 0, 0, 1]
+    mesh: meshes/road/road-side-entry-barrier.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 94, 0, 0, 0, 1]
+    mesh: meshes/road/road-side-barrier.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object_033
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 104, 0, 0, 0, 1]
+    mesh: meshes/road/road-side-barrier.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object_034
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 114, 0, 0, 0, 1]
+    mesh: meshes/road/road-side-barrier.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object_035
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 124, 0, 0, 0, 1]
+    mesh: meshes/road/road-side-barrier.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object_036
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 134, 0, 0, 0, 1]
+    mesh: meshes/road/road-side-barrier.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object_037
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 144, 0, 0, 0, 1]
+    mesh: meshes/road/road-side-barrier.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object_038
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 154, 0, 0, 0, 1]
+    mesh: meshes/road/road-side-barrier.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object_039
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 164, 0, 0, 0, 1]
+    mesh: meshes/road/road-side-barrier.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object_040
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-side-barrier.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object_041
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 184, 0, 0, 0, 1]
+    mesh: meshes/road/road-side-barrier.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object_042
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 194, 0, 0, 0, 1]
+    mesh: meshes/road/road-side-barrier.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object_043
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 204, 0, 0, 0, 1]
+    mesh: meshes/road/road-side-barrier.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 214, 0, 0, 0, 1]
+    mesh: meshes/road/road-side-exit.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 214, 0, 0, 0, 1]
+    mesh: meshes/road/road-side-exit-barrier.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object_044
+    type: mesh
+    transform: [0, 0, 0.99999994, 1015, 0, 1, 0, 0, -0.99999994, 0, 0, 224, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [0, 0, 0.999999881, 1015, 0, 1, 0, -0, -0.999999881, 0, 0, 224, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight-barrier-end.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_045
+    type: mesh
+    transform: [0.999999762, 0, 0.000488311052, 995, 0, 1, 0, 0, -0.000488311052, 0, 0.999999762, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight-barrier-end.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object_046
+    type: mesh
+    transform: [0.99999994, 0, -0.000488251448, 965, 0, 1, 0, 0, 0.000488251448, 0, 0.99999994, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-intersection-line.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_047
+    type: mesh
+    transform: [0.000488311052, 0, -0.999999881, 965, 0, 1, 0, 0, 0.999999881, 0, 0.000488311052, 74, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_048
+    type: mesh
+    transform: [0, 0, 0.99999994, 965, 0, 1, 0, 0, -0.99999994, 0, 0, 84, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_049
+    type: mesh
+    transform: [0, 0, 0.99999994, 965, 0, 1, 0, 0, -0.99999994, 0, 0, 94, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.967999995
+  - name: Object_050
+    type: mesh
+    transform: [0, 0, 0.99999994, 965, 0, 1, 0, 0, -0.99999994, 0, 0, 104, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_051
+    type: mesh
+    transform: [0.00014296174, 0, 1, 965, 0, 1, 0, 0, -1, 0, 0.00014296174, 114, 0, 0, 0, 1]
+    mesh: meshes/road/road-intersection-line.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_052
+    type: mesh
+    transform: [0, 0, 0.99999994, 965, 0, 1, 0, 0, -0.99999994, 0, 0, 134, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_053
+    type: mesh
+    transform: [0.000488311052, 0, -0.999999881, 965, 0, 1, 0, 0, 0.999999881, 0, 0.000488311052, 124, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [1, 0, 0, 990, 0, 1, 0, 0, 0, 0, 1, 74, 0, 0, 0, 1]
+    mesh: meshes/city/industrial/detail-tank.emesh
+    material: materials/industrial_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object_054
+    type: mesh
+    transform: [0, 0, 0.99999994, 965, 0, 1, 0, 0, -0.99999994, 0, 0, 144, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_055
+    type: mesh
+    transform: [0, 0, 0.99999994, 965, 0, 1, 0, 0, -0.99999994, 0, 0, 154, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_057
+    type: mesh
+    transform: [-0.999999464, 0, -0.000976622105, 995, 0, 1, 0, -0, 0.000976622105, 0, -0.999999464, 244, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_058
+    type: mesh
+    transform: [1, 0, 0, 985, 0, 1, 0, 0, 0, 0, 1, 244, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [-0.999999881, 0, 2.98023224e-08, 970, 0, 1, 0, 0, -2.98023224e-08, 0, -0.999999881, 244, 0, 0, 0, 1]
+    mesh: meshes/road/road-slant-curve.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_059
+    type: mesh
+    transform: [0, 0, -0.99999994, 960, 0, 1, 0, 0, 0.99999994, 0, 0, 169, 0, 0, 0, 1]
+    mesh: meshes/road/road-curve.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_060
+    type: mesh
+    transform: [0.999999881, 0, 0.000345349312, 945, 0, 1, 0, 0, -0.000345349312, 0, 0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-intersection-line.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [0, 0, 0.99999994, 945, 0, 1, 0, 0, -0.99999994, 0, 0, 194, 0, 0, 0, 1]
+    mesh: meshes/road/road-split.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_061
+    type: mesh
+    transform: [0.000488311052, 0, -0.999999881, 945, 0, 1, 0, 0, 0.999999881, 0, 0.000488311052, 184, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [0, 0, -0.99999994, 935, 0, 1, 0, -0, 0.99999994, 0, 0, 209, 0, 0, 0, 1]
+    mesh: meshes/road/road-curve-intersection.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_062
+    type: mesh
+    transform: [0, 0, 0.99999994, 950, 0, 1, 0, 0, -0.99999994, 0, 0, 204, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_063
+    type: mesh
+    transform: [0, 0, 0.99999994, 950, 0, 1, 0, 0, -0.99999994, 0, 0, 214, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_064
+    type: mesh
+    transform: [0, 0, 0.99999994, 950, 0, 1, 0, 0, -0.99999994, 0, 0, 224, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_065
+    type: mesh
+    transform: [0, 0, 0.99999994, 940, 0, 1, 0, 0, -0.99999994, 0, 0, 224, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_066
+    type: mesh
+    transform: [0, 0, 0.99999994, 950, 0, 1, 0, 0, -0.99999994, 0, 0, 234, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_067
+    type: mesh
+    transform: [0, 0, 0.99999994, 940, 0, 1, 0, 0, -0.99999994, 0, 0, 234, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_070
+    type: mesh
+    transform: [0, 0, 0.99999994, 940, 0, 1, -0, 0, -0.99999994, 0, 0, 254, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_071
+    type: mesh
+    transform: [0, 0, 0.99999994, 950, 0, 1, -0, 0, -0.99999994, 0, 0, 254, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [0.000488311052, 0, -0.999999881, 945, 0, 1, 0, -0, 0.999999881, 0, 0.000488311052, 264, 0, 0, 0, 1]
+    mesh: meshes/road/road-split.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [0, 0, -0.99999994, 950, 0, 1, 0, 0, 0.99999994, 0, 0, 244, 0, 0, 0, 1]
+    mesh: meshes/road/road-bridge.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_072
+    type: mesh
+    transform: [0, 0, -0.99999994, 940, 0, 1, 0, 0, 0.99999994, 0, 0, 244, 0, 0, 0, 1]
+    mesh: meshes/road/road-bridge.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [1, 0, 0, 957, 0, 1, 0, 5, 0, 0, 1, 244, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_073
+    type: mesh
+    transform: [1, 0, 0, 930, 0, 1, 0, 5, 0, 0, 1, 244, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_074
+    type: mesh
+    transform: [-0.999999881, 0, -0.000488311052, 935, 0, 1, 0, 0, 0.000488311052, 0, -0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_075
+    type: mesh
+    transform: [0.000488311052, 0, -0.999999881, 945, 0, 1, 0, 0, 0.999999881, 0, 0.000488311052, 274, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [1, 0, 0, 945, 0, 1, 0, 0, 0, 0, 1, 294, 0, 0, 0, 1]
+    mesh: meshes/road/road-roundabout.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_076
+    type: mesh
+    transform: [0, 0, -0.99999994, 1010, 0, 1, 0, 0, 0.99999994, 0, 0, 239, 0, 0, 0, 1]
+    mesh: meshes/road/road-curve-intersection.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_077
+    type: mesh
+    transform: [1, 0, 0, 920, 0, 1, 0, 5, 0, 0, 1, 244, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_078
+    type: mesh
+    transform: [1, 0, 0, 910, 0, 1, 0, 5, 0, 0, 1, 244, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_079
+    type: mesh
+    transform: [1, 0, 0, 900, 0, 1, 0, 5, 0, 0, 1, 244, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_080
+    type: mesh
+    transform: [1, 0, 0, 890, 0, 1, 0, 5, 0, 0, 1, 244, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [1, 0, 0, 880, 0, 1, 0, 5, 0, 0, 1, 244, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossroad.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_081
+    type: mesh
+    transform: [0, 0, 0.99999994, 880, 0, 1, 0, 5, -0.99999994, 0, 0, 234, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_082
+    type: mesh
+    transform: [0, 0, 0.99999994, 880, 0, 1, 0, 5, -0.99999994, 0, 0, 254, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [0, 0, -0.99999994, 880, 0, 1, 0, 0, 0.99999994, 0, 0, 224, 0, 0, 0, 1]
+    mesh: meshes/road/road-slant-high.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_083
+    type: mesh
+    transform: [2.98023224e-08, 0, 0.999999881, 880, 0, 1, 0, 0, -0.999999881, 0, 2.98023224e-08, 264, 0, 0, 0, 1]
+    mesh: meshes/road/road-slant-high.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_084
+    type: mesh
+    transform: [1, 0, 0, 870, 0, 1, 0, 5, 0, 0, 1, 244, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_085
+    type: mesh
+    transform: [0.999999642, 0, 0.000690549612, 855, 0, 1, 0, 0, -0.000690549612, 0, 0.999999642, 244, 0, 0, 0, 1]
+    mesh: meshes/road/road-slant-curve.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_086
+    type: mesh
+    transform: [-0.999999881, 0, -0.000488311052, 925, 0, 1, 0, 0, 0.000488311052, 0, -0.999999881, 294, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [1, 0, 0, 915, 0, 1, 0, 0, 0, 0, 1, 294, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_087
+    type: mesh
+    transform: [1, 0, 0, 905, 0, 1, 0, 0, 0, 0, 1, 294, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_089
+    type: mesh
+    transform: [0, 0, 0.99999994, 880, 0, 1, 0, 0, -0.99999994, 0, 0, 274, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+  - name: Object
+    type: mesh
+    transform: [-0.999999881, 0, -2.98023224e-08, 885, 0, 1, 0, 0, 2.98023224e-08, 0, -0.999999881, 289, 0, 0, 0, 1]
+    mesh: meshes/road/road-curve-intersection.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [1, 0, 0, 898, 0, 1, 0, 0, 0, 0, 1, 294, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_090
+    type: mesh
+    transform: [0.999999821, 0, -0.000488340855, 855, 0, 1, 0, 0, 0.000488340855, 0, 0.999999821, 299, 0, 0, 0, 1]
+    mesh: meshes/road/road-curve-intersection.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_091
+    type: mesh
+    transform: [-0.999999881, 0, -0.000488311052, 870, 0, 1, 0, 0, 0.000488311052, 0, -0.999999881, 294, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_092
+    type: mesh
+    transform: [-0.999999881, 0, -0.000488311052, 840, 0, 1, 0, 0, 0.000488311052, 0, -0.999999881, 294, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [1, 0, 0, 830, 0, 1, 0, 0, 0, 0, 1, 294, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossroad-line.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_093
+    type: mesh
+    transform: [1, 0, 0, 830, 0, 1, 0, 0, 0, 0, 1, 244, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossroad-line.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_094
+    type: mesh
+    transform: [0.00117886066, 0, -0.999999285, 830, 0, 1, 0, 0, 0.999999285, 0, 0.00117886066, 284, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [0.000345259905, 0, -0.999999881, 830, 0, 1, 0, -0, 0.999999881, 0, 0.000345259905, 274, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_095
+    type: mesh
+    transform: [0.000345259905, 0, -0.999999881, 830, 0, 1, 0, 0, 0.999999881, 0, 0.000345259905, 264, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_096
+    type: mesh
+    transform: [0.000345259905, 0, -0.999999881, 830, 0, 1, 0, 0, 0.999999881, 0, 0.000345259905, 254, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_097
+    type: mesh
+    transform: [-0.999999881, 0, -0.000488311052, 840, 0, 1, 0, 0, 0.000488311052, 0, -0.999999881, 244, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_099
+    type: mesh
+    transform: [1, 0, 0, 920, 0, 1, 0, 0, 0, 0, 1, 214, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_100
+    type: mesh
+    transform: [1, 0, 0, 910, 0, 1, 0, 0, 0, 0, 1, 214, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_101
+    type: mesh
+    transform: [1, 0, 0, 900, 0, 1, 0, 0, 0, 0, 1, 214, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_102
+    type: mesh
+    transform: [1, 0, 0, 890, 0, 1, 0, 0, 0, 0, 1, 214, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_098
+    type: mesh
+    transform: [0.000488251448, 0, 0.999999881, 880, 0, 1, 0, 0, -0.999999881, 0, 0.000488251448, 214, 0, 0, 0, 1]
+    mesh: meshes/road/road-intersection-line.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_103
+    type: mesh
+    transform: [1, 0, 0, 925, 0, 1, 0, 0, 0, 0, 1, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_104
+    type: mesh
+    transform: [1, 0, 0, 915, 0, 1, 0, 0, 0, 0, 1, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_105
+    type: mesh
+    transform: [-0.999999881, 0, 0, 905, 0, 1, 0, 0, 0, 0, -0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-intersection-line.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_107
+    type: mesh
+    transform: [1, 0, 0, 955, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_108
+    type: mesh
+    transform: [1, 0, 0, 945, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_109
+    type: mesh
+    transform: [1, 0, 0, 935, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_110
+    type: mesh
+    transform: [1, 0, 0, 925, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-intersection-line.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_111
+    type: mesh
+    transform: [0.000488311052, 0, -0.999999881, 925, 0, 1, 0, 0, 0.999999881, 0, 0.000488311052, 74, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_112
+    type: mesh
+    transform: [0, 0, 0.99999994, 925, 0, 1, 0, 0, -0.99999994, 0, 0, 84, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_113
+    type: mesh
+    transform: [0, 0, 0.99999994, 925, 0, 1, 0, 0, -0.99999994, 0, 0, 94, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_114
+    type: mesh
+    transform: [0, 0, 0.99999994, 925, 0, 1, 0, 0, -0.99999994, 0, 0, 104, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_115
+    type: mesh
+    transform: [0, 0, 0.99999994, 925, 0, 1, 0, 0, -0.99999994, 0, 0, 114, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_116
+    type: mesh
+    transform: [0.000488311052, 0, -0.999999881, 925, 0, 1, 0, 0, 0.999999881, 0, 0.000488311052, 124, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [0.000345259905, 0, 0.999999881, 925, 0, 1, 0, 0, -0.999999881, 0, 0.000345259905, 134, 0, 0, 0, 1]
+    mesh: meshes/road/road-end-round.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [0, 0, 0.99999994, 925, 0, 1, 0, 0, -0.99999994, 0, 0, 134, 0, 0, 0, 1]
+    mesh: meshes/road/road-end-round-barrier.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_117
+    type: mesh
+    transform: [0.000488311052, 0, -0.999999881, 905, 0, 1, 0, 0, 0.999999881, 0, 0.000488311052, 164, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_118
+    type: mesh
+    transform: [0, 0, 0.99999994, 905, 0, 1, 0, 0, -0.99999994, 0, 0, 154, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_119
+    type: mesh
+    transform: [-4.37113314e-08, -3.63982713e-06, -0.999998689, 905, -7.95513761e-14, 0.999993205, -3.63984691e-06, 0, 0.999998689, -7.95509627e-14, -4.37113314e-08, 144, 0, 0, 0, 1]
+    mesh: meshes/road/road-end.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_120
+    type: mesh
+    transform: [0.999999881, 0, 0.000345349312, 880, 0, 1, 0, 0, -0.000345349312, 0, 0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-intersection-line.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_122
+    type: mesh
+    transform: [0.000488311052, 0, -0.999999881, 880, 0, 1, 0, 0, 0.999999881, 0, 0.000488311052, 184, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_123
+    type: mesh
+    transform: [0, 0, 0.99999994, 880, 0, 1, 0, 0, -0.99999994, 0, 0, 194, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_124
+    type: mesh
+    transform: [0, 0, 0.99999994, 880, 0, 1, 0, 0, -0.99999994, 0, 0, 204, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_125
+    type: mesh
+    transform: [1, 0, 0, 895, 0, 1, 0, 0, 0, 0, 1, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_126
+    type: mesh
+    transform: [1, 0, 0, 890, 0, 1, 0, 0, 0, 0, 1, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: player_start_001
+    type: player_start
+    transform: [1, 0, 0, 1013, 0, 1, 0, -0, 0, 0, 1, 92, 0, 0, 0, 1]
+  - name: Object_127
+    type: mesh
+    transform: [-0.999999881, 0, -2.98023224e-08, 865, 0, 1, 0, 0, 2.98023224e-08, 0, -0.999999881, 169, 0, 0, 0, 1]
+    mesh: meshes/road/road-curve-intersection.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_128
+    type: mesh
+    transform: [0.000488311052, 0, -0.999999881, 860, 0, 1, 0, 0, 0.999999881, 0, 0.000488311052, 154, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_129
+    type: mesh
+    transform: [0, 0, 0.99999994, 860, 0, 1, 0, 0, -0.99999994, 0, 0, 144, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_130
+    type: mesh
+    transform: [0, 0, 0.99999994, 860, 0, 1, 0, 0, -0.99999994, 0, 0, 134, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_131
+    type: mesh
+    transform: [0, 0, -0.99999994, 860, 0, 1, 0, 0, 0.99999994, 0, 0, 124, 0, 0, 0, 1]
+    mesh: meshes/road/road-intersection-line.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_132
+    type: mesh
+    transform: [-0.999999821, 0, 0.000488340855, 851, 0, 1, 0, 0, -0.000488340855, 0, -0.999999821, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-side-exit.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_133
+    type: mesh
+    transform: [-0.999999881, 0, 0, 841, 0, 1, 0, 0, 0, 0, -0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_134
+    type: mesh
+    transform: [-0.999999881, 0, 0, 831, 0, 1, 0, 0, 0, 0, -0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_135
+    type: mesh
+    transform: [-0.999999881, 0, 0, 821, 0, 1, 0, 0, 0, 0, -0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_136
+    type: mesh
+    transform: [-0.999999881, 0, 0, 811, 0, 1, 0, 0, 0, 0, -0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_137
+    type: mesh
+    transform: [-0.999999881, 0, 0, 801, 0, 1, 0, 0, 0, 0, -0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_138
+    type: mesh
+    transform: [-0.999999881, 0, 0, 791, 0, 1, 0, 0, 0, 0, -0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_139
+    type: mesh
+    transform: [-0.999999881, 0, 0, 781, 0, 1, 0, 0, 0, 0, -0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_140
+    type: mesh
+    transform: [-0.999999881, 0, 0, 771, 0, 1, 0, 0, 0, 0, -0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_141
+    type: mesh
+    transform: [-0.999999881, 0, 0, 761, 0, 1, 0, 0, 0, 0, -0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_142
+    type: mesh
+    transform: [-0.999999881, 0, 0, 751, 0, 1, 0, 0, 0, 0, -0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_143
+    type: mesh
+    transform: [-0.999999881, 0, 0, 741, 0, 1, 0, 0, 0, 0, -0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_144
+    type: mesh
+    transform: [-0.999999881, 0, 0, 731, 0, 1, 0, 0, 0, 0, -0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_145
+    type: mesh
+    transform: [-0.999999881, 0, 0, 721, 0, 1, 0, 0, 0, 0, -0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_146
+    type: mesh
+    transform: [-0.999999881, 0, 0, 711, 0, 1, 0, 0, 0, 0, -0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_147
+    type: mesh
+    transform: [-0.999999881, 0, 0, 701, 0, 1, 0, 0, 0, 0, -0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_148
+    type: mesh
+    transform: [-0.999999881, 0, 0, 691, 0, 1, 0, 0, 0, 0, -0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_149
+    type: mesh
+    transform: [-0.999999881, 0, 0, 681, 0, 1, 0, 0, 0, 0, -0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [-0.999999881, 0, 2.98023224e-08, 671, 0, 1, 0, 0, -2.98023224e-08, 0, -0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-side-entry.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_150
+    type: mesh
+    transform: [-0.999999881, 0, -0.000488311052, 661, 0, 1, 0, 0, 0.000488311052, 0, -0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_151
+    type: mesh
+    transform: [0.999999881, 0, 0, 651, 0, 1, 0, 0, 0, 0, 0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-split.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_152
+    type: mesh
+    transform: [1, 0, 0, 641, 0, 1, 0, 0, 0, 0, 1, 169, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_153
+    type: mesh
+    transform: [1, 0, 0, 641, 0, 1, 0, 0, 0, 0, 1, 179, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_154
+    type: mesh
+    transform: [0.999999821, 0, -0.000488340855, 626, 0, 1, 0, 0, 0.000488340855, 0, 0.999999821, 184, 0, 0, 0, 1]
+    mesh: meshes/road/road-curve-intersection.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_155
+    type: mesh
+    transform: [-0.999999881, 0, 0.000488340855, 626, 0, 1, 0, 0, -0.000488340855, 0, -0.999999881, 164, 0, 0, 0, 1]
+    mesh: meshes/road/road-curve-intersection.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_156
+    type: mesh
+    transform: [-0.999999642, 0, -0.000690549612, 611, 0, 1, 0, 0, 0.000690549612, 0, -0.999999642, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-split.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_157
+    type: mesh
+    transform: [-0.00108626485, 0, 0.999999404, 621, 0, 1, 0, 0, -0.999999404, 0, -0.00108626485, 149, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_158
+    type: mesh
+    transform: [0.000488311052, 0, -0.999999881, 621, 0, 1, 0, 0, 0.999999881, 0, 0.000488311052, 139, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_159
+    type: mesh
+    transform: [1, 0, 0, 621, 0, 1, 0, 0, 0, 0, 1, 119, 0, 0, 0, 1]
+    mesh: meshes/road/road-roundabout.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_160
+    type: mesh
+    transform: [-0.999999881, 0, -0.000488311052, 601, 0, 1, 0, 0, 0.000488311052, 0, -0.999999881, 119, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_161
+    type: mesh
+    transform: [-0.0003452003, 0, 0.99999994, 586, 0, 1, 0, 0, -0.99999994, 0, -0.0003452003, 124, 0, 0, 0, 1]
+    mesh: meshes/road/road-curve.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_162
+    type: mesh
+    transform: [-0.999999881, 0, -0.0003452003, 586, 0, 1, 0, 0, 0.0003452003, 0, -0.999999881, 169, 0, 0, 0, 1]
+    mesh: meshes/road/road-curve.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_163
+    type: mesh
+    transform: [-0.999999881, 0, -0.000488311052, 601, 0, 1, 0, 0, 0.000488311052, 0, -0.999999881, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_164
+    type: mesh
+    transform: [-0.000143051147, 0, -1, 576, 0, 1, 0, 0, 1, 0, -0.000143051147, 144, 0, 0, 0, 1]
+    mesh: meshes/road/road-curve-intersection.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_165
+    type: mesh
+    transform: [0.000488311052, 0, -0.999999881, 581, 0, 1, 0, 0, 0.999999881, 0, 0.000488311052, 155, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_166
+    type: mesh
+    transform: [0.999999642, 0, 0.000690668821, 825, 0, 1, 0, 0, -0.000690668821, 0, 0.999999642, 229, 0, 0, 0, 1]
+    mesh: meshes/road/road-curve.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_167
+    type: mesh
+    transform: [-0.999999881, 0, -0.000488311052, 810, 0, 1, 0, 0, 0.000488311052, 0, -0.999999881, 224, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_168
+    type: mesh
+    transform: [1, 0, 0, 800, 0, 1, 0, 0, 0, 0, 1, 224, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_169
+    type: mesh
+    transform: [1, 0, 0, 791, 0, 1, 0, 0, 0, 0, 1, 224, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_170
+    type: mesh
+    transform: [-0.999999881, 0, -2.98023224e-08, 776, 0, 1, 0, 0, 2.98023224e-08, 0, -0.999999881, 219, 0, 0, 0, 1]
+    mesh: meshes/road/road-curve-intersection.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_172
+    type: mesh
+    transform: [-0.00103580952, 0, 0.999999285, 771, 0, 1, 0, 0, -0.999999285, 0, -0.00103580952, 199, 0, 0, 0, 1]
+    mesh: meshes/road/road-slant-curve.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_173
+    type: mesh
+    transform: [0, 0, 0.99999994, 771, 0, 1, 0, 5, -0.99999994, 0, 0, 184, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_174
+    type: mesh
+    transform: [0, 0, 0.99999994, 771, 0, 1, 0, 5, -0.99999994, 0, 0, 174, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_175
+    type: mesh
+    transform: [1.94707155e-07, 0, 0.999999881, 771, 0, 1, 0, 5, -0.999999881, 0, 1.94707155e-07, 164, 0, 0, 0, 1]
+    mesh: meshes/road/road-side-exit.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_176
+    type: mesh
+    transform: [0, 0, 0.999999881, 771, 0, 1, 0, 5, -0.999999881, 0, 0, 154, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_177
+    type: mesh
+    transform: [0, 0, 0.999999881, 771, 0, 1, 0, 5, -0.999999881, 0, 0, 144, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_178
+    type: mesh
+    transform: [0, 0, 0.999999881, 771, 0, 1, 0, 5, -0.999999881, 0, 0, 134, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_179
+    type: mesh
+    transform: [0, 0, 0.999999881, 771, 0, 1, 0, 5, -0.999999881, 0, 0, 124, 0, 0, 0, 1]
+    mesh: meshes/road/road-side.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_180
+    type: mesh
+    transform: [0, 0, 0.999999881, 771, 0, 1, 0, 5, -0.999999881, 0, 0, 114, 0, 0, 0, 1]
+    mesh: meshes/road/road-side-entry.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_181
+    type: mesh
+    transform: [0, 0, 0.99999994, 771, 0, 1, 0, 5, -0.99999994, 0, 0, 104, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_182
+    type: mesh
+    transform: [0.00103574991, 0, -0.999999285, 771, 0, 1, 0, 0, 0.999999285, 0, 0.00103574991, 89, 0, 0, 0, 1]
+    mesh: meshes/road/road-slant-curve.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_183
+    type: mesh
+    transform: [0.000488311052, 0, -0.999999881, 860, 0, 1, 0, -0, 0.999999881, 0, 0.000488311052, 114, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_184
+    type: mesh
+    transform: [0, 0, 0.99999994, 860, 0, 1, 0, 0, -0.99999994, 0, 0, 104, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_185
+    type: mesh
+    transform: [0, 0, 0.99999994, 860, 0, 1, 0, 0, -0.99999994, 0, 0, 94, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_186
+    type: mesh
+    transform: [0, 0, 0.99999994, 860, 0, 1, 0, 0, -0.99999994, 0, 0, 84, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_187
+    type: mesh
+    transform: [0, 0, 0.99999994, 860, 0, 1, 0, 0, -0.99999994, 0, 0, 44, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_188
+    type: mesh
+    transform: [1, 0, 0, 860, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossroad-line.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_189
+    type: mesh
+    transform: [0.000488311052, 0, -0.999999881, 860, 0, 1, 0, 0, 0.999999881, 0, 0.000488311052, 74, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_190
+    type: mesh
+    transform: [1, 0, 0, 916, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_191
+    type: mesh
+    transform: [1, 0, 0, 870, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_192
+    type: mesh
+    transform: [1, 0, 0, 880, 0, 1, 0, -0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_193
+    type: mesh
+    transform: [1, 0, 0, 890, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_194
+    type: mesh
+    transform: [1, 0, 0, 900, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_195
+    type: mesh
+    transform: [1, 0, 0, 908, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_196
+    type: mesh
+    transform: [0.000488311052, 0, -0.999999881, 860, 0, 1, 0, 0, 0.999999881, 0, 0.000488311052, 54, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_197
+    type: mesh
+    transform: [1, 0, 0, 850, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_198
+    type: mesh
+    transform: [1, 0, 0, 840, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_199
+    type: mesh
+    transform: [1, 0, 0, 771, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-roundabout.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_200
+    type: mesh
+    transform: [1, 0, 0, 830, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_201
+    type: mesh
+    transform: [1, 0, 0, 820, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_202
+    type: mesh
+    transform: [1, 0, 0, 810, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_203
+    type: mesh
+    transform: [1, 0, 0, 800, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_204
+    type: mesh
+    transform: [1, 0, 0, 791, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_205
+    type: mesh
+    transform: [-0.999999881, 0, -0.000488311052, 641, 0, 1, 0, 0, 0.000488311052, 0, -0.999999881, 119, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_206
+    type: mesh
+    transform: [0.000690430403, 0, -0.999999762, 656, 0, 1, 0, 0, 0.999999762, 0, 0.000690430403, 114, 0, 0, 0, 1]
+    mesh: meshes/road/road-curve.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_207
+    type: mesh
+    transform: [-0.00108626485, 0, 0.999999404, 661, 0, 1, 0, 0, -0.999999404, 0, -0.00108626485, 99, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_208
+    type: mesh
+    transform: [0.000488311052, 0, -0.999999881, 661, 0, 1, 0, 0, 0.999999881, 0, 0.000488311052, 89, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_210
+    type: mesh
+    transform: [-0.999999881, 0, -0.000488311052, 751, 0, 1, 0, 0, 0.000488311052, 0, -0.999999881, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-crossing.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_211
+    type: mesh
+    transform: [1, 0, 0, 741, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_212
+    type: mesh
+    transform: [1, 0, 0, 731, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_213
+    type: mesh
+    transform: [1, 0, 0, 721, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_214
+    type: mesh
+    transform: [1, 0, 0, 711, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_215
+    type: mesh
+    transform: [1, 0, 0, 701, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_216
+    type: mesh
+    transform: [1, 0, 0, 691, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_217
+    type: mesh
+    transform: [1, 0, 0, 681, 0, 1, 0, 0, 0, 0, 1, 64, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_218
+    type: mesh
+    transform: [-0.00117865205, 0, 0.999999344, 666, 0, 1, 0, 0, -0.999999344, 0, -0.00117865205, 69, 0, 0, 0, 1]
+    mesh: meshes/road/road-curve.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object_219
+    type: mesh
+    transform: [0.000488311052, 0, -0.999999881, 661, 0, 1, 0, 0, 0.999999881, 0, 0.000488311052, 84, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
 terrain:
   heightmap: track.r16
   heightmap_width: 1024
@@ -118,10 +2302,10 @@ terrain:
         tiling: 8
     splatmap: track_splat.png
 editor:
-  selected_object: cspot_001
+  selected_object: ~
   camera:
-    focus: [8.13331413, 6.14824724, 14.46978]
-    azimuth: -0.915037632
-    elevation: 0.530000329
-    distance: 1.96688211
+    focus: [666.616516, 140.251312, 100.429077]
+    azimuth: -14.5101757
+    elevation: 1.07579672
+    distance: 22.611248
   snap_grid: 0
