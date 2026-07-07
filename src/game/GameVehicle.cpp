@@ -6,9 +6,11 @@
 #include <loguru.hpp>
 
 #include "core/MathUtils.h"
+#include "core/RayUtils.h"
 #include "game/GameMesh.h"
 #include "game/GameObjectVisitor.h"
 #include "game/IVehicleController.h"
+#include "game/VehicleDamage.h"
 #include "game/VehicleTemplate.h"
 #include "physics/PhysicsSystem.h"
 #include "physics/PhysicsVehicle.h"
@@ -56,7 +58,8 @@ core::Mat4f PositionMatrix(const core::Vec3f& p) {
 GameVehicle::GameVehicle(VehicleTemplate* tmpl)
     : GameObject(GameObjectType::kVehicle,
                  tmpl->GetBodyTemplate()->GetLocalBBox()),
-      template_(tmpl) {
+      template_(tmpl),
+      damage_(std::make_unique<VehicleDamage>(tmpl->GetVehicleDesc())) {
   template_->AddRef();
 
   body_mesh_ = std::make_unique<GameMesh>(tmpl->GetBodyTemplate());
@@ -132,7 +135,7 @@ void GameVehicle::Activate() {
   physics_vehicle_ = physics::PhysicsSystem::Instance().CreateVehicle(
       template_->GetVehicleDesc(), this, GetWorldTransform(),
       template_->GetFrontWheelGeometry(), template_->GetRearWheelGeometry(),
-      body_verts, body_count);
+      body_verts, body_count, this);
 
   if (renderer::Renderer::IsInstanced()) {
     track::TireTrackSystem* tts =
@@ -312,6 +315,12 @@ void GameVehicle::SetMeshesVisible(bool visible) {
 
 void GameVehicle::OnBodyTransformUpdated(const core::Mat4f& transform) {
   SetWorldTransformPhysics(transform);
+}
+
+void GameVehicle::OnCollision(const core::Vec3f& world_point, float impulse) {
+  const core::Vec3f local_point =
+      core::TransformPoint(GetWorldTransform().Inverse(), world_point);
+  damage_->RegisterImpact(local_point, impulse);
 }
 
 std::filesystem::path GameVehicle::GetDescPath() const {

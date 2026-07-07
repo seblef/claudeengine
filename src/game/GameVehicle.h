@@ -5,6 +5,7 @@
 
 #include "game/GameObject.h"
 #include "physics/IPhysicsBodyListener.h"
+#include "physics/IPhysicsCollisionListener.h"
 #include "physics/VehicleDesc.h"
 
 namespace abstract { class VideoDevice; }
@@ -18,6 +19,7 @@ namespace game {
 class GameMesh;
 class IVehicleController;
 class MeshTemplate;
+class VehicleDamage;
 class VehicleTemplate;
 
 // A wheeled vehicle scene object driven by a PhysicsVehicle simulation.
@@ -33,7 +35,9 @@ class VehicleTemplate;
 //     ├── wheel_fr_      ← local transform updated from physics (mirrored X)
 //     ├── wheel_rl_      ← local transform updated from physics each frame
 //     └── wheel_rr_      ← local transform updated from physics (mirrored X)
-class GameVehicle : public GameObject, public physics::IPhysicsBodyListener {
+class GameVehicle : public GameObject,
+                    public physics::IPhysicsBodyListener,
+                    public physics::IPhysicsCollisionListener {
  public:
   // Constructs the vehicle from a pre-loaded VehicleTemplate (AddRef'd on entry).
   // Instantiates body and wheel GameMesh children from the template's mesh templates.
@@ -82,6 +86,15 @@ class GameVehicle : public GameObject, public physics::IPhysicsBodyListener {
   // Propagates the body's simulated world transform through the scene hierarchy.
   void OnBodyTransformUpdated(const core::Mat4f& transform) override;
 
+  // --- IPhysicsCollisionListener -----------------------------------------------
+
+  // Converts world_point to body-local space and forwards it to damage_.
+  void OnCollision(const core::Vec3f& world_point, float impulse) override;
+
+  // --- Damage ------------------------------------------------------------------
+
+  [[nodiscard]] VehicleDamage& GetDamage() const { return *damage_; }
+
   // --- Controller ------------------------------------------------------------
 
   // Non-owning pointer. Must be set by the caller (e.g. PlayModeManager) before
@@ -122,6 +135,9 @@ class GameVehicle : public GameObject, public physics::IPhysicsBodyListener {
   // Non-owning; set by the caller before Activate().
   // cppcheck-suppress unusedStructMember
   IVehicleController*       controller_      = nullptr;
+
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<VehicleDamage> damage_;
 
   // Snaps the vehicle upright: computes an upright pose from the current
   // transform, lifts the body, and zeroes velocities.

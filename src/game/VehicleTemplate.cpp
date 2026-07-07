@@ -1,5 +1,6 @@
 #include "game/VehicleTemplate.h"
 
+#include <algorithm>
 #include <cmath>
 
 #include <loguru.hpp>
@@ -24,6 +25,24 @@ physics::WheelDesc ParseWheelDesc(const YAML::Node& n) {
   d.is_driven  = n["is_driven"].as<bool>(d.is_driven);
   d.is_steered = n["is_steered"].as<bool>(d.is_steered);
   return d;
+}
+
+void ParseDamageDesc(physics::VehicleDamageDesc& damage, const YAML::Node& n) {
+  if (!n) return;
+  if (const YAML::Node hp = n["max_hp"]) {
+    damage.zone_max_hp[0] = hp["front"].as<float>(damage.zone_max_hp[0]);
+    damage.zone_max_hp[1] = hp["rear"].as<float>(damage.zone_max_hp[1]);
+    damage.zone_max_hp[2] = hp["left"].as<float>(damage.zone_max_hp[2]);
+    damage.zone_max_hp[3] = hp["right"].as<float>(damage.zone_max_hp[3]);
+    damage.zone_max_hp[4] = hp["roof"].as<float>(damage.zone_max_hp[4]);
+  }
+  damage.impulse_to_damage_scale =
+      n["impulse_to_damage_scale"].as<float>(damage.impulse_to_damage_scale);
+  if (const YAML::Node th = n["thresholds"]) {
+    const size_t count = std::min(th.size(), damage.thresholds.size());
+    for (size_t i = 0; i < count; ++i)
+      damage.thresholds[i] = th[i].as<float>(damage.thresholds[i]);
+  }
 }
 
 physics::WheelGeometry InferWheelGeometry(const MeshTemplate* tmpl,
@@ -139,6 +158,8 @@ VehicleTemplate::VehicleTemplate(const std::string& desc_path,
     vehicle_desc_.rear_left   = ParseWheelDesc(root["rear_left"]);
     vehicle_desc_.rear_right  = ParseWheelDesc(root["rear_right"]);
   }
+
+  ParseDamageDesc(vehicle_desc_.damage, root["damage"]);
 
   const std::filesystem::path data_root = core::Config::GetDataFolder();
   body_tmpl_        = MeshTemplate::GetOrLoad((data_root / body_mesh_str).string(), video);

@@ -67,6 +67,7 @@ class VehicleEditorWindow {
   void DrawBodySection();
   void DrawWheelsSection();
   void DrawPhysicsSection();
+  void DrawDamageSection();
   void DrawActionsBar();
 
   // Opens an NFD mesh file dialog and updates the body mesh.

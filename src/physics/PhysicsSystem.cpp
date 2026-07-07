@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numeric>
 #include <thread>
 #include <unordered_set>
 #include <utility>
@@ -26,6 +27,8 @@
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseQuery.h>
 #include <Jolt/Physics/Collision/BroadPhase/ObjectVsBroadPhaseLayerFilterTable.h>
 #include <Jolt/Physics/Collision/CastResult.h>
+#include <Jolt/Physics/Collision/ContactListener.h>
+#include <Jolt/Physics/Collision/EstimateCollisionResponse.h>
 #include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
 #include <Jolt/Physics/Collision/ObjectLayerPairFilterTable.h>
 #include <Jolt/Physics/Collision/RayCast.h>
@@ -53,6 +56,7 @@
 #include "physics/JoltDebugRenderer.h"
 #include "physics/CollisionLayer.h"
 #include "physics/IPhysicsBodyListener.h"
+#include "physics/IPhysicsCollisionListener.h"
 #include "physics/MotionType.h"
 #include "physics/PhysicsBodyDesc.h"
 #include "physics/PhysicsShapeType.h"
@@ -273,6 +277,62 @@ class BodyDebugFilter final : public JPH::BodyDrawFilter {
     const std::unordered_map<uint32_t, SurfaceType>& surface_types_;
 };
 
+/// Global Jolt contact listener that forwards new contacts to whichever of the
+/// two bodies (if either) is registered in collision_listeners_.
+///
+/// Uses JPH::EstimateCollisionResponse in OnContactAdded — at that point the
+/// constraint solver has not run yet, so this is the recommended way to
+/// approximate impact strength (see ContactListener::OnContactAdded docs).
+/// OnContactPersisted is intentionally left as a no-op: resting/sliding contact
+/// should not repeatedly trigger damage.
+class VehicleContactListener final : public JPH::ContactListener {
+ public:
+    explicit VehicleContactListener(
+        const std::unordered_map<uint32_t, IPhysicsCollisionListener*>& listeners)
+        : listeners_(listeners) {}
+
+    void OnContactAdded(const JPH::Body& body1, const JPH::Body& body2,
+                        const JPH::ContactManifold& manifold,
+                        JPH::ContactSettings& settings) override {
+        IPhysicsCollisionListener* l1 = Find(body1.GetID());
+        IPhysicsCollisionListener* l2 = Find(body2.GetID());
+        if (!l1 && !l2) return;
+
+        JPH::CollisionEstimationResult estimate;
+        JPH::EstimateCollisionResponse(body1, body2, manifold, estimate,
+                                       settings.mCombinedFriction,
+                                       settings.mCombinedRestitution);
+
+        const float total_impulse = std::accumulate(
+            estimate.mImpulses.begin(), estimate.mImpulses.end(), 0.f,
+            [](float sum, const JPH::CollisionEstimationResult::Impulse& impulse) {
+                return sum + impulse.mContactImpulse;
+            });
+        if (total_impulse <= 0.f) return;
+
+        const JPH::uint point_count = manifold.mRelativeContactPointsOn1.size();
+        core::Vec3f world_point = core::Vec3f::kZero;
+        for (JPH::uint i = 0; i < point_count; ++i) {
+            const JPH::RVec3 p = manifold.GetWorldSpaceContactPointOn1(i);
+            world_point += core::Vec3f(static_cast<float>(p.GetX()),
+                                       static_cast<float>(p.GetY()),
+                                       static_cast<float>(p.GetZ()));
+        }
+        if (point_count > 0) world_point /= static_cast<float>(point_count);
+
+        if (l1) l1->OnCollision(world_point, total_impulse);
+        if (l2) l2->OnCollision(world_point, total_impulse);
+    }
+
+ private:
+    IPhysicsCollisionListener* Find(JPH::BodyID id) const {
+        const auto it = listeners_.find(id.GetIndexAndSequenceNumber());
+        return it != listeners_.end() ? it->second : nullptr;
+    }
+
+    const std::unordered_map<uint32_t, IPhysicsCollisionListener*>& listeners_;
+};
+
 }  // namespace
 
 PhysicsSystem::PhysicsSystem() = default;
@@ -326,6 +386,9 @@ void PhysicsSystem::Init() {
 
     debug_renderer_ = std::make_unique<JoltDebugRenderer>();
     JPH::DebugRenderer::sInstance = debug_renderer_.get();
+
+    contact_listener_ = std::make_unique<VehicleContactListener>(collision_listeners_);
+    jolt_system_->SetContactListener(contact_listener_.get());
 }
 
 void PhysicsSystem::SetShapeCacheDir(std::string_view path) {
@@ -637,7 +700,8 @@ PhysicsVehicle* PhysicsSystem::CreateVehicle(const VehicleDesc& desc,
                                               const WheelGeometry& front_wheel_geo,
                                               const WheelGeometry& rear_wheel_geo,
                                               const core::Vec3f* body_vertices,
-                                              int body_vertex_count) {
+                                              int body_vertex_count,
+                                              IPhysicsCollisionListener* collision_listener) {
     // ---- Body shape (box or convex hull, + optional COM offset) -------------
     JPH::ShapeRefC base_shape;
     if (body_vertices != nullptr && body_vertex_count > 0) {
@@ -760,6 +824,9 @@ PhysicsVehicle* PhysicsSystem::CreateVehicle(const VehicleDesc& desc,
     jolt_system_->AddConstraint(constraint);
     jolt_system_->AddStepListener(constraint);
 
+    if (collision_listener)
+        collision_listeners_[body->GetID().GetIndexAndSequenceNumber()] = collision_listener;
+
     auto vehicle = std::unique_ptr<PhysicsVehicle>(
         new PhysicsVehicle(body, constraint, jolt_system_.get(), listener));
     PhysicsVehicle* result = vehicle.get();
@@ -769,6 +836,7 @@ PhysicsVehicle* PhysicsSystem::CreateVehicle(const VehicleDesc& desc,
 
 void PhysicsSystem::DestroyVehicle(PhysicsVehicle* vehicle) {
     if (!vehicle) return;
+    collision_listeners_.erase(vehicle->body_->GetID().GetIndexAndSequenceNumber());
     vehicles_.erase(
         std::remove_if(vehicles_.begin(), vehicles_.end(),
                        [vehicle](const std::unique_ptr<PhysicsVehicle>& p) {

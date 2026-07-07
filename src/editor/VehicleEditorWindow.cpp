@@ -193,6 +193,24 @@ void VehicleEditorWindow::LoadFromYaml() {
     read_wheel(vehicle_desc_.rear_right,  wh["rear_right"]);
   }
 
+  if (const YAML::Node dmg = root["damage"]) {
+    physics::VehicleDamageDesc& damage = vehicle_desc_.damage;
+    if (const YAML::Node hp = dmg["max_hp"]) {
+      damage.zone_max_hp[0] = hp["front"].as<float>(damage.zone_max_hp[0]);
+      damage.zone_max_hp[1] = hp["rear"].as<float>(damage.zone_max_hp[1]);
+      damage.zone_max_hp[2] = hp["left"].as<float>(damage.zone_max_hp[2]);
+      damage.zone_max_hp[3] = hp["right"].as<float>(damage.zone_max_hp[3]);
+      damage.zone_max_hp[4] = hp["roof"].as<float>(damage.zone_max_hp[4]);
+    }
+    damage.impulse_to_damage_scale =
+        dmg["impulse_to_damage_scale"].as<float>(damage.impulse_to_damage_scale);
+    if (const YAML::Node th = dmg["thresholds"]) {
+      const size_t count = std::min(th.size(), damage.thresholds.size());
+      for (size_t i = 0; i < count; ++i)
+        damage.thresholds[i] = th[i].as<float>(damage.thresholds[i]);
+    }
+  }
+
   if (!body_mesh_path_.empty())        UpdateBodyMesh(body_mesh_path_);
   if (!front_wheel_mesh_path_.empty()) UpdateFrontWheelMesh(front_wheel_mesh_path_);
   if (!rear_wheel_mesh_path_.empty())  UpdateRearWheelMesh(rear_wheel_mesh_path_);
@@ -253,6 +271,22 @@ void VehicleEditorWindow::SaveToYaml() {
   write_wheel("rear_left",   vehicle_desc_.rear_left);
   write_wheel("rear_right",  vehicle_desc_.rear_right);
   out << YAML::EndMap;  // wheels
+
+  const physics::VehicleDamageDesc& damage = vehicle_desc_.damage;
+  out << YAML::Key << "damage" << YAML::Value << YAML::BeginMap;
+  out << YAML::Key << "max_hp" << YAML::Value << YAML::Flow << YAML::BeginMap;
+  out << YAML::Key << "front" << YAML::Value << damage.zone_max_hp[0];
+  out << YAML::Key << "rear"  << YAML::Value << damage.zone_max_hp[1];
+  out << YAML::Key << "left"  << YAML::Value << damage.zone_max_hp[2];
+  out << YAML::Key << "right" << YAML::Value << damage.zone_max_hp[3];
+  out << YAML::Key << "roof"  << YAML::Value << damage.zone_max_hp[4];
+  out << YAML::EndMap;  // max_hp
+  out << YAML::Key << "impulse_to_damage_scale"
+      << YAML::Value << damage.impulse_to_damage_scale;
+  out << YAML::Key << "thresholds" << YAML::Value << YAML::Flow << YAML::BeginSeq;
+  for (const float t : damage.thresholds) out << t;
+  out << YAML::EndSeq;
+  out << YAML::EndMap;  // damage
 
   out << YAML::EndMap;  // root
 
@@ -748,6 +782,33 @@ void VehicleEditorWindow::DrawPhysicsSection() {
     ImGui::SetTooltip("Power delivery snap on clutch re-engagement. Jolt default: 10");
 }
 
+void VehicleEditorWindow::DrawDamageSection() {
+  ImGui::SeparatorText("Damage");
+
+  physics::VehicleDamageDesc& damage = vehicle_desc_.damage;
+  const char* const kZoneLabels[5] = {
+      "Front HP", "Rear HP", "Left HP", "Right HP", "Roof HP"};
+  for (int i = 0; i < 5; ++i) {
+    ImGui::PushID(i);
+    dirty_ |= ImGui::DragFloat(kZoneLabels[i], &damage.zone_max_hp[i],
+                               1.f, 1.f, 1000.f, "%.0f");
+    ImGui::PopID();
+  }
+
+  dirty_ |= ImGui::DragFloat("Impulse \xe2\x86\x92 damage scale",
+                             &damage.impulse_to_damage_scale, 0.001f, 0.001f, 1.f, "%.3f");
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("HP lost per unit of collision impulse (kg\xc2\xb7m/s)");
+
+  ImGui::TextUnformatted("Thresholds (damage fraction, ascending)");
+  for (int i = 0; i < static_cast<int>(damage.thresholds.size()); ++i) {
+    ImGui::PushID(i);
+    ImGui::SameLine();
+    dirty_ |= ImGui::DragFloat("##threshold", &damage.thresholds[i], 0.01f, 0.f, 1.f, "%.2f");
+    ImGui::PopID();
+  }
+}
+
 void VehicleEditorWindow::DrawActionsBar() {
   ImGui::Separator();
 
@@ -818,6 +879,8 @@ void VehicleEditorWindow::Render() {
     DrawWheelsSection();
     ImGui::Spacing();
     DrawPhysicsSection();
+    ImGui::Spacing();
+    DrawDamageSection();
     DrawActionsBar();
   }
   ImGui::End();
