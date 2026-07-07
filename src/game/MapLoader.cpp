@@ -453,7 +453,9 @@ std::unique_ptr<GameObject> ParseSoundEmitter(
 }
 
 std::unique_ptr<GameObject> ParseVehicle(const YAML::Node& node,
-                                         abstract::VideoDevice* video) {
+                                         abstract::VideoDevice* video,
+                                         audio::SoundManager* sound_manager,
+                                         audio::ResourceManager* resource_manager) {
   const std::string desc_path = node["desc"].as<std::string>("");
   const std::string name      = node["name"].as<std::string>("Vehicle");
   const core::Mat4f transform = core::ParseMat4(node["transform"]);
@@ -471,7 +473,7 @@ std::unique_ptr<GameObject> ParseVehicle(const YAML::Node& node,
     return nullptr;
   }
 
-  auto vehicle = std::make_unique<GameVehicle>(tmpl);
+  auto vehicle = std::make_unique<GameVehicle>(tmpl, sound_manager, resource_manager);
   tmpl->Release();
 
   vehicle->SetName(name);
@@ -682,7 +684,7 @@ MapData MapLoader::Load(const std::filesystem::path& path,
       } else if (type == "sound_emitter") {
         go = ParseSoundEmitter(obj, sound_manager, resource_manager);
       } else if (type == "vehicle") {
-        go = ParseVehicle(obj, video);
+        go = ParseVehicle(obj, video, sound_manager, resource_manager);
       } else if (type == "road") {
         go = ParseRoad(obj, video);
       } else if (type == "gauge") {
