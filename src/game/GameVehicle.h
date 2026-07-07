@@ -10,6 +10,11 @@
 
 namespace abstract { class VideoDevice; }
 
+namespace audio {
+class ResourceManager;
+class SoundManager;
+}  // namespace audio
+
 namespace physics {
 class PhysicsVehicle;
 }  // namespace physics
@@ -19,6 +24,7 @@ namespace game {
 class GameMesh;
 class IVehicleController;
 class MeshTemplate;
+class VehicleCrashSound;
 class VehicleDamage;
 class VehicleTemplate;
 
@@ -41,7 +47,10 @@ class GameVehicle : public GameObject,
  public:
   // Constructs the vehicle from a pre-loaded VehicleTemplate (AddRef'd on entry).
   // Instantiates body and wheel GameMesh children from the template's mesh templates.
-  explicit GameVehicle(VehicleTemplate* tmpl);
+  // sound_manager and resource_manager may be null (crash sounds become silent).
+  explicit GameVehicle(VehicleTemplate* tmpl,
+                      audio::SoundManager* sound_manager = nullptr,
+                      audio::ResourceManager* resource_manager = nullptr);
 
   ~GameVehicle() override;
 
@@ -138,6 +147,15 @@ class GameVehicle : public GameObject,
 
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<VehicleDamage> damage_;
+
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<VehicleCrashSound> crash_sound_;
+
+  // Non-owning; retained only to reconstruct crash_sound_ in Copy().
+  // cppcheck-suppress unusedStructMember
+  audio::SoundManager*    sound_manager_    = nullptr;
+  // cppcheck-suppress unusedStructMember
+  audio::ResourceManager* resource_manager_ = nullptr;
 
   // Snaps the vehicle upright: computes an upright pose from the current
   // transform, lifts the body, and zeroes velocities.

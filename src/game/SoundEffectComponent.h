@@ -39,8 +39,10 @@ class SoundEffectComponent {
   SoundEffectComponent& operator=(SoundEffectComponent&&)      = delete;
 
   // Fires the sound once at worldPos and releases the instance on completion.
+  // gain_scale multiplies the component's configured gain (e.g. to scale
+  // volume by collision impulse); clamp to [0, 1] before calling if needed.
   // Safe no-op if the sound failed to load or if either manager is null.
-  void Trigger(const core::Vec3f& worldPos);
+  void Trigger(const core::Vec3f& worldPos, float gain_scale = 1.0f);
 
   // Returns true if the sound resource loaded successfully.
   [[nodiscard]] bool IsReady() const { return sound_ != nullptr; }

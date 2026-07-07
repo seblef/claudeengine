@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <string>
 
 #include "core/Vec3f.h"
 
@@ -51,6 +52,27 @@ struct VehicleDamageDesc {
     std::array<float, 4> thresholds = {0.4f, 0.6f, 0.8f, 1.0f};
 };
 
+/// Configures the impulse-driven crash sound bank (see game::VehicleCrashSound).
+/// Fully Jolt-free; may be serialised to YAML.
+struct CrashSoundDesc {
+    // cppcheck-suppress unusedStructMember
+    float min_impulse    = 150.f;   ///< Impulse (kg·m/s) below which no crash sound plays.
+    // cppcheck-suppress unusedStructMember
+    float medium_impulse = 500.f;   ///< Impulse at/above which the medium sample plays instead of light.
+    // cppcheck-suppress unusedStructMember
+    float heavy_impulse  = 1200.f;  ///< Impulse at/above which the heavy sample plays.
+    // cppcheck-suppress unusedStructMember
+    float max_impulse    = 3000.f;  ///< Impulse at which gain saturates to 1.0.
+    // cppcheck-suppress unusedStructMember
+    float debounce_time  = 0.2f;    ///< Minimum time (s) between two crash sound triggers.
+    // cppcheck-suppress unusedStructMember
+    std::string light_sound  = "crash_light";   ///< Sound asset stem for the light tier.
+    // cppcheck-suppress unusedStructMember
+    std::string medium_sound = "crash_medium";  ///< Sound asset stem for the medium tier.
+    // cppcheck-suppress unusedStructMember
+    std::string heavy_sound  = "crash_heavy";   ///< Sound asset stem for the heavy tier.
+};
+
 /// Top-level description of a wheeled vehicle.
 /// Fully Jolt-free; may be serialised to YAML.
 struct VehicleDesc {
@@ -88,6 +110,8 @@ struct VehicleDesc {
     WheelDesc   rear_right;
     // cppcheck-suppress unusedStructMember
     VehicleDamageDesc damage;
+    // cppcheck-suppress unusedStructMember
+    CrashSoundDesc crash_sound;
 };
 
 }  // namespace physics

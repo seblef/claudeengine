@@ -34,9 +34,9 @@ SoundEffectComponent::~SoundEffectComponent() {
   }
 }
 
-void SoundEffectComponent::Trigger(const core::Vec3f& worldPos) {
+void SoundEffectComponent::Trigger(const core::Vec3f& worldPos, float gain_scale) {
   if (!sound_manager_ || !sound_) return;
-  sound_manager_->PlayOnce(sound_, worldPos, priority_, gain_);
+  sound_manager_->PlayOnce(sound_, worldPos, priority_, gain_ * gain_scale);
 }
 
 }  // namespace game

@@ -211,6 +211,18 @@ void VehicleEditorWindow::LoadFromYaml() {
     }
   }
 
+  if (const YAML::Node cs = root["crash_sound"]) {
+    physics::CrashSoundDesc& crash_sound = vehicle_desc_.crash_sound;
+    crash_sound.min_impulse    = cs["min_impulse"].as<float>(crash_sound.min_impulse);
+    crash_sound.medium_impulse = cs["medium_impulse"].as<float>(crash_sound.medium_impulse);
+    crash_sound.heavy_impulse  = cs["heavy_impulse"].as<float>(crash_sound.heavy_impulse);
+    crash_sound.max_impulse    = cs["max_impulse"].as<float>(crash_sound.max_impulse);
+    crash_sound.debounce_time  = cs["debounce_time"].as<float>(crash_sound.debounce_time);
+    crash_sound.light_sound    = cs["light_sound"].as<std::string>(crash_sound.light_sound);
+    crash_sound.medium_sound   = cs["medium_sound"].as<std::string>(crash_sound.medium_sound);
+    crash_sound.heavy_sound    = cs["heavy_sound"].as<std::string>(crash_sound.heavy_sound);
+  }
+
   if (!body_mesh_path_.empty())        UpdateBodyMesh(body_mesh_path_);
   if (!front_wheel_mesh_path_.empty()) UpdateFrontWheelMesh(front_wheel_mesh_path_);
   if (!rear_wheel_mesh_path_.empty())  UpdateRearWheelMesh(rear_wheel_mesh_path_);
@@ -287,6 +299,18 @@ void VehicleEditorWindow::SaveToYaml() {
   for (const float t : damage.thresholds) out << t;
   out << YAML::EndSeq;
   out << YAML::EndMap;  // damage
+
+  const physics::CrashSoundDesc& crash_sound = vehicle_desc_.crash_sound;
+  out << YAML::Key << "crash_sound" << YAML::Value << YAML::BeginMap;
+  out << YAML::Key << "min_impulse"    << YAML::Value << crash_sound.min_impulse;
+  out << YAML::Key << "medium_impulse" << YAML::Value << crash_sound.medium_impulse;
+  out << YAML::Key << "heavy_impulse"  << YAML::Value << crash_sound.heavy_impulse;
+  out << YAML::Key << "max_impulse"    << YAML::Value << crash_sound.max_impulse;
+  out << YAML::Key << "debounce_time"  << YAML::Value << crash_sound.debounce_time;
+  out << YAML::Key << "light_sound"    << YAML::Value << crash_sound.light_sound;
+  out << YAML::Key << "medium_sound"   << YAML::Value << crash_sound.medium_sound;
+  out << YAML::Key << "heavy_sound"    << YAML::Value << crash_sound.heavy_sound;
+  out << YAML::EndMap;  // crash_sound
 
   out << YAML::EndMap;  // root
 
@@ -809,6 +833,43 @@ void VehicleEditorWindow::DrawDamageSection() {
   }
 }
 
+void VehicleEditorWindow::DrawCrashSoundSection() {
+  ImGui::SeparatorText("Crash Sound");
+
+  physics::CrashSoundDesc& crash_sound = vehicle_desc_.crash_sound;
+
+  auto draw_sound_picker = [&](const char* label, std::string& sound_name,
+                               SoundEmitterSelectionModal& modal) {
+    ImGui::PushID(label);
+    ImGui::LabelText(label, "%s", sound_name.empty() ? "(none)" : sound_name.c_str());
+    ImGui::SameLine();
+    if (ImGui::Button("Change...")) modal.Open();
+    if (const std::string picked = modal.Render(); !picked.empty()) {
+      sound_name = picked;
+      dirty_     = true;
+    }
+    ImGui::PopID();
+  };
+
+  draw_sound_picker("Light",  crash_sound.light_sound,  light_crash_sound_modal_);
+  draw_sound_picker("Medium", crash_sound.medium_sound, medium_crash_sound_modal_);
+  draw_sound_picker("Heavy",  crash_sound.heavy_sound,  heavy_crash_sound_modal_);
+
+  dirty_ |= ImGui::DragFloat("Min impulse", &crash_sound.min_impulse,
+                             1.f, 0.f, 5000.f, "%.0f");
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Impulse (kg\xc2\xb7m/s) below which no crash sound plays");
+
+  dirty_ |= ImGui::DragFloat("Medium impulse", &crash_sound.medium_impulse,
+                             1.f, 0.f, 5000.f, "%.0f");
+  dirty_ |= ImGui::DragFloat("Heavy impulse", &crash_sound.heavy_impulse,
+                             1.f, 0.f, 5000.f, "%.0f");
+  dirty_ |= ImGui::DragFloat("Max impulse (gain saturates)", &crash_sound.max_impulse,
+                             1.f, 1.f, 10000.f, "%.0f");
+  dirty_ |= ImGui::DragFloat("Debounce time (s)", &crash_sound.debounce_time,
+                             0.01f, 0.f, 2.f, "%.2f");
+}
+
 void VehicleEditorWindow::DrawActionsBar() {
   ImGui::Separator();
 
@@ -881,6 +942,8 @@ void VehicleEditorWindow::Render() {
     DrawPhysicsSection();
     ImGui::Spacing();
     DrawDamageSection();
+    ImGui::Spacing();
+    DrawCrashSoundSection();
     DrawActionsBar();
   }
   ImGui::End();

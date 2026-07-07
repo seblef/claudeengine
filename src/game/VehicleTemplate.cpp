@@ -45,6 +45,18 @@ void ParseDamageDesc(physics::VehicleDamageDesc& damage, const YAML::Node& n) {
   }
 }
 
+void ParseCrashSoundDesc(physics::CrashSoundDesc& crash_sound, const YAML::Node& n) {
+  if (!n) return;
+  crash_sound.min_impulse    = n["min_impulse"].as<float>(crash_sound.min_impulse);
+  crash_sound.medium_impulse = n["medium_impulse"].as<float>(crash_sound.medium_impulse);
+  crash_sound.heavy_impulse  = n["heavy_impulse"].as<float>(crash_sound.heavy_impulse);
+  crash_sound.max_impulse    = n["max_impulse"].as<float>(crash_sound.max_impulse);
+  crash_sound.debounce_time  = n["debounce_time"].as<float>(crash_sound.debounce_time);
+  crash_sound.light_sound    = n["light_sound"].as<std::string>(crash_sound.light_sound);
+  crash_sound.medium_sound   = n["medium_sound"].as<std::string>(crash_sound.medium_sound);
+  crash_sound.heavy_sound    = n["heavy_sound"].as<std::string>(crash_sound.heavy_sound);
+}
+
 physics::WheelGeometry InferWheelGeometry(const MeshTemplate* tmpl,
                                            const char* label) {
   physics::WheelGeometry geo;
@@ -160,6 +172,7 @@ VehicleTemplate::VehicleTemplate(const std::string& desc_path,
   }
 
   ParseDamageDesc(vehicle_desc_.damage, root["damage"]);
+  ParseCrashSoundDesc(vehicle_desc_.crash_sound, root["crash_sound"]);
 
   const std::filesystem::path data_root = core::Config::GetDataFolder();
   body_tmpl_        = MeshTemplate::GetOrLoad((data_root / body_mesh_str).string(), video);

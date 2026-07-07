@@ -5,6 +5,8 @@ physics:
   mass: 980
   max_engine_torque: 2800
   max_steer_angle: 0.579999983
+  min_steer_scale: 0.400000006
+  high_speed_reference_speed: 25
   brake_torque: 2800
   handbrake_torque: 5000
   engine_inertia: 0.100000001
@@ -13,8 +15,8 @@ physics:
   com_offset: [0, -0.319999993, 0]
   body_shape: convex_hull
   suspension:
-    front: {min_length: 0.100000001, max_length: 0.2, stiffness: 6500, damping: 800}
-    rear: {min_length: 0.100000001, max_length: 0.2, stiffness: 6000, damping: 750}
+    front: {min_length: 0.100000001, max_length: 0.200000003, stiffness: 6500, damping: 800}
+    rear: {min_length: 0.100000001, max_length: 0.200000003, stiffness: 6000, damping: 750}
 wheels:
   front_left:
     position: [0.873888731, 0.130710006, 1.18556368]
@@ -32,3 +34,16 @@ wheels:
     position: [-0.88215971, 0.123345032, -1.39941239]
     is_driven: false
     is_steered: false
+damage:
+  max_hp: {front: 100, rear: 100, left: 100, right: 100, roof: 100}
+  impulse_to_damage_scale: 0.0500000007
+  thresholds: [0.400000006, 0.600000024, 0.800000012, 1]
+crash_sound:
+  min_impulse: 150
+  medium_impulse: 500
+  heavy_impulse: 1200
+  max_impulse: 3000
+  debounce_time: 5
+  light_sound: scratching_metal
+  medium_sound: scratching_metal
+  heavy_sound: scratching_metal

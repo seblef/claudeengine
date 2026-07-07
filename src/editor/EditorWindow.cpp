@@ -625,7 +625,10 @@ void EditorWindow::Render() {
 
   // Play mode vehicle selection modal — open when the Play button is clicked.
   if (const std::string play_v_name = play_vehicle_modal_->Render(); !play_v_name.empty()) {
-    play_mode_->Enter(play_v_name);
+    const bool use_audio = toolbar_->IsSoundEnabled() && editor_sound_manager_;
+    play_mode_->Enter(play_v_name,
+                      use_audio ? editor_sound_manager_.get()   : nullptr,
+                      use_audio ? editor_sound_resources_.get() : nullptr);
     toolbar_->SetInPlayMode(play_mode_->IsPlaying());
     if (play_mode_->IsPlaying()) show_profiler_panel_ = true;
   }

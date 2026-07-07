@@ -10,6 +10,7 @@
 #include "game/GameMesh.h"
 #include "game/GameObjectVisitor.h"
 #include "game/IVehicleController.h"
+#include "game/VehicleCrashSound.h"
 #include "game/VehicleDamage.h"
 #include "game/VehicleTemplate.h"
 #include "physics/PhysicsSystem.h"
@@ -55,11 +56,17 @@ core::Mat4f PositionMatrix(const core::Vec3f& p) {
 
 }  // namespace
 
-GameVehicle::GameVehicle(VehicleTemplate* tmpl)
+GameVehicle::GameVehicle(VehicleTemplate* tmpl,
+                         audio::SoundManager* sound_manager,
+                         audio::ResourceManager* resource_manager)
     : GameObject(GameObjectType::kVehicle,
                  tmpl->GetBodyTemplate()->GetLocalBBox()),
       template_(tmpl),
-      damage_(std::make_unique<VehicleDamage>(tmpl->GetVehicleDesc())) {
+      damage_(std::make_unique<VehicleDamage>(tmpl->GetVehicleDesc())),
+      crash_sound_(std::make_unique<VehicleCrashSound>(
+          tmpl->GetVehicleDesc().crash_sound, sound_manager, resource_manager)),
+      sound_manager_(sound_manager),
+      resource_manager_(resource_manager) {
   template_->AddRef();
 
   body_mesh_ = std::make_unique<GameMesh>(tmpl->GetBodyTemplate());
@@ -92,7 +99,8 @@ void GameVehicle::Accept(GameObjectVisitor& visitor) {
 
 std::unique_ptr<GameObject> GameVehicle::Copy(
     const core::Vec3f& position) const {
-  auto clone = std::make_unique<GameVehicle>(template_);
+  auto clone = std::make_unique<GameVehicle>(
+      template_, sound_manager_, resource_manager_);
   clone->SetName(GetName());
   core::Mat4f t = GetWorldTransform();
   t(0, 3) = position.x;
@@ -158,6 +166,8 @@ void GameVehicle::Deactivate() {
 
 void GameVehicle::Update(float dt) {
   if (physics_vehicle_) {
+    crash_sound_->Update(dt);
+
     const core::Mat4f transform = physics_vehicle_->GetBodyWorldTransform();
     const float       speed     = physics_vehicle_->GetForwardSpeed();
 
@@ -321,6 +331,7 @@ void GameVehicle::OnCollision(const core::Vec3f& world_point, float impulse) {
   const core::Vec3f local_point =
       core::TransformPoint(GetWorldTransform().Inverse(), world_point);
   damage_->RegisterImpact(local_point, impulse);
+  crash_sound_->RegisterImpact(world_point, impulse);
 }
 
 std::filesystem::path GameVehicle::GetDescPath() const {
