@@ -108,6 +108,26 @@ one-shot mechanism and the collision-impulse plumbing added for
   `PlayModeManager::Enter(vehicle_name, sound_manager, resource_manager)`
   overload. Both new parameters default to `nullptr` so no other caller
   needed to change.
+- **A second, separate silent-construction site existed in the standalone
+  game app itself.** `src/app/main.cpp` has its own player-vehicle spawn
+  path (used when the game is launched with `--vehicle`, independent of
+  whatever `.map.yaml` objects say — this is how a map with no `vehicle`
+  object placed in it still gets a driveable car) that also called
+  `std::make_unique<game::GameVehicle>(vehicle_tmpl)` with no audio
+  managers, even though `sound_manager`/`sound_resources` were already
+  live in scope a few lines above. This is a different `GameVehicle`
+  construction site than `MapLoader::ParseVehicle` (which only handles
+  vehicles authored as scene objects inside the map file), so fixing
+  `MapLoader` alone did not cover it. Both silent sites were only found
+  by grepping for `<GameVehicle>` — which, being a plain substring match,
+  missed every call site qualified as `game::GameVehicle` (i.e. every one
+  outside the `game` namespace itself). Re-grepping for
+  `make_unique<game::GameVehicle>` after the user reported the bug found
+  it immediately; this should have been the search used from the start.
+  The two remaining unpassed sites (`EditorWindow.cpp`'s "Place in Scene"
+  drag-drop and vehicle-modal placement) are intentionally left silent:
+  they construct an idle, non-`Activate()`'d preview vehicle that cannot
+  collide until Play Mode spawns its own separate instance.
 
 ## Output to keep in mind for future work
 

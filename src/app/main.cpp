@@ -255,7 +255,8 @@ int main(int argc, char* argv[]) {
       core::Mat4f world(map_player_start->GetWorldTransform());
       world(1, 3) = world(1, 3) + 1.f;
       map_player_start->SetWorldTransform(world);
-      auto vehicle_owned = std::make_unique<game::GameVehicle>(vehicle_tmpl);
+      auto vehicle_owned = std::make_unique<game::GameVehicle>(
+          vehicle_tmpl, sound_manager.get(), sound_resources.get());
       vehicle_ptr = vehicle_owned.get();
       vehicle_ptr->SetWorldTransform(map_player_start->GetWorldTransform());
       game.AddObject(vehicle_ptr);
