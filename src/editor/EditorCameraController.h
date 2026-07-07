@@ -46,6 +46,9 @@ class EditorCameraController : public game::ICameraController {
   void OnEvent(const core::Event& event) override;
   void Update(float dt) override;
 
+  // No-op: the editor viewport camera is never subject to gameplay shake.
+  void ApplyShake(float magnitude, float duration_seconds) override {}
+
   // Gate mouse input: only orbit/pan/zoom when the viewport panel is hovered.
   // EditorViewport must call this once per frame before Update().
   void SetViewportHovered(bool hovered);
