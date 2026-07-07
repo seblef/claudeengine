@@ -27,6 +27,8 @@
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseQuery.h>
 #include <Jolt/Physics/Collision/BroadPhase/ObjectVsBroadPhaseLayerFilterTable.h>
 #include <Jolt/Physics/Collision/CastResult.h>
+#include <Jolt/Physics/Collision/CollideShape.h>
+#include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/ContactListener.h>
 #include <Jolt/Physics/Collision/EstimateCollisionResponse.h>
 #include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
@@ -936,6 +938,36 @@ std::optional<RaycastResult> PhysicsSystem::Raycast(
         });
     result.body = (it != bodies_.end()) ? it->get() : nullptr;
 
+    return result;
+}
+
+std::vector<PhysicsBody*> PhysicsSystem::SphereOverlap(
+        const core::Vec3f& center,
+        float radius,
+        uint16_t layer_mask) const {
+    const JPH::SphereShape sphere(radius);
+    const JPH::RMat44 com_transform =
+        JPH::RMat44::sTranslation(JPH::RVec3(center.x, center.y, center.z));
+    const JPH::CollideShapeSettings settings;
+
+    JPH::AllHitCollisionCollector<JPH::CollideShapeCollector> collector;
+    RaycastBroadPhaseFilter  broad_filter(layer_mask);
+    RaycastObjectLayerFilter obj_filter(layer_mask);
+
+    jolt_system_->GetNarrowPhaseQuery().CollideShape(
+        &sphere, JPH::Vec3::sReplicate(1.f), com_transform, settings,
+        JPH::RVec3::sZero(), collector, broad_filter, obj_filter);
+
+    std::vector<PhysicsBody*> result;
+    result.reserve(collector.mHits.size());
+    for (const JPH::CollideShapeResult& hit : collector.mHits) {
+        const uint32_t target_id = hit.mBodyID2.GetIndexAndSequenceNumber();
+        const auto it = std::find_if(bodies_.begin(), bodies_.end(),
+            [target_id](const std::unique_ptr<PhysicsBody>& b) {
+                return b->body_id_ == target_id;
+            });
+        if (it != bodies_.end()) result.push_back(it->get());
+    }
     return result;
 }
 

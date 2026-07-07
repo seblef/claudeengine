@@ -190,6 +190,17 @@ class PhysicsSystem : public core::Singleton<PhysicsSystem> {
         float max_dist,
         uint16_t layer_mask = 0xFFFF) const;
 
+    /// Returns every body whose shape overlaps a sphere of the given radius
+    /// centred at center (exact narrow-phase shape test, not just a broad-phase
+    /// AABB check).
+    ///
+    /// @param layer_mask  Bitmask of kLayer* constants; only bodies whose
+    ///                    collision_layer bit is set are tested.
+    [[nodiscard]] std::vector<PhysicsBody*> SphereOverlap(
+        const core::Vec3f& center,
+        float radius,
+        uint16_t layer_mask = 0xFFFF) const;
+
  private:
     // cppcheck-suppress unusedStructMember
     std::unique_ptr<JPH::TempAllocatorImpl>  temp_allocator_;
