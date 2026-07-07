@@ -1,0 +1,103 @@
+sub_systems:
+  - name: fireball
+    blend_mode: additive
+    lit: false
+    texture: fx/fireflamepart01anim.dds
+    sprite_cols: 8
+    sprite_rows: 4
+    animation_fps: 24
+    animation_mode: sequential
+    smooth_transition: true
+    emitter_shape: sphere
+    emitter_radius: 0.5
+    enabled: true
+    emission_rate: 200
+    max_particles: 80
+    looping: false
+    duration: 0.25
+    lifetime:
+      min: 0.600000024
+      max: 1.10000002
+    speed:
+      min: 3
+      max: 7
+    direction: [0, 1, 0]
+    spread: 180
+    gravity: -1
+    size_start:
+      min: 1
+      max: 1.5
+    size_end:
+      min: 3
+      max: 4.5
+    color_gradient:
+      - key: 0
+        color: [1, 1, 0.850000024, 1]
+      - key: 0.200000003
+        color: [1, 0.699999988, 0.150000006, 1]
+      - key: 0.600000024
+        color: [0.899999976, 0.25, 0.0500000007, 0.699999988]
+      - key: 1
+        color: [0.200000003, 0.0500000007, 0, 0]
+    rotation_start:
+      min: 0
+      max: 360
+    angular_velocity:
+      min: -60
+      max: 60
+    intensity_start: 3
+    intensity_end: 1
+    drag: 0.800000012
+    turbulence_strength: 0.5
+    turbulence_frequency: 3
+  - name: smoke
+    blend_mode: alpha_blend
+    lit: false
+    texture: fx/smoke02.dds
+    sprite_cols: 4
+    sprite_rows: 4
+    animation_fps: 10
+    animation_mode: sequential
+    smooth_transition: false
+    emitter_shape: sphere
+    emitter_radius: 0.699999988
+    enabled: true
+    emission_rate: 60
+    max_particles: 40
+    looping: false
+    duration: 0.600000024
+    lifetime:
+      min: 1.79999995
+      max: 3
+    speed:
+      min: 0.800000012
+      max: 2
+    direction: [0, 1, 0]
+    spread: 40
+    gravity: -2.5
+    size_start:
+      min: 1.5
+      max: 2.5
+    size_end:
+      min: 4
+      max: 6
+    color_gradient:
+      - key: 0
+        color: [0.300000012, 0.280000001, 0.25999999, 0.600000024]
+      - key: 0.300000012
+        color: [0.200000003, 0.200000003, 0.200000003, 0.5]
+      - key: 1
+        color: [0.100000001, 0.100000001, 0.100000001, 0]
+    rotation_start:
+      min: 0
+      max: 360
+    angular_velocity:
+      min: -8
+      max: 8
+    intensity_start: 1
+    intensity_end: 1
+    drag: 0.600000024
+    turbulence_strength: 0.300000012
+    turbulence_frequency: 1.20000005
+lights:
+  []
