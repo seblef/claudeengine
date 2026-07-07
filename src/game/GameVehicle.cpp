@@ -1,5 +1,8 @@
 #include "game/GameVehicle.h"
 
+#include <algorithm>
+#include <cmath>
+
 #include <loguru.hpp>
 
 #include "core/MathUtils.h"
@@ -31,6 +34,13 @@ constexpr float kFlickerFrequency       =  8.0f;  ///< Flicker rate (Hz) during 
 // A 180° Y rotation achieves the same visual mirroring with det=+1.
 core::Mat4f MirrorY() {
   return core::Mat4f::RotationY(core::kPi);
+}
+
+// Linearly ramps steer authority down from 1.0 at 0 m/s to desc.min_steer_scale
+// at desc.high_speed_reference_speed and above.
+float ComputeSteerScale(float speed, const physics::VehicleDesc& desc) {
+  const float t = std::clamp(std::fabs(speed) / desc.high_speed_reference_speed, 0.f, 1.f);
+  return std::lerp(1.f, desc.min_steer_scale, t);
 }
 
 core::Mat4f PositionMatrix(const core::Vec3f& p) {
@@ -235,7 +245,8 @@ void GameVehicle::Update(float dt) {
           break;
       }
 
-      physics_vehicle_->SetSteer(controller_->GetSteer());
+      const float steer_scale = ComputeSteerScale(speed, GetVehicleDesc());
+      physics_vehicle_->SetSteer(controller_->GetSteer() * steer_scale);
       physics_vehicle_->SetHandbrake(controller_->GetHandbrake());
     } else if (drive_state_ == DriveState::kFlipped) {
       physics_vehicle_->SetThrottle(0.f);

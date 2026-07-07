@@ -49,6 +49,10 @@ struct VehicleDesc {
     // cppcheck-suppress unusedStructMember
     float       max_steer_angle   = 0.5f;                ///< Maximum steering angle for steered wheels (rad).
     // cppcheck-suppress unusedStructMember
+    float       min_steer_scale   = 0.4f;                ///< Steer input multiplier at/above high_speed_reference_speed
+    // cppcheck-suppress unusedStructMember
+    float       high_speed_reference_speed = 25.f;       ///< Speed (m/s) at which steer scale reaches min_steer_scale.
+    // cppcheck-suppress unusedStructMember
     float       brake_torque      = 1500.f;              ///< Brake torque per wheel (Nm).
     // cppcheck-suppress unusedStructMember
     float       handbrake_torque  = 3000.f;              ///< Hand-brake torque (rear wheels only, Nm).
