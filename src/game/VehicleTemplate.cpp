@@ -77,6 +77,10 @@ VehicleTemplate::VehicleTemplate(const std::string& desc_path,
       pd["max_engine_torque"].as<float>(vehicle_desc_.max_engine_torque);
   vehicle_desc_.max_steer_angle   =
       pd["max_steer_angle"].as<float>(vehicle_desc_.max_steer_angle);
+  vehicle_desc_.min_steer_scale   =
+      pd["min_steer_scale"].as<float>(vehicle_desc_.min_steer_scale);
+  vehicle_desc_.high_speed_reference_speed =
+      pd["high_speed_reference_speed"].as<float>(vehicle_desc_.high_speed_reference_speed);
   vehicle_desc_.brake_torque      =
       pd["brake_torque"].as<float>(vehicle_desc_.brake_torque);
   vehicle_desc_.handbrake_torque  =

@@ -143,6 +143,10 @@ void VehicleEditorWindow::LoadFromYaml() {
         ph["max_engine_torque"].as<float>(vehicle_desc_.max_engine_torque);
     vehicle_desc_.max_steer_angle   =
         ph["max_steer_angle"].as<float>(vehicle_desc_.max_steer_angle);
+    vehicle_desc_.min_steer_scale   =
+        ph["min_steer_scale"].as<float>(vehicle_desc_.min_steer_scale);
+    vehicle_desc_.high_speed_reference_speed =
+        ph["high_speed_reference_speed"].as<float>(vehicle_desc_.high_speed_reference_speed);
     vehicle_desc_.brake_torque      =
         ph["brake_torque"].as<float>(vehicle_desc_.brake_torque);
     vehicle_desc_.handbrake_torque  =
@@ -208,6 +212,8 @@ void VehicleEditorWindow::SaveToYaml() {
   out << YAML::Key << "mass"               << YAML::Value << vehicle_desc_.mass;
   out << YAML::Key << "max_engine_torque"  << YAML::Value << vehicle_desc_.max_engine_torque;
   out << YAML::Key << "max_steer_angle"    << YAML::Value << vehicle_desc_.max_steer_angle;
+  out << YAML::Key << "min_steer_scale"              << YAML::Value << vehicle_desc_.min_steer_scale;
+  out << YAML::Key << "high_speed_reference_speed"   << YAML::Value << vehicle_desc_.high_speed_reference_speed;
   out << YAML::Key << "brake_torque"       << YAML::Value << vehicle_desc_.brake_torque;
   out << YAML::Key << "handbrake_torque"   << YAML::Value << vehicle_desc_.handbrake_torque;
   out << YAML::Key << "engine_inertia"    << YAML::Value << vehicle_desc_.engine_inertia;
@@ -683,6 +689,10 @@ void VehicleEditorWindow::DrawPhysicsSection() {
     vehicle_desc_.max_steer_angle = steer_deg * kDegToRad;
     dirty_ = true;
   }
+  if (ImGui::SliderFloat("Min steer scale (high speed)", &vehicle_desc_.min_steer_scale, 0.1f, 1.f, "%.2f"))
+    dirty_ = true;
+  if (ImGui::SliderFloat("High speed reference (m/s)", &vehicle_desc_.high_speed_reference_speed, 5.f, 50.f, "%.1f"))
+    dirty_ = true;
 
   dirty_ |= ImGui::DragFloat("Brake torque (Nm)",     &vehicle_desc_.brake_torque,    10.f, 100.f,  5000.f,  "%.0f");
   dirty_ |= ImGui::DragFloat("Handbrake torque (Nm)", &vehicle_desc_.handbrake_torque, 10.f, 100.f, 10000.f, "%.0f");
