@@ -2,6 +2,7 @@ sub_systems:
   - name: sub_system_0
     blend_mode: additive
     lit: false
+    texture: default/diffuse.dds
     emitter_shape: point
     emitter_radius: 0
     emission_rate: 60
