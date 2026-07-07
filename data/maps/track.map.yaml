@@ -83,7 +83,7 @@ objects:
     cast_shadow: true
     shadow_resolution: 256
     shadow_bias: 0.00499999989
-    direction: [1.27329319e-11, -1, 1.27329258e-11]
+    direction: [1.75077782e-11, -1, 1.7507773e-11]
     inner_angle: 0.200000003
     outer_angle: 0.485515714
     range: 9
@@ -311,7 +311,7 @@ objects:
       collision_layer: 4
   - name: Object
     type: mesh
-    transform: [-8.94069672e-08, 0, 0.999999881, 989, 0, 1, 0, 0, -0.999999881, 0, -8.94069672e-08, 88, 0, 0, 0, 1]
+    transform: [-8.94069672e-08, 0, 0.999999881, 994, 0, 1, 0, 0, -0.999999881, 0, -8.94069672e-08, 88, 0, 0, 0, 1]
     mesh: meshes/city/industrial/building-q.emesh
     material: materials/industrial_colormap.yaml
     physics:
@@ -1459,7 +1459,7 @@ objects:
       friction: 0.984000027
   - name: player_start_001
     type: player_start
-    transform: [1, 0, 0, 1013, 0, 1, 0, -0, 0, 0, 1, 92, 0, 0, 0, 1]
+    transform: [1, 0, 0, 1013, 0, 1, 0, 1, 0, 0, 1, 92, 0, 0, 0, 1]
   - name: Object_127
     type: mesh
     transform: [-0.999999881, 0, -2.98023224e-08, 865, 0, 1, 0, 0, 2.98023224e-08, 0, -0.999999881, 169, 0, 0, 0, 1]
@@ -2288,6 +2288,71 @@ objects:
       shape: exact
       motion_type: static
       friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [1, 0, 0, 986, 0, 1, 0, 0, 0, 0, 1, 222, 0, 0, 0, 1]
+    mesh: meshes/city/industrial/building-r.emesh
+    material: materials/industrial_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object
+    type: mesh
+    transform: [0, 0, 0.99999994, 1000, 0, 1, 0, 0, -0.99999994, 0, 0, 191, 0, 0, 0, 1]
+    mesh: meshes/city/industrial/building-s.emesh
+    material: materials/industrial_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object
+    type: mesh
+    transform: [0, 0, -0.99999994, 999, 0, 1, 0, 0, 0.99999994, 0, 0, 138, 0, 0, 0, 1]
+    mesh: meshes/city/industrial/building-g.emesh
+    material: materials/industrial_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object_220
+    type: mesh
+    transform: [-0.000345259905, 0, -0.999999881, 998, 0, 1, 0, 0, 0.999999881, 0, -0.000345259905, 163, 0, 0, 0, 1]
+    mesh: meshes/city/industrial/detail-tank.emesh
+    material: materials/industrial_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object_221
+    type: mesh
+    transform: [-0.000345259905, 0, -0.999999881, 958, 0, 1, 0, 0, 0.999999881, 0, -0.000345259905, 184, 0, 0, 0, 1]
+    mesh: meshes/city/industrial/detail-tank.emesh
+    material: materials/industrial_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object_222
+    type: mesh
+    transform: [0, 0, -0.99999994, 960, 0, 1, 0, 0, 0.99999994, 0, 0, 169, 0, 0, 0, 1]
+    mesh: meshes/road/road-curve-barrier.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+  - name: Object_223
+    type: mesh
+    transform: [0.000345438719, 0, -0.999999881, 965, 0, 1, 0, 0, 0.999999881, 0, 0.000345438719, 154, 0, 0, 0, 1]
+    mesh: meshes/road/road-straight-barrier-end.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
+      friction: 0.984000027
+  - name: Object
+    type: mesh
+    transform: [0.000488311052, 0, -1.3499999, 1013.45959, 0, 1, 0, 0, 0.999999881, 0, 0.000659220095, 104, 0, 0, 0, 1]
+    mesh: meshes/road/sign-highway-wide.emesh
+    material: materials/road_colormap.yaml
+    physics:
+      shape: exact
+      motion_type: static
 terrain:
   heightmap: track.r16
   heightmap_width: 1024
@@ -2302,10 +2367,10 @@ terrain:
         tiling: 8
     splatmap: track_splat.png
 editor:
-  selected_object: ~
+  selected_object: Object
   camera:
-    focus: [666.616516, 140.251312, 100.429077]
-    azimuth: -14.5101757
-    elevation: 1.07579672
-    distance: 22.611248
+    focus: [1013.1391, 3.21619415, 105.713142]
+    azimuth: -22.1553726
+    elevation: 0.475797892
+    distance: 18.4804745
   snap_grid: 0
