@@ -20,6 +20,7 @@
 
 // Forward-declare Jolt internals so Jolt headers never leak into consumers.
 namespace JPH {
+class ContactListener;
 class PhysicsSystem;
 class TempAllocatorImpl;
 class JobSystemThreadPool;
@@ -33,6 +34,7 @@ namespace physics {
 
 class CharacterController;
 class IPhysicsBodyListener;
+class IPhysicsCollisionListener;
 class JoltDebugRenderer;
 
 /// Controls which debug geometry PhysicsSystem::DrawDebug() renders each frame.
@@ -128,6 +130,8 @@ class PhysicsSystem : public core::Singleton<PhysicsSystem> {
     /// @param body_vertices     Optional CPU positions of the body mesh for a ConvexHull body shape.
     ///                          Pass nullptr (default) to use a box shape from desc.half_extents.
     /// @param body_vertex_count Number of vertices in body_vertices (ignored when nullptr).
+    /// @param collision_listener Optional observer notified when the vehicle body starts a new
+    ///                           contact (see IPhysicsCollisionListener). May be nullptr.
     /// @returns                 Non-owning pointer; lifetime is managed by this system.
     PhysicsVehicle* CreateVehicle(const VehicleDesc& desc,
                                    IPhysicsBodyListener* listener,
@@ -135,7 +139,8 @@ class PhysicsSystem : public core::Singleton<PhysicsSystem> {
                                    const WheelGeometry& front_wheel_geo,
                                    const WheelGeometry& rear_wheel_geo,
                                    const core::Vec3f* body_vertices = nullptr,
-                                   int                body_vertex_count = 0);
+                                   int                body_vertex_count = 0,
+                                   IPhysicsCollisionListener* collision_listener = nullptr);
 
     /// Remove a vehicle from the simulation and release its memory.
     /// Safe to call with nullptr.
@@ -203,6 +208,16 @@ class PhysicsSystem : public core::Singleton<PhysicsSystem> {
     std::unordered_map<uint32_t, SurfaceType>  surface_types_;
     // cppcheck-suppress unusedStructMember
     std::unique_ptr<JoltDebugRenderer> debug_renderer_;
+    // Single global Jolt contact listener, registered in Init(). Forwards new
+    // contacts to collision_listeners_ entries (see VehicleContactListener).
+    // cppcheck-suppress unusedStructMember
+    std::unique_ptr<JPH::ContactListener> contact_listener_;
+    // Maps Jolt body ID (index+sequence packed value) to a registered collision
+    // observer. Populated by CreateVehicle when a non-null collision_listener is
+    // passed; erased by DestroyVehicle. Read (never mutated) from the contact
+    // listener during Step(), which may run contact callbacks on worker threads.
+    // cppcheck-suppress unusedStructMember
+    std::unordered_map<uint32_t, IPhysicsCollisionListener*> collision_listeners_;
     // Maps opaque shape_cache_key pointers to heap-allocated JPH::ShapeRefC*
     // so each unique mesh geometry builds its Jolt shape only once.
     // Values are void* to avoid exposing JPH types in this header.

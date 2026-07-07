@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include "core/Vec3f.h"
 
 namespace physics {
@@ -33,6 +35,20 @@ struct WheelDesc {
     bool        is_driven            = false;   ///< True for engine-powered wheels.
     // cppcheck-suppress unusedStructMember
     bool        is_steered           = false;   ///< True for steering wheels.
+};
+
+/// Configures the per-zone progressive damage model (see game::VehicleDamage).
+/// Zone order matches game::DamageZone: Front, Rear, Left, Right, Roof.
+/// Fully Jolt-free; may be serialised to YAML.
+struct VehicleDamageDesc {
+    // cppcheck-suppress unusedStructMember
+    std::array<float, 5> zone_max_hp = {100.f, 100.f, 100.f, 100.f, 100.f};
+    // cppcheck-suppress unusedStructMember
+    float impulse_to_damage_scale = 0.05f;  ///< Damage (HP) per unit of collision impulse (kg·m/s).
+    // Fractions of zone HP (ascending) at which listeners are notified of a
+    // damage-threshold crossing, e.g. {0.4, 0.6, 0.8, 1.0}.
+    // cppcheck-suppress unusedStructMember
+    std::array<float, 4> thresholds = {0.4f, 0.6f, 0.8f, 1.0f};
 };
 
 /// Top-level description of a wheeled vehicle.
@@ -70,6 +86,8 @@ struct VehicleDesc {
     WheelDesc   rear_left;
     // cppcheck-suppress unusedStructMember
     WheelDesc   rear_right;
+    // cppcheck-suppress unusedStructMember
+    VehicleDamageDesc damage;
 };
 
 }  // namespace physics

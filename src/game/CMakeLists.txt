@@ -20,6 +20,7 @@ add_library(game STATIC
     GameTerrain.cpp
     MapLoader.cpp
     MeshTemplate.cpp
+    VehicleDamage.cpp
     VehicleTemplate.cpp
 )
 

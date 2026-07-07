@@ -1,6 +1,8 @@
 add_executable(game_tests
     GameObjectHierarchyTest.cpp
+    VehicleDamageTest.cpp
     ${CMAKE_SOURCE_DIR}/src/game/GameObject.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/VehicleDamage.cpp
 )
 
 target_include_directories(game_tests PRIVATE
