@@ -47,3 +47,10 @@ crash_sound:
   light_sound: scratching_metal
   medium_sound: scratching_metal
   heavy_sound: scratching_metal
+scrape:
+  min_speed: 0.5
+  max_speed: 15
+  base_emission_rate: 60
+  base_gain: 1
+  contact_grace_time: 0.150000006
+  screech_sound: scratching_metal

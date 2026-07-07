@@ -118,6 +118,11 @@ class Renderer : public core::Singleton<Renderer> {
   // Returns the currently active camera, or nullptr if none has been set.
   [[nodiscard]] const core::Camera* GetCamera() const { return camera_; }
 
+  // Returns the video device this Renderer was constructed with. Used by
+  // runtime-spawned effects (e.g. vfx::VFXScrape) that need to create their
+  // own ParticleEmitter on demand, outside the map-load/editor-placement paths.
+  [[nodiscard]] abstract::VideoDevice* GetVideoDevice() const { return video_; }
+
   // Runs the full deferred pipeline for one frame.
   // camera must remain valid until the next Update or SetCamera call.
   // When output_fbo is non-null the composite pass blits into it instead of

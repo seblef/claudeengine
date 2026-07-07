@@ -57,6 +57,16 @@ void ParseCrashSoundDesc(physics::CrashSoundDesc& crash_sound, const YAML::Node&
   crash_sound.heavy_sound    = n["heavy_sound"].as<std::string>(crash_sound.heavy_sound);
 }
 
+void ParseScrapeDesc(physics::ScrapeDesc& scrape, const YAML::Node& n) {
+  if (!n) return;
+  scrape.min_speed          = n["min_speed"].as<float>(scrape.min_speed);
+  scrape.max_speed          = n["max_speed"].as<float>(scrape.max_speed);
+  scrape.base_emission_rate = n["base_emission_rate"].as<float>(scrape.base_emission_rate);
+  scrape.base_gain          = n["base_gain"].as<float>(scrape.base_gain);
+  scrape.contact_grace_time = n["contact_grace_time"].as<float>(scrape.contact_grace_time);
+  scrape.screech_sound      = n["screech_sound"].as<std::string>(scrape.screech_sound);
+}
+
 physics::WheelGeometry InferWheelGeometry(const MeshTemplate* tmpl,
                                            const char* label) {
   physics::WheelGeometry geo;
@@ -173,6 +183,7 @@ VehicleTemplate::VehicleTemplate(const std::string& desc_path,
 
   ParseDamageDesc(vehicle_desc_.damage, root["damage"]);
   ParseCrashSoundDesc(vehicle_desc_.crash_sound, root["crash_sound"]);
+  ParseScrapeDesc(vehicle_desc_.scrape, root["scrape"]);
 
   const std::filesystem::path data_root = core::Config::GetDataFolder();
   body_tmpl_        = MeshTemplate::GetOrLoad((data_root / body_mesh_str).string(), video);

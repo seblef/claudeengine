@@ -1,5 +1,7 @@
 add_library(vfx STATIC
     ScreenShake.cpp
+    VehicleScrapeEffect.cpp
+    VFXScrape.cpp
     VFXSystem.cpp
 )
 

@@ -70,6 +70,7 @@ class VehicleEditorWindow {
   void DrawPhysicsSection();
   void DrawDamageSection();
   void DrawCrashSoundSection();
+  void DrawScrapeSection();
   void DrawActionsBar();
 
   // Opens an NFD mesh file dialog and updates the body mesh.
@@ -128,6 +129,9 @@ class VehicleEditorWindow {
   SoundEmitterSelectionModal light_crash_sound_modal_{"Select Light Crash Sound"};
   SoundEmitterSelectionModal medium_crash_sound_modal_{"Select Medium Crash Sound"};
   SoundEmitterSelectionModal heavy_crash_sound_modal_{"Select Heavy Crash Sound"};
+
+  // Scrape screech sample picker.
+  SoundEmitterSelectionModal scrape_sound_modal_{"Select Scrape Sound"};
 
   // Index of the active wheel in the selector. 0=FL, 1=FR, 2=RL, 3=RR.
   // Always in [0, 3]: set by the radio-button bar, click-to-select, or

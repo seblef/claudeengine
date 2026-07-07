@@ -23,6 +23,7 @@ namespace game {
 
 class GameMesh;
 class IVehicleController;
+class IVehicleScrapeListener;
 class MeshTemplate;
 class VehicleCrashSound;
 class VehicleDamage;
@@ -100,6 +101,11 @@ class GameVehicle : public GameObject,
   // Converts world_point to body-local space and forwards it to damage_.
   void OnCollision(const core::Vec3f& world_point, float impulse) override;
 
+  // Forwards to scrape_listener_, if one is set.
+  void OnSustainedContact(const core::Vec3f& world_point,
+                          const core::Vec3f& world_normal,
+                          const core::Vec3f& relative_velocity) override;
+
   // --- Damage ------------------------------------------------------------------
 
   [[nodiscard]] VehicleDamage& GetDamage() const { return *damage_; }
@@ -109,6 +115,12 @@ class GameVehicle : public GameObject,
   // Non-owning pointer. Must be set by the caller (e.g. PlayModeManager) before
   // Activate(). May be nullptr — the vehicle will be simulated without inputs.
   void SetVehicleController(IVehicleController* ctrl) { controller_ = ctrl; }
+
+  // Non-owning pointer. The caller (e.g. PlayModeManager, main.cpp's standalone
+  // vehicle spawn) owns the concrete listener (typically a
+  // vfx::VehicleScrapeEffect) and must keep it alive at least as long as this
+  // vehicle. May be nullptr — sustained-contact events are then simply dropped.
+  void SetScrapeListener(IVehicleScrapeListener* listener) { scrape_listener_ = listener; }
 
   /// True while the vehicle is actively driving in reverse.
   [[nodiscard]] bool IsReversing() const {
@@ -144,6 +156,10 @@ class GameVehicle : public GameObject,
   // Non-owning; set by the caller before Activate().
   // cppcheck-suppress unusedStructMember
   IVehicleController*       controller_      = nullptr;
+
+  // Non-owning; set by the caller. See SetScrapeListener().
+  // cppcheck-suppress unusedStructMember
+  IVehicleScrapeListener*   scrape_listener_ = nullptr;
 
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<VehicleDamage> damage_;
