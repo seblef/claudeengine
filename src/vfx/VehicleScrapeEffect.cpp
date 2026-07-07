@@ -3,6 +3,8 @@
 #include <memory>
 #include <utility>
 
+#include "particles/ParticleSystemTemplate.h"
+#include "renderer/Renderer.h"
 #include "vfx/VFXScrape.h"
 #include "vfx/VFXSystem.h"
 
@@ -13,10 +15,16 @@ VehicleScrapeEffect::VehicleScrapeEffect(const physics::ScrapeDesc& desc,
                                          audio::ResourceManager* resource_manager)
     : desc_(desc),
       sound_manager_(sound_manager),
-      resource_manager_(resource_manager) {}
+      resource_manager_(resource_manager) {
+  if (renderer::Renderer::IsInstanced()) {
+    spark_template_ = particles::ParticleSystemTemplate::GetOrLoad(
+        VFXScrape::kSparkTemplateName, renderer::Renderer::Instance().GetVideoDevice());
+  }
+}
 
 VehicleScrapeEffect::~VehicleScrapeEffect() {
   Stop();
+  if (spark_template_) spark_template_->Release();
 }
 
 void VehicleScrapeEffect::Update(float dt) {
@@ -37,7 +45,8 @@ void VehicleScrapeEffect::RegisterContact(const core::Vec3f& world_point,
 
   if (!active_) {
     if (!VFXSystem::IsInstanced()) return;
-    auto effect = std::make_unique<VFXScrape>(desc_, sound_manager_, resource_manager_);
+    auto effect = std::make_unique<VFXScrape>(desc_, sound_manager_, resource_manager_,
+                                              spark_template_);
     active_ = static_cast<VFXScrape*>(VFXSystem::Instance().Spawn(
         std::move(effect), world_point, relative_velocity.Normalized()));
   }

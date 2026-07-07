@@ -79,25 +79,25 @@ TEST(VFXScrapeTest, ZeroLengthIncomingFallsBackToNormal) {
 // ---- Play / Stop lifecycle (no Renderer/audio instanced) -----------------------
 
 TEST(VFXScrapeTest, FinishedInitiallyAndAfterConstruction) {
-  VFXScrape scrape(MakeDesc(), nullptr, nullptr);
+  VFXScrape scrape(MakeDesc(), nullptr, nullptr, nullptr);
   EXPECT_TRUE(scrape.IsFinished());
 }
 
 TEST(VFXScrapeTest, PlayClearsFinished) {
-  VFXScrape scrape(MakeDesc(), nullptr, nullptr);
+  VFXScrape scrape(MakeDesc(), nullptr, nullptr, nullptr);
   scrape.Play({0.f, 0.f, 0.f}, {0.f, 1.f, 0.f});
   EXPECT_FALSE(scrape.IsFinished());
 }
 
 TEST(VFXScrapeTest, StopSetsFinished) {
-  VFXScrape scrape(MakeDesc(), nullptr, nullptr);
+  VFXScrape scrape(MakeDesc(), nullptr, nullptr, nullptr);
   scrape.Play({0.f, 0.f, 0.f}, {0.f, 1.f, 0.f});
   scrape.Stop();
   EXPECT_TRUE(scrape.IsFinished());
 }
 
 TEST(VFXScrapeTest, StopIsIdempotent) {
-  VFXScrape scrape(MakeDesc(), nullptr, nullptr);
+  VFXScrape scrape(MakeDesc(), nullptr, nullptr, nullptr);
   scrape.Play({0.f, 0.f, 0.f}, {0.f, 1.f, 0.f});
   scrape.Stop();
   EXPECT_NO_THROW(scrape.Stop());
@@ -105,7 +105,7 @@ TEST(VFXScrapeTest, StopIsIdempotent) {
 }
 
 TEST(VFXScrapeTest, UpdateContactAfterStopIsANoOp) {
-  VFXScrape scrape(MakeDesc(), nullptr, nullptr);
+  VFXScrape scrape(MakeDesc(), nullptr, nullptr, nullptr);
   scrape.Play({0.f, 0.f, 0.f}, {0.f, 1.f, 0.f});
   scrape.Stop();
   EXPECT_NO_THROW(
@@ -114,7 +114,7 @@ TEST(VFXScrapeTest, UpdateContactAfterStopIsANoOp) {
 }
 
 TEST(VFXScrapeTest, UpdateWithNoRendererDoesNotCrash) {
-  VFXScrape scrape(MakeDesc(), nullptr, nullptr);
+  VFXScrape scrape(MakeDesc(), nullptr, nullptr, nullptr);
   scrape.Play({0.f, 0.f, 0.f}, {0.f, 1.f, 0.f});
   EXPECT_NO_THROW(scrape.Update(0.016f));
 }

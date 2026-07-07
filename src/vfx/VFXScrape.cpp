@@ -19,17 +19,18 @@ namespace vfx {
 
 namespace {
 
-constexpr const char* kSparkTemplateName = "sparks";
-constexpr int         kScrapeSoundPriority = 1;
+constexpr int kScrapeSoundPriority = 1;
 
 }  // namespace
 
 VFXScrape::VFXScrape(const physics::ScrapeDesc& desc,
                      audio::SoundManager* sound_manager,
-                     audio::ResourceManager* resource_manager)
+                     audio::ResourceManager* resource_manager,
+                     particles::ParticleSystemTemplate* spark_template)
     : desc_(desc),
       sound_manager_(sound_manager),
-      resource_manager_(resource_manager) {}
+      resource_manager_(resource_manager),
+      spark_template_(spark_template) {}
 
 VFXScrape::~VFXScrape() {
   Stop();
@@ -41,11 +42,8 @@ void VFXScrape::Play(const core::Vec3f& world_pos, const core::Vec3f& direction)
 
   if (renderer::Renderer::IsInstanced()) {
     abstract::VideoDevice* video = renderer::Renderer::Instance().GetVideoDevice();
-    if (particles::ParticleSystemTemplate* tmpl =
-            particles::ParticleSystemTemplate::GetOrLoad(kSparkTemplateName, video)) {
-      if (!tmpl->GetSubSystems().empty()) spark_desc_ = tmpl->GetSubSystems()[0];
-      tmpl->Release();
-    }
+    if (spark_template_ && !spark_template_->GetSubSystems().empty())
+      spark_desc_ = spark_template_->GetSubSystems()[0];
     spark_desc_.direction      = direction;
     spark_desc_.emission_rate  = 0.f;
 

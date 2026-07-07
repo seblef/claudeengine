@@ -16,6 +16,7 @@ class VirtualSoundInstance;
 
 namespace particles {
 class ParticleEmitter;
+class ParticleSystemTemplate;
 }  // namespace particles
 
 namespace renderer {
@@ -38,15 +39,36 @@ namespace vfx {
 // only ticks the particle simulation and never decides to end the effect.
 class VFXScrape : public IVFXEffect {
  public:
+  // Asset stem of the particle template loaded by whoever constructs the
+  // long-lived spark_template passed to the constructor below (typically
+  // game::VehicleScrapeEffect, once per vehicle) — see the note on
+  // spark_template for why VFXScrape itself never loads this.
+  // cppcheck-suppress unusedStructMember ; used by vfx::VehicleScrapeEffect
+  static constexpr const char* kSparkTemplateName = "sparks";
+
+  // spark_template is non-owning and must outlive this VFXScrape; it supplies
+  // the authored spark visuals (lifetime, size, color gradient — direction and
+  // emission_rate are overwritten every UpdateContact() call). May be nullptr
+  // (e.g. no Renderer instanced), in which case no particles are emitted.
+  //
+  // Deliberately NOT loaded internally via ParticleSystemTemplate::GetOrLoad():
+  // this class is constructed fresh every time a scrape starts and destroyed
+  // when it ends, so loading (and releasing) the template here would reload
+  // it from disk on every single scrape start — core::Resource::Release()
+  // evicts and deletes the moment its ref count hits zero. The caller instead
+  // holds one persistent reference for as long as scraping might occur (e.g.
+  // for the vehicle's whole lifetime), so the template is parsed once and
+  // shared across every scrape session.
   VFXScrape(const physics::ScrapeDesc& desc,
            audio::SoundManager* sound_manager,
-           audio::ResourceManager* resource_manager);
+           audio::ResourceManager* resource_manager,
+           particles::ParticleSystemTemplate* spark_template);
 
   ~VFXScrape() override;
 
-  // Loads the "sparks" particle template (if a Renderer is instanced) and
-  // starts the looping screech (if sound managers are available) at
-  // world_pos, initially oriented along direction.
+  // Starts the looping screech (if sound managers are available) at world_pos,
+  // initially oriented along direction. Spark visuals come from spark_template
+  // (see the constructor); no disk/GPU load happens here.
   void Play(const core::Vec3f& world_pos, const core::Vec3f& direction) override;
 
   // Ticks the spark emitter's simulation. Does not decide when the effect
@@ -83,9 +105,17 @@ class VFXScrape : public IVFXEffect {
   // cppcheck-suppress unusedStructMember
   physics::ScrapeDesc     desc_;
   // cppcheck-suppress unusedStructMember
+  // cppcheck-suppress uninitMemberVarPrivate ; initialized in VFXScrape.cpp,
+  // not visible to cppcheck when this header is checked from a TU that only
+  // declares (not defines) the constructor, e.g. the unit test file.
   audio::SoundManager*    sound_manager_;
   // cppcheck-suppress unusedStructMember
+  // cppcheck-suppress uninitMemberVarPrivate
   audio::ResourceManager* resource_manager_;
+  // Non-owning; see the constructor's doc comment.
+  // cppcheck-suppress unusedStructMember
+  // cppcheck-suppress uninitMemberVarPrivate
+  particles::ParticleSystemTemplate* spark_template_;
 
   // cppcheck-suppress unusedStructMember
   audio::Sound* sound_ = nullptr;

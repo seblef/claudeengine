@@ -8,6 +8,10 @@ class ResourceManager;
 class SoundManager;
 }  // namespace audio
 
+namespace particles {
+class ParticleSystemTemplate;
+}  // namespace particles
+
 namespace vfx {
 
 class VFXScrape;
@@ -27,6 +31,16 @@ class VFXScrape;
 // jitter) so the effect does not flicker on and off; the effect stops once
 // contact has genuinely lapsed for longer than desc.contact_grace_time, or
 // immediately when the sliding speed drops below desc.min_speed.
+//
+// Loads the spark particle template once (if a Renderer is instanced) and
+// holds it for this object's whole lifetime — a fresh vfx::VFXScrape is
+// constructed and destroyed every time a scrape starts and stops, so if each
+// one loaded the template itself it would be reloaded from disk every single
+// time (core::Resource evicts and deletes the moment its ref count hits
+// zero). Since a VehicleScrapeEffect normally lives as long as its vehicle,
+// this effectively loads the asset once per game session and shares it across
+// every scrape that vehicle (or, since the template is refcounted and keyed by
+// name, any other vehicle) ever triggers.
 class VehicleScrapeEffect : public game::IVehicleScrapeListener {
  public:
   VehicleScrapeEffect(const physics::ScrapeDesc& desc,
@@ -57,6 +71,11 @@ class VehicleScrapeEffect : public game::IVehicleScrapeListener {
   audio::SoundManager*    sound_manager_;
   // cppcheck-suppress unusedStructMember
   audio::ResourceManager* resource_manager_;
+
+  // AddRef'd for this object's whole lifetime; Release()d in the destructor.
+  // Null if no Renderer was instanced at construction time.
+  // cppcheck-suppress unusedStructMember
+  particles::ParticleSystemTemplate* spark_template_ = nullptr;
 
   // Non-owning; owned by vfx::VFXSystem. Null when no scrape is active.
   // cppcheck-suppress unusedStructMember
