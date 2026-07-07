@@ -1,4 +1,6 @@
 add_executable(vfx_tests
+    VehicleScrapeEffectTest.cpp
+    VFXScrapeTest.cpp
     VFXSystemTest.cpp
     ${CMAKE_SOURCE_DIR}/src/vfx/VFXSystem.cpp
 )
@@ -10,6 +12,16 @@ target_include_directories(vfx_tests PRIVATE
 target_link_libraries(vfx_tests PRIVATE
     GTest::gtest_main
     core
+    game
+    renderer
+    particles
+    audio
+    physics
+)
+
+target_sources(vfx_tests PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/vfx/VehicleScrapeEffect.cpp
+    ${CMAKE_SOURCE_DIR}/src/vfx/VFXScrape.cpp
 )
 
 include(GoogleTest)

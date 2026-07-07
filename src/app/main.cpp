@@ -47,6 +47,7 @@
 #include "renderer/GlobalLight.h"
 #include "renderer/MaterialDesc.h"
 #include "renderer/Renderer.h"
+#include "vfx/VehicleScrapeEffect.h"
 #include "vfx/VFXSystem.h"
 
 #include <algorithm>
@@ -245,6 +246,7 @@ int main(int argc, char* argv[]) {
   game::GameVehicle*                             vehicle_ptr  = nullptr;
   std::unique_ptr<game::PlayerVehicleController> player_vehicle_ctrl;
   std::unique_ptr<game::ChaseCameraController>   chase_controller;
+  std::unique_ptr<vfx::VehicleScrapeEffect>       vehicle_scrape;
 
   if (!vehicle_path.empty() && map_player_start) {
     vehicle_tmpl = game::VehicleTemplate::GetOrLoad(vehicle_path, video);
@@ -264,6 +266,11 @@ int main(int argc, char* argv[]) {
 
       player_vehicle_ctrl = std::make_unique<game::PlayerVehicleController>();
       vehicle_ptr->SetVehicleController(player_vehicle_ctrl.get());
+
+      vehicle_scrape = std::make_unique<vfx::VehicleScrapeEffect>(
+          vehicle_tmpl->GetVehicleDesc().scrape, sound_manager.get(), sound_resources.get());
+      vehicle_ptr->SetScrapeListener(vehicle_scrape.get());
+
       vehicle_ptr->Activate();
 
       chase_controller = std::make_unique<game::ChaseCameraController>();
@@ -366,6 +373,9 @@ int main(int argc, char* argv[]) {
       core::Profiler::Instance().MarkFrame();
   }
 
+  // Stop any running scrape effect (which reaches into VFXSystem's internal
+  // effect list via a raw pointer) before the singleton itself is torn down.
+  vehicle_scrape.reset();
   vfx::VFXSystem::Shutdown();
 
   if (environment::SkyRenderer::IsInstanced()) {

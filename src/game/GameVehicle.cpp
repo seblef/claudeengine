@@ -10,6 +10,7 @@
 #include "game/GameMesh.h"
 #include "game/GameObjectVisitor.h"
 #include "game/IVehicleController.h"
+#include "game/IVehicleScrapeListener.h"
 #include "game/VehicleCrashSound.h"
 #include "game/VehicleDamage.h"
 #include "game/VehicleTemplate.h"
@@ -167,6 +168,7 @@ void GameVehicle::Deactivate() {
 void GameVehicle::Update(float dt) {
   if (physics_vehicle_) {
     crash_sound_->Update(dt);
+    if (scrape_listener_) scrape_listener_->Update(dt);
 
     const core::Mat4f transform = physics_vehicle_->GetBodyWorldTransform();
     const float       speed     = physics_vehicle_->GetForwardSpeed();
@@ -332,6 +334,13 @@ void GameVehicle::OnCollision(const core::Vec3f& world_point, float impulse) {
       core::TransformPoint(GetWorldTransform().Inverse(), world_point);
   damage_->RegisterImpact(local_point, impulse);
   crash_sound_->RegisterImpact(world_point, impulse);
+}
+
+void GameVehicle::OnSustainedContact(const core::Vec3f& world_point,
+                                     const core::Vec3f& world_normal,
+                                     const core::Vec3f& relative_velocity) {
+  if (scrape_listener_)
+    scrape_listener_->RegisterContact(world_point, world_normal, relative_velocity);
 }
 
 std::filesystem::path GameVehicle::GetDescPath() const {

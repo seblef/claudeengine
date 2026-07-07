@@ -223,6 +223,16 @@ void VehicleEditorWindow::LoadFromYaml() {
     crash_sound.heavy_sound    = cs["heavy_sound"].as<std::string>(crash_sound.heavy_sound);
   }
 
+  if (const YAML::Node sc = root["scrape"]) {
+    physics::ScrapeDesc& scrape = vehicle_desc_.scrape;
+    scrape.min_speed          = sc["min_speed"].as<float>(scrape.min_speed);
+    scrape.max_speed          = sc["max_speed"].as<float>(scrape.max_speed);
+    scrape.base_emission_rate = sc["base_emission_rate"].as<float>(scrape.base_emission_rate);
+    scrape.base_gain          = sc["base_gain"].as<float>(scrape.base_gain);
+    scrape.contact_grace_time = sc["contact_grace_time"].as<float>(scrape.contact_grace_time);
+    scrape.screech_sound      = sc["screech_sound"].as<std::string>(scrape.screech_sound);
+  }
+
   if (!body_mesh_path_.empty())        UpdateBodyMesh(body_mesh_path_);
   if (!front_wheel_mesh_path_.empty()) UpdateFrontWheelMesh(front_wheel_mesh_path_);
   if (!rear_wheel_mesh_path_.empty())  UpdateRearWheelMesh(rear_wheel_mesh_path_);
@@ -311,6 +321,16 @@ void VehicleEditorWindow::SaveToYaml() {
   out << YAML::Key << "medium_sound"   << YAML::Value << crash_sound.medium_sound;
   out << YAML::Key << "heavy_sound"    << YAML::Value << crash_sound.heavy_sound;
   out << YAML::EndMap;  // crash_sound
+
+  const physics::ScrapeDesc& scrape = vehicle_desc_.scrape;
+  out << YAML::Key << "scrape" << YAML::Value << YAML::BeginMap;
+  out << YAML::Key << "min_speed"          << YAML::Value << scrape.min_speed;
+  out << YAML::Key << "max_speed"          << YAML::Value << scrape.max_speed;
+  out << YAML::Key << "base_emission_rate" << YAML::Value << scrape.base_emission_rate;
+  out << YAML::Key << "base_gain"          << YAML::Value << scrape.base_gain;
+  out << YAML::Key << "contact_grace_time" << YAML::Value << scrape.contact_grace_time;
+  out << YAML::Key << "screech_sound"      << YAML::Value << scrape.screech_sound;
+  out << YAML::EndMap;  // scrape
 
   out << YAML::EndMap;  // root
 
@@ -870,6 +890,35 @@ void VehicleEditorWindow::DrawCrashSoundSection() {
                              0.01f, 0.f, 2.f, "%.2f");
 }
 
+void VehicleEditorWindow::DrawScrapeSection() {
+  ImGui::SeparatorText("Scrape");
+
+  physics::ScrapeDesc& scrape = vehicle_desc_.scrape;
+
+  ImGui::PushID("scrape_sound");
+  ImGui::LabelText("Screech", "%s",
+                   scrape.screech_sound.empty() ? "(none)" : scrape.screech_sound.c_str());
+  ImGui::SameLine();
+  if (ImGui::Button("Change...")) scrape_sound_modal_.Open();
+  if (const std::string picked = scrape_sound_modal_.Render(); !picked.empty()) {
+    scrape.screech_sound = picked;
+    dirty_               = true;
+  }
+  ImGui::PopID();
+
+  dirty_ |= ImGui::DragFloat("Min speed (m/s)", &scrape.min_speed, 0.05f, 0.f, 20.f, "%.2f");
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Sliding speed below which the scrape stops");
+
+  dirty_ |= ImGui::DragFloat("Max speed (gain/rate saturate)", &scrape.max_speed,
+                             0.1f, 0.1f, 50.f, "%.1f");
+  dirty_ |= ImGui::DragFloat("Base spark rate (particles/s)", &scrape.base_emission_rate,
+                             1.f, 0.f, 500.f, "%.0f");
+  dirty_ |= ImGui::DragFloat("Base screech gain", &scrape.base_gain, 0.01f, 0.f, 2.f, "%.2f");
+  dirty_ |= ImGui::DragFloat("Contact grace time (s)", &scrape.contact_grace_time,
+                             0.01f, 0.f, 1.f, "%.2f");
+}
+
 void VehicleEditorWindow::DrawActionsBar() {
   ImGui::Separator();
 
@@ -944,6 +993,8 @@ void VehicleEditorWindow::Render() {
     DrawDamageSection();
     ImGui::Spacing();
     DrawCrashSoundSection();
+    ImGui::Spacing();
+    DrawScrapeSection();
     DrawActionsBar();
   }
   ImGui::End();

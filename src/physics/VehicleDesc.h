@@ -73,6 +73,25 @@ struct CrashSoundDesc {
     std::string heavy_sound  = "crash_heavy";   ///< Sound asset stem for the heavy tier.
 };
 
+/// Configures the continuous scrape effect (see vfx::VFXScrape,
+/// vfx::VehicleScrapeEffect): directional sparks + a looping metal screech
+/// while a panel slides along geometry at speed.
+/// Fully Jolt-free; may be serialised to YAML.
+struct ScrapeDesc {
+    // cppcheck-suppress unusedStructMember
+    float min_speed = 0.5f;   ///< Sliding speed (m/s) below which the scrape stops.
+    // cppcheck-suppress unusedStructMember
+    float max_speed = 15.f;   ///< Speed at which spark rate / screech gain saturate to 1.0.
+    // cppcheck-suppress unusedStructMember
+    float base_emission_rate = 60.f;  ///< Spark particles/sec at max_speed.
+    // cppcheck-suppress unusedStructMember
+    float base_gain = 1.f;    ///< Screech gain multiplier at max_speed.
+    // cppcheck-suppress unusedStructMember
+    float contact_grace_time = 0.15f;  ///< Time (s) a contact gap is tolerated before stopping.
+    // cppcheck-suppress unusedStructMember
+    std::string screech_sound = "scratching_metal";  ///< Sound asset stem for the loop.
+};
+
 /// Top-level description of a wheeled vehicle.
 /// Fully Jolt-free; may be serialised to YAML.
 struct VehicleDesc {
@@ -112,6 +131,8 @@ struct VehicleDesc {
     VehicleDamageDesc damage;
     // cppcheck-suppress unusedStructMember
     CrashSoundDesc crash_sound;
+    // cppcheck-suppress unusedStructMember
+    ScrapeDesc scrape;
 };
 
 }  // namespace physics

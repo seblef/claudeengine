@@ -277,14 +277,31 @@ class BodyDebugFilter final : public JPH::BodyDrawFilter {
     const std::unordered_map<uint32_t, SurfaceType>& surface_types_;
 };
 
+/// Averages the manifold's contact points on shape 1 into a single world-space
+/// point. Shared by OnContactAdded and OnContactPersisted.
+core::Vec3f AverageContactPoint(const JPH::ContactManifold& manifold) {
+    const JPH::uint point_count = manifold.mRelativeContactPointsOn1.size();
+    core::Vec3f world_point = core::Vec3f::kZero;
+    for (JPH::uint i = 0; i < point_count; ++i) {
+        const JPH::RVec3 p = manifold.GetWorldSpaceContactPointOn1(i);
+        world_point += core::Vec3f(static_cast<float>(p.GetX()),
+                                   static_cast<float>(p.GetY()),
+                                   static_cast<float>(p.GetZ()));
+    }
+    if (point_count > 0) world_point /= static_cast<float>(point_count);
+    return world_point;
+}
+
 /// Global Jolt contact listener that forwards new contacts to whichever of the
 /// two bodies (if either) is registered in collision_listeners_.
 ///
 /// Uses JPH::EstimateCollisionResponse in OnContactAdded — at that point the
 /// constraint solver has not run yet, so this is the recommended way to
 /// approximate impact strength (see ContactListener::OnContactAdded docs).
-/// OnContactPersisted is intentionally left as a no-op: resting/sliding contact
-/// should not repeatedly trigger damage.
+/// OnContactPersisted forwards continuous contact (surface normal + relative
+/// velocity at the contact point) via OnSustainedContact — used to drive
+/// continuous VFX (e.g. a scrape/grind effect), never damage: a resting or
+/// sliding contact fires this every step, which would make damage runaway.
 class VehicleContactListener final : public JPH::ContactListener {
  public:
     explicit VehicleContactListener(
@@ -310,18 +327,38 @@ class VehicleContactListener final : public JPH::ContactListener {
             });
         if (total_impulse <= 0.f) return;
 
-        const JPH::uint point_count = manifold.mRelativeContactPointsOn1.size();
-        core::Vec3f world_point = core::Vec3f::kZero;
-        for (JPH::uint i = 0; i < point_count; ++i) {
-            const JPH::RVec3 p = manifold.GetWorldSpaceContactPointOn1(i);
-            world_point += core::Vec3f(static_cast<float>(p.GetX()),
-                                       static_cast<float>(p.GetY()),
-                                       static_cast<float>(p.GetZ()));
-        }
-        if (point_count > 0) world_point /= static_cast<float>(point_count);
+        const core::Vec3f world_point = AverageContactPoint(manifold);
 
         if (l1) l1->OnCollision(world_point, total_impulse);
         if (l2) l2->OnCollision(world_point, total_impulse);
+    }
+
+    void OnContactPersisted(const JPH::Body& body1, const JPH::Body& body2,
+                            const JPH::ContactManifold& manifold,
+                            JPH::ContactSettings& /*settings*/) override {
+        IPhysicsCollisionListener* l1 = Find(body1.GetID());
+        IPhysicsCollisionListener* l2 = Find(body2.GetID());
+        if (!l1 && !l2) return;
+
+        const core::Vec3f world_point = AverageContactPoint(manifold);
+
+        // mWorldSpaceNormal is the direction that would move body2 out of
+        // collision, i.e. body1's own outward surface normal at the contact.
+        // Each listener wants the OTHER body's surface normal (pointing back
+        // toward itself), hence the sign flip for body1's listener.
+        const JPH::Vec3&  n = manifold.mWorldSpaceNormal;
+        const core::Vec3f normal(n.GetX(), n.GetY(), n.GetZ());
+
+        const JPH::Vec3 v1 = body1.GetPointVelocity(
+            JPH::RVec3(world_point.x, world_point.y, world_point.z));
+        const JPH::Vec3 v2 = body2.GetPointVelocity(
+            JPH::RVec3(world_point.x, world_point.y, world_point.z));
+        const core::Vec3f rel_velocity_1(v1.GetX() - v2.GetX(),
+                                         v1.GetY() - v2.GetY(),
+                                         v1.GetZ() - v2.GetZ());
+
+        if (l1) l1->OnSustainedContact(world_point, -normal, rel_velocity_1);
+        if (l2) l2->OnSustainedContact(world_point, normal, -rel_velocity_1);
     }
 
  private:

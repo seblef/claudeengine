@@ -1,0 +1,52 @@
+sub_systems:
+  - name: sub_system_0
+    blend_mode: additive
+    lit: false
+    texture: default/diffuse.dds
+    sprite_cols: 1
+    sprite_rows: 1
+    animation_fps: 0
+    animation_mode: sequential
+    smooth_transition: false
+    emitter_shape: point
+    emitter_radius: 0
+    enabled: true
+    emission_rate: 60
+    max_particles: 200
+    looping: true
+    duration: 1
+    lifetime:
+      min: 0.150000006
+      max: 0.689999998
+    speed:
+      min: 2
+      max: 6
+    direction: [0, 1, 0]
+    spread: 25
+    gravity: 9.81000042
+    size_start:
+      min: 0.0199999996
+      max: 0.0659999996
+    size_end:
+      min: 0
+      max: 0.00999999978
+    color_gradient:
+      - key: 0
+        color: [1, 1, 0.800000012, 1]
+      - key: 0.400000006
+        color: [1, 0.5, 0.100000001, 1]
+      - key: 1
+        color: [0.600000024, 0.100000001, 0, 0]
+    rotation_start:
+      min: 0
+      max: 0
+    angular_velocity:
+      min: 0
+      max: 0
+    intensity_start: 3
+    intensity_end: 1
+    drag: 1.5
+    turbulence_strength: 0
+    turbulence_frequency: 1
+lights:
+  []
