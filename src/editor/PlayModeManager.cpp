@@ -98,7 +98,9 @@ void PlayModeManager::SetStatusMessage(const std::string& msg) {
   if (on_status_message_) on_status_message_(msg);
 }
 
-void PlayModeManager::Enter(const std::string& vehicle_name) {
+void PlayModeManager::Enter(const std::string& vehicle_name,
+                            audio::SoundManager* sound_manager,
+                            audio::ResourceManager* resource_manager) {
   if (playing_) return;
 
   // 1. Validate file path.
@@ -114,7 +116,8 @@ void PlayModeManager::Enter(const std::string& vehicle_name) {
     SetStatusMessage("Failed to load vehicle '" + vehicle_name + "'");
     return;
   }
-  owned_vehicle_ = std::make_unique<game::GameVehicle>(tmpl);
+  owned_vehicle_ = std::make_unique<game::GameVehicle>(
+      tmpl, sound_manager, resource_manager);
   tmpl->Release();
 
   // 3. Locate player start and collect static mesh physics bodies via visitor.

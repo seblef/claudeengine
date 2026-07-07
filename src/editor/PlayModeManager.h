@@ -12,6 +12,11 @@
 
 namespace physics { class PhysicsBody; }
 
+namespace audio {
+class ResourceManager;
+class SoundManager;
+}  // namespace audio
+
 namespace game {
 class ChaseCameraController;
 class GameMesh;
@@ -76,9 +81,13 @@ class PlayModeManager {
   // Attempts to enter play mode. Validates the scene (file path, player start),
   // auto-saves, spawns a vehicle from the given template name at the player
   // start, installs a chase camera, and registers static mesh physics bodies.
+  // sound_manager and resource_manager are forwarded to the spawned
+  // GameVehicle (e.g. for crash sounds); may be null to play silently.
   // No-op and shows a status-bar warning if preconditions are not met.
   // No-op if already playing.
-  void Enter(const std::string& vehicle_name);
+  void Enter(const std::string& vehicle_name,
+            audio::SoundManager* sound_manager = nullptr,
+            audio::ResourceManager* resource_manager = nullptr);
 
   // Exits play mode: tears down play-time physics bodies, restores viewport and
   // toolbar state, and fires the on_exit_ callback so the caller can reset the
