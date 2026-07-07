@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "core/Vec3f.h"
+#include "game/CameraShake.h"
 #include "game/ICameraController.h"
 
 namespace physics { class CharacterController; }
@@ -34,6 +35,7 @@ class FPSCameraController : public ICameraController {
   void SetCamera(GameCamera* camera) override;
   void OnEvent(const core::Event& event) override;
   void Update(float dt) override;
+  void ApplyShake(float magnitude, float duration_seconds) override;
 
   // Sets the initial world-space position. Call before the first Update().
   void SetPosition(core::Vec3f pos);
@@ -95,6 +97,9 @@ class FPSCameraController : public ICameraController {
   // Physics-driven kinematic capsule; null when PhysicsSystem is absent.
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<physics::CharacterController> character_;
+
+  // cppcheck-suppress unusedStructMember
+  CameraShake shake_;
 };
 
 }  // namespace game

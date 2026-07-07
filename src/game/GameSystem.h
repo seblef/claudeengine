@@ -61,6 +61,12 @@ class GameSystem : public core::Singleton<GameSystem> {
   // Sets the active camera controller and binds the current camera to it.
   void SetCameraController(ICameraController* controller);
 
+  // Returns the active camera controller, or nullptr if none is set.
+  [[nodiscard]] ICameraController* GetCameraController() const { return camera_controller_; }
+
+  // Returns the active camera, or nullptr if none is set.
+  [[nodiscard]] GameCamera* GetActiveCamera() const { return active_camera_; }
+
   // Registers a callback invoked for every event drained from the EventManager,
   // before the event is routed to the camera controller. Use this to handle
   // application-level events (e.g. debug key toggles) without competing for

@@ -28,6 +28,13 @@ class ICameraController {
   // camera.
   virtual void Update(float dt) = 0;
 
+  // Triggers a screen-shake impulse: magnitude scales the peak translational
+  // (metres) and rotational (radians) offset blended into the controller's
+  // output transform; the shake linearly decays to zero over
+  // duration_seconds. Retriggering while already shaking restarts the decay
+  // from the new magnitude/duration.
+  virtual void ApplyShake(float magnitude, float duration_seconds) = 0;
+
  protected:
   ICameraController() = default;
 };

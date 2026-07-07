@@ -30,6 +30,10 @@ void ChaseCameraController::SetArmHeight(float m)           { arm_height_       
 void ChaseCameraController::SetSpringStiffness(float k)     { spring_stiffness_ = k; }
 void ChaseCameraController::SetOrbitSpeed(float rad_per_sec){ orbit_speed_      = rad_per_sec; }
 
+void ChaseCameraController::ApplyShake(float magnitude, float duration_seconds) {
+  shake_.Trigger(magnitude, duration_seconds);
+}
+
 void ChaseCameraController::OnEvent(const core::Event& event) {
   switch (event.type) {
     case core::EventType::kKeyDown:
@@ -110,12 +114,22 @@ void ChaseCameraController::Update(float dt) {
   const core::Vec3f right       = core::Vec3f::kAxisY.Cross(forward).Normalized();
   const core::Vec3f up          = forward.Cross(right);
 
+  // Blend in the decaying screen-shake offset, if any (see ApplyShake()).
+  shake_.Advance(dt);
+  const core::Vec3f shaken_position = position_
+      + right * shake_.GetLateralOffset()
+      + up    * shake_.GetVerticalOffset();
+  const float cr = std::cos(shake_.GetRollOffset());
+  const float sr = std::sin(shake_.GetRollOffset());
+  const core::Vec3f shaken_right = right * cr + up * sr;
+  const core::Vec3f shaken_up    = up * cr - right * sr;
+
   // Build world transform: columns are right, up, -forward, position.
   const core::Mat4f transform(
-      right.x,   up.x,  -forward.x,  position_.x,
-      right.y,   up.y,  -forward.y,  position_.y,
-      right.z,   up.z,  -forward.z,  position_.z,
-      0.f,       0.f,    0.f,        1.f);
+      shaken_right.x, shaken_up.x, -forward.x, shaken_position.x,
+      shaken_right.y, shaken_up.y, -forward.y, shaken_position.y,
+      shaken_right.z, shaken_up.z, -forward.z, shaken_position.z,
+      0.f,            0.f,          0.f,       1.f);
 
   camera_->SetWorldTransform(transform);
 }

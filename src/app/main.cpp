@@ -47,6 +47,7 @@
 #include "renderer/GlobalLight.h"
 #include "renderer/MaterialDesc.h"
 #include "renderer/Renderer.h"
+#include "vfx/VFXSystem.h"
 
 #include <algorithm>
 #include <memory>
@@ -112,6 +113,10 @@ int main(int argc, char* argv[]) {
     LOG_F(WARNING, "Audio system unavailable — sound emitters will be silent");
     sound_system.reset();
   }
+
+  // vfx depends on game/renderer/particles/audio, so it is created last among
+  // the engine singletons and shut down first.
+  new vfx::VFXSystem();
 
   // ---- Objects whose lifetime spans the main loop -------------------------
   // Camera + controller for the default (no map / no map camera) path.
@@ -320,6 +325,7 @@ int main(int argc, char* argv[]) {
 
   // ---- Main loop ------------------------------------------------------------
   float prev_elapsed = 0.f;
+  float prev_vfx_elapsed = game.GetElapsedTime();
   while (game.IsRunning()) {
     if (map_world_time || map_wind_system) {
       const float elapsed  = game.GetElapsedTime();
@@ -349,9 +355,17 @@ int main(int argc, char* argv[]) {
     if (physics_debug_enabled)
       physics::PhysicsSystem::Instance().DrawDebug({.drawShapes = true});
     game.Update();
+    if (vfx::VFXSystem::IsInstanced()) {
+      const float vfx_elapsed  = game.GetElapsedTime();
+      const float vfx_frame_dt = vfx_elapsed - prev_vfx_elapsed;
+      prev_vfx_elapsed = vfx_elapsed;
+      vfx::VFXSystem::Instance().Update(vfx_frame_dt);
+    }
     if (core::Profiler::IsInstanced())
       core::Profiler::Instance().MarkFrame();
   }
+
+  vfx::VFXSystem::Shutdown();
 
   if (environment::SkyRenderer::IsInstanced()) {
     environment::SkyRenderer::Instance().Reset();

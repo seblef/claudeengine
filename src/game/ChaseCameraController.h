@@ -2,6 +2,7 @@
 
 #include "core/Event.h"
 #include "core/Vec3f.h"
+#include "game/CameraShake.h"
 #include "game/ICameraController.h"
 
 namespace game {
@@ -29,6 +30,7 @@ class ChaseCameraController : public ICameraController {
   void SetCamera(GameCamera* camera) override;
   void OnEvent(const core::Event& event) override;
   void Update(float dt) override;
+  void ApplyShake(float magnitude, float duration_seconds) override;
 
   // Sets the scene object the camera will follow.
   void SetTarget(const GameObject* target);
@@ -77,6 +79,9 @@ class ChaseCameraController : public ICameraController {
   bool  orbit_left_held_   = false;
   // cppcheck-suppress unusedStructMember
   bool  orbit_right_held_  = false;
+
+  // cppcheck-suppress unusedStructMember
+  CameraShake shake_;
 };
 
 }  // namespace game

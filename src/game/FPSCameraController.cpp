@@ -34,6 +34,10 @@ void FPSCameraController::SetPosition(core::Vec3f pos) {
   position_ = pos;
 }
 
+void FPSCameraController::ApplyShake(float magnitude, float duration_seconds) {
+  shake_.Trigger(magnitude, duration_seconds);
+}
+
 void FPSCameraController::SetCamera(GameCamera* camera) {
   camera_ = camera;
   // CharacterController creation is deferred to the first Update() so that
@@ -146,12 +150,22 @@ void FPSCameraController::Update(float dt) {
     position = position_;
   }
 
+  // Blend in the decaying screen-shake offset, if any (see ApplyShake()).
+  shake_.Advance(dt);
+  const core::Vec3f shaken_position = position
+      + right              * shake_.GetLateralOffset()
+      + core::Vec3f::kAxisY * shake_.GetVerticalOffset();
+  const float cr = std::cos(shake_.GetRollOffset());
+  const float sr = std::sin(shake_.GetRollOffset());
+  const core::Vec3f shaken_right = right * cr + core::Vec3f::kAxisY * sr;
+  const core::Vec3f shaken_up    = core::Vec3f::kAxisY * cr - right * sr;
+
   // Build world transform: columns are right, world-up, -look, position.
   const core::Mat4f transform(
-      right.x,  core::Vec3f::kAxisY.x,  -look.x,  position.x,
-      right.y,  core::Vec3f::kAxisY.y,  -look.y,  position.y,
-      right.z,  core::Vec3f::kAxisY.z,  -look.z,  position.z,
-      0.f,      0.f,                     0.f,      1.f);
+      shaken_right.x, shaken_up.x, -look.x, shaken_position.x,
+      shaken_right.y, shaken_up.y, -look.y, shaken_position.y,
+      shaken_right.z, shaken_up.z, -look.z, shaken_position.z,
+      0.f,            0.f,          0.f,     1.f);
 
   camera_->SetWorldTransform(transform);
 }
