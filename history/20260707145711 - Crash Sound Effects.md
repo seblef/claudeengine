@@ -94,23 +94,23 @@ one-shot mechanism and the collision-impulse plumbing added for
   crash" (~800 impulse, first damage threshold) solidly in the
   medium-to-heavy range, so the two systems feel consistent out of the box
   even though they're independently configured.
-- **Editor Play Mode is not wired up.** `PlayModeManager::Enter` still
-  constructs `GameVehicle` with null audio managers (silent crash sounds
-  during in-editor playtesting), because doing otherwise would require
-  threading `EditorWindow`'s `editor_sound_manager_` /
-  `editor_sound_resources_` (and the toolbar's sound-enabled toggle)
-  through `PlayModeManager`, which none of its current callers do and which
-  is out of scope for this issue. Vehicles placed via `MapLoader` (i.e. the
-  actual game app) get crash sounds; only in-editor Play Mode does not, as
-  a known follow-up.
+- **Editor Play Mode is wired up too, added after initial review.** The
+  first pass of this feature left `PlayModeManager::Enter` constructing
+  `GameVehicle` with null audio managers, reasoning that `MapLoader`
+  (the actual game app) was the primary consumer and editor Play Mode was
+  out of scope. In practice, Play Mode is the *only* interactive way to
+  collide a vehicle in the editor, so shipping without it meant the
+  feature was untestable by ear immediately after merge — a real gap, not
+  a reasonable deferral. Fixed by threading `EditorWindow`'s
+  `editor_sound_manager_` / `editor_sound_resources_` (gated by
+  `toolbar_->IsSoundEnabled()`, the same pattern already used for
+  `GameSoundEmitter` placement) through a new
+  `PlayModeManager::Enter(vehicle_name, sound_manager, resource_manager)`
+  overload. Both new parameters default to `nullptr` so no other caller
+  needed to change.
 
 ## Output to keep in mind for future work
 
-- If a future issue wires proper audio into editor Play Mode, extend
-  `PlayModeManager::Enter` to accept `audio::SoundManager*` /
-  `audio::ResourceManager*` (gated by the toolbar's existing sound-enabled
-  toggle) and forward them into `GameVehicle`'s constructor — the plumbing
-  in `GameVehicle` already supports this without further changes.
 - `CollisionEstimationResult` (per `PhysicsSystem.cpp`'s contact listener)
   currently only surfaces a scalar impulse and an averaged world-space
   point — no contact normal, no other-body reference. If crash sounds ever
