@@ -202,6 +202,12 @@ class PhysicsSystem : public core::Singleton<PhysicsSystem> {
         uint16_t layer_mask = 0xFFFF) const;
 
  private:
+    // Approximates a restitution-driven bounce for vehicle wheels resting on a
+    // high-restitution surface (see Step()). Wheeled vehicles don't otherwise
+    // consult ground restitution, since wheels drive via raycast + suspension
+    // rather than rigid-body collision response.
+    void ApplyWheelRestitution();
+
     // cppcheck-suppress unusedStructMember
     std::unique_ptr<JPH::TempAllocatorImpl>  temp_allocator_;
     // cppcheck-suppress unusedStructMember

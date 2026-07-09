@@ -18,6 +18,7 @@ class GameMesh;
 class GameParticleSystem;
 class GameRoad;
 class GameSoundEmitter;
+class GameTerrainTile;
 }  // namespace game
 
 namespace editor {
@@ -66,6 +67,12 @@ class PropertiesPanel {
     on_road_width_changed_ = std::move(cb);
   }
 
+  // Sets the callback invoked when a TerrainTile's size or surface override
+  // sliders change. The caller is responsible for calling RegenerateMesh().
+  void SetOnTerrainTileChanged(std::function<void(game::GameTerrainTile*)> cb) {
+    on_terrain_tile_changed_ = std::move(cb);
+  }
+
   // Renders the properties UI inside the current ImGui window.
   // obj may be nullptr (no selection).
   void Render(game::GameObject* obj);
@@ -76,6 +83,7 @@ class PropertiesPanel {
   void RenderMeshProperties(game::GameMesh* mesh);
   void RenderParticleSystemProperties(const game::GameParticleSystem* ps);
   void RenderRoadProperties(game::GameRoad* road);
+  void RenderTerrainTileProperties(game::GameTerrainTile* tile);
   void RenderSoundEmitterProperties(game::GameSoundEmitter* emitter);
 
   // cppcheck-suppress unusedStructMember
@@ -98,6 +106,8 @@ class PropertiesPanel {
   std::function<void(const std::string&, float)> on_play_sound_once_;
   // cppcheck-suppress unusedStructMember
   std::function<void(game::GameRoad*)>            on_road_width_changed_;
+  // cppcheck-suppress unusedStructMember
+  std::function<void(game::GameTerrainTile*)>     on_terrain_tile_changed_;
   // cppcheck-suppress unusedStructMember
   SoundEmitterSelectionModal               sound_picker_modal_{"Change Sound"};
   // cppcheck-suppress unusedStructMember

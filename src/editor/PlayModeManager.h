@@ -125,6 +125,7 @@ class PlayModeManager {
     void Visit(game::GameRoad&)              override {}
     void Visit(game::GameSoundEmitter&)      override {}
     void Visit(game::GameTerrain& t)         override;
+    void Visit(game::GameTerrainTile&)       override {}
     void Visit(game::GameVehicle&)           override {}
 
     // Physics bodies created for meshes without an existing physics descriptor.

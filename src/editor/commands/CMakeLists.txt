@@ -14,6 +14,7 @@ target_sources(editor PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/RenameObjectCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ReparentCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/SculptBrushCommand.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/TerrainTileMaterialAssignCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/TransformCommand.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/UngroupPivotCommand.cpp
 )

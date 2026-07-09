@@ -1,4 +1,5 @@
 add_subdirectory(core)
 add_subdirectory(mesh)
 add_subdirectory(game)
+add_subdirectory(track)
 add_subdirectory(vfx)

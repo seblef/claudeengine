@@ -66,6 +66,7 @@
 #include "game/GamePlayerStart.h"
 #include "game/GameSoundEmitter.h"
 #include "game/GameTerrain.h"
+#include "game/GameTerrainTile.h"
 #include "game/GameVehicle.h"
 #include "game/MeshTemplate.h"
 #include "game/VehicleTemplate.h"
@@ -214,6 +215,10 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
     } else {
       road->RegenerateMesh(nullptr);
     }
+    scene_dirty_ = true;
+  });
+  properties_panel_->SetOnTerrainTileChanged([this](game::GameTerrainTile* tile) {
+    tile->RegenerateMesh();
     scene_dirty_ = true;
   });
   resources_panel_->SetOnMaterialOpen(
@@ -592,6 +597,16 @@ void EditorWindow::Render() {
       } else if (active_tool == EditorTool::kCreateRoad) {
         road_tool_->OnActivateCreation();
         viewport_->SetActiveTool(road_tool_.get());
+      } else if (active_tool == EditorTool::kCreateTerrainTile) {
+        auto tile = std::make_unique<game::GameTerrainTile>(video_);
+        tile->SetName(GenerateObjectName(*scene_, "terrain_tile"));
+        tile->RegenerateMesh();
+        placement_tool_ = std::make_unique<PlacementTool>(
+            std::move(tile), 0.f,
+            ImGuiMouseCursor_ResizeAll,
+            [this]{ toolbar_->SetActiveTool(EditorTool::kSelection); });
+        placement_tool_->SetToolbar(toolbar_.get());
+        viewport_->SetActiveTool(placement_tool_.get());
       } else if (active_tool == EditorTool::kCreateVehicle) {
         vehicle_modal_->Open();
       }

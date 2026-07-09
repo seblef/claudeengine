@@ -17,10 +17,12 @@
 #include "editor/commands/MaterialAssignCommand.h"
 #include "editor/commands/MaterialPropertyCommand.h"
 #include "editor/commands/RoadMaterialAssignCommand.h"
+#include "editor/commands/TerrainTileMaterialAssignCommand.h"
 #include "game/GameMaterial.h"
 #include "game/GameMesh.h"
 #include "game/GameObjectType.h"
 #include "game/GameRoad.h"
+#include "game/GameTerrainTile.h"
 #include "game/MeshTemplate.h"
 #include "renderer/GeometryUtils.h"
 #include "renderer/Material.h"
@@ -506,6 +508,18 @@ void MaterialEditorWindow::ApplyToSelection(const EditorScene& scene) {
           road, before, material_));
     else
       road->SetMaterial(material_);
+    return;
+  }
+
+  if (sel->GetType() == game::GameObjectType::kTerrainTile) {
+    auto* tile = static_cast<game::GameTerrainTile*>(sel);
+    game::GameMaterial* before =
+        const_cast<game::GameMaterial*>(tile->GetMaterialPtr());
+    if (history_)
+      history_->Push(std::make_unique<TerrainTileMaterialAssignCommand>(
+          tile, before, material_));
+    else
+      tile->SetMaterial(material_);
     return;
   }
 

@@ -450,6 +450,40 @@ void PhysicsSystem::Step(float dt) {
             vehicle->listener_->OnBodyTransformUpdated(
                 vehicle->GetBodyWorldTransform());
     }
+
+    ApplyWheelRestitution();
+}
+
+// Wheeled vehicles drive via raycast + suspension spring (see
+// VehicleCollisionTesterRay in CreateVehicle), so Jolt's own restitution
+// handling — built for rigid-body collision response — never comes into
+// play at the wheel/ground contact. To let a high-restitution surface (e.g.
+// a TerrainTile ramp) still "launch" a vehicle, approximate a restitution
+// bounce ourselves: for each wheel compressing into a body with non-zero
+// restitution, apply an extra impulse along the contact normal reflecting
+// the into-surface velocity component, split evenly across the 4 wheels.
+void PhysicsSystem::ApplyWheelRestitution() {
+    JPH::BodyInterface& iface = jolt_system_->GetBodyInterface();
+    for (const auto& vehicle : vehicles_) {
+        JPH::VehicleConstraint* constraint = vehicle->constraint_;
+        for (JPH::Wheel* wheel : constraint->GetWheels()) {
+            if (!wheel->HasContact()) continue;
+
+            const float restitution = iface.GetRestitution(wheel->GetContactBodyID());
+            if (restitution <= 0.f) continue;
+
+            JPH::Body* body = vehicle->body_;
+            const JPH::RVec3 contact_pos = wheel->GetContactPosition();
+            const JPH::Vec3  normal      = wheel->GetContactNormal();
+            const JPH::Vec3  point_vel   = body->GetPointVelocity(contact_pos);
+            const float v_n = point_vel.Dot(normal);
+            if (v_n >= 0.f) continue;  // wheel not compressing into the surface
+
+            const float mass = 1.f / body->GetMotionProperties()->GetInverseMass();
+            const float impulse_mag = -(1.f + restitution) * v_n * mass * 0.25f;
+            iface.AddImpulse(body->GetID(), normal * impulse_mag, contact_pos);
+        }
+    }
 }
 
 PhysicsBody* PhysicsSystem::CreateBody(const PhysicsBodyDesc& desc,
