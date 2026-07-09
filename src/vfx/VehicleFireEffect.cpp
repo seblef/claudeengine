@@ -5,6 +5,8 @@
 #include <memory>
 #include <utility>
 
+#include <loguru.hpp>
+
 #include "core/Vec3f.h"
 #include "game/VehicleDamage.h"
 #include "particles/ParticleSystemTemplate.h"
@@ -67,12 +69,17 @@ void VehicleFireEffect::Start(const core::Mat4f& world_transform) {
   active_ = static_cast<VFXFire*>(
       VFXSystem::Instance().Spawn(std::move(effect), world_pos, core::Vec3f::kAxisY));
   active_->SetWorldTransform(world_transform);
+
+  LOG_F(INFO, "VehicleFireEffect: fire started at (%.1f, %.1f, %.1f)",
+        world_pos.x, world_pos.y, world_pos.z);
 }
 
 void VehicleFireEffect::Stop() {
   if (!active_) return;
   active_->Stop();
   active_ = nullptr;
+
+  LOG_F(INFO, "VehicleFireEffect: fire stopped");
 }
 
 bool VehicleFireEffect::AllZonesBelowThreshold() const {
