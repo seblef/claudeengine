@@ -32,6 +32,77 @@ constexpr float kCSMProbeZHalfExtent = 5000.f;
 // sitting exactly on the computed near/far plane isn't clipped by
 // floating-point rounding.
 constexpr float kCSMZFitEpsilon = 0.05f;
+
+// Sutherland-Hodgman clip of a convex polygon (light-space points, `in`,
+// `in_count` <= 8) against the half-plane {p : p.x/p.y REL bound}, where REL
+// is >= when keep_greater is true and <= otherwise (axis 0 = x, 1 = y).
+// Writes the clipped polygon to `out` (capacity 8) and returns its vertex
+// count. A convex polygon can gain at most one vertex per clip against a
+// single plane; starting from a 4-vertex box face and clipping against 4
+// planes (min_x, max_x, min_y, max_y in turn), 8 is a safe upper bound.
+int ClipPolygonAxis(const core::Vec3f* in, int in_count, int axis, float bound,
+                    bool keep_greater, core::Vec3f* out) {
+  int out_count = 0;
+  for (int i = 0; i < in_count; ++i) {
+    const core::Vec3f& cur  = in[i];
+    const core::Vec3f& prev = in[(i + in_count - 1) % in_count];
+    const float cur_c  = (axis == 0) ? cur.x  : cur.y;
+    const float prev_c = (axis == 0) ? prev.x : prev.y;
+    const bool cur_in  = keep_greater ? (cur_c  >= bound) : (cur_c  <= bound);
+    const bool prev_in = keep_greater ? (prev_c >= bound) : (prev_c <= bound);
+    if (cur_in != prev_in) {
+      const float t = (bound - prev_c) / (cur_c - prev_c);
+      out[out_count++] = prev + (cur - prev) * t;
+    }
+    if (cur_in) out[out_count++] = cur;
+  }
+  return out_count;
+}
+
+// Box face vertex indices into core::BBox3::GetCorners()'s 8-corner order
+// (0..3 = near face, 4..7 = far face; see core/BBox3.h), one quad per face.
+constexpr int kBoxFaces[6][4] = {
+  {0, 1, 3, 2}, {4, 5, 7, 6},  // near, far   (z = min, max)
+  {0, 1, 5, 4}, {2, 3, 7, 6},  // bottom, top (y = min, max)
+  {0, 2, 6, 4}, {1, 3, 7, 5},  // left, right (x = min, max)
+};
+
+// Returns, in min_z/max_z, the light-space Z range of the portion of
+// `world_box` that actually falls inside the cascade's light-space XY window
+// [min_x,max_x]x[min_y,max_y] — i.e. box ∩ infinite-XY-window-prism, not the
+// box's raw (unclipped) light-space AABB. Taking the raw AABB instead badly
+// overestimates a caster's Z contribution whenever its world footprint is
+// large relative to the window and not aligned with the light's view axis
+// (e.g. a long, thin object under a tilted sun): the box's own extent along
+// the light's XY axes gets folded into an inflated apparent Z spread, which
+// inflates ls_near/ls_far for the whole cascade and causes shadow peter-
+// panning (shadow_bias, a fixed fraction of the near/far range, ends up
+// representing far more world-space thickness than intended). Clips each of
+// the box's 6 faces against the 4 window half-planes (Sutherland-Hodgman)
+// and takes the Z range of the surviving vertices, which correctly handles
+// both a caster straddling the window's boundary and a caster whose
+// footprint fully contains the window (e.g. a road or ground slab).
+void ClipCasterZRange(const core::BBox3& world_box, const core::Mat4f& light_view,
+                      float min_x, float max_x, float min_y, float max_y,
+                      float* min_z, float* max_z) {
+  const std::array<core::Vec3f, 8> corners = world_box.GetCorners();
+  core::Vec3f lc[8];
+  for (int k = 0; k < 8; ++k) lc[k] = corners[k] * light_view;
+
+  for (const int* face : kBoxFaces) {
+    core::Vec3f buf_a[8] = {lc[face[0]], lc[face[1]], lc[face[2]], lc[face[3]]};
+    core::Vec3f buf_b[8];
+    int n = 4;
+    n = ClipPolygonAxis(buf_a, n, /*axis=*/0, min_x, /*keep_greater=*/true,  buf_b);
+    n = ClipPolygonAxis(buf_b, n, /*axis=*/0, max_x, /*keep_greater=*/false, buf_a);
+    n = ClipPolygonAxis(buf_a, n, /*axis=*/1, min_y, /*keep_greater=*/true,  buf_b);
+    n = ClipPolygonAxis(buf_b, n, /*axis=*/1, max_y, /*keep_greater=*/false, buf_a);
+    for (int k = 0; k < n; ++k) {
+      *min_z = std::min(*min_z, buf_a[k].z);
+      *max_z = std::max(*max_z, buf_a[k].z);
+    }
+  }
+}
 }  // namespace
 
 ShadowRenderer::ShadowRenderer(abstract::VideoDevice* video)
@@ -160,17 +231,18 @@ void ShadowRenderer::RenderCascades(const GlobalLight&       light,
     no_cull->CullAndCollect(probe_frustum, casters);
     octree->CullAndCollect(probe_frustum, casters);
 
-    // Tight Z fit: union the receiver frustum's own Z range with every
-    // candidate caster's light-space AABB. Only actual shadow casters count —
-    // no_cull also carries non-caster renderables (e.g. GlobalLight itself,
-    // always_visible with BBox3::kInfinite) that must not poison the fit.
+    // Tight Z fit: union the receiver frustum's own Z range with the portion
+    // of every candidate caster that actually falls inside this cascade's
+    // light-space XY window (see ClipCasterZRange). Only actual shadow
+    // casters count — no_cull also carries non-caster renderables (e.g.
+    // GlobalLight itself, always_visible with BBox3::kInfinite) that must
+    // not poison the fit.
     float min_z = b.receiver_min_z;
     float max_z = b.receiver_max_z;
     for (const Renderable* r : casters) {
       if (!r->IsShadowCaster()) continue;
-      const core::BBox3 ls_bbox = r->GetWorldBBox() * b.light_view;
-      min_z = std::min(min_z, ls_bbox.GetMin().z);
-      max_z = std::max(max_z, ls_bbox.GetMax().z);
+      ClipCasterZRange(r->GetWorldBBox(), b.light_view,
+                       b.min_x, b.max_x, b.min_y, b.max_y, &min_z, &max_z);
     }
 
     // May legitimately go non-positive: the light "eye" used to build
