@@ -10,6 +10,7 @@
 #include "game/GameMesh.h"
 #include "game/GameObjectVisitor.h"
 #include "game/IVehicleController.h"
+#include "game/IVehicleFireListener.h"
 #include "game/IVehicleScrapeListener.h"
 #include "game/VehicleCrashSound.h"
 #include "game/VehicleDamage.h"
@@ -172,6 +173,8 @@ void GameVehicle::Update(float dt) {
 
     const core::Mat4f transform = physics_vehicle_->GetBodyWorldTransform();
     const float       speed     = physics_vehicle_->GetForwardSpeed();
+
+    if (fire_listener_) fire_listener_->OnVehicleTransformUpdated(transform);
 
     // --- Flip state machine ---------------------------------------------------
     // Column 1 of the local-to-world transform is the vehicle's local Y axis

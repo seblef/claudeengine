@@ -233,6 +233,12 @@ void VehicleEditorWindow::LoadFromYaml() {
     scrape.screech_sound      = sc["screech_sound"].as<std::string>(scrape.screech_sound);
   }
 
+  if (const YAML::Node fr = root["fire"]) {
+    physics::FireDesc& fire = vehicle_desc_.fire;
+    fire.damage_threshold = fr["damage_threshold"].as<float>(fire.damage_threshold);
+    fire.heat_distortion  = fr["heat_distortion"].as<bool>(fire.heat_distortion);
+  }
+
   if (!body_mesh_path_.empty())        UpdateBodyMesh(body_mesh_path_);
   if (!front_wheel_mesh_path_.empty()) UpdateFrontWheelMesh(front_wheel_mesh_path_);
   if (!rear_wheel_mesh_path_.empty())  UpdateRearWheelMesh(rear_wheel_mesh_path_);
@@ -331,6 +337,12 @@ void VehicleEditorWindow::SaveToYaml() {
   out << YAML::Key << "contact_grace_time" << YAML::Value << scrape.contact_grace_time;
   out << YAML::Key << "screech_sound"      << YAML::Value << scrape.screech_sound;
   out << YAML::EndMap;  // scrape
+
+  const physics::FireDesc& fire = vehicle_desc_.fire;
+  out << YAML::Key << "fire" << YAML::Value << YAML::BeginMap;
+  out << YAML::Key << "damage_threshold" << YAML::Value << fire.damage_threshold;
+  out << YAML::Key << "heat_distortion"  << YAML::Value << fire.heat_distortion;
+  out << YAML::EndMap;  // fire
 
   out << YAML::EndMap;  // root
 
@@ -919,6 +931,20 @@ void VehicleEditorWindow::DrawScrapeSection() {
                              0.01f, 0.f, 1.f, "%.2f");
 }
 
+void VehicleEditorWindow::DrawFireSection() {
+  ImGui::SeparatorText("Fire");
+
+  physics::FireDesc& fire = vehicle_desc_.fire;
+
+  dirty_ |= ImGui::DragFloat("Damage threshold", &fire.damage_threshold, 0.01f, 0.f, 1.f, "%.2f");
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Damage fraction (any zone) at which fire/smoke starts");
+
+  dirty_ |= ImGui::Checkbox("Heat distortion", &fire.heat_distortion);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Authoring intent only \xe2\x80\x94 not yet wired to a post-process pass");
+}
+
 void VehicleEditorWindow::DrawActionsBar() {
   ImGui::Separator();
 
@@ -995,6 +1021,8 @@ void VehicleEditorWindow::Render() {
     DrawCrashSoundSection();
     ImGui::Spacing();
     DrawScrapeSection();
+    ImGui::Spacing();
+    DrawFireSection();
     DrawActionsBar();
   }
   ImGui::End();

@@ -1,0 +1,103 @@
+sub_systems:
+  - name: flame
+    blend_mode: additive
+    lit: false
+    texture: fx/fireflamepart01anim.dds
+    sprite_cols: 8
+    sprite_rows: 4
+    animation_fps: 14
+    animation_mode: sequential
+    smooth_transition: true
+    emitter_shape: sphere
+    emitter_radius: 0.3
+    enabled: true
+    emission_rate: 10
+    max_particles: 30
+    looping: true
+    duration: 1
+    lifetime:
+      min: 0.8
+      max: 1.5
+    speed:
+      min: 0.6
+      max: 1.4
+    direction: [0, 1, 0]
+    spread: 30
+    gravity: -0.4
+    size_start:
+      min: 0.4
+      max: 0.6
+    size_end:
+      min: 0.8
+      max: 1.2
+    color_gradient:
+      - key: 0
+        color: [1, 0.98, 0.7, 1]
+      - key: 0.25
+        color: [1, 0.6, 0.1, 0.9]
+      - key: 0.6
+        color: [0.85, 0.1, 0, 0.5]
+      - key: 1
+        color: [0, 0, 0, 0]
+    rotation_start:
+      min: 0
+      max: 360
+    angular_velocity:
+      min: -30
+      max: 30
+    intensity_start: 2.5
+    intensity_end: 1.5
+    drag: 0.5
+    turbulence_strength: 0.4
+    turbulence_frequency: 3
+  - name: smoke
+    blend_mode: alpha_blend
+    lit: false
+    texture: fx/smoke02.dds
+    sprite_cols: 4
+    sprite_rows: 4
+    animation_fps: 10
+    animation_mode: sequential
+    smooth_transition: false
+    emitter_shape: sphere
+    emitter_radius: 0.25
+    enabled: true
+    emission_rate: 4
+    max_particles: 18
+    looping: true
+    duration: 1
+    lifetime:
+      min: 2.5
+      max: 4.5
+    speed:
+      min: 0.4
+      max: 0.9
+    direction: [0, 1, 0]
+    spread: 20
+    gravity: -1.2
+    size_start:
+      min: 1
+      max: 1.5
+    size_end:
+      min: 3
+      max: 4.5
+    color_gradient:
+      - key: 0
+        color: [0.25, 0.24, 0.22, 0.55]
+      - key: 0.3
+        color: [0.15, 0.15, 0.15, 0.45]
+      - key: 1
+        color: [0.08, 0.08, 0.08, 0]
+    rotation_start:
+      min: 0
+      max: 360
+    angular_velocity:
+      min: -10
+      max: 10
+    intensity_start: 1
+    intensity_end: 1
+    drag: 0.7
+    turbulence_strength: 0.3
+    turbulence_frequency: 1.2
+lights:
+  []

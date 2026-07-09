@@ -92,6 +92,18 @@ struct ScrapeDesc {
     std::string screech_sound = "scratching_metal";  ///< Sound asset stem for the loop.
 };
 
+/// Configures the persistent fire/smoke effect (see vfx::VFXFire,
+/// vfx::VehicleFireEffect) that attaches to the vehicle body once damage in
+/// any zone reaches damage_threshold, telegraphing that the vehicle is close
+/// to being wrecked.
+/// Fully Jolt-free; may be serialised to YAML.
+struct FireDesc {
+    // cppcheck-suppress unusedStructMember
+    float damage_threshold = 0.8f;  ///< Damage fraction (any zone) at which fire/smoke starts.
+    // cppcheck-suppress unusedStructMember
+    bool heat_distortion = false;  ///< Stub toggle: authoring intent only, not yet wired to a post-process pass.
+};
+
 /// Top-level description of a wheeled vehicle.
 /// Fully Jolt-free; may be serialised to YAML.
 struct VehicleDesc {
@@ -133,6 +145,8 @@ struct VehicleDesc {
     CrashSoundDesc crash_sound;
     // cppcheck-suppress unusedStructMember
     ScrapeDesc scrape;
+    // cppcheck-suppress unusedStructMember
+    FireDesc fire;
 };
 
 }  // namespace physics

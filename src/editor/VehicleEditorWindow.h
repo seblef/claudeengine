@@ -71,6 +71,7 @@ class VehicleEditorWindow {
   void DrawDamageSection();
   void DrawCrashSoundSection();
   void DrawScrapeSection();
+  void DrawFireSection();
   void DrawActionsBar();
 
   // Opens an NFD mesh file dialog and updates the body mesh.

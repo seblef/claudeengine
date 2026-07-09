@@ -40,6 +40,7 @@
 #include "game/MapLoader.h"
 #include "game/MeshTemplate.h"
 #include "game/PlayerVehicleController.h"
+#include "game/VehicleDamage.h"
 #include "game/VehicleTemplate.h"
 #include "gldevices/GLDevices.h"
 #include "physics/PhysicsSystem.h"
@@ -47,6 +48,7 @@
 #include "renderer/GlobalLight.h"
 #include "renderer/MaterialDesc.h"
 #include "renderer/Renderer.h"
+#include "vfx/VehicleFireEffect.h"
 #include "vfx/VehicleScrapeEffect.h"
 #include "vfx/VFXSystem.h"
 
@@ -247,6 +249,7 @@ int main(int argc, char* argv[]) {
   std::unique_ptr<game::PlayerVehicleController> player_vehicle_ctrl;
   std::unique_ptr<game::ChaseCameraController>   chase_controller;
   std::unique_ptr<vfx::VehicleScrapeEffect>       vehicle_scrape;
+  std::unique_ptr<vfx::VehicleFireEffect>         vehicle_fire;
 
   if (!vehicle_path.empty() && map_player_start) {
     vehicle_tmpl = game::VehicleTemplate::GetOrLoad(vehicle_path, video);
@@ -270,6 +273,11 @@ int main(int argc, char* argv[]) {
       vehicle_scrape = std::make_unique<vfx::VehicleScrapeEffect>(
           vehicle_tmpl->GetVehicleDesc().scrape, sound_manager.get(), sound_resources.get());
       vehicle_ptr->SetScrapeListener(vehicle_scrape.get());
+
+      vehicle_fire = std::make_unique<vfx::VehicleFireEffect>(
+          vehicle_tmpl->GetVehicleDesc().fire, vehicle_ptr->GetDamage());
+      vehicle_ptr->GetDamage().AddListener(vehicle_fire.get());
+      vehicle_ptr->SetFireListener(vehicle_fire.get());
 
       vehicle_ptr->Activate();
 
@@ -373,9 +381,13 @@ int main(int argc, char* argv[]) {
       core::Profiler::Instance().MarkFrame();
   }
 
-  // Stop any running scrape effect (which reaches into VFXSystem's internal
-  // effect list via a raw pointer) before the singleton itself is torn down.
+  // Stop any running scrape/fire effect (which reaches into VFXSystem's
+  // internal effect list via a raw pointer) before the singleton itself is
+  // torn down, and unregister the fire effect from VehicleDamage first since
+  // it is a listener the latter still holds a raw pointer to.
+  if (vehicle_ptr && vehicle_fire) vehicle_ptr->GetDamage().RemoveListener(vehicle_fire.get());
   vehicle_scrape.reset();
+  vehicle_fire.reset();
   vfx::VFXSystem::Shutdown();
 
   if (environment::SkyRenderer::IsInstanced()) {
