@@ -26,7 +26,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/wreckoning",
-            "args": ["--map", "./maps/demo.map.yaml", "--vehicle", "./vehicles/hell.vehicle.yaml"],
+            "args": ["--map", "./maps/track.map.yaml", "--vehicle", "./vehicles/hell_sized.vehicle.yaml"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/data",
             "environment": [],
