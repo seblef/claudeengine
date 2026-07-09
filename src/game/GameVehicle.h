@@ -221,6 +221,18 @@ class GameVehicle : public GameObject,
   // cppcheck-suppress unusedStructMember
   core::Vec3f               wreck_position_       = core::Vec3f::kZero;
 
+  // Index into GetVehicleDesc().damage.mesh_variants of the currently applied
+  // body mesh variant, or -1 while showing the pristine (unmodified) body
+  // template. See UpdateBodyMeshVariant().
+  // cppcheck-suppress unusedStructMember
+  int   current_mesh_variant_ = -1;
+  // Front-zone-damage-driven multipliers recomputed each Update(); see
+  // UpdateDamageEffects(). 1.0 = no effect.
+  // cppcheck-suppress unusedStructMember
+  float damage_steer_scale_   = 1.f;
+  // cppcheck-suppress unusedStructMember
+  float damage_speed_scale_   = 1.f;
+
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<VehicleDamage> damage_;
 
@@ -239,6 +251,14 @@ class GameVehicle : public GameObject,
 
   // Sets the visibility of the body mesh and all four wheel meshes.
   void SetMeshesVisible(bool visible);
+
+  // Recomputes damage_steer_scale_ / damage_speed_scale_ from the front
+  // zone's damage fraction against GetVehicleDesc().damage.effects.
+  void UpdateDamageEffects();
+  // Swaps body_mesh_'s template when the average damage fraction across all
+  // zones (see VehicleDamage::GetAverageDamageFraction()) crosses into a
+  // different authored mesh variant.
+  void UpdateBodyMeshVariant();
 
   // cppcheck-suppress unusedStructMember
   DriveState                drive_state_     = DriveState::kForward;

@@ -1,10 +1,12 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <filesystem>
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "abstract/RenderTarget.h"
 #include "abstract/RenderTargetGroup.h"
@@ -23,14 +25,19 @@ class MeshInstance;
 class PreviewRenderer;
 }  // namespace renderer
 
+namespace editor { class MeshPreview; }
+
 namespace editor {
 
 // Floating window for inspecting and editing a .vehicle.yaml descriptor file.
 //
-// Layout: Body section (mesh picker), Wheels section (per-axle mesh pickers,
-// wheel selector radio buttons, 320×240 combined preview with always-active
-// ImGuizmo gizmo, per-wheel position DragFloat3 inputs), Physics section
-// (sliders for all VehicleDesc parameters), and an actions bar
+// Layout: a "Vehicle" tab (Body mesh picker, Wheels section with per-axle
+// mesh pickers / wheel selector radio buttons / 320×240 combined preview with
+// always-active ImGuizmo gizmo / per-wheel position DragFloat3 inputs, and
+// Physics sliders) and a "Damage" tab (zone HP + threshold sliders, gameplay
+// effects (speed/steering reduction) per threshold, the body damage mesh
+// variant list with inline MeshPreview thumbnails, and the crash sound /
+// scrape / fire / wreck sections), followed by a shared actions bar
 // (Save / Revert / Place in Scene).
 //
 // Usage:
@@ -69,6 +76,8 @@ class VehicleEditorWindow {
   void DrawWheelsSection();
   void DrawPhysicsSection();
   void DrawDamageSection();
+  void DrawGameplayEffectsSection();
+  void DrawBodyMeshVariantsSection();
   void DrawCrashSoundSection();
   void DrawScrapeSection();
   void DrawFireSection();
@@ -85,6 +94,15 @@ class VehicleEditorWindow {
   void UpdateBodyMesh(const std::string& rel_path);
   void UpdateFrontWheelMesh(const std::string& rel_path);
   void UpdateRearWheelMesh(const std::string& rel_path);
+
+  // Opens an NFD mesh file dialog and updates the damage mesh variant at index.
+  void PickMeshVariant(size_t index);
+  // Reloads the MeshTemplate + MeshPreview for damage mesh variant index from
+  // its current mesh_path (called after loading or picking a mesh).
+  void UpdateMeshVariantPreview(size_t index);
+  // Rebuilds mesh_variant_tmpls_/mesh_variant_previews_ to match
+  // vehicle_desc_.damage.mesh_variants (called after (re)loading the YAML).
+  void RebuildMeshVariantPreviews();
 
   // Recreates combined-preview MeshInstances for all loaded meshes.
   void RebuildCombinedInstances();
@@ -154,6 +172,16 @@ class VehicleEditorWindow {
   game::MeshTemplate* front_wheel_tmpl_ = nullptr;
   // cppcheck-suppress unusedStructMember
   game::MeshTemplate* rear_wheel_tmpl_  = nullptr;
+
+  // Index-aligned with vehicle_desc_.damage.mesh_variants. Non-owning
+  // MeshTemplates (ref-counted via core::Resource; released in the
+  // destructor and whenever a row is rebuilt/removed); nullptr entries are
+  // variants with no mesh path yet. Thumbnails are lazily constructed only
+  // once a mesh path is set.
+  // cppcheck-suppress unusedStructMember
+  std::vector<game::MeshTemplate*>          mesh_variant_tmpls_;
+  // cppcheck-suppress unusedStructMember
+  std::vector<std::unique_ptr<MeshPreview>> mesh_variant_previews_;
 
   // ---- Combined vehicle preview (body + 4 wheels) --------------------------
 

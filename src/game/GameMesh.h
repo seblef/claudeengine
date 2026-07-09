@@ -73,6 +73,15 @@ class GameMesh : public GameObject, public physics::IPhysicsBodyListener {
   // Returns the shared template (e.g. so a material editor can call SetMaterial()).
   [[nodiscard]] MeshTemplate* GetTemplate() const;
 
+  // Swaps the underlying mesh template: releases the old template, AddRef's
+  // tmpl, rebuilds the MeshInstance (preserving the current world transform),
+  // and re-registers it with the renderer if this mesh is currently in scene
+  // and visible. Used for damage-driven visual mesh swaps (see
+  // game::GameVehicle). Does not touch any attached physics body — in
+  // practice the body mesh this is used on never has one, since vehicle
+  // physics runs on the parent GameVehicle. tmpl must not be null.
+  void SetTemplate(MeshTemplate* tmpl);
+
   // Returns the physics body description, or nullopt if none has been set.
   [[nodiscard]] const std::optional<physics::PhysicsBodyDesc>& GetPhysicsDesc() const {
     return physics_desc_;

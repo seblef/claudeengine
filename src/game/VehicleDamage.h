@@ -41,6 +41,11 @@ class VehicleDamage {
   [[nodiscard]] float GetMaxHP(DamageZone zone) const;
   // Damage fraction in [0, 1]: 0 = pristine, 1 = destroyed.
   [[nodiscard]] float GetDamageFraction(DamageZone zone) const;
+  // Average of GetDamageFraction() across all five zones in [0, 1]. Drives
+  // the single shared body-mesh damage variant (see
+  // physics::VehicleDamageDesc::mesh_variants) since the vehicle has one
+  // visible body mesh, not a mesh per zone.
+  [[nodiscard]] float GetAverageDamageFraction() const;
 
   // Both non-owning; the listener must outlive this VehicleDamage or call
   // RemoveListener() first. Adding the same listener twice is a no-op.

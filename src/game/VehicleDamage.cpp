@@ -88,6 +88,13 @@ float VehicleDamage::GetDamageFraction(DamageZone zone) const {
   return max > 0.f ? 1.f - hp_[idx] / max : 1.f;
 }
 
+float VehicleDamage::GetAverageDamageFraction() const {
+  float sum = 0.f;
+  for (int i = 0; i < kZoneCount; ++i)
+    sum += GetDamageFraction(static_cast<DamageZone>(i));
+  return sum / static_cast<float>(kZoneCount);
+}
+
 void VehicleDamage::AddListener(IVehicleDamageListener* listener) {
   if (std::find(listeners_.begin(), listeners_.end(), listener) == listeners_.end())
     listeners_.push_back(listener);

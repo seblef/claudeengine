@@ -43,6 +43,31 @@ void ParseDamageDesc(physics::VehicleDamageDesc& damage, const YAML::Node& n) {
     for (size_t i = 0; i < count; ++i)
       damage.thresholds[i] = th[i].as<float>(damage.thresholds[i]);
   }
+  if (const YAML::Node mv = n["mesh_variants"]) {
+    damage.mesh_variants.clear();
+    for (const auto& item : mv) {
+      physics::DamageMeshVariant variant;
+      variant.threshold = item["threshold"].as<float>(variant.threshold);
+      variant.mesh_path = item["mesh"].as<std::string>(variant.mesh_path);
+      damage.mesh_variants.push_back(variant);
+    }
+  }
+  if (const YAML::Node fx = n["effects"]) {
+    auto read_scale = [](const YAML::Node& node, std::array<float, 4>& arr) {
+      if (!node) return;
+      const size_t count = std::min(node.size(), arr.size());
+      for (size_t i = 0; i < count; ++i) arr[i] = node[i].as<float>(arr[i]);
+    };
+    auto read_flags = [](const YAML::Node& node, std::array<bool, 4>& arr) {
+      if (!node) return;
+      const size_t count = std::min(node.size(), arr.size());
+      for (size_t i = 0; i < count; ++i) arr[i] = node[i].as<bool>(arr[i]);
+    };
+    read_scale(fx["steering_scale"],   damage.effects.steering_scale);
+    read_flags(fx["steering_enabled"], damage.effects.steering_enabled);
+    read_scale(fx["speed_scale"],      damage.effects.speed_scale);
+    read_flags(fx["speed_enabled"],    damage.effects.speed_enabled);
+  }
 }
 
 void ParseCrashSoundDesc(physics::CrashSoundDesc& crash_sound, const YAML::Node& n) {
@@ -218,6 +243,20 @@ VehicleTemplate::VehicleTemplate(const std::string& desc_path,
   front_wheel_geo_ = InferWheelGeometry(front_wheel_tmpl_, "front");
   rear_wheel_geo_  = InferWheelGeometry(rear_wheel_tmpl_,  "rear");
 
+  for (const physics::DamageMeshVariant& variant : vehicle_desc_.damage.mesh_variants) {
+    MeshTemplate* variant_tmpl = nullptr;
+    if (!variant.mesh_path.empty()) {
+      variant_tmpl = MeshTemplate::GetOrLoad((data_root / variant.mesh_path).string(), video);
+      if (!variant_tmpl->IsInitialized()) {
+        LOG_F(WARNING, "VehicleTemplate: '%s' failed to load damage mesh variant '%s'",
+              desc_path.c_str(), variant.mesh_path.c_str());
+        variant_tmpl->Release();
+        variant_tmpl = nullptr;
+      }
+    }
+    body_damage_variant_tmpls_.push_back(variant_tmpl);
+  }
+
   initialized_ = true;
   LOG_F(INFO, "VehicleTemplate: loaded '%s'", desc_path.c_str());
 }
@@ -226,6 +265,8 @@ VehicleTemplate::~VehicleTemplate() {
   if (body_tmpl_)        body_tmpl_->Release();
   if (front_wheel_tmpl_) front_wheel_tmpl_->Release();
   if (rear_wheel_tmpl_)  rear_wheel_tmpl_->Release();
+  for (MeshTemplate* variant_tmpl : body_damage_variant_tmpls_)
+    if (variant_tmpl) variant_tmpl->Release();
 }
 
 // static
@@ -282,6 +323,14 @@ MeshTemplate* VehicleTemplate::GetFrontWheelTemplate() const {
 
 MeshTemplate* VehicleTemplate::GetRearWheelTemplate() const {
   return rear_wheel_tmpl_;
+}
+
+size_t VehicleTemplate::GetBodyDamageVariantCount() const {
+  return body_damage_variant_tmpls_.size();
+}
+
+MeshTemplate* VehicleTemplate::GetBodyDamageVariantTemplate(size_t index) const {
+  return index < body_damage_variant_tmpls_.size() ? body_damage_variant_tmpls_[index] : nullptr;
 }
 
 }  // namespace game
