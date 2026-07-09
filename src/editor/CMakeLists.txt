@@ -45,6 +45,7 @@ add_library(editor STATIC
     TerrainEditorPanel.cpp
     TerrainPainterWindow.cpp
     VehicleEditorWindow.cpp
+    VFXPanel.cpp
 )
 
 add_subdirectory(commands)
@@ -58,4 +59,4 @@ target_include_directories(editor PUBLIC
     PRIVATE ${tinyexr_SOURCE_DIR}/deps/miniz
 )
 
-target_link_libraries(editor PUBLIC game renderer gldevices audio openal core mesh imgui imguizmo nfd)
+target_link_libraries(editor PUBLIC game renderer gldevices audio openal core mesh vfx imgui imguizmo nfd)

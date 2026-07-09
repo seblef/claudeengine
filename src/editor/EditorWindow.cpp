@@ -52,6 +52,7 @@
 #include "editor/ResourceBrowser.h"
 #include "editor/ResourcePanelRegistry.h"
 #include "editor/VehicleEditorWindow.h"
+#include "editor/VFXPanel.h"
 #include "editor/OutlinerPanel.h"
 #include "editor/PropertiesPanel.h"
 #include "editor/ResourcesPanel.h"
@@ -364,6 +365,28 @@ EditorWindow::EditorWindow(abstract::VideoDevice* video)
                "  rear_left: {position: [-0.85, 0, -1.4]}\n"
                "  rear_right: {position: [0.85, 0, -1.4]}\n";
         LOG_F(INFO, "EditorWindow: created vehicle '%s'", path.string().c_str());
+        return path;
+      });
+
+  // .vfx.yaml opens as a docked panel tab (not an external window).
+  resource_panel_registry_.Register(
+      ".vfx.yaml",
+      [this](const std::filesystem::path& path) -> std::unique_ptr<IResourcePanel> {
+        return std::make_unique<VFXPanel>(path, video_);
+      });
+  resource_panel_registry_.RegisterNew(
+      ".vfx.yaml",
+      [](std::string_view name) -> std::filesystem::path {
+        const std::filesystem::path dir = core::Config::GetDataFolder() / "vfx";
+        std::error_code ec;
+        std::filesystem::create_directories(dir, ec);
+        const std::filesystem::path path = dir / (std::string(name) + ".vfx.yaml");
+        if (std::filesystem::exists(path)) return path;
+        std::ofstream out(path);
+        if (!out) return {};
+        out << "effect_type: explosion\n"
+               "sound: \"\"\n";
+        LOG_F(INFO, "EditorWindow: created VFX effect '%s'", path.string().c_str());
         return path;
       });
 
