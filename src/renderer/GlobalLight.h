@@ -7,6 +7,7 @@
 
 namespace core { class Camera; }
 namespace renderer { struct CSMInfos; }
+namespace renderer { struct CascadeLightBasis; }
 
 namespace renderer {
 
@@ -27,10 +28,16 @@ class GlobalLight : public Light {
 
   [[nodiscard]] core::Mat4f GetVolumeMatrix() const override;
 
-  // Fills out with 4 cascade VP matrices and split depths for CSM rendering.
-  // Uses the practical split scheme (lambda=0.5 blend of log and uniform splits).
-  // Each cascade sub-frustum gets a tight orthographic projection fitted in light space.
-  void ComputeCascadeMatrices(const core::Camera& camera, CSMInfos& out) const;
+  // Fills out.split_x..w (practical split scheme, lambda=0.5 blend of log and
+  // uniform splits) and, for each of kCSMCascadeCount cascades, basis[i] with
+  // the light-space view matrix, XY orthographic bounds, and receiver-frustum
+  // Z range. Does not populate out.cascade_vp — GlobalLight has no visibility
+  // into scene casters; ShadowRenderer::RenderCascades derives the final
+  // tight near/far and cascade_vp from this basis plus a caster query.
+  // basis must point to an array of at least kCSMCascadeCount elements
+  // (see renderer/CSMInfos.h).
+  void ComputeCascadeBasis(const core::Camera& camera, CSMInfos& out,
+                           CascadeLightBasis* basis) const;
 
   [[nodiscard]] const core::Vec3f& GetAmbientColor() const { return ambient_color_; }
   [[nodiscard]] const core::Vec3f& GetDirection()    const { return direction_; }

@@ -7,6 +7,7 @@
 
 #include "core/Camera.h"
 #include "renderer/CSMInfos.h"
+#include "renderer/CascadeLightBasis.h"
 
 namespace renderer {
 
@@ -24,8 +25,9 @@ core::Mat4f GlobalLight::GetVolumeMatrix() const {
   return core::Mat4f::kIdentity;
 }
 
-void GlobalLight::ComputeCascadeMatrices(const core::Camera& camera,
-                                         CSMInfos& out) const {
+void GlobalLight::ComputeCascadeBasis(const core::Camera& camera,
+                                      CSMInfos& out,
+                                      CascadeLightBasis* basis) const {
   // Cap shadow distance independently of the camera far plane so that each
   // cascade covers a small enough world area to produce sharp shadow texels.
   // With lambda=0.5 the uniform split component gives cascade 0 ≈ z_far/4 depth
@@ -104,28 +106,29 @@ void GlobalLight::ComputeCascadeMatrices(const core::Camera& camera,
     // shadow receivers outside the tight cascade frustum AABB — e.g. floor points
     // whose shadow UV would otherwise exceed [0,1] when the camera is close to a
     // caster — are still covered by the shadow map.
-    // Only min_z needs the per-corner loop (for far-plane tightness).
+    //
+    // The receiver frustum's own Z range (min_z/max_z) is tracked here only as
+    // a floor for ShadowRenderer's caster-aware fit below — it is NOT used to
+    // build a projection matrix in this function. Sizing ls_near/ls_far from
+    // this receiver-only range (as a prior version of this code did) clips any
+    // caster that isn't among these 8 corners, e.g. tall geometry or off-frustum
+    // occluders; ShadowRenderer::RenderCascades instead unions this range with
+    // the light-space bounds of the actual shadow casters found by querying the
+    // scene through an "infinite" (unbounded-Z) probe sharing this cascade's XY
+    // footprint, then builds the final orthographic projection from that union.
     const float kInf = std::numeric_limits<float>::max();
     float min_z = kInf;
+    float max_z = -kInf;
     for (const auto& c : cw) {
       const core::Vec3f lc = c * light_view;
       min_z = std::min(min_z, lc.z);
+      max_z = std::max(max_z, lc.z);
     }
     const float min_x = -half_depth,  max_x = half_depth;
     const float min_y = -half_depth,  max_y = half_depth;
 
-    // ls_near is always kMinNear: objects between the light eye and the cascade
-    // frustum corners (e.g. tall geometry above the camera frustum, or objects
-    // behind the camera that are closer to the light) are otherwise clipped.
-    // ls_far extends past the farthest cascade corner by half_depth to catch
-    // casters that sit beyond the camera frustum but still cast into it.
-    static constexpr float kMinNear = 0.1f;
-    const float ls_near = kMinNear;
-    const float ls_far  = -min_z + half_depth;
-
-    const core::Mat4f ortho = core::Mat4f::OrthoOffCenterRH(
-        min_x, max_x, min_y, max_y, ls_near, ls_far);
-    out.cascade_vp[i] = ortho * light_view;
+    basis[i] = CascadeLightBasis{light_view, min_x, max_x, min_y, max_y,
+                                 min_z, max_z};
   }
 }
 

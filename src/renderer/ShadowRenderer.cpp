@@ -6,8 +6,10 @@
 #include "abstract/BufferUsage.h"
 #include "abstract/CullFace.h"
 #include "core/AppConfig.h"
+#include "core/BBox3.h"
 #include "core/Color.h"
 #include "core/ViewFrustum.h"
+#include "renderer/CascadeLightBasis.h"
 #include "renderer/MeshRenderer.h"
 #include "renderer/OmniLight.h"
 #include "renderer/Renderable.h"
@@ -18,6 +20,18 @@ namespace renderer {
 namespace {
 constexpr int kShadowPassInfosSlot    = 6;
 constexpr int kShadowPassInfosFloat4s = sizeof(ShadowPassInfos) / 16;  // 80/16 = 5
+
+// Broad-phase-only Z half-extent for the CSM caster probe. The probe matrix
+// is discarded after CullAndCollect (never used for rendering), so there is
+// no depth-precision cost to being generous — it only needs to exceed the
+// largest plausible distance, along the light direction, between a caster
+// and the receiver slice it shadows.
+constexpr float kCSMProbeZHalfExtent = 5000.f;
+
+// Safety margin added around the tight caster/receiver Z union so geometry
+// sitting exactly on the computed near/far plane isn't clipped by
+// floating-point rounding.
+constexpr float kCSMZFitEpsilon = 0.05f;
 }  // namespace
 
 ShadowRenderer::ShadowRenderer(abstract::VideoDevice* video)
@@ -122,23 +136,66 @@ void ShadowRenderer::RenderCascades(const GlobalLight&       light,
       cascade_maps_[i] = std::make_unique<ShadowMap>(video_, res);
   }
 
-  // Compute the 4 cascade VP matrices and split depths.
-  light.ComputeCascadeMatrices(camera, csm_infos_);
+  // Compute the per-cascade light-space basis (view matrix, XY bounds,
+  // receiver Z range) and split depths. GlobalLight has no visibility into
+  // scene casters, so it does not fit the final near/far — that happens
+  // below, per cascade, from the actual casters found in the scene.
+  std::array<CascadeLightBasis, kCSMCascadeCount> basis;
+  light.ComputeCascadeBasis(camera, csm_infos_, basis.data());
 
   for (int i = 0; i < kCSMCascadeCount; ++i) {
-    const core::Mat4f& vp = csm_infos_.cascade_vp[i];
+    const CascadeLightBasis& b = basis[i];
+
+    // Probe frustum: same XY bounds as the final cascade, but a deliberately
+    // generous Z range. OrthoOffCenterRH's left/right/bottom/top clip planes
+    // don't depend on z_near/z_far, so this finds every caster overlapping
+    // the receiver's XY footprint regardless of its depth along the light
+    // ray — i.e. an "infinite parallelepiped" fit extruded from the cascade.
+    const core::Mat4f probe_ortho = core::Mat4f::OrthoOffCenterRH(
+        b.min_x, b.max_x, b.min_y, b.max_y,
+        -kCSMProbeZHalfExtent, kCSMProbeZHalfExtent);
+    const core::ViewFrustum probe_frustum(probe_ortho * b.light_view);
+
+    std::vector<Renderable*> casters;
+    no_cull->CullAndCollect(probe_frustum, casters);
+    octree->CullAndCollect(probe_frustum, casters);
+
+    // Tight Z fit: union the receiver frustum's own Z range with every
+    // candidate caster's light-space AABB. Only actual shadow casters count —
+    // no_cull also carries non-caster renderables (e.g. GlobalLight itself,
+    // always_visible with BBox3::kInfinite) that must not poison the fit.
+    float min_z = b.receiver_min_z;
+    float max_z = b.receiver_max_z;
+    for (const Renderable* r : casters) {
+      if (!r->IsShadowCaster()) continue;
+      const core::BBox3 ls_bbox = r->GetWorldBBox() * b.light_view;
+      min_z = std::min(min_z, ls_bbox.GetMin().z);
+      max_z = std::max(max_z, ls_bbox.GetMax().z);
+    }
+
+    // May legitimately go non-positive: the light "eye" used to build
+    // light_view is just an arbitrary reference frame now (not a hard near
+    // origin), so a caster behind it in view space (max_z > 0) is expected
+    // and fine — OrthoOffCenterRH only requires z_near != z_far.
+    const float ls_near = -max_z - kCSMZFitEpsilon;
+    const float ls_far  = -min_z + kCSMZFitEpsilon;
+
+    const core::Mat4f ortho = core::Mat4f::OrthoOffCenterRH(
+        b.min_x, b.max_x, b.min_y, b.max_y, ls_near, ls_far);
+    const core::Mat4f vp = ortho * b.light_view;
+    csm_infos_.cascade_vp[i] = vp;
     cascade_maps_[i]->SetLightVP(vp);
 
     ShadowPassInfos spi;
     spi.light_vp = vp;
     shadow_pass_infos_cb_->Fill(&spi);
 
-    // Cull shadow casters visible from this cascade frustum.
-    const core::ViewFrustum cascade_frustum(vp);
-    std::vector<Renderable*> casters;
-    no_cull->CullAndCollect(cascade_frustum, casters);
-    octree->CullAndCollect(cascade_frustum, casters);
-
+    // `casters` was gathered against a superset (generous-Z) frustum sharing
+    // the exact same XY planes as `ortho`, and ls_near/ls_far were derived
+    // directly from these casters' own light-space Z extents (plus epsilon)
+    // — every caster here is guaranteed to lie inside the final frustum too,
+    // so re-running CullAndCollect against the tight frustum would return
+    // the identical set and is skipped.
     cascade_maps_[i]->GetFBO()->BindForWriting();
     video_->SetViewport(0, 0, res, res);
     video_->SetDepthTestEnabled(true);
