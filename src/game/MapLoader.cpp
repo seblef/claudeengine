@@ -28,10 +28,12 @@
 #include "game/GameRoad.h"
 #include "game/GameSoundEmitter.h"
 #include "game/GameTerrain.h"
+#include "game/GameTerrainTile.h"
 #include "game/GameVehicle.h"
 #include "game/MeshTemplate.h"
 #include "game/VehicleTemplate.h"
 #include "track/RoadSpline.h"
+#include "track/TileDesc.h"
 #include "physics/CollisionLayer.h"
 #include "physics/PhysicsBodyDesc.h"
 #include "particles/ParticleSystemTemplate.h"
@@ -519,6 +521,33 @@ std::unique_ptr<GameObject> ParseRoad(const YAML::Node& node,
   return road;
 }
 
+std::unique_ptr<GameObject> ParseTerrainTile(const YAML::Node& node,
+                                             abstract::VideoDevice* video) {
+  const std::string name    = node["name"].as<std::string>("TerrainTile");
+  const std::string mat_raw = node["material"].as<std::string>("");
+
+  track::TileDesc desc;
+  desc.width  = node["width"].as<float>(desc.width);
+  desc.length = node["length"].as<float>(desc.length);
+  desc.surface.friction    = node["friction"].as<float>(desc.surface.friction);
+  desc.surface.restitution =
+      node["restitution"].as<float>(desc.surface.restitution);
+
+  auto tile = std::make_unique<GameTerrainTile>(video);
+  tile->SetName(name);
+  tile->SetTileDesc(desc);
+  tile->SetWorldTransform(core::ParseMat4(node["transform"]));
+
+  if (!mat_raw.empty()) {
+    GameMaterial* mat = LoadMaterialWithFallback(mat_raw, video);
+    tile->SetMaterial(mat);
+    mat->Release();
+  }
+
+  tile->RegenerateMesh();
+  return tile;
+}
+
 std::unique_ptr<GameObject> ParseTerrain(const YAML::Node& node,
                                          const std::filesystem::path& map_path,
                                          abstract::VideoDevice* video) {
@@ -687,6 +716,8 @@ MapData MapLoader::Load(const std::filesystem::path& path,
         go = ParseVehicle(obj, video, sound_manager, resource_manager);
       } else if (type == "road") {
         go = ParseRoad(obj, video);
+      } else if (type == "terrain_tile") {
+        go = ParseTerrainTile(obj, video);
       } else if (type == "gauge") {
         go = ParseGauge(obj);
       } else {

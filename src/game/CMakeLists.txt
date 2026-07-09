@@ -14,6 +14,7 @@ add_library(game STATIC
     GamePlayerStart.cpp
     GameRoad.cpp
     GameSoundEmitter.cpp
+    GameTerrainTile.cpp
     GameVehicle.cpp
     SoundEffectComponent.cpp
     GameSystem.cpp

@@ -19,6 +19,7 @@
 #include "editor/commands/PhysicsPropertyCommand.h"
 #include "editor/commands/RenameObjectCommand.h"
 #include "editor/commands/RoadMaterialAssignCommand.h"
+#include "editor/commands/TerrainTileMaterialAssignCommand.h"
 #include "editor/commands/TransformCommand.h"
 #include "game/GameLight.h"
 #include "game/GameMaterial.h"
@@ -28,12 +29,14 @@
 #include "game/GameParticleSystem.h"
 #include "game/GameRoad.h"
 #include "game/GameSoundEmitter.h"
+#include "game/GameTerrainTile.h"
 #include "game/MeshTemplate.h"
 #include "particles/ParticleSystemTemplate.h"
 #include "physics/CollisionLayer.h"
 #include "physics/MotionType.h"
 #include "physics/PhysicsBodyDesc.h"
 #include "physics/PhysicsShapeType.h"
+#include "track/TileDesc.h"
 #include "renderer/CircleSpotLight.h"
 #include "renderer/GlobalLight.h"
 #include "renderer/Light.h"
@@ -130,6 +133,9 @@ void PropertiesPanel::Render(game::GameObject* obj) {
       break;
     case game::GameObjectType::kRoad:
       RenderRoadProperties(static_cast<game::GameRoad*>(obj));
+      break;
+    case game::GameObjectType::kTerrainTile:
+      RenderTerrainTileProperties(static_cast<game::GameTerrainTile*>(obj));
       break;
     case game::GameObjectType::kSoundEmitter:
       RenderSoundEmitterProperties(
@@ -677,6 +683,53 @@ void PropertiesPanel::RenderRoadProperties(game::GameRoad* road) {
         // GameRoad::SetMaterial does not AddRef, so keep the GetOrLoad ref alive
         // to ensure the material is not destroyed while the road uses it.
         road->SetMaterial(after);
+      }
+    }
+  }
+}
+
+void PropertiesPanel::RenderTerrainTileProperties(game::GameTerrainTile* tile) {
+  ImGui::SeparatorText("Terrain Tile");
+
+  track::TileDesc desc = tile->GetTileDesc();
+  bool changed = false;
+
+  changed |= ImGui::SliderFloat("Width (m)",  &desc.width,  0.5f, 20.f, "%.1f");
+  changed |= ImGui::SliderFloat("Length (m)", &desc.length, 0.5f, 20.f, "%.1f");
+
+  ImGui::Spacing();
+  ImGui::TextUnformatted("Surface Override");
+  changed |= ImGui::SliderFloat("Friction",    &desc.surface.friction,    0.f, 2.f, "%.2f");
+  changed |= ImGui::SliderFloat("Restitution", &desc.surface.restitution, 0.f, 2.f, "%.2f");
+
+  if (changed) {
+    tile->SetTileDesc(desc);
+    if (on_terrain_tile_changed_) on_terrain_tile_changed_(tile);
+  }
+
+  ImGui::Spacing();
+
+  const game::GameMaterial* mat = tile->GetMaterialPtr();
+  ImGui::LabelText("Material", "%s", mat ? mat->GetId().c_str() : "(none)");
+
+  if (ImGui::Button("Change...##material"))
+    material_picker_modal_.Open();
+
+  const std::string picked = material_picker_modal_.Render();
+  if (!picked.empty() && video_) {
+    game::GameMaterial* after = game::GameMaterial::GetOrLoad(picked, video_);
+    if (after) {
+      game::GameMaterial* before =
+          const_cast<game::GameMaterial*>(tile->GetMaterialPtr());
+      if (history_) {
+        history_->Push(
+            std::make_unique<TerrainTileMaterialAssignCommand>(tile, before, after));
+        // Command AddRef'd after in its constructor; release the GetOrLoad ref.
+        after->Release();
+      } else {
+        // GameTerrainTile::SetMaterial does not AddRef, so keep the GetOrLoad
+        // ref alive to ensure the material is not destroyed while it's in use.
+        tile->SetMaterial(after);
       }
     }
   }

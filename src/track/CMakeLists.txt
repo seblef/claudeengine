@@ -2,6 +2,7 @@ add_library(track STATIC
     RoadSpline.cpp
     RoadMeshBuilder.cpp
     TireTrackSystem.cpp
+    TerrainTile.cpp
 )
 
 target_include_directories(track PUBLIC "${CMAKE_SOURCE_DIR}/src")

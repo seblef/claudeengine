@@ -12,6 +12,7 @@ class GamePlayerStart;
 class GameRoad;
 class GameSoundEmitter;
 class GameTerrain;
+class GameTerrainTile;
 class GameVehicle;
 
 // Abstract visitor for all concrete GameObject subclasses.
@@ -32,6 +33,7 @@ class GameObjectVisitor {
   virtual void Visit(GameRoad& road)                      = 0;
   virtual void Visit(GameSoundEmitter& sound_emitter)     = 0;
   virtual void Visit(GameTerrain& terrain)                = 0;
+  virtual void Visit(GameTerrainTile& tile)               = 0;
   virtual void Visit(GameVehicle& vehicle)                = 0;
 };
 

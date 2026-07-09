@@ -25,6 +25,7 @@
 #include "game/GameSoundEmitter.h"
 #include "track/RoadSpline.h"
 #include "game/GameTerrain.h"
+#include "game/GameTerrainTile.h"
 #include "particles/ParticleSystemTemplate.h"
 #include "game/MapLoader.h"
 #include "physics/MotionType.h"
@@ -436,6 +437,31 @@ void MapSerializer::SerializeVisitor::Visit(game::GameRoad& road) {
     out_ << YAML::Flow << YAML::BeginSeq << p.x << p.y << p.z << YAML::EndSeq;
   }
   out_ << YAML::EndSeq;
+  out_ << YAML::EndMap;
+}
+
+void MapSerializer::SerializeVisitor::Visit(game::GameTerrainTile& tile) {
+  const track::TileDesc& desc = tile.GetTileDesc();
+  const physics::PhysicsMaterialDesc def;
+
+  out_ << YAML::BeginMap;
+  out_ << YAML::Key << "name"      << YAML::Value << tile.GetName();
+  out_ << YAML::Key << "type"      << YAML::Value << "terrain_tile";
+  EmitParentField();
+  out_ << YAML::Key << "transform" << YAML::Value;
+  EmitTransform(out_, tile.GetWorldTransform());
+  out_ << YAML::Key << "width"     << YAML::Value << desc.width;
+  out_ << YAML::Key << "length"    << YAML::Value << desc.length;
+  if (desc.surface.friction != def.friction)
+    out_ << YAML::Key << "friction" << YAML::Value << desc.surface.friction;
+  if (desc.surface.restitution != def.restitution)
+    out_ << YAML::Key << "restitution" << YAML::Value
+         << desc.surface.restitution;
+
+  if (const game::GameMaterial* mat = tile.GetMaterialPtr()) {
+    out_ << YAML::Key << "material" << YAML::Value
+         << "materials/" + mat->GetId() + ".yaml";
+  }
   out_ << YAML::EndMap;
 }
 
