@@ -29,6 +29,19 @@ namespace editor { class MeshPreview; }
 
 namespace editor {
 
+// Per-row UI-only state for a procedurally-generated mesh_variants entry.
+// Not serialised — physics::DamageMeshVariant is unchanged by design (see
+// editor/tools/DamageMeshGenerator.h), so a reloaded row always starts with
+// is_generated=false; only rows generated in the current session offer a
+// "Reroll" button. variant_id is chosen once and kept across reroll so the
+// generator overwrites the same output files instead of creating new ones.
+struct MeshVariantGenState {
+  bool is_generated = false;
+  float severity = 0.5f;
+  // cppcheck-suppress unusedStructMember
+  std::string variant_id;
+};
+
 // Floating window for inspecting and editing a .vehicle.yaml descriptor file.
 //
 // Layout: a "Vehicle" tab (Body mesh picker, Wheels section with per-axle
@@ -103,6 +116,14 @@ class VehicleEditorWindow {
   // Rebuilds mesh_variant_tmpls_/mesh_variant_previews_ to match
   // vehicle_desc_.damage.mesh_variants (called after (re)loading the YAML).
   void RebuildMeshVariantPreviews();
+
+  // Appends a new mesh_variants row, procedurally generated from the current
+  // body mesh via DamageMeshGenerator (a fresh random variant id + noise seed).
+  void GenerateNewMeshVariant();
+  // Re-runs DamageMeshGenerator for the row at index with its current
+  // severity and a new random noise seed, overwriting the same output files
+  // in place (same variant id) rather than creating new ones.
+  void RerollMeshVariant(size_t index);
 
   // Recreates combined-preview MeshInstances for all loaded meshes.
   void RebuildCombinedInstances();
@@ -182,6 +203,18 @@ class VehicleEditorWindow {
   std::vector<game::MeshTemplate*>          mesh_variant_tmpls_;
   // cppcheck-suppress unusedStructMember
   std::vector<std::unique_ptr<MeshPreview>> mesh_variant_previews_;
+  // cppcheck-suppress unusedStructMember
+  std::vector<MeshVariantGenState>          mesh_variant_gen_state_;
+
+  // Larger (320x320) preview shown in a popup when a row's "Enlarge" button
+  // is clicked. Lazily constructed on first use; retargeted to whichever row
+  // is enlarged via mesh_variant_zoom_index_ (-1 when no row is enlarged).
+  // Kept in sync with mesh_variant_tmpls_ whenever a row's template is
+  // released/replaced (see UpdateMeshVariantPreview) so it never outlives
+  // the MeshTemplate it points at.
+  std::unique_ptr<MeshPreview> mesh_variant_zoom_preview_;
+  // cppcheck-suppress unusedStructMember
+  int mesh_variant_zoom_index_ = -1;
 
   // ---- Combined vehicle preview (body + 4 wheels) --------------------------
 
