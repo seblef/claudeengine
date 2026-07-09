@@ -3,6 +3,7 @@ add_library(vfx STATIC
     VehicleFireEffect.cpp
     VehicleScrapeEffect.cpp
     VehicleWreckEffect.cpp
+    VFXElectricity.cpp
     VFXExplosion.cpp
     VFXFire.cpp
     VFXScrape.cpp

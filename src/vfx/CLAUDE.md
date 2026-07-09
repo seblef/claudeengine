@@ -27,6 +27,7 @@ below), never a direct `#include "vfx/..."` from `game/`.
 | `IVFXEffect.h` | Interface every effect implements: `Play(worldPos, direction)`, `Update(dt)`, `IsFinished()` |
 | `VFXSystem` | Singleton; `Spawn()` takes ownership of an effect, plays it immediately, and reaps it once `IsFinished()` |
 | `VFXExplosion` / `VFXExplosionDesc` | Fireball/smoke burst + point-light flash + physics shockwave + screen shake |
+| `VFXElectricity` / `VFXElectricityDesc` | One-shot arc between two world-space points, visualised as a chain of spark bursts along the segment |
 | `VFXScrape` | Continuous directional sparks + looping screech, driven by an external `UpdateContact()` call per physics step |
 | `VehicleScrapeEffect` | `game::IVehicleScrapeListener` implementation; owns the persistent spark template and drives a `VFXScrape` from vehicle contact events |
 | `VFXFire` | Looping fire + smoke attached to a moving target, driven by an external `SetWorldTransform()` call every frame; carries an unwired heat-distortion stub flag |
@@ -60,7 +61,8 @@ math) that another effect already owns.
 ### External template ownership
 
 Effects that use `particles::ParticleSystemTemplate` (`VFXScrape`,
-`VFXExplosion`) take it as a **non-owning constructor parameter**, never load
+`VFXExplosion`, `VFXElectricity`) take it as a **non-owning constructor
+parameter**, never load
 it themselves via `GetOrLoad()`. `core::Resource::Release()` deletes the
 template the instant its ref count hits zero, so an effect that is
 constructed-and-destroyed per trigger (or even just short-lived) would
