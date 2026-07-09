@@ -1,5 +1,6 @@
 target_sources(editor PRIVATE
     AlignTool.cpp
+    DamageMeshGenerator.cpp
     PickingUtils.cpp
     PlacementTool.cpp
     RoadTool.cpp

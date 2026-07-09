@@ -3,8 +3,10 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <random>
 #include <span>
 
 #include <imgui.h>
@@ -22,6 +24,7 @@
 #include "core/Vec4f.h"
 #include "core/YamlSerialiser.h"
 #include "editor/MeshPreview.h"
+#include "editor/tools/DamageMeshGenerator.h"
 #include "editor/tools/PickingUtils.h"
 #include "game/MeshTemplate.h"
 #include "renderer/GlobalLight.h"
@@ -52,6 +55,17 @@ core::Mat4f PositionMat(const core::Vec3f& p) {
 core::Mat4f WheelMat(const core::Vec3f& p, bool mirrored) {
   return mirrored ? core::Mat4f::Translation(p) * core::Mat4f::RotationY(kPi)
                   : core::Mat4f::Translation(p);
+}
+
+// Short random hex id used to name a generated mesh_variants row's output
+// files; kept stable across reroll (see MeshVariantGenState) so re-generating
+// overwrites the same files instead of creating new ones.
+std::string MakeRandomHexId() {
+  std::mt19937 rng{std::random_device{}()};
+  std::uniform_int_distribution<uint32_t> dist(0, 0xFFFFFFu);
+  char buf[8];
+  std::snprintf(buf, sizeof(buf), "%06x", dist(rng));
+  return std::string(buf);
 }
 
 }  // namespace
@@ -164,6 +178,9 @@ void VehicleEditorWindow::LoadFromYaml() {
     if (ph["com_offset"])
       vehicle_desc_.com_offset =
           core::ParseVec3(ph["com_offset"], vehicle_desc_.com_offset);
+    if (ph["half_extents"])
+      vehicle_desc_.half_extents =
+          core::ParseVec3(ph["half_extents"], vehicle_desc_.half_extents);
     use_convex_hull_body_ =
         (ph["body_shape"].as<std::string>("box") == "convex_hull");
     if (const YAML::Node susp = ph["suspension"]) {
@@ -305,6 +322,7 @@ void VehicleEditorWindow::SaveToYaml() {
   out << YAML::Key << "gear_switch_time"  << YAML::Value << vehicle_desc_.gear_switch_time;
   out << YAML::Key << "clutch_strength"   << YAML::Value << vehicle_desc_.clutch_strength;
   core::yaml::WriteVec3f(out, "com_offset", vehicle_desc_.com_offset);
+  core::yaml::WriteVec3f(out, "half_extents", vehicle_desc_.half_extents);
   out << YAML::Key << "body_shape"
       << YAML::Value << (use_convex_hull_body_ ? "convex_hull" : "box");
 
@@ -617,8 +635,52 @@ void VehicleEditorWindow::RebuildMeshVariantPreviews() {
   mesh_variant_tmpls_.assign(count, nullptr);
   mesh_variant_previews_.clear();
   mesh_variant_previews_.resize(count);
+  // Generated-row state is UI-only (not serialised); a (re)loaded row always
+  // starts as hand-authored (is_generated=false) until "Generate Variant" is
+  // used again in this session.
+  mesh_variant_gen_state_.assign(count, MeshVariantGenState{});
 
   for (size_t i = 0; i < count; ++i) UpdateMeshVariantPreview(i);
+}
+
+void VehicleEditorWindow::GenerateNewMeshVariant() {
+  vehicle_desc_.damage.mesh_variants.push_back({});
+  mesh_variant_tmpls_.push_back(nullptr);
+  mesh_variant_previews_.emplace_back();
+
+  MeshVariantGenState state;
+  state.is_generated = true;
+  state.variant_id = MakeRandomHexId();
+  mesh_variant_gen_state_.push_back(state);
+
+  RerollMeshVariant(vehicle_desc_.damage.mesh_variants.size() - 1);
+}
+
+void VehicleEditorWindow::RerollMeshVariant(size_t index) {
+  if (body_mesh_path_.empty()) {
+    LOG_F(WARNING, "VehicleEditorWindow: cannot generate a damage variant without a body mesh");
+    return;
+  }
+
+  const MeshVariantGenState& state = mesh_variant_gen_state_[index];
+
+  DamageGenerationParams params;
+  params.severity = state.severity;
+  params.half_extents = vehicle_desc_.half_extents;
+  std::mt19937 rng{std::random_device{}()};
+  params.noise_seed = rng();
+
+  const DamageGenerationResult result =
+      DamageMeshGenerator::Generate(body_mesh_path_, state.variant_id, params);
+  if (!result.success) {
+    LOG_F(WARNING, "VehicleEditorWindow: damage mesh generation failed for '%s'",
+          body_mesh_path_.c_str());
+    return;
+  }
+
+  vehicle_desc_.damage.mesh_variants[index].mesh_path = result.mesh_path;
+  UpdateMeshVariantPreview(index);
+  dirty_ = true;
 }
 
 // ---- Combined preview rendering ---------------------------------------------
@@ -914,6 +976,14 @@ void VehicleEditorWindow::DrawPhysicsSection() {
     dirty_ = true;
   }
 
+  float half_extents[3] = {vehicle_desc_.half_extents.x,
+                           vehicle_desc_.half_extents.y,
+                           vehicle_desc_.half_extents.z};
+  if (ImGui::DragFloat3("Half extents (m)", half_extents, 0.01f, 0.1f, 5.f)) {
+    vehicle_desc_.half_extents = {half_extents[0], half_extents[1], half_extents[2]};
+    dirty_ = true;
+  }
+
   if (ImGui::Checkbox("Convex hull body", &use_convex_hull_body_))
     dirty_ = true;
 
@@ -1031,6 +1101,7 @@ void VehicleEditorWindow::DrawBodyMeshVariantsSection() {
     ImGui::PushID(i);
     const size_t idx = static_cast<size_t>(i);
     physics::DamageMeshVariant& variant = variants[idx];
+    MeshVariantGenState& gen_state = mesh_variant_gen_state_[idx];
 
     ImGui::SetNextItemWidth(120.f);
     dirty_ |= ImGui::SliderFloat("Threshold", &variant.threshold, 0.f, 1.f, "%.2f");
@@ -1041,6 +1112,13 @@ void VehicleEditorWindow::DrawBodyMeshVariantsSection() {
     if (ImGui::Button("Browse...")) PickMeshVariant(idx);
     ImGui::SameLine();
     if (ImGui::Button("Remove")) remove_index = i;
+
+    if (gen_state.is_generated) {
+      ImGui::SetNextItemWidth(120.f);
+      ImGui::SliderFloat("Severity", &gen_state.severity, 0.f, 1.f, "%.2f");
+      ImGui::SameLine();
+      if (ImGui::Button("Reroll")) RerollMeshVariant(idx);
+    }
 
     if (idx < mesh_variant_previews_.size() && mesh_variant_previews_[idx])
       mesh_variant_previews_[idx]->Render(static_cast<float>(ImGui::GetTime()));
@@ -1055,6 +1133,7 @@ void VehicleEditorWindow::DrawBodyMeshVariantsSection() {
     if (mesh_variant_tmpls_[idx]) mesh_variant_tmpls_[idx]->Release();
     mesh_variant_tmpls_.erase(mesh_variant_tmpls_.begin() + remove_index);
     mesh_variant_previews_.erase(mesh_variant_previews_.begin() + remove_index);
+    mesh_variant_gen_state_.erase(mesh_variant_gen_state_.begin() + remove_index);
     dirty_ = true;
   }
 
@@ -1062,8 +1141,11 @@ void VehicleEditorWindow::DrawBodyMeshVariantsSection() {
     variants.push_back({});
     mesh_variant_tmpls_.push_back(nullptr);
     mesh_variant_previews_.emplace_back();
+    mesh_variant_gen_state_.push_back({});
     dirty_ = true;
   }
+  ImGui::SameLine();
+  if (ImGui::Button("Generate Variant")) GenerateNewMeshVariant();
 }
 
 void VehicleEditorWindow::DrawCrashSoundSection() {
