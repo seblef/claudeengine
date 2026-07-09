@@ -1,7 +1,9 @@
 #pragma once
 
+#include <cstddef>
 #include <map>
 #include <string>
+#include <vector>
 
 #include "core/Resource.h"
 #include "physics/VehicleDesc.h"
@@ -51,6 +53,13 @@ class VehicleTemplate : public core::Resource<std::string, VehicleTemplate> {
   [[nodiscard]] MeshTemplate*               GetFrontWheelTemplate()  const;
   [[nodiscard]] MeshTemplate*               GetRearWheelTemplate()   const;
 
+  // Number of authored body-damage mesh variants (parallel to
+  // GetVehicleDesc().damage.mesh_variants).
+  [[nodiscard]] size_t GetBodyDamageVariantCount() const;
+  // Non-owning view of the preloaded template for damage-variant index i, or
+  // nullptr if that variant has no mesh path or its mesh failed to load.
+  [[nodiscard]] MeshTemplate* GetBodyDamageVariantTemplate(size_t index) const;
+
  private:
   explicit VehicleTemplate(const std::string& desc_path,
                             abstract::VideoDevice* video);
@@ -69,6 +78,10 @@ class VehicleTemplate : public core::Resource<std::string, VehicleTemplate> {
   MeshTemplate*        front_wheel_tmpl_ = nullptr;
   // cppcheck-suppress unusedStructMember
   MeshTemplate*        rear_wheel_tmpl_  = nullptr;
+  // Parallel to vehicle_desc_.damage.mesh_variants; entries are nullptr for
+  // variants with no mesh path or a failed load.
+  // cppcheck-suppress unusedStructMember
+  std::vector<MeshTemplate*> body_damage_variant_tmpls_;
 };
 
 }  // namespace game

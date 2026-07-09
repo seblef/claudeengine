@@ -80,6 +80,24 @@ MeshTemplate* GameMesh::GetTemplate() const {
   return template_;
 }
 
+void GameMesh::SetTemplate(MeshTemplate* tmpl) {
+  if (tmpl == template_) return;
+
+  tmpl->AddRef();
+  const bool was_rendered = in_scene_ && visible_;
+  if (was_rendered)
+    renderer::Renderer::Instance().RemoveRenderable(instance_.get());
+
+  template_->Release();
+  template_ = tmpl;
+  instance_ = std::make_unique<renderer::MeshInstance>(
+      template_->GetMesh(), GetWorldTransform(), always_visible_);
+  SetLocalBBox(template_->GetLocalBBox());
+
+  if (was_rendered)
+    renderer::Renderer::Instance().AddRenderable(instance_.get());
+}
+
 std::unique_ptr<game::GameObject> GameMesh::Copy(
     const core::Vec3f& position) const {
   auto clone = std::make_unique<GameMesh>(template_);

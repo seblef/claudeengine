@@ -21,6 +21,7 @@
 #include "core/Vec3f.h"
 #include "core/Vec4f.h"
 #include "core/YamlSerialiser.h"
+#include "editor/MeshPreview.h"
 #include "editor/tools/PickingUtils.h"
 #include "game/MeshTemplate.h"
 #include "renderer/GlobalLight.h"
@@ -91,6 +92,8 @@ VehicleEditorWindow::~VehicleEditorWindow() {
   if (body_tmpl_)        body_tmpl_->Release();
   if (front_wheel_tmpl_) front_wheel_tmpl_->Release();
   if (rear_wheel_tmpl_)  rear_wheel_tmpl_->Release();
+  for (game::MeshTemplate* tmpl : mesh_variant_tmpls_)
+    if (tmpl) tmpl->Release();
 }
 
 void VehicleEditorWindow::Open(const std::filesystem::path& path) {
@@ -113,6 +116,10 @@ void VehicleEditorWindow::Open(const std::filesystem::path& path) {
     rear_wheel_tmpl_->Release();
     rear_wheel_tmpl_ = nullptr;
   }
+  for (game::MeshTemplate* tmpl : mesh_variant_tmpls_)
+    if (tmpl) tmpl->Release();
+  mesh_variant_tmpls_.clear();
+  mesh_variant_previews_.clear();
 
   use_convex_hull_body_ = false;
   body_mesh_path_.clear();
@@ -209,6 +216,31 @@ void VehicleEditorWindow::LoadFromYaml() {
       for (size_t i = 0; i < count; ++i)
         damage.thresholds[i] = th[i].as<float>(damage.thresholds[i]);
     }
+    if (const YAML::Node mv = dmg["mesh_variants"]) {
+      damage.mesh_variants.clear();
+      for (const auto& item : mv) {
+        physics::DamageMeshVariant variant;
+        variant.threshold = item["threshold"].as<float>(variant.threshold);
+        variant.mesh_path = item["mesh"].as<std::string>(variant.mesh_path);
+        damage.mesh_variants.push_back(variant);
+      }
+    }
+    if (const YAML::Node fx = dmg["effects"]) {
+      auto read_scale = [](const YAML::Node& node, std::array<float, 4>& arr) {
+        if (!node) return;
+        const size_t count = std::min(node.size(), arr.size());
+        for (size_t i = 0; i < count; ++i) arr[i] = node[i].as<float>(arr[i]);
+      };
+      auto read_flags = [](const YAML::Node& node, std::array<bool, 4>& arr) {
+        if (!node) return;
+        const size_t count = std::min(node.size(), arr.size());
+        for (size_t i = 0; i < count; ++i) arr[i] = node[i].as<bool>(arr[i]);
+      };
+      read_scale(fx["steering_scale"],   damage.effects.steering_scale);
+      read_flags(fx["steering_enabled"], damage.effects.steering_enabled);
+      read_scale(fx["speed_scale"],      damage.effects.speed_scale);
+      read_flags(fx["speed_enabled"],    damage.effects.speed_enabled);
+    }
   }
 
   if (const YAML::Node cs = root["crash_sound"]) {
@@ -248,6 +280,7 @@ void VehicleEditorWindow::LoadFromYaml() {
   if (!body_mesh_path_.empty())        UpdateBodyMesh(body_mesh_path_);
   if (!front_wheel_mesh_path_.empty()) UpdateFrontWheelMesh(front_wheel_mesh_path_);
   if (!rear_wheel_mesh_path_.empty())  UpdateRearWheelMesh(rear_wheel_mesh_path_);
+  RebuildMeshVariantPreviews();
 
   dirty_ = false;
 }
@@ -320,6 +353,33 @@ void VehicleEditorWindow::SaveToYaml() {
   out << YAML::Key << "thresholds" << YAML::Value << YAML::Flow << YAML::BeginSeq;
   for (const float t : damage.thresholds) out << t;
   out << YAML::EndSeq;
+
+  out << YAML::Key << "mesh_variants" << YAML::Value << YAML::BeginSeq;
+  for (const physics::DamageMeshVariant& variant : damage.mesh_variants) {
+    out << YAML::BeginMap;
+    out << YAML::Key << "threshold" << YAML::Value << variant.threshold;
+    out << YAML::Key << "mesh"      << YAML::Value << variant.mesh_path;
+    out << YAML::EndMap;
+  }
+  out << YAML::EndSeq;  // mesh_variants
+
+  out << YAML::Key << "effects" << YAML::Value << YAML::BeginMap;
+  auto write_scale = [&out](const char* key, const std::array<float, 4>& arr) {
+    out << YAML::Key << key << YAML::Value << YAML::Flow << YAML::BeginSeq;
+    for (const float v : arr) out << v;
+    out << YAML::EndSeq;
+  };
+  auto write_flags = [&out](const char* key, const std::array<bool, 4>& arr) {
+    out << YAML::Key << key << YAML::Value << YAML::Flow << YAML::BeginSeq;
+    for (const bool v : arr) out << v;
+    out << YAML::EndSeq;
+  };
+  write_scale("steering_scale",   damage.effects.steering_scale);
+  write_flags("steering_enabled", damage.effects.steering_enabled);
+  write_scale("speed_scale",      damage.effects.speed_scale);
+  write_flags("speed_enabled",    damage.effects.speed_enabled);
+  out << YAML::EndMap;  // effects
+
   out << YAML::EndMap;  // damage
 
   const physics::CrashSoundDesc& crash_sound = vehicle_desc_.crash_sound;
@@ -512,6 +572,53 @@ void VehicleEditorWindow::PickRearWheelMesh() {
   rear_wheel_mesh_path_ = std::filesystem::relative(abs, data_dir).string();
   UpdateRearWheelMesh(rear_wheel_mesh_path_);
   dirty_ = true;
+}
+
+void VehicleEditorWindow::PickMeshVariant(size_t index) {
+  const std::string mesh_dir =
+      (core::Config::GetDataFolder() / "meshes").string();
+  nfdu8char_t* out_path = nullptr;
+  const nfdu8filteritem_t filter = {"Mesh", "obj,fbx,emesh"};
+  if (NFD_OpenDialogU8(&out_path, &filter, 1, mesh_dir.c_str()) != NFD_OKAY) return;
+
+  const std::filesystem::path abs(out_path);
+  NFD_FreePathU8(out_path);
+  const std::filesystem::path data_dir = core::Config::GetDataFolder();
+  vehicle_desc_.damage.mesh_variants[index].mesh_path =
+      std::filesystem::relative(abs, data_dir).string();
+  UpdateMeshVariantPreview(index);
+  dirty_ = true;
+}
+
+void VehicleEditorWindow::UpdateMeshVariantPreview(size_t index) {
+  if (mesh_variant_tmpls_[index]) {
+    mesh_variant_tmpls_[index]->Release();
+    mesh_variant_tmpls_[index] = nullptr;
+  }
+
+  const std::string& rel_path = vehicle_desc_.damage.mesh_variants[index].mesh_path;
+  if (rel_path.empty()) {
+    mesh_variant_previews_[index].reset();
+    return;
+  }
+
+  const std::string abs_path = (core::Config::GetDataFolder() / rel_path).string();
+  mesh_variant_tmpls_[index] = game::MeshTemplate::GetOrLoad(abs_path, video_);
+  if (!mesh_variant_previews_[index])
+    mesh_variant_previews_[index] = std::make_unique<MeshPreview>(video_, 96, 96);
+  mesh_variant_previews_[index]->SetTemplate(mesh_variant_tmpls_[index]);
+}
+
+void VehicleEditorWindow::RebuildMeshVariantPreviews() {
+  for (game::MeshTemplate* tmpl : mesh_variant_tmpls_)
+    if (tmpl) tmpl->Release();
+
+  const size_t count = vehicle_desc_.damage.mesh_variants.size();
+  mesh_variant_tmpls_.assign(count, nullptr);
+  mesh_variant_previews_.clear();
+  mesh_variant_previews_.resize(count);
+
+  for (size_t i = 0; i < count; ++i) UpdateMeshVariantPreview(i);
 }
 
 // ---- Combined preview rendering ---------------------------------------------
@@ -877,6 +984,88 @@ void VehicleEditorWindow::DrawDamageSection() {
   }
 }
 
+void VehicleEditorWindow::DrawGameplayEffectsSection() {
+  ImGui::SeparatorText("Gameplay Effects");
+  ImGui::TextWrapped(
+      "Front-zone damage fraction drives both effects (front stands in for "
+      "\"engine damage\", see WRECKONING.md \xc2\xa7" "6). The highest enabled "
+      "threshold crossed wins; effects do not stack.");
+
+  physics::VehicleDamageEffectsDesc& effects   = vehicle_desc_.damage.effects;
+  const std::array<float, 4>&        thresholds = vehicle_desc_.damage.thresholds;
+
+  for (int i = 0; i < static_cast<int>(thresholds.size()); ++i) {
+    ImGui::PushID(i);
+    ImGui::Text("%.0f%%", thresholds[i] * 100.f);
+
+    ImGui::SameLine();
+    dirty_ |= ImGui::Checkbox("Steer##en", &effects.steering_enabled[i]);
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!effects.steering_enabled[i]);
+    ImGui::SetNextItemWidth(100.f);
+    dirty_ |= ImGui::SliderFloat("##steer_scale", &effects.steering_scale[i], 0.f, 1.f, "%.2f");
+    ImGui::EndDisabled();
+
+    ImGui::SameLine(0.f, 20.f);
+    dirty_ |= ImGui::Checkbox("Speed##en", &effects.speed_enabled[i]);
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!effects.speed_enabled[i]);
+    ImGui::SetNextItemWidth(100.f);
+    dirty_ |= ImGui::SliderFloat("##speed_scale", &effects.speed_scale[i], 0.f, 1.f, "%.2f");
+    ImGui::EndDisabled();
+
+    ImGui::PopID();
+  }
+}
+
+void VehicleEditorWindow::DrawBodyMeshVariantsSection() {
+  ImGui::SeparatorText("Body Damage Meshes");
+  ImGui::TextWrapped(
+      "The single body mesh swaps to the highest-threshold variant at or "
+      "below the average damage fraction across all five zones.");
+
+  auto& variants = vehicle_desc_.damage.mesh_variants;
+  int remove_index = -1;
+
+  for (int i = 0; i < static_cast<int>(variants.size()); ++i) {
+    ImGui::PushID(i);
+    const size_t idx = static_cast<size_t>(i);
+    physics::DamageMeshVariant& variant = variants[idx];
+
+    ImGui::SetNextItemWidth(120.f);
+    dirty_ |= ImGui::SliderFloat("Threshold", &variant.threshold, 0.f, 1.f, "%.2f");
+
+    ImGui::Text("Mesh: %s",
+                variant.mesh_path.empty() ? "(none)" : variant.mesh_path.c_str());
+    ImGui::SameLine();
+    if (ImGui::Button("Browse...")) PickMeshVariant(idx);
+    ImGui::SameLine();
+    if (ImGui::Button("Remove")) remove_index = i;
+
+    if (idx < mesh_variant_previews_.size() && mesh_variant_previews_[idx])
+      mesh_variant_previews_[idx]->Render(static_cast<float>(ImGui::GetTime()));
+
+    ImGui::Separator();
+    ImGui::PopID();
+  }
+
+  if (remove_index >= 0) {
+    const size_t idx = static_cast<size_t>(remove_index);
+    variants.erase(variants.begin() + remove_index);
+    if (mesh_variant_tmpls_[idx]) mesh_variant_tmpls_[idx]->Release();
+    mesh_variant_tmpls_.erase(mesh_variant_tmpls_.begin() + remove_index);
+    mesh_variant_previews_.erase(mesh_variant_previews_.begin() + remove_index);
+    dirty_ = true;
+  }
+
+  if (ImGui::Button("Add Mesh Variant")) {
+    variants.push_back({});
+    mesh_variant_tmpls_.push_back(nullptr);
+    mesh_variant_previews_.emplace_back();
+    dirty_ = true;
+  }
+}
+
 void VehicleEditorWindow::DrawCrashSoundSection() {
   ImGui::SeparatorText("Crash Sound");
 
@@ -1044,21 +1233,33 @@ void VehicleEditorWindow::Render() {
   bool window_open = true;
   if (ImGui::Begin(title.c_str(), &window_open,
                    ImGuiWindowFlags_HorizontalScrollbar)) {
-    DrawBodySection();
-    ImGui::Spacing();
-    DrawWheelsSection();
-    ImGui::Spacing();
-    DrawPhysicsSection();
-    ImGui::Spacing();
-    DrawDamageSection();
-    ImGui::Spacing();
-    DrawCrashSoundSection();
-    ImGui::Spacing();
-    DrawScrapeSection();
-    ImGui::Spacing();
-    DrawFireSection();
-    ImGui::Spacing();
-    DrawWreckSection();
+    if (ImGui::BeginTabBar("##vehicle_editor_tabs")) {
+      if (ImGui::BeginTabItem("Vehicle")) {
+        DrawBodySection();
+        ImGui::Spacing();
+        DrawWheelsSection();
+        ImGui::Spacing();
+        DrawPhysicsSection();
+        ImGui::EndTabItem();
+      }
+      if (ImGui::BeginTabItem("Damage")) {
+        DrawDamageSection();
+        ImGui::Spacing();
+        DrawGameplayEffectsSection();
+        ImGui::Spacing();
+        DrawBodyMeshVariantsSection();
+        ImGui::Spacing();
+        DrawCrashSoundSection();
+        ImGui::Spacing();
+        DrawScrapeSection();
+        ImGui::Spacing();
+        DrawFireSection();
+        ImGui::Spacing();
+        DrawWreckSection();
+        ImGui::EndTabItem();
+      }
+      ImGui::EndTabBar();
+    }
     DrawActionsBar();
   }
   ImGui::End();

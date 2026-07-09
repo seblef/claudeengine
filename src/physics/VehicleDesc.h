@@ -2,6 +2,7 @@
 
 #include <array>
 #include <string>
+#include <vector>
 
 #include "core/Vec3f.h"
 
@@ -38,6 +39,42 @@ struct WheelDesc {
     bool        is_steered           = false;   ///< True for steering wheels.
 };
 
+/// A single mesh swap authored for the vehicle body's visual damage
+/// progression. The vehicle has exactly one visible body mesh (there is no
+/// per-zone sub-mesh); at runtime it swaps to the variant whose threshold is
+/// the highest one at or below the *average* damage fraction across all five
+/// zones (see game::VehicleDamage::GetAverageDamageFraction()) — averaging
+/// rather than taking the worst zone avoids the displayed mesh flickering
+/// between unrelated variants as different zones briefly overtake each other
+/// as "most damaged".
+/// Fully Jolt-free; may be serialised to YAML.
+struct DamageMeshVariant {
+    // cppcheck-suppress unusedStructMember
+    float threshold = 0.3f;  ///< Average damage fraction [0,1] at which this variant activates.
+    // cppcheck-suppress unusedStructMember
+    std::string mesh_path;   ///< Mesh path relative to the data folder.
+};
+
+/// Gameplay-effect multipliers applied once the *front* zone's damage
+/// fraction crosses each of VehicleDamageDesc::thresholds (parallel arrays,
+/// same indexing — front stands in for "engine damage", see WRECKONING.md
+/// §6). Each scale is a multiplier in [0,1] applied to steering input /
+/// throttle respectively. enabled[i] gates whether threshold i has any
+/// effect at all, so a threshold can be authored without being wired to an
+/// effect. When several enabled thresholds are crossed simultaneously, the
+/// highest one wins (effects do not stack multiplicatively).
+/// Fully Jolt-free; may be serialised to YAML.
+struct VehicleDamageEffectsDesc {
+    // cppcheck-suppress unusedStructMember
+    std::array<float, 4> steering_scale   = {1.f, 1.f, 1.f, 1.f};
+    // cppcheck-suppress unusedStructMember
+    std::array<bool, 4>  steering_enabled = {false, false, false, false};
+    // cppcheck-suppress unusedStructMember
+    std::array<float, 4> speed_scale      = {1.f, 1.f, 1.f, 1.f};
+    // cppcheck-suppress unusedStructMember
+    std::array<bool, 4>  speed_enabled    = {false, false, false, false};
+};
+
 /// Configures the per-zone progressive damage model (see game::VehicleDamage).
 /// Zone order matches game::DamageZone: Front, Rear, Left, Right, Roof.
 /// Fully Jolt-free; may be serialised to YAML.
@@ -50,6 +87,12 @@ struct VehicleDamageDesc {
     // damage-threshold crossing, e.g. {0.4, 0.6, 0.8, 1.0}.
     // cppcheck-suppress unusedStructMember
     std::array<float, 4> thresholds = {0.4f, 0.6f, 0.8f, 1.0f};
+    // Visual body-mesh degradation (pristine → dented → crumpled → wrecked).
+    // cppcheck-suppress unusedStructMember
+    std::vector<DamageMeshVariant> mesh_variants;
+    // Speed/steering reduction driven by front-zone damage.
+    // cppcheck-suppress unusedStructMember
+    VehicleDamageEffectsDesc effects;
 };
 
 /// Configures the impulse-driven crash sound bank (see game::VehicleCrashSound).

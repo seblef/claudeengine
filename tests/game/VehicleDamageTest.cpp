@@ -180,3 +180,36 @@ TEST(VehicleDamageTest, UnaffectedZonesDoNotNotify) {
   for (const Crossing& c : listener.crossings)
     EXPECT_EQ(c.zone, DamageZone::kFront);
 }
+
+// ---- Average damage fraction (drives the shared body-mesh variant) --------
+
+TEST(VehicleDamageTest, AverageFractionIsZeroWhenPristine) {
+  VehicleDamage damage(MakeDesc());
+  EXPECT_FLOAT_EQ(damage.GetAverageDamageFraction(), 0.f);
+}
+
+TEST(VehicleDamageTest, AverageFractionOnlyReflectsDamagedZone) {
+  VehicleDamage damage(MakeDesc());
+  damage.RegisterImpact({0.f, 0.f, 5.f}, 50.f);  // Front: fraction 0.5, others 0.
+
+  EXPECT_FLOAT_EQ(damage.GetAverageDamageFraction(), 0.1f);  // 0.5 / 5 zones
+}
+
+TEST(VehicleDamageTest, AverageFractionCombinesMultipleZones) {
+  VehicleDamage damage(MakeDesc());
+  damage.RegisterImpact({0.f, 0.f, 5.f}, 100.f);   // Front: fraction 1.0
+  damage.RegisterImpact({0.f, 0.f, -5.f}, 50.f);   // Rear: fraction 0.5
+
+  EXPECT_FLOAT_EQ(damage.GetAverageDamageFraction(), 0.3f);  // (1.0 + 0.5) / 5
+}
+
+TEST(VehicleDamageTest, AverageFractionIsOneWhenFullyDestroyed) {
+  VehicleDamage damage(MakeDesc());
+  damage.RegisterImpact({0.f, 0.f, 5.f}, 1000.f);
+  damage.RegisterImpact({0.f, 0.f, -5.f}, 1000.f);
+  damage.RegisterImpact({5.f, 0.f, 0.f}, 1000.f);
+  damage.RegisterImpact({-5.f, 0.f, 0.f}, 1000.f);
+  damage.RegisterImpact({0.f, 5.f, 0.f}, 1000.f);
+
+  EXPECT_FLOAT_EQ(damage.GetAverageDamageFraction(), 1.f);
+}

@@ -1,7 +1,9 @@
 #include "game/GameVehicle.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstddef>
 
 #include <loguru.hpp>
 
@@ -51,6 +53,22 @@ core::Mat4f MirrorY() {
 float ComputeSteerScale(float speed, const physics::VehicleDesc& desc) {
   const float t = std::clamp(std::fabs(speed) / desc.high_speed_reference_speed, 0.f, 1.f);
   return std::lerp(1.f, desc.min_steer_scale, t);
+}
+
+// Returns the scale of the highest enabled threshold at or below fraction, or
+// 1.0 (no effect) when none apply. thresholds need not be sorted.
+float ComputeDamageEffectScale(float fraction, const std::array<float, 4>& thresholds,
+                               const std::array<float, 4>& scales,
+                               const std::array<bool, 4>& enabled) {
+  float scale         = 1.f;
+  float best_threshold = -1.f;
+  for (size_t i = 0; i < thresholds.size(); ++i) {
+    if (enabled[i] && fraction >= thresholds[i] && thresholds[i] > best_threshold) {
+      best_threshold = thresholds[i];
+      scale          = scales[i];
+    }
+  }
+  return scale;
 }
 
 core::Mat4f PositionMatrix(const core::Vec3f& p) {
@@ -187,6 +205,8 @@ void GameVehicle::Update(float dt) {
   if (physics_vehicle_) {
     crash_sound_->Update(dt);
     if (scrape_listener_) scrape_listener_->Update(dt);
+    UpdateDamageEffects();
+    UpdateBodyMeshVariant();
 
     const core::Mat4f transform = physics_vehicle_->GetBodyWorldTransform();
     const float       speed     = physics_vehicle_->GetForwardSpeed();
@@ -253,7 +273,7 @@ void GameVehicle::Update(float dt) {
 
       switch (drive_state_) {
         case DriveState::kForward:
-          physics_vehicle_->SetThrottle(throttle);
+          physics_vehicle_->SetThrottle(throttle * damage_speed_scale_);
           physics_vehicle_->SetBrake(brake);
           if (brake > 0.f && speed < kReverseSpeedThreshold) {
             drive_state_   = DriveState::kBraking;
@@ -276,7 +296,7 @@ void GameVehicle::Update(float dt) {
           break;
 
         case DriveState::kReverse:
-          physics_vehicle_->SetThrottle(-kReverseThrottle);
+          physics_vehicle_->SetThrottle(-kReverseThrottle * damage_speed_scale_);
           physics_vehicle_->SetBrake(0.f);
           if (brake == 0.f || throttle > 0.f) drive_state_ = DriveState::kForward;
           break;
@@ -287,7 +307,8 @@ void GameVehicle::Update(float dt) {
           break;
       }
 
-      const float steer_scale = ComputeSteerScale(speed, GetVehicleDesc());
+      const float steer_scale =
+          ComputeSteerScale(speed, GetVehicleDesc()) * damage_steer_scale_;
       physics_vehicle_->SetSteer(controller_->GetSteer() * steer_scale);
       physics_vehicle_->SetHandbrake(controller_->GetHandbrake());
     } else if (drive_state_ == DriveState::kFlipped ||
@@ -355,6 +376,42 @@ void GameVehicle::SetMeshesVisible(bool visible) {
   wheel_fr_->SetVisible(visible);
   wheel_rl_->SetVisible(visible);
   wheel_rr_->SetVisible(visible);
+}
+
+void GameVehicle::UpdateDamageEffects() {
+  const physics::VehicleDamageDesc& damage_desc = GetVehicleDesc().damage;
+  const float front_fraction = damage_->GetDamageFraction(DamageZone::kFront);
+
+  damage_steer_scale_ = ComputeDamageEffectScale(
+      front_fraction, damage_desc.thresholds,
+      damage_desc.effects.steering_scale, damage_desc.effects.steering_enabled);
+  damage_speed_scale_ = ComputeDamageEffectScale(
+      front_fraction, damage_desc.thresholds,
+      damage_desc.effects.speed_scale, damage_desc.effects.speed_enabled);
+}
+
+void GameVehicle::UpdateBodyMeshVariant() {
+  const auto& variants = GetVehicleDesc().damage.mesh_variants;
+  if (variants.empty()) return;
+
+  const float avg_fraction = damage_->GetAverageDamageFraction();
+  int   desired         = -1;
+  float best_threshold  = -1.f;
+  for (size_t i = 0; i < variants.size(); ++i) {
+    if (avg_fraction >= variants[i].threshold && variants[i].threshold > best_threshold) {
+      best_threshold = variants[i].threshold;
+      desired        = static_cast<int>(i);
+    }
+  }
+  if (desired == current_mesh_variant_) return;
+
+  MeshTemplate* tmpl = desired >= 0
+      ? template_->GetBodyDamageVariantTemplate(static_cast<size_t>(desired))
+      : template_->GetBodyTemplate();
+  if (tmpl) {
+    body_mesh_->SetTemplate(tmpl);
+    current_mesh_variant_ = desired;
+  }
 }
 
 void GameVehicle::OnBodyTransformUpdated(const core::Mat4f& transform) {
