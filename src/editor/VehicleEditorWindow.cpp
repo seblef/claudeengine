@@ -237,6 +237,7 @@ void VehicleEditorWindow::LoadFromYaml() {
     physics::FireDesc& fire = vehicle_desc_.fire;
     fire.damage_threshold = fr["damage_threshold"].as<float>(fire.damage_threshold);
     fire.heat_distortion  = fr["heat_distortion"].as<bool>(fire.heat_distortion);
+    fire.min_burn_time    = fr["min_burn_time"].as<float>(fire.min_burn_time);
   }
 
   if (!body_mesh_path_.empty())        UpdateBodyMesh(body_mesh_path_);
@@ -342,6 +343,7 @@ void VehicleEditorWindow::SaveToYaml() {
   out << YAML::Key << "fire" << YAML::Value << YAML::BeginMap;
   out << YAML::Key << "damage_threshold" << YAML::Value << fire.damage_threshold;
   out << YAML::Key << "heat_distortion"  << YAML::Value << fire.heat_distortion;
+  out << YAML::Key << "min_burn_time"    << YAML::Value << fire.min_burn_time;
   out << YAML::EndMap;  // fire
 
   out << YAML::EndMap;  // root
@@ -943,6 +945,11 @@ void VehicleEditorWindow::DrawFireSection() {
   dirty_ |= ImGui::Checkbox("Heat distortion", &fire.heat_distortion);
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("Authoring intent only \xe2\x80\x94 not yet wired to a post-process pass");
+
+  dirty_ |= ImGui::DragFloat("Min burn time (s)", &fire.min_burn_time, 0.1f, 0.f, 10.f, "%.1f");
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Minimum time the fire stays visible once started, even if a wreck or "
+                      "repair would otherwise stop it immediately");
 }
 
 void VehicleEditorWindow::DrawActionsBar() {

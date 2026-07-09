@@ -21,11 +21,17 @@ class VFXFire;
 // Drives a continuous vfx::VFXFire effect (looping fire + smoke) from a
 // vehicle's damage state: starts the moment any zone's damage fraction
 // crosses desc.damage_threshold (game::IVehicleDamageListener), follows the
-// vehicle body every frame (game::IVehicleFireListener), and stops the
-// moment either the vehicle is wrecked (its last configured damage
-// threshold, conventionally 1.0 — superseded by the wreck explosion) or
-// every zone's damage fraction has dropped back below desc.damage_threshold
-// (e.g. after a repair).
+// vehicle body every frame (game::IVehicleFireListener), and stops once
+// desc.min_burn_time has elapsed since it started AND either the vehicle is
+// wrecked (its last configured damage threshold, conventionally 1.0 —
+// superseded by the wreck explosion) or every zone's damage fraction has
+// dropped back below desc.damage_threshold (e.g. after a repair).
+//
+// The min_burn_time gate exists because a single hard impact (or a quick
+// burst of impacts) can cross both the 80% and 100% thresholds within the
+// same frame or two — without it the fire would start and immediately stop
+// again, which reads as broken since no wreck explosion exists yet to
+// visually take over.
 //
 // Lives in vfx/ and is wired to a GameVehicle externally via
 // GameVehicle::SetFireListener() plus VehicleDamage::AddListener() — game/
@@ -53,7 +59,7 @@ class VehicleFireEffect : public game::IVehicleDamageListener,
   ~VehicleFireEffect() override;
 
   // game::IVehicleFireListener
-  void OnVehicleTransformUpdated(const core::Mat4f& world_transform) override;
+  void OnVehicleTransformUpdated(float dt, const core::Mat4f& world_transform) override;
 
   // game::IVehicleDamageListener
   void OnDamageThresholdCrossed(game::DamageZone zone, float threshold,
@@ -89,6 +95,16 @@ class VehicleFireEffect : public game::IVehicleDamageListener,
   // effect if a threshold crossing is notified before the first frame tick.
   // cppcheck-suppress unusedStructMember
   core::Mat4f last_transform_ = core::Mat4f::kIdentity;
+
+  // Seconds elapsed since Start(); reset on every Start(). Gates how soon a
+  // pending stop (wreck or repair) can actually take effect.
+  // cppcheck-suppress unusedStructMember
+  float active_time_ = 0.f;
+
+  // Latched true once the wreck threshold is crossed while active; consumed
+  // (stops the fire) once active_time_ reaches desc_.min_burn_time.
+  // cppcheck-suppress unusedStructMember
+  bool wreck_pending_ = false;
 };
 
 }  // namespace vfx

@@ -25,8 +25,10 @@ class IVehicleFireListener {
   virtual ~IVehicleFireListener() = default;
 
   // Called once per frame regardless of whether a fire effect is currently
-  // active — the listener itself decides what to do with the transform.
-  virtual void OnVehicleTransformUpdated(const core::Mat4f& world_transform) = 0;
+  // active — the listener itself decides what to do with dt and the
+  // transform. dt is needed so the listener can track how long its effect
+  // has been burning (e.g. to enforce a minimum visible duration).
+  virtual void OnVehicleTransformUpdated(float dt, const core::Mat4f& world_transform) = 0;
 };
 
 }  // namespace game

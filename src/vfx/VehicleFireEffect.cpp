@@ -43,18 +43,27 @@ VehicleFireEffect::~VehicleFireEffect() {
   if (fire_template_) fire_template_->Release();
 }
 
-void VehicleFireEffect::OnVehicleTransformUpdated(const core::Mat4f& world_transform) {
+void VehicleFireEffect::OnVehicleTransformUpdated(float dt, const core::Mat4f& world_transform) {
   last_transform_ = world_transform;
   if (!active_) return;
 
+  active_time_ += dt;
   active_->SetWorldTransform(world_transform);
-  if (AllZonesBelowThreshold()) Stop();
+
+  const bool stop_requested = wreck_pending_ || AllZonesBelowThreshold();
+  if (stop_requested && active_time_ >= desc_.min_burn_time) Stop();
 }
 
 void VehicleFireEffect::OnDamageThresholdCrossed(game::DamageZone /*zone*/, float threshold,
                                                  float /*fraction*/) {
   if (threshold >= kWreckThreshold) {
-    Stop();
+    if (!wreck_pending_) {
+      wreck_pending_ = true;
+      LOG_F(INFO, "VehicleFireEffect: wreck threshold reached, fire stop deferred "
+                  "until min_burn_time (%.1fs elapsed of %.1fs)",
+            active_time_, desc_.min_burn_time);
+    }
+    if (active_time_ >= desc_.min_burn_time) Stop();
     return;
   }
   if (threshold >= desc_.damage_threshold) Start(last_transform_);
@@ -69,6 +78,8 @@ void VehicleFireEffect::Start(const core::Mat4f& world_transform) {
   active_ = static_cast<VFXFire*>(
       VFXSystem::Instance().Spawn(std::move(effect), world_pos, core::Vec3f::kAxisY));
   active_->SetWorldTransform(world_transform);
+  active_time_    = 0.f;
+  wreck_pending_  = false;
 
   LOG_F(INFO, "VehicleFireEffect: fire started at (%.1f, %.1f, %.1f)",
         world_pos.x, world_pos.y, world_pos.z);
@@ -78,6 +89,8 @@ void VehicleFireEffect::Stop() {
   if (!active_) return;
   active_->Stop();
   active_ = nullptr;
+  active_time_   = 0.f;
+  wreck_pending_ = false;
 
   LOG_F(INFO, "VehicleFireEffect: fire stopped");
 }

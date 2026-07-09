@@ -174,7 +174,7 @@ void GameVehicle::Update(float dt) {
     const core::Mat4f transform = physics_vehicle_->GetBodyWorldTransform();
     const float       speed     = physics_vehicle_->GetForwardSpeed();
 
-    if (fire_listener_) fire_listener_->OnVehicleTransformUpdated(transform);
+    if (fire_listener_) fire_listener_->OnVehicleTransformUpdated(dt, transform);
 
     // --- Flip state machine ---------------------------------------------------
     // Column 1 of the local-to-world transform is the vehicle's local Y axis

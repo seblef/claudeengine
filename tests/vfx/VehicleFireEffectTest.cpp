@@ -19,6 +19,7 @@ namespace {
 physics::FireDesc MakeFireDesc() {
   physics::FireDesc desc;
   desc.damage_threshold = 0.8f;
+  desc.min_burn_time    = 0.5f;
   return desc;
 }
 
@@ -84,20 +85,48 @@ TEST_F(VehicleFireEffectTest, FollowsTransformWhileActive) {
   damage.RegisterImpact({0.f, 0.f, 5.f}, 85.f);
   ASSERT_TRUE(fire.IsActive());
 
-  EXPECT_NO_THROW(fire.OnVehicleTransformUpdated(core::Mat4f::Translation({1.f, 2.f, 3.f})));
+  EXPECT_NO_THROW(fire.OnVehicleTransformUpdated(0.016f, core::Mat4f::Translation({1.f, 2.f, 3.f})));
   EXPECT_TRUE(fire.IsActive());
 }
 
-TEST_F(VehicleFireEffectTest, CrossingWreckThresholdStopsFire) {
+TEST_F(VehicleFireEffectTest, CrossingWreckThresholdDoesNotStopBeforeMinBurnTime) {
   VehicleDamage damage(MakeVehicleDesc());
-  VehicleFireEffect fire(MakeFireDesc(), damage);
+  VehicleFireEffect fire(MakeFireDesc(), damage);  // min_burn_time = 0.5s
   damage.AddListener(&fire);
   damage.RegisterImpact({0.f, 0.f, 5.f}, 85.f);
   ASSERT_TRUE(fire.IsActive());
 
   damage.RegisterImpact({0.f, 0.f, 5.f}, 1000.f);  // drives fraction to 1.0 (wreck)
+  ASSERT_TRUE(fire.IsActive());  // deferred: min_burn_time hasn't elapsed yet
 
+  fire.OnVehicleTransformUpdated(0.1f, core::Mat4f::kIdentity);  // 0.1s < 0.5s
+  EXPECT_TRUE(fire.IsActive());
+}
+
+TEST_F(VehicleFireEffectTest, CrossingWreckThresholdStopsFireAfterMinBurnTime) {
+  VehicleDamage damage(MakeVehicleDesc());
+  VehicleFireEffect fire(MakeFireDesc(), damage);  // min_burn_time = 0.5s
+  damage.AddListener(&fire);
+  damage.RegisterImpact({0.f, 0.f, 5.f}, 85.f);
+  ASSERT_TRUE(fire.IsActive());
+
+  damage.RegisterImpact({0.f, 0.f, 5.f}, 1000.f);  // drives fraction to 1.0 (wreck)
+  ASSERT_TRUE(fire.IsActive());  // deferred
+
+  fire.OnVehicleTransformUpdated(0.6f, core::Mat4f::kIdentity);  // 0.6s >= 0.5s
   EXPECT_FALSE(fire.IsActive());
+}
+
+TEST_F(VehicleFireEffectTest, SingleImpactCrossingBothThresholdsDefersStop) {
+  VehicleDamage damage(MakeVehicleDesc());
+  VehicleFireEffect fire(MakeFireDesc(), damage);  // min_burn_time = 0.5s
+  damage.AddListener(&fire);
+
+  // A single massive impact crosses 0.8 and 1.0 in the same RegisterImpact()
+  // call — Start() then the wreck notification happen back-to-back.
+  damage.RegisterImpact({0.f, 0.f, 5.f}, 1000.f);
+
+  EXPECT_TRUE(fire.IsActive());
 }
 
 TEST(VehicleFireEffectNoSystemTest, CrossingThresholdWithoutVFXSystemStaysInactive) {

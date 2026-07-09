@@ -71,6 +71,7 @@ void ParseFireDesc(physics::FireDesc& fire, const YAML::Node& n) {
   if (!n) return;
   fire.damage_threshold = n["damage_threshold"].as<float>(fire.damage_threshold);
   fire.heat_distortion  = n["heat_distortion"].as<bool>(fire.heat_distortion);
+  fire.min_burn_time    = n["min_burn_time"].as<float>(fire.min_burn_time);
 }
 
 physics::WheelGeometry InferWheelGeometry(const MeshTemplate* tmpl,
