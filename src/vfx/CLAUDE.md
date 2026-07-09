@@ -31,6 +31,7 @@ below), never a direct `#include "vfx/..."` from `game/`.
 | `VehicleScrapeEffect` | `game::IVehicleScrapeListener` implementation; owns the persistent spark template and drives a `VFXScrape` from vehicle contact events |
 | `VFXFire` | Looping fire + smoke attached to a moving target, driven by an external `SetWorldTransform()` call every frame; carries an unwired heat-distortion stub flag |
 | `VehicleFireEffect` | `game::IVehicleDamageListener` + `game::IVehicleFireListener` implementation; owns the persistent fire template and drives a `VFXFire` from vehicle damage-threshold crossings, following the body every frame |
+| `VehicleWreckEffect` | `game::IVehicleWreckListener` implementation; spawns a one-shot `VFXExplosion` + wreck sound the instant `game::GameVehicle` reports the vehicle wrecked |
 | `ScreenShake` | Fire-and-forget camera shake; signals `game::ICameraController::ApplyShake()`, falloff by inverse distance from the camera |
 
 ## Key patterns

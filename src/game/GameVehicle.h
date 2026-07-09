@@ -3,7 +3,9 @@
 #include <filesystem>
 #include <memory>
 
+#include "game/DamageZone.h"
 #include "game/GameObject.h"
+#include "game/IVehicleDamageListener.h"
 #include "physics/IPhysicsBodyListener.h"
 #include "physics/IPhysicsCollisionListener.h"
 #include "physics/VehicleDesc.h"
@@ -25,6 +27,7 @@ class GameMesh;
 class IVehicleController;
 class IVehicleFireListener;
 class IVehicleScrapeListener;
+class IVehicleWreckListener;
 class MeshTemplate;
 class VehicleCrashSound;
 class VehicleDamage;
@@ -45,7 +48,8 @@ class VehicleTemplate;
 //     └── wheel_rr_      ← local transform updated from physics (mirrored X)
 class GameVehicle : public GameObject,
                     public physics::IPhysicsBodyListener,
-                    public physics::IPhysicsCollisionListener {
+                    public physics::IPhysicsCollisionListener,
+                    public IVehicleDamageListener {
  public:
   // Constructs the vehicle from a pre-loaded VehicleTemplate (AddRef'd on entry).
   // Instantiates body and wheel GameMesh children from the template's mesh templates.
@@ -107,9 +111,21 @@ class GameVehicle : public GameObject,
                           const core::Vec3f& world_normal,
                           const core::Vec3f& relative_velocity) override;
 
-  // --- Damage ------------------------------------------------------------------
+  // --- Damage / wreck ----------------------------------------------------------
 
   [[nodiscard]] VehicleDamage& GetDamage() const { return *damage_; }
+
+  // game::IVehicleDamageListener. Registered on damage_ by the constructor
+  // (this vehicle listens to its own damage model). The first crossing of the
+  // wreck threshold (conventionally 1.0) transitions the vehicle into the
+  // wrecked state: control input is cut off, wheel transforms stop updating,
+  // and wreck_listener_ (if set) is notified once so a vfx:: implementation
+  // can trigger the explosion + wreck SFX payoff. A no-op once already
+  // wrecked, so a later zone independently reaching 1.0 cannot re-wreck it.
+  void OnDamageThresholdCrossed(DamageZone zone, float threshold, float fraction) override;
+
+  // True once the vehicle has been wrecked (see OnDamageThresholdCrossed()).
+  [[nodiscard]] bool IsWrecked() const { return drive_state_ == DriveState::kWrecked; }
 
   // --- Controller ------------------------------------------------------------
 
@@ -130,6 +146,12 @@ class GameVehicle : public GameObject,
   // forwarded anywhere.
   void SetFireListener(IVehicleFireListener* listener) { fire_listener_ = listener; }
 
+  // Non-owning pointer. The caller (e.g. PlayModeManager, main.cpp's standalone
+  // vehicle spawn) owns the concrete listener (typically a
+  // vfx::VehicleWreckEffect) and must keep it alive at least as long as this
+  // vehicle. May be nullptr — the wreck notification is then simply dropped.
+  void SetWreckListener(IVehicleWreckListener* listener) { wreck_listener_ = listener; }
+
   /// True while the vehicle is actively driving in reverse.
   [[nodiscard]] bool IsReversing() const {
     return drive_state_ == DriveState::kReverse;
@@ -141,7 +163,7 @@ class GameVehicle : public GameObject,
   [[nodiscard]] MeshTemplate*               GetBodyTemplate()  const;
 
  private:
-  enum class DriveState { kForward, kBraking, kReverse, kFlipped, kRecovering };
+  enum class DriveState { kForward, kBraking, kReverse, kFlipped, kRecovering, kWrecked };
 
   // cppcheck-suppress unusedStructMember
   VehicleTemplate*          template_;
@@ -172,6 +194,10 @@ class GameVehicle : public GameObject,
   // Non-owning; set by the caller. See SetFireListener().
   // cppcheck-suppress unusedStructMember
   IVehicleFireListener*     fire_listener_   = nullptr;
+
+  // Non-owning; set by the caller. See SetWreckListener().
+  // cppcheck-suppress unusedStructMember
+  IVehicleWreckListener*    wreck_listener_  = nullptr;
 
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<VehicleDamage> damage_;

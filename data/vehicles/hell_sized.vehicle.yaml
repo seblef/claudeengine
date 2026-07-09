@@ -58,3 +58,5 @@ fire:
   damage_threshold: 0.800000012
   heat_distortion: false
   min_burn_time: 2
+wreck:
+  wreck_sound: medium-explosion

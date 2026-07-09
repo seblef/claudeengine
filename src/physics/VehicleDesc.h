@@ -107,6 +107,16 @@ struct FireDesc {
                                  ///< a wreck or repair would otherwise stop it immediately.
 };
 
+/// Configures the one-shot terminal wreck payoff (see vfx::VehicleWreckEffect):
+/// an explosion + sound triggered exactly once, the first time damage in any
+/// zone reaches the wreck threshold (conventionally 1.0, the last entry of
+/// VehicleDamageDesc::thresholds).
+/// Fully Jolt-free; may be serialised to YAML.
+struct WreckDesc {
+    // cppcheck-suppress unusedStructMember
+    std::string wreck_sound = "medium-explosion";  ///< Sound asset stem for the wreck one-shot.
+};
+
 /// Top-level description of a wheeled vehicle.
 /// Fully Jolt-free; may be serialised to YAML.
 struct VehicleDesc {
@@ -150,6 +160,8 @@ struct VehicleDesc {
     ScrapeDesc scrape;
     // cppcheck-suppress unusedStructMember
     FireDesc fire;
+    // cppcheck-suppress unusedStructMember
+    WreckDesc wreck;
 };
 
 }  // namespace physics
