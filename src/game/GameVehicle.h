@@ -23,6 +23,7 @@ namespace game {
 
 class GameMesh;
 class IVehicleController;
+class IVehicleFireListener;
 class IVehicleScrapeListener;
 class MeshTemplate;
 class VehicleCrashSound;
@@ -122,6 +123,13 @@ class GameVehicle : public GameObject,
   // vehicle. May be nullptr — sustained-contact events are then simply dropped.
   void SetScrapeListener(IVehicleScrapeListener* listener) { scrape_listener_ = listener; }
 
+  // Non-owning pointer. The caller (e.g. PlayModeManager, main.cpp's standalone
+  // vehicle spawn) owns the concrete listener (typically a
+  // vfx::VehicleFireEffect) and must keep it alive at least as long as this
+  // vehicle. May be nullptr — the per-frame transform is then simply not
+  // forwarded anywhere.
+  void SetFireListener(IVehicleFireListener* listener) { fire_listener_ = listener; }
+
   /// True while the vehicle is actively driving in reverse.
   [[nodiscard]] bool IsReversing() const {
     return drive_state_ == DriveState::kReverse;
@@ -160,6 +168,10 @@ class GameVehicle : public GameObject,
   // Non-owning; set by the caller. See SetScrapeListener().
   // cppcheck-suppress unusedStructMember
   IVehicleScrapeListener*   scrape_listener_ = nullptr;
+
+  // Non-owning; set by the caller. See SetFireListener().
+  // cppcheck-suppress unusedStructMember
+  IVehicleFireListener*     fire_listener_   = nullptr;
 
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<VehicleDamage> damage_;

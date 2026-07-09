@@ -3,9 +3,26 @@
 #include <algorithm>
 #include <cmath>
 
+#include <loguru.hpp>
+
 #include "game/IVehicleDamageListener.h"
 
 namespace game {
+
+namespace {
+
+const char* ZoneName(DamageZone zone) {
+  switch (zone) {
+    case DamageZone::kFront: return "Front";
+    case DamageZone::kRear:  return "Rear";
+    case DamageZone::kLeft:  return "Left";
+    case DamageZone::kRight: return "Right";
+    case DamageZone::kRoof:  return "Roof";
+  }
+  return "Unknown";
+}
+
+}  // namespace
 
 VehicleDamage::VehicleDamage(const physics::VehicleDesc& desc)
     : half_extents_(desc.half_extents),
@@ -25,8 +42,19 @@ void VehicleDamage::RegisterImpact(const core::Vec3f& local_point, float impulse
   hp_[idx] = std::clamp(hp_[idx] - damage, 0.f, max_hp_[idx]);
   const float new_fraction = GetDamageFraction(zone);
 
+  LOG_F(INFO, "VehicleDamage: %s hit for %.1f (impulse=%.1f) -> HP %.1f/%.1f (%.0f%% damaged) | "
+              "Front=%.0f%% Rear=%.0f%% Left=%.0f%% Right=%.0f%% Roof=%.0f%%",
+        ZoneName(zone), damage, impulse, hp_[idx], max_hp_[idx], new_fraction * 100.f,
+        GetDamageFraction(DamageZone::kFront) * 100.f,
+        GetDamageFraction(DamageZone::kRear)  * 100.f,
+        GetDamageFraction(DamageZone::kLeft)  * 100.f,
+        GetDamageFraction(DamageZone::kRight) * 100.f,
+        GetDamageFraction(DamageZone::kRoof)  * 100.f);
+
   for (const float threshold : thresholds_) {
     if (old_fraction < threshold && new_fraction >= threshold) {
+      LOG_F(WARNING, "VehicleDamage: %s crossed %.0f%% damage threshold (now %.0f%%)",
+            ZoneName(zone), threshold * 100.f, new_fraction * 100.f);
       for (IVehicleDamageListener* listener : listeners_)
         listener->OnDamageThresholdCrossed(zone, threshold, new_fraction);
     }

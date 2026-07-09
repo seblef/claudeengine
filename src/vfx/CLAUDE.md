@@ -29,6 +29,8 @@ below), never a direct `#include "vfx/..."` from `game/`.
 | `VFXExplosion` / `VFXExplosionDesc` | Fireball/smoke burst + point-light flash + physics shockwave + screen shake |
 | `VFXScrape` | Continuous directional sparks + looping screech, driven by an external `UpdateContact()` call per physics step |
 | `VehicleScrapeEffect` | `game::IVehicleScrapeListener` implementation; owns the persistent spark template and drives a `VFXScrape` from vehicle contact events |
+| `VFXFire` | Looping fire + smoke attached to a moving target, driven by an external `SetWorldTransform()` call every frame; carries an unwired heat-distortion stub flag |
+| `VehicleFireEffect` | `game::IVehicleDamageListener` + `game::IVehicleFireListener` implementation; owns the persistent fire template and drives a `VFXFire` from vehicle damage-threshold crossings, following the body every frame |
 | `ScreenShake` | Fire-and-forget camera shake; signals `game::ICameraController::ApplyShake()`, falloff by inverse distance from the camera |
 
 ## Key patterns
@@ -39,9 +41,10 @@ below), never a direct `#include "vfx/..."` from `game/`.
 `IsFinished()` is polled by `VFXSystem` so the instance can be reaped. Most
 effects are genuinely fire-and-forget (`VFXExplosion`, `ScreenShake`): `Play()`
 does all the real work and `Update(dt)` only ticks decay/particle simulation.
-`VFXScrape` is the exception — it's stateful and driven by an external
-`UpdateContact()` call for as long as contact persists; `Update(dt)` on its
-own never decides when the effect ends (`Stop()` does).
+`VFXScrape` and `VFXFire` are the exception — they're stateful and driven by
+an external call (`UpdateContact()` / `SetWorldTransform()` respectively) for
+as long as the effect should keep running; `Update(dt)` on its own never
+decides when either effect ends (`Stop()` does).
 
 ### Composition: an effect can spawn sibling effects
 

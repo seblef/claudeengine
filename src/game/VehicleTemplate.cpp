@@ -67,6 +67,13 @@ void ParseScrapeDesc(physics::ScrapeDesc& scrape, const YAML::Node& n) {
   scrape.screech_sound      = n["screech_sound"].as<std::string>(scrape.screech_sound);
 }
 
+void ParseFireDesc(physics::FireDesc& fire, const YAML::Node& n) {
+  if (!n) return;
+  fire.damage_threshold = n["damage_threshold"].as<float>(fire.damage_threshold);
+  fire.heat_distortion  = n["heat_distortion"].as<bool>(fire.heat_distortion);
+  fire.min_burn_time    = n["min_burn_time"].as<float>(fire.min_burn_time);
+}
+
 physics::WheelGeometry InferWheelGeometry(const MeshTemplate* tmpl,
                                            const char* label) {
   physics::WheelGeometry geo;
@@ -184,6 +191,7 @@ VehicleTemplate::VehicleTemplate(const std::string& desc_path,
   ParseDamageDesc(vehicle_desc_.damage, root["damage"]);
   ParseCrashSoundDesc(vehicle_desc_.crash_sound, root["crash_sound"]);
   ParseScrapeDesc(vehicle_desc_.scrape, root["scrape"]);
+  ParseFireDesc(vehicle_desc_.fire, root["fire"]);
 
   const std::filesystem::path data_root = core::Config::GetDataFolder();
   body_tmpl_        = MeshTemplate::GetOrLoad((data_root / body_mesh_str).string(), video);

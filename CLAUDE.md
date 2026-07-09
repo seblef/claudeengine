@@ -69,6 +69,10 @@ For any contribution:
 7. Commit with message matching conventional commits
 8. Open a Pull Request with meaningful description
 
+**Verification**
+
+Do not run `wreckoning` or `wreckoning_editor` (or launch any other windowed/graphical binary) as part of implementation or testing — this environment is headless with no display, so the process will either fail to open a window or hang. Rely on `cpplint`, `cppcheck`, the unit test suites (`ctest` / individual `*_tests` binaries), and a full rebuild instead. If a change genuinely needs visual/manual QA to confirm (e.g. a new VFX effect actually renders correctly), say so explicitly and flag it as a follow-up in the contribution's history file rather than attempting to launch the app.
+
 **Any contribution must be accompanied by:**
 
 * a MarkDown file, named `{TIMESTAMP} - {FEATURE}.md`, stored in `history` folder, and containing a comprehensive description of the changes, the decisions made and their rationale, and the output to keep in mind for you for the next features.
