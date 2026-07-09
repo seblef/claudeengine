@@ -174,6 +174,16 @@ void GameVehicle::Deactivate() {
 }
 
 void GameVehicle::Update(float dt) {
+  // Deliver a wreck notification deferred from OnDamageThresholdCrossed()
+  // (see its doc comment in GameVehicle.h). This runs before this frame's
+  // physics::PhysicsSystem::Step(), so it is always outside any Jolt contact
+  // callback — safe for wreck_listener_ to issue physics queries (e.g. the
+  // explosion's shockwave SphereOverlap).
+  if (wreck_notify_pending_) {
+    wreck_notify_pending_ = false;
+    if (wreck_listener_) wreck_listener_->OnVehicleWrecked(wreck_position_);
+  }
+
   if (physics_vehicle_) {
     crash_sound_->Update(dt);
     if (scrape_listener_) scrape_listener_->Update(dt);
@@ -368,13 +378,15 @@ void GameVehicle::OnDamageThresholdCrossed(DamageZone /*zone*/, float threshold,
   drive_state_ = DriveState::kWrecked;
 
   const core::Mat4f& world_transform = GetWorldTransform();
-  const core::Vec3f world_position{
+  wreck_position_ = core::Vec3f{
       world_transform(0, 3), world_transform(1, 3), world_transform(2, 3)};
 
   LOG_F(WARNING, "GameVehicle: wrecked at (%.1f, %.1f, %.1f)",
-        world_position.x, world_position.y, world_position.z);
+        wreck_position_.x, wreck_position_.y, wreck_position_.z);
 
-  if (wreck_listener_) wreck_listener_->OnVehicleWrecked(world_position);
+  // Deferred to the next Update() — see this method's doc comment in
+  // GameVehicle.h for why wreck_listener_ cannot be notified from here.
+  wreck_notify_pending_ = true;
 }
 
 void GameVehicle::OnSustainedContact(const core::Vec3f& world_point,

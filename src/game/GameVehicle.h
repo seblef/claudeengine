@@ -118,10 +118,21 @@ class GameVehicle : public GameObject,
   // game::IVehicleDamageListener. Registered on damage_ by the constructor
   // (this vehicle listens to its own damage model). The first crossing of the
   // wreck threshold (conventionally 1.0) transitions the vehicle into the
-  // wrecked state: control input is cut off, wheel transforms stop updating,
-  // and wreck_listener_ (if set) is notified once so a vfx:: implementation
-  // can trigger the explosion + wreck SFX payoff. A no-op once already
-  // wrecked, so a later zone independently reaching 1.0 cannot re-wreck it.
+  // wrecked state: control input is cut off, wheel transforms stop updating.
+  // A no-op once already wrecked, so a later zone independently reaching 1.0
+  // cannot re-wreck it.
+  //
+  // This is called synchronously from within physics::PhysicsSystem::Step()
+  // (Jolt's OnContactAdded contact callback, itself invoked while Jolt holds
+  // internal body/broadphase locks — see PhysicsSystem.cpp's
+  // VehicleContactListener). wreck_listener_ is therefore NOT notified here:
+  // vfx::VehicleWreckEffect's explosion calls physics::PhysicsSystem::
+  // SphereOverlap(), which takes Jolt's locking narrow-phase query — calling
+  // that reentrantly from the same thread mid-Step() deadlocks against the
+  // lock Jolt already holds. The notification is deferred to the next
+  // Update() instead, which always runs before that frame's Step() (see
+  // GameSystem::Update()'s ordering) and is therefore guaranteed to be
+  // outside any Jolt callback.
   void OnDamageThresholdCrossed(DamageZone zone, float threshold, float fraction) override;
 
   // True once the vehicle has been wrecked (see OnDamageThresholdCrossed()).
@@ -198,6 +209,17 @@ class GameVehicle : public GameObject,
   // Non-owning; set by the caller. See SetWreckListener().
   // cppcheck-suppress unusedStructMember
   IVehicleWreckListener*    wreck_listener_  = nullptr;
+
+  // True from the moment OnDamageThresholdCrossed() wrecks the vehicle until
+  // the next Update() call delivers the deferred wreck_listener_ notification
+  // (see OnDamageThresholdCrossed()'s doc comment for why it can't be called
+  // immediately).
+  // cppcheck-suppress unusedStructMember
+  bool                      wreck_notify_pending_ = false;
+  // World-space position captured at the moment of wrecking, passed to
+  // wreck_listener_ once the deferred notification fires.
+  // cppcheck-suppress unusedStructMember
+  core::Vec3f               wreck_position_       = core::Vec3f::kZero;
 
   // cppcheck-suppress unusedStructMember
   std::unique_ptr<VehicleDamage> damage_;

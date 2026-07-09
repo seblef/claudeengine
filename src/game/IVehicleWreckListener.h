@@ -19,8 +19,14 @@ class IVehicleWreckListener {
  public:
   virtual ~IVehicleWreckListener() = default;
 
-  // Called once, the instant the vehicle is wrecked. world_position is the
-  // vehicle body's world-space position, suitable for spawning an explosion.
+  // Called once, shortly after the vehicle is wrecked — deferred by
+  // GameVehicle to its next Update() call rather than fired immediately from
+  // OnDamageThresholdCrossed(), since that runs inside a Jolt physics
+  // contact callback and any physics query performed here (e.g. an
+  // explosion's shockwave) would deadlock if issued from there. See
+  // game::GameVehicle::OnDamageThresholdCrossed()'s doc comment. world_position
+  // is the vehicle body's world-space position at the moment it was
+  // wrecked, suitable for spawning an explosion.
   virtual void OnVehicleWrecked(const core::Vec3f& world_position) = 0;
 };
 

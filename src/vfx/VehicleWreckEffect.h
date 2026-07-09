@@ -18,12 +18,15 @@ namespace vfx {
 
 // Drives the one-shot wreck payoff from a vehicle's terminal damage
 // transition: game::GameVehicle calls game::IVehicleWreckListener::
-// OnVehicleWrecked() exactly once, the instant any zone's damage fraction
-// first reaches the wreck threshold. This spawns a vfx::VFXExplosion and
-// triggers a wreck sound one-shot at the vehicle's position. Further calls
-// are ignored — GameVehicle already guarantees OnVehicleWrecked() fires at
-// most once per vehicle, but the guard is kept here too since this is the
-// class responsible for not double-playing the payoff.
+// OnVehicleWrecked() exactly once, shortly after any zone's damage fraction
+// first reaches the wreck threshold (deferred by GameVehicle to its next
+// Update() call — see IVehicleWreckListener.h — so it is safe for this
+// class to issue a physics query synchronously here). This spawns a
+// vfx::VFXExplosion and triggers a wreck sound one-shot at the vehicle's
+// position. Further calls are ignored — GameVehicle already guarantees
+// OnVehicleWrecked() fires at most once per vehicle, but the guard is kept
+// here too since this is the class responsible for not double-playing the
+// payoff.
 //
 // Lives in vfx/ and is wired to a GameVehicle externally via
 // GameVehicle::SetWreckListener() — game/ must not depend on vfx/, since
