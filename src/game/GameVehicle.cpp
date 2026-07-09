@@ -12,6 +12,7 @@
 #include "game/IVehicleController.h"
 #include "game/IVehicleFireListener.h"
 #include "game/IVehicleScrapeListener.h"
+#include "game/IVehicleWreckListener.h"
 #include "game/VehicleCrashSound.h"
 #include "game/VehicleDamage.h"
 #include "game/VehicleTemplate.h"
@@ -34,6 +35,10 @@ constexpr float kFlipDelay              =  2.0f;  ///< Time (s) upside-down befo
 constexpr float kSelfRightLiftOffset    =  0.5f;  ///< Upward offset (m) applied to position on self-right.
 constexpr float kRecoveryDuration       =  1.5f;  ///< Duration (s) of the post-self-right visibility flicker.
 constexpr float kFlickerFrequency       =  8.0f;  ///< Flicker rate (Hz) during recovery.
+
+// The last configured damage threshold conventionally marks a full wreck
+// (see physics::VehicleDamageDesc::thresholds' default {0.4, 0.6, 0.8, 1.0}).
+constexpr float kWreckThreshold = 1.f;
 
 // A negative-scale mirror would flip winding order and break back-face culling.
 // A 180° Y rotation achieves the same visual mirroring with det=+1.
@@ -89,6 +94,8 @@ GameVehicle::GameVehicle(VehicleTemplate* tmpl,
   wheel_fr_->SetLocalTransform(PositionMatrix(vdesc.front_right.position) * mirror);
   wheel_rl_->SetLocalTransform(PositionMatrix(vdesc.rear_left.position));
   wheel_rr_->SetLocalTransform(PositionMatrix(vdesc.rear_right.position) * mirror);
+
+  damage_->AddListener(this);
 }
 
 GameVehicle::~GameVehicle() {
@@ -167,6 +174,16 @@ void GameVehicle::Deactivate() {
 }
 
 void GameVehicle::Update(float dt) {
+  // Deliver a wreck notification deferred from OnDamageThresholdCrossed()
+  // (see its doc comment in GameVehicle.h). This runs before this frame's
+  // physics::PhysicsSystem::Step(), so it is always outside any Jolt contact
+  // callback — safe for wreck_listener_ to issue physics queries (e.g. the
+  // explosion's shockwave SphereOverlap).
+  if (wreck_notify_pending_) {
+    wreck_notify_pending_ = false;
+    if (wreck_listener_) wreck_listener_->OnVehicleWrecked(wreck_position_);
+  }
+
   if (physics_vehicle_) {
     crash_sound_->Update(dt);
     if (scrape_listener_) scrape_listener_->Update(dt);
@@ -216,13 +233,19 @@ void GameVehicle::Update(float dt) {
           SetMeshesVisible(visible);
         }
         break;
+
+      case DriveState::kWrecked:
+        // A wreck is inert: no self-righting, no flip detection.
+        break;
     }
 
     // --- Driver input --------------------------------------------------------
-    // Inputs are suppressed while the vehicle is flipped (stuck) or recovering.
+    // Inputs are suppressed while the vehicle is flipped (stuck), recovering,
+    // or wrecked (dead).
     if (controller_ &&
         drive_state_ != DriveState::kFlipped &&
-        drive_state_ != DriveState::kRecovering) {
+        drive_state_ != DriveState::kRecovering &&
+        drive_state_ != DriveState::kWrecked) {
       controller_->Update(dt);
 
       const float throttle = controller_->GetThrottle();
@@ -260,13 +283,15 @@ void GameVehicle::Update(float dt) {
 
         case DriveState::kFlipped:
         case DriveState::kRecovering:
+        case DriveState::kWrecked:
           break;
       }
 
       const float steer_scale = ComputeSteerScale(speed, GetVehicleDesc());
       physics_vehicle_->SetSteer(controller_->GetSteer() * steer_scale);
       physics_vehicle_->SetHandbrake(controller_->GetHandbrake());
-    } else if (drive_state_ == DriveState::kFlipped) {
+    } else if (drive_state_ == DriveState::kFlipped ||
+              drive_state_ == DriveState::kWrecked) {
       physics_vehicle_->SetThrottle(0.f);
       physics_vehicle_->SetBrake(0.f);
       physics_vehicle_->SetSteer(0.f);
@@ -274,19 +299,23 @@ void GameVehicle::Update(float dt) {
     }
 
     // --- Wheel transforms ----------------------------------------------------
-    const core::Mat4f body_world_inv = GetWorldTransform().Inverse();
-    const core::Mat4f mirror         = MirrorY();
+    // Frozen once wrecked: a wreck no longer "drives", so its wheels stop
+    // being re-posed from the physics simulation.
+    if (drive_state_ != DriveState::kWrecked) {
+      const core::Mat4f body_world_inv = GetWorldTransform().Inverse();
+      const core::Mat4f mirror         = MirrorY();
 
-    GameMesh* wheels[4] = {
-        wheel_fl_.get(), wheel_fr_.get(), wheel_rl_.get(), wheel_rr_.get()
-    };
-    const bool mirrored[4] = {false, true, false, true};
+      GameMesh* wheels[4] = {
+          wheel_fl_.get(), wheel_fr_.get(), wheel_rl_.get(), wheel_rr_.get()
+      };
+      const bool mirrored[4] = {false, true, false, true};
 
-    for (int i = 0; i < 4; ++i) {
-      const core::Mat4f wheel_world = physics_vehicle_->GetWheelWorldTransform(i);
-      const core::Mat4f wheel_local = body_world_inv * wheel_world;
-      wheels[i]->SetLocalTransform(
-          mirrored[i] ? wheel_local * mirror : wheel_local);
+      for (int i = 0; i < 4; ++i) {
+        const core::Mat4f wheel_world = physics_vehicle_->GetWheelWorldTransform(i);
+        const core::Mat4f wheel_local = body_world_inv * wheel_world;
+        wheels[i]->SetLocalTransform(
+            mirrored[i] ? wheel_local * mirror : wheel_local);
+      }
     }
   }
 
@@ -333,10 +362,31 @@ void GameVehicle::OnBodyTransformUpdated(const core::Mat4f& transform) {
 }
 
 void GameVehicle::OnCollision(const core::Vec3f& world_point, float impulse) {
+  if (drive_state_ == DriveState::kWrecked) return;  // Inert: no further damage/sound events.
+
   const core::Vec3f local_point =
       core::TransformPoint(GetWorldTransform().Inverse(), world_point);
   damage_->RegisterImpact(local_point, impulse);
   crash_sound_->RegisterImpact(world_point, impulse);
+}
+
+void GameVehicle::OnDamageThresholdCrossed(DamageZone /*zone*/, float threshold,
+                                          float /*fraction*/) {
+  if (threshold < kWreckThreshold) return;
+  if (drive_state_ == DriveState::kWrecked) return;  // Already wrecked; ignore later zones.
+
+  drive_state_ = DriveState::kWrecked;
+
+  const core::Mat4f& world_transform = GetWorldTransform();
+  wreck_position_ = core::Vec3f{
+      world_transform(0, 3), world_transform(1, 3), world_transform(2, 3)};
+
+  LOG_F(WARNING, "GameVehicle: wrecked at (%.1f, %.1f, %.1f)",
+        wreck_position_.x, wreck_position_.y, wreck_position_.z);
+
+  // Deferred to the next Update() — see this method's doc comment in
+  // GameVehicle.h for why wreck_listener_ cannot be notified from here.
+  wreck_notify_pending_ = true;
 }
 
 void GameVehicle::OnSustainedContact(const core::Vec3f& world_point,

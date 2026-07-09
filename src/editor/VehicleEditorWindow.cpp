@@ -240,6 +240,11 @@ void VehicleEditorWindow::LoadFromYaml() {
     fire.min_burn_time    = fr["min_burn_time"].as<float>(fire.min_burn_time);
   }
 
+  if (const YAML::Node wr = root["wreck"]) {
+    physics::WreckDesc& wreck = vehicle_desc_.wreck;
+    wreck.wreck_sound = wr["wreck_sound"].as<std::string>(wreck.wreck_sound);
+  }
+
   if (!body_mesh_path_.empty())        UpdateBodyMesh(body_mesh_path_);
   if (!front_wheel_mesh_path_.empty()) UpdateFrontWheelMesh(front_wheel_mesh_path_);
   if (!rear_wheel_mesh_path_.empty())  UpdateRearWheelMesh(rear_wheel_mesh_path_);
@@ -345,6 +350,11 @@ void VehicleEditorWindow::SaveToYaml() {
   out << YAML::Key << "heat_distortion"  << YAML::Value << fire.heat_distortion;
   out << YAML::Key << "min_burn_time"    << YAML::Value << fire.min_burn_time;
   out << YAML::EndMap;  // fire
+
+  const physics::WreckDesc& wreck = vehicle_desc_.wreck;
+  out << YAML::Key << "wreck" << YAML::Value << YAML::BeginMap;
+  out << YAML::Key << "wreck_sound" << YAML::Value << wreck.wreck_sound;
+  out << YAML::EndMap;  // wreck
 
   out << YAML::EndMap;  // root
 
@@ -952,6 +962,23 @@ void VehicleEditorWindow::DrawFireSection() {
                       "repair would otherwise stop it immediately");
 }
 
+void VehicleEditorWindow::DrawWreckSection() {
+  ImGui::SeparatorText("Wreck");
+
+  physics::WreckDesc& wreck = vehicle_desc_.wreck;
+
+  ImGui::PushID("wreck_sound");
+  ImGui::LabelText("Sound", "%s",
+                   wreck.wreck_sound.empty() ? "(none)" : wreck.wreck_sound.c_str());
+  ImGui::SameLine();
+  if (ImGui::Button("Change...")) wreck_sound_modal_.Open();
+  if (const std::string picked = wreck_sound_modal_.Render(); !picked.empty()) {
+    wreck.wreck_sound = picked;
+    dirty_            = true;
+  }
+  ImGui::PopID();
+}
+
 void VehicleEditorWindow::DrawActionsBar() {
   ImGui::Separator();
 
@@ -1030,6 +1057,8 @@ void VehicleEditorWindow::Render() {
     DrawScrapeSection();
     ImGui::Spacing();
     DrawFireSection();
+    ImGui::Spacing();
+    DrawWreckSection();
     DrawActionsBar();
   }
   ImGui::End();

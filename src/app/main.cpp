@@ -50,6 +50,7 @@
 #include "renderer/Renderer.h"
 #include "vfx/VehicleFireEffect.h"
 #include "vfx/VehicleScrapeEffect.h"
+#include "vfx/VehicleWreckEffect.h"
 #include "vfx/VFXSystem.h"
 
 #include <algorithm>
@@ -250,6 +251,7 @@ int main(int argc, char* argv[]) {
   std::unique_ptr<game::ChaseCameraController>   chase_controller;
   std::unique_ptr<vfx::VehicleScrapeEffect>       vehicle_scrape;
   std::unique_ptr<vfx::VehicleFireEffect>         vehicle_fire;
+  std::unique_ptr<vfx::VehicleWreckEffect>        vehicle_wreck;
 
   if (!vehicle_path.empty() && map_player_start) {
     vehicle_tmpl = game::VehicleTemplate::GetOrLoad(vehicle_path, video);
@@ -278,6 +280,10 @@ int main(int argc, char* argv[]) {
           vehicle_tmpl->GetVehicleDesc().fire, vehicle_ptr->GetDamage());
       vehicle_ptr->GetDamage().AddListener(vehicle_fire.get());
       vehicle_ptr->SetFireListener(vehicle_fire.get());
+
+      vehicle_wreck = std::make_unique<vfx::VehicleWreckEffect>(
+          vehicle_tmpl->GetVehicleDesc().wreck, sound_manager.get(), sound_resources.get());
+      vehicle_ptr->SetWreckListener(vehicle_wreck.get());
 
       vehicle_ptr->Activate();
 
