@@ -617,14 +617,19 @@ void VehicleEditorWindow::UpdateMeshVariantPreview(size_t index) {
   const std::string& rel_path = vehicle_desc_.damage.mesh_variants[index].mesh_path;
   if (rel_path.empty()) {
     mesh_variant_previews_[index].reset();
-    return;
+  } else {
+    const std::string abs_path = (core::Config::GetDataFolder() / rel_path).string();
+    mesh_variant_tmpls_[index] = game::MeshTemplate::GetOrLoad(abs_path, video_);
+    if (!mesh_variant_previews_[index])
+      mesh_variant_previews_[index] = std::make_unique<MeshPreview>(video_, 96, 96);
+    mesh_variant_previews_[index]->SetTemplate(mesh_variant_tmpls_[index]);
   }
 
-  const std::string abs_path = (core::Config::GetDataFolder() / rel_path).string();
-  mesh_variant_tmpls_[index] = game::MeshTemplate::GetOrLoad(abs_path, video_);
-  if (!mesh_variant_previews_[index])
-    mesh_variant_previews_[index] = std::make_unique<MeshPreview>(video_, 96, 96);
-  mesh_variant_previews_[index]->SetTemplate(mesh_variant_tmpls_[index]);
+  // Keep a still-open "Enlarge" popup for this row in sync (e.g. Reroll
+  // updates it live) rather than pointing at a template that was just
+  // Release()'d above.
+  if (mesh_variant_zoom_index_ == static_cast<int>(index) && mesh_variant_zoom_preview_)
+    mesh_variant_zoom_preview_->SetTemplate(mesh_variant_tmpls_[index]);
 }
 
 void VehicleEditorWindow::RebuildMeshVariantPreviews() {
@@ -639,6 +644,11 @@ void VehicleEditorWindow::RebuildMeshVariantPreviews() {
   // starts as hand-authored (is_generated=false) until "Generate Variant" is
   // used again in this session.
   mesh_variant_gen_state_.assign(count, MeshVariantGenState{});
+
+  // All row templates above were just released; drop any dangling reference
+  // an open "Enlarge" popup might hold.
+  mesh_variant_zoom_index_ = -1;
+  if (mesh_variant_zoom_preview_) mesh_variant_zoom_preview_->SetTemplate(nullptr);
 
   for (size_t i = 0; i < count; ++i) UpdateMeshVariantPreview(i);
 }
@@ -1096,6 +1106,11 @@ void VehicleEditorWindow::DrawBodyMeshVariantsSection() {
 
   auto& variants = vehicle_desc_.damage.mesh_variants;
   int remove_index = -1;
+  // Set inside the PushID(i)-scoped loop below; the popup itself must be
+  // opened outside that scope so its ID matches the BeginPopupModal() call
+  // further down (ImGui::OpenPopup()'s ID is hashed against the *current*
+  // ID stack, which PushID(i) would otherwise make loop-iteration-specific).
+  bool open_zoom_popup = false;
 
   for (int i = 0; i < static_cast<int>(variants.size()); ++i) {
     ImGui::PushID(i);
@@ -1112,6 +1127,18 @@ void VehicleEditorWindow::DrawBodyMeshVariantsSection() {
     if (ImGui::Button("Browse...")) PickMeshVariant(idx);
     ImGui::SameLine();
     if (ImGui::Button("Remove")) remove_index = i;
+
+    const bool has_tmpl = idx < mesh_variant_tmpls_.size() && mesh_variant_tmpls_[idx];
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!has_tmpl);
+    if (ImGui::Button("Enlarge")) {
+      mesh_variant_zoom_index_ = i;
+      if (!mesh_variant_zoom_preview_)
+        mesh_variant_zoom_preview_ = std::make_unique<MeshPreview>(video_, 320, 320);
+      mesh_variant_zoom_preview_->SetTemplate(mesh_variant_tmpls_[idx]);
+      open_zoom_popup = true;
+    }
+    ImGui::EndDisabled();
 
     if (gen_state.is_generated) {
       ImGui::SetNextItemWidth(120.f);
@@ -1134,6 +1161,14 @@ void VehicleEditorWindow::DrawBodyMeshVariantsSection() {
     mesh_variant_tmpls_.erase(mesh_variant_tmpls_.begin() + remove_index);
     mesh_variant_previews_.erase(mesh_variant_previews_.begin() + remove_index);
     mesh_variant_gen_state_.erase(mesh_variant_gen_state_.begin() + remove_index);
+
+    if (mesh_variant_zoom_index_ == remove_index) {
+      mesh_variant_zoom_index_ = -1;
+      if (mesh_variant_zoom_preview_) mesh_variant_zoom_preview_->SetTemplate(nullptr);
+    } else if (mesh_variant_zoom_index_ > remove_index) {
+      --mesh_variant_zoom_index_;
+    }
+
     dirty_ = true;
   }
 
@@ -1146,6 +1181,20 @@ void VehicleEditorWindow::DrawBodyMeshVariantsSection() {
   }
   ImGui::SameLine();
   if (ImGui::Button("Generate Variant")) GenerateNewMeshVariant();
+
+  if (open_zoom_popup) ImGui::OpenPopup("Damage Variant Preview");
+  if (ImGui::BeginPopupModal("Damage Variant Preview", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+    if (mesh_variant_zoom_index_ >= 0 &&
+        static_cast<size_t>(mesh_variant_zoom_index_) < variants.size()) {
+      ImGui::Text("Variant %d — threshold %.2f", mesh_variant_zoom_index_,
+                  variants[static_cast<size_t>(mesh_variant_zoom_index_)].threshold);
+    }
+    if (mesh_variant_zoom_preview_)
+      mesh_variant_zoom_preview_->Render(static_cast<float>(ImGui::GetTime()));
+    ImGui::Spacing();
+    if (ImGui::Button("Close")) ImGui::CloseCurrentPopup();
+    ImGui::EndPopup();
+  }
 }
 
 void VehicleEditorWindow::DrawCrashSoundSection() {

@@ -206,6 +206,16 @@ class VehicleEditorWindow {
   // cppcheck-suppress unusedStructMember
   std::vector<MeshVariantGenState>          mesh_variant_gen_state_;
 
+  // Larger (320x320) preview shown in a popup when a row's "Enlarge" button
+  // is clicked. Lazily constructed on first use; retargeted to whichever row
+  // is enlarged via mesh_variant_zoom_index_ (-1 when no row is enlarged).
+  // Kept in sync with mesh_variant_tmpls_ whenever a row's template is
+  // released/replaced (see UpdateMeshVariantPreview) so it never outlives
+  // the MeshTemplate it points at.
+  std::unique_ptr<MeshPreview> mesh_variant_zoom_preview_;
+  // cppcheck-suppress unusedStructMember
+  int mesh_variant_zoom_index_ = -1;
+
   // ---- Combined vehicle preview (body + 4 wheels) --------------------------
 
   std::unique_ptr<abstract::RenderTarget>      combined_rt_;
