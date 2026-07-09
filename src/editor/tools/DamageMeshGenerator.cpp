@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <loguru.hpp>
@@ -93,10 +94,26 @@ float ComputeZoneWeight(const core::Vec3f& local_pos, const core::Vec3f& half_ex
   return std::clamp(std::max({nx, ny, nz}), 0.f, 1.f);
 }
 
-// Displaces every vertex inward along its (pre-displacement) normal by a
-// severity- and zone-weighted noise amount, then recomputes normals/tangents
-// and the AABB. Writes the per-vertex zone weight used (needed again to
-// rasterize the matching texture damage mask) into *vertex_weights.
+// Exact-position key so vertices duplicated across a UV seam or hard edge
+// (same position, different normal/UV — the standard way car body meshes are
+// authored) can be grouped. Mirrors mesh::WeldVertices' documented choice of
+// exact float equality over an epsilon compare.
+struct PosKey {
+  float x, y, z;
+  bool operator==(const PosKey& o) const { return x == o.x && y == o.y && z == o.z; }
+};
+struct PosKeyHash {
+  size_t operator()(const PosKey& k) const {
+    const size_t h = std::hash<float>{}(k.x) ^ (std::hash<float>{}(k.y) << 1) ^
+                      (std::hash<float>{}(k.z) << 2);
+    return h;
+  }
+};
+
+// Displaces every vertex inward along a per-position (not per-vertex-corner)
+// noise-weighted amount, then recomputes normals/tangents and the AABB.
+// Writes the per-vertex zone weight used (needed again to rasterize the
+// matching texture damage mask) into *vertex_weights.
 void DisplaceMesh(mesh::LodData* lod, const DamageGenerationParams& params,
                    std::vector<float>* vertex_weights) {
   const float avg_half_extent =
@@ -104,23 +121,40 @@ void DisplaceMesh(mesh::LodData* lod, const DamageGenerationParams& params,
   const float base_frequency = 1.6f / std::max(avg_half_extent, 0.1f);
   const float max_displacement = kMaxDisplacementFraction * avg_half_extent;
 
+  // Car body meshes duplicate a vertex at every UV seam / hard edge (same
+  // position, different normal — needed so shading and UV unwrap can differ
+  // per side). Displacing each corner along its OWN normal moves those
+  // coincident duplicates apart by different amounts/directions, tearing the
+  // surface open at every seam. Displacing every corner that shares a
+  // position along the SAME averaged normal instead keeps them coincident
+  // after displacement, so the seam stays welded shut.
+  std::unordered_map<PosKey, core::Vec3f, PosKeyHash> smooth_normals;
+  smooth_normals.reserve(lod->vertices.size());
+  for (const auto& v : lod->vertices)
+    smooth_normals[PosKey{v.position.x, v.position.y, v.position.z}] += v.normal;
+  for (auto& entry : smooth_normals) {
+    core::Vec3f& n = entry.second;
+    n = n.LengthSquared() > 1e-8f ? n.Normalized() : core::Vec3f::kAxisY;
+  }
+
   vertex_weights->resize(lod->vertices.size());
 
   for (size_t i = 0; i < lod->vertices.size(); ++i) {
     core::Vertex3D& v = lod->vertices[i];
-    const float weight = ComputeZoneWeight(v.position, params.half_extents);
+    const core::Vec3f original_position = v.position;
+    const float weight = ComputeZoneWeight(original_position, params.half_extents);
     (*vertex_weights)[i] = weight;
 
-    const float noise = Fbm3(v.position * base_frequency, params.noise_seed);
+    const float noise = Fbm3(original_position * base_frequency, params.noise_seed);
     // Guard against a non-finite noise sample (e.g. a future domain-offset
     // regression) corrupting this vertex to NaN, which would silently poison
     // the whole mesh's AABB and make it invisible rather than just undamaged.
     const float n01 = std::isfinite(noise) ? std::clamp(noise * 0.5f + 0.5f, 0.f, 1.f) : 0.f;
     const float amount = params.severity * weight * n01 * max_displacement;
 
-    const core::Vec3f normal = v.normal.LengthSquared() > 1e-8f
-        ? v.normal.Normalized() : core::Vec3f::kAxisY;
-    v.position -= normal * amount;
+    const core::Vec3f& direction =
+        smooth_normals.at(PosKey{original_position.x, original_position.y, original_position.z});
+    v.position -= direction * amount;
   }
 
   mesh::ComputeNormals(lod);
