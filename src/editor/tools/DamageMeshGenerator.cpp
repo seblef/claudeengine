@@ -40,19 +40,28 @@ constexpr float kDarkenStrength = 0.55f;
 constexpr float kDesatStrength  = 0.6f;
 constexpr float kRustStrength   = 0.35f;
 
-// Large, seed-dependent domain offsets so distinct seeds visibly diverge even
-// though stb_perlin_noise3_seed truncates the seed to a single byte per octave.
-constexpr float kSeedScaleX = 127.1f;
-constexpr float kSeedScaleY = 74.7f;
-constexpr float kSeedScaleZ = 311.7f;
+// Seed-dependent domain offsets so distinct seeds visibly diverge even though
+// stb_perlin_noise3_seed truncates the seed to a single byte per octave. Each
+// offset is derived from a disjoint slice of bits of the (full-range,
+// mt19937-produced) seed and then scaled, keeping every offset in the low
+// thousands: mesh-local positions are O(1) metres, and stb_perlin internally
+// float-to-int casts its input (see stb__perlin_fastfloor), which is
+// undefined behaviour once the offset is large enough that adding a small
+// position to it no longer changes the float value at all — verified
+// empirically that a naive offset = seed * constant (seed being a full
+// 32-bit value) lands around 1e11-1e12, silently collapsing every vertex to
+// the same NaN noise sample.
+constexpr float kSeedScaleX = 12.71f;
+constexpr float kSeedScaleY = 7.47f;
+constexpr float kSeedScaleZ = 31.17f;
 
 // Fractal-sum 3D noise, roughly in [-1, 1]. Mirrors terrain::TerrainGenerator's
 // FBM approach (see src/terrain/TerrainGenerator.cpp) applied to mesh-local
 // positions instead of a heightfield.
 float Fbm3(const core::Vec3f& p, uint32_t seed) {
-  const float ox = static_cast<float>(seed) * kSeedScaleX;
-  const float oy = static_cast<float>(seed) * kSeedScaleY;
-  const float oz = static_cast<float>(seed) * kSeedScaleZ;
+  const float ox = static_cast<float>(seed & 0xFFFu) * kSeedScaleX;          // 0-4095
+  const float oy = static_cast<float>((seed >> 12) & 0xFFFu) * kSeedScaleY;  // 0-4095
+  const float oz = static_cast<float>((seed >> 24) & 0xFFu) * kSeedScaleZ;   // 0-255
 
   float amplitude = 1.f;
   float frequency = 1.f;
@@ -102,8 +111,11 @@ void DisplaceMesh(mesh::LodData* lod, const DamageGenerationParams& params,
     const float weight = ComputeZoneWeight(v.position, params.half_extents);
     (*vertex_weights)[i] = weight;
 
-    const float n01 = std::clamp(
-        Fbm3(v.position * base_frequency, params.noise_seed) * 0.5f + 0.5f, 0.f, 1.f);
+    const float noise = Fbm3(v.position * base_frequency, params.noise_seed);
+    // Guard against a non-finite noise sample (e.g. a future domain-offset
+    // regression) corrupting this vertex to NaN, which would silently poison
+    // the whole mesh's AABB and make it invisible rather than just undamaged.
+    const float n01 = std::isfinite(noise) ? std::clamp(noise * 0.5f + 0.5f, 0.f, 1.f) : 0.f;
     const float amount = params.severity * weight * n01 * max_displacement;
 
     const core::Vec3f normal = v.normal.LengthSquared() > 1e-8f
